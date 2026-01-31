@@ -991,6 +991,31 @@ The `execution_context` provides `set_frame_allocator` and `get_frame_allocator`
 | Type erasure      | Structural (coroutine handles)  | Explicit (`any_sender`)         |
 | Operations        | `dispatch`, `post`              | `schedule`, `transfer`          |
 
+### 5.5 ExecutionContext concept
+
+While `execution_context` serves as a base class for contexts that manage I/O objects and services, concrete execution contexts that can launch coroutines must also provide an associated executor. The `ExecutionContext` concept captures this requirement: a type must derive from `execution_context`, expose an `executor_type` that satisfies `Executor`, and provide `get_executor()` to obtain an executor bound to the context.
+
+```cpp
+template<class X>
+concept ExecutionContext =
+    std::derived_from<X, execution_context> &&
+    requires(X& x) {
+        typename X::executor_type;
+        requires Executor<typename X::executor_type>;
+        { x.get_executor() } noexcept -> std::same_as<typename X::executor_type>;
+    };
+```
+
+The concept formalizes the relationship between execution contexts and their executors. Types like `io_context` and `thread_pool` satisfy `ExecutionContext`—they derive from `execution_context` for service management, and they provide executors for dispatching coroutines:
+
+```cpp
+io_context ioc;
+auto ex = ioc.get_executor();  // io_context::executor_type
+run_async(ex)(my_task());      // Launch coroutine on this context
+```
+
+The destructor semantics are also significant: when an `ExecutionContext` is destroyed, all unexecuted function objects that were submitted via an associated executor are also destroyed. This ensures orderly cleanup—work queued but not yet executed does not leak or outlive its context.
+
 ---
 
 ## 6. The Allocator
@@ -1319,6 +1344,7 @@ namespace std {
   template<class T> concept io_awaitable_task = see-below;
   template<class T> concept io_launchable_task = see-below;
   template<class E> concept executor = see-below;
+  template<class X> concept execution_context = see-below;
 
   // [ioawait.execref], class executor_ref
   class executor_ref;
@@ -1480,6 +1506,33 @@ concept executor =
 | `x1.post(h)` | `void` | *Effects:* Queues `h` for later execution. The executor shall not block forward progress of the caller pending resumption of `h`. The executor shall not resume `h` before the call to `post` returns. *Synchronization:* The invocation of `post` synchronizes with the resumption of `h`. |
 
 6 [ *Note:* Unlike the Networking TS executor requirements, this concept operates on `coroutine_handle<>` rather than arbitrary function objects. This restriction enables zero-allocation dispatch in the common case and leverages the structural type erasure that coroutines already provide. *— end note* ]
+
+#### 12.2.5 Concept `execution_context` [ioawait.concepts.execctx]
+
+```cpp
+template<class X>
+concept execution_context =
+  derived_from<X, std::execution_context> &&
+  requires(X& x) {
+    typename X::executor_type;
+    requires executor<typename X::executor_type>;
+    { x.get_executor() } noexcept -> same_as<typename X::executor_type>;
+  };
+```
+
+1 A type `X` meets the `execution_context` requirements if it is publicly and unambiguously derived from `std::execution_context`, and satisfies the semantic requirements below.
+
+2 In Table 5, `x` denotes a value of type `X`.
+
+**Table 5 — execution_context requirements**
+
+| expression | return type | assertion/note pre/post-conditions |
+|------------|-------------|-----------------------------------|
+| `X::executor_type` | type | A type meeting the `executor` requirements. |
+| `x.get_executor()` | `X::executor_type` | *Returns:* An executor object that is associated with the execution context. Shall not exit via an exception. |
+| `x.~X()` | | *Effects:* Destroys all unexecuted function objects that were submitted via an executor object that is associated with the execution context. |
+
+3 [ *Note:* The destructor requirement ensures orderly cleanup—work queued but not yet executed does not leak or outlive its context. Types such as `io_context` and `thread_pool` satisfy this concept. *— end note* ]
 
 ### 12.3 Class `executor_ref` [ioawait.execref]
 
