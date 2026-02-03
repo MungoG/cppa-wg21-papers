@@ -449,11 +449,12 @@ coro promise_type::complete() const noexcept
         return std::noop_coroutine();
     if( executor_ == caller_ex_ ) // a single pointer comparison internally
         return cont_;
-    return caller_ex_.dispatch( cont_ );
+    caller_ex_.dispatch( cont_ );
+    return std::noop_coroutine();
 }
 ```
 
-When a parent `co_await`s a child task, it calls `set_continuation( cont, caller_ex )`, storing both its coroutine handle and its executor. At completion, `complete()` compares the child's executor against the stored caller executor: if they match, it returns the continuation directly for zero-overhead symmetric transfer; if they differ (as with `run`), it dispatches through the caller's executor to ensure the parent resumes in its expected execution context.
+When a parent `co_await`s a child task, it calls `set_continuation( cont, caller_ex )`, storing both its coroutine handle and its executor. At completion, `complete()` compares the child's executor against the stored caller executor: if they match, it returns the continuation directly for zero-overhead symmetric transfer; if they differ (as with `run`), it dispatches through the caller's executor (which resumes the continuation directly) and returns `noop_coroutine()` to ensure the parent resumes in its expected execution context.
 
 #### Satisfying IoAwaitableTask
 
@@ -501,7 +502,8 @@ struct task
                 return std::noop_coroutine();
             if( executor_ == caller_ex_ )
                 return cont_;  // Same-executor optimization
-            return caller_ex_.dispatch( cont_ );
+            caller_ex_.dispatch( cont_ );
+            return std::noop_coroutine();
         }
 
         template<IoAwaitable A>
@@ -1476,7 +1478,7 @@ concept executor =
     { ce.context() } noexcept -> see-below;
     { ce.on_work_started() } noexcept;
     { ce.on_work_finished() } noexcept;
-    { ce.dispatch(h) } -> convertible_to<coroutine_handle<>>;
+    { ce.dispatch(h) };
     { ce.post(h) };
   };
 ```
@@ -1502,7 +1504,7 @@ concept executor =
 | `x1.context()` | `execution_context&`, or `C&` where `C` is publicly derived from `execution_context` | Shall not exit via an exception. The comparison operators and member functions defined in these requirements shall not alter the reference returned by this function. |
 | `x1.on_work_started()` | `void` | Shall not exit via an exception. |
 | `x1.on_work_finished()` | `void` | Shall not exit via an exception. *Preconditions:* A preceding call `x2.on_work_started()` where `x1 == x2`. |
-| `x1.dispatch(h)` | `coroutine_handle<>` | *Effects:* Schedules `h` for resumption. If the caller is already in the executor's context and inline execution is safe, may resume `h` immediately. Otherwise, queues `h` for later execution. *Returns:* A coroutine handle suitable for symmetric transfer; either `h` (for inline execution), `noop_coroutine()` (if queued), or another handle. *Synchronization:* The invocation of `dispatch` synchronizes with the resumption of `h`. |
+| `x1.dispatch(h)` | `void` | *Effects:* Schedules `h` for resumption. If the caller is already in the executor's context and inline execution is safe, resumes `h` immediately by calling `h.resume()`. Otherwise, queues `h` for later execution. *Synchronization:* The invocation of `dispatch` synchronizes with the resumption of `h`. |
 | `x1.post(h)` | `void` | *Effects:* Queues `h` for later execution. The executor shall not block forward progress of the caller pending resumption of `h`. The executor shall not resume `h` before the call to `post` returns. *Synchronization:* The invocation of `post` synchronizes with the resumption of `h`. |
 
 6 [ *Note:* Unlike the Networking TS executor requirements, this concept operates on `coroutine_handle<>` rather than arbitrary function objects. This restriction enables zero-allocation dispatch in the common case and leverages the structural type erasure that coroutines already provide. *— end note* ]
@@ -1558,7 +1560,7 @@ namespace std {
     execution_context& context() const noexcept;
     void on_work_started() const noexcept;
     void on_work_finished() const noexcept;
-    coroutine_handle<> dispatch(coroutine_handle<> h) const;
+    void dispatch(coroutine_handle<> h) const;
     void post(coroutine_handle<> h) const;
   };
 }
@@ -1630,18 +1632,16 @@ void on_work_finished() const noexcept;
 6 *Effects:* Equivalent to `e.on_work_finished()` where `e` is the referenced executor.
 
 ```cpp
-coroutine_handle<> dispatch(coroutine_handle<> h) const;
+void dispatch(coroutine_handle<> h) const;
 ```
 
 7 *Preconditions:* `bool(*this) == true`. `h` is a valid, suspended coroutine handle.
 
 8 *Effects:* Equivalent to `e.dispatch(h)` where `e` is the referenced executor.
 
-9 *Returns:* A coroutine handle suitable for symmetric transfer.
+9 *Synchronization:* The invocation of `dispatch` synchronizes with the resumption of `h`.
 
-10 *Synchronization:* The invocation of `dispatch` synchronizes with the resumption of `h`.
-
-11 *Throws:* `bad_executor` if `bool(*this) == false`.
+10 *Throws:* `bad_executor` if `bool(*this) == false`.
 
 ```cpp
 void post(coroutine_handle<> h) const;
