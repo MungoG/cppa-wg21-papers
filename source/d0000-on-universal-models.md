@@ -70,6 +70,8 @@ Louis Pouzin, a veteran of the effort, observed in 1991 (quoted in the [same art
 
 OSI did not fail because its designers were incompetent. It failed because the universal framework was too heavy to compete with pragmatic, deployed alternatives. The comprehensive design that looked like a strength on paper became a liability in practice.
 
+A natural objection is that OSI failed simply because TCP/IP had too much momentum — an installed base that was too large to displace. But OSI had enormous institutional momentum of its own. The U.S. government mandated it for procurement (GOSIP, 1988). European governments imposed similar requirements. ISO, the ITU, and major corporations backed it. If momentum were the deciding factor, the mandates should have worked. They didn't. TCP/IP kept winning despite active institutional resistance, because it was simpler to implement, faster to deploy, and cheaper to maintain. The momentum TCP/IP accumulated was a consequence of its narrow, pragmatic design — not an independent variable that happened to favor it.
+
 ### 2.2 "Everything Is an Object"
 
 Object-oriented programming went through a similar cycle. The claim that "everything is an object" positioned OOP as a universal modeling philosophy. Richard Gabriel argued at OOPSLA 2002 that this claim gave OOP a privileged position that starved research into alternative paradigms ([Gabriel, "Objects Have Failed"](https://dreamsongs.com/Files/ObjectsHaveFailed.pdf)).
