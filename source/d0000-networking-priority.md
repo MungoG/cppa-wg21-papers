@@ -80,11 +80,9 @@ By 2021, the executor debate had consumed the effort. On 2021-09-28, SG1 polled 
 
 The committee chose [P2300](https://wg21.link/p2300) (`std::execution`), a sender/receiver framework. It is now in the C++26 working draft.
 
-C++26 is about to ship `std::execution`, an asynchronous execution model. The committee decided it needed a standard async framework. That instinct was correct. But the framework that landed was designed for GPU and parallel computing (section 5.1 presents the evidence). The [stdexec documentation](https://nvidia.github.io/stdexec/) confirms: "Interop with networking is being explored for C++29." Networking is not a first-class citizen in the async model the committee chose. It is an afterthought.
+C++26 is about to ship `std::execution`, an asynchronous execution model. The committee decided it needed a standard async framework. That instinct was correct. But the framework that landed was designed for GPU and parallel computing (section 5.1 presents the evidence). The [stdexec documentation](https://nvidia.github.io/stdexec/) confirms: "Interop with networking is being explored for C++29." Networking is deferred to C++29 at the earliest.
 
-The committee spent a decade on this path. The Networking TS was proposed in 2014. It is now 2026. The C++ standard still cannot connect to the internet.
-
-This is not blame. The domain is genuinely difficult. The instinct to find a universal model is natural. But the cost of the delay is real. The committee recognized the need for a standard async model, and that recognition was right. The question is whether the model that landed serves the most important use case.
+This is not blame. The Networking TS was proposed in 2014. It is now 2026. The C++ standard still cannot connect to the internet. The domain is genuinely difficult. The instinct to find a universal model is natural. But the cost of the delay is real. The committee recognized the need for a standard async model, and that recognition was right. The question is whether the model that landed serves the most important use case.
 
 ---
 
@@ -104,7 +102,7 @@ GPU users already have CUDA, which requires NVIDIA's non-standard compiler. The 
 
 The GPU ecosystem is wide but not tall. CUDA leads to cuDNN, cuBLAS, cuFFT, OptiX, and custom kernels. Each library uses the foundation directly. There is no stacking. There is no "Django of GPU." GPU workloads are domain-specific: custom kernels for physics simulations, ML training loops, rendering pipelines. The use cases do not compose upward the way networking use cases do.
 
-Standardizing `std::execution` for GPU would not produce the ecosystem benefit that standardizing an async I/O model for networking would. The return on investment is asymmetric: networking standardization enables exponential ecosystem growth (towers), while GPU standardization enables linear growth at best (more libraries at the same level).
+Standardizing `std::execution` for GPU would not produce the ecosystem benefit that standardizing an async I/O model for networking would. The return on investment is asymmetric: networking standardization enables exponential ecosystem growth (towers), while GPU standardization enables linear growth (more libraries at the same level).
 
 ### 5.2 It Should Be Built on C++20 Coroutines
 
