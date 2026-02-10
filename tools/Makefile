@@ -1,7 +1,7 @@
 # Makefile for converting Markdown to PDF/HTML/LaTeX using Pandoc
 # Supports Windows, macOS, and Linux
 # Requires: pandoc, mermaid-filter (npm package)
-# For PDF output: also requires a LaTeX distribution (texlive, miktex, etc.)
+# For PDF output: also requires weasyprint (pip3 install --user weasyprint)
 
 # Detect OS
 ifeq ($(OS),Windows_NT)
@@ -33,15 +33,8 @@ TOOLDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 PANDOC := pandoc
 PANDOC_COMMON := --standalone --filter mermaid-filter
 
-# PDF-specific options
-PDF_OPTS := $(PANDOC_COMMON) --pdf-engine=xelatex --lua-filter=$(TOOLDIR)/linebreak.lua
-PDF_OPTS += -V geometry:a4paper
-PDF_OPTS += -V geometry:margin=1.5cm
-PDF_OPTS += -V mainfont="Arial"
-PDF_OPTS += -V sansfont="Arial"
-PDF_OPTS += -V monofont="Menlo"
-PDF_OPTS += -V linestretch=1.25
-PDF_OPTS += -V fontsize=11pt
+# PDF generation via WeasyPrint (converts HTML to PDF, preserving CSS styling)
+WEASYPRINT := weasyprint
 
 # HTML-specific options
 HTML_OPTS := $(PANDOC_COMMON) --embed-resources --toc --template=$(TOOLDIR)/wg21.html5 --css=$(TOOLDIR)/paperstyle.css
@@ -68,7 +61,7 @@ help:
 	@echo "Requirements:"
 	@echo "  - pandoc"
 	@echo "  - mermaid-filter (npm install -g mermaid-filter)"
-	@echo "  - For PDF: LaTeX distribution (texlive/miktex) with xelatex"
+	@echo "  - For PDF: weasyprint (pip3 install --user weasyprint)"
 
 # Copy mermaid config to current directory (mermaid-filter requires it here)
 # Remove empty mermaid-filter.err after successful conversion
@@ -95,11 +88,8 @@ endef
 endif
 
 # Pattern rules for conversion
-%.pdf: $(SRCDIR)/%.md check-deps-pdf
-	$(setup_mermaid_pdf)
-	MERMAID_FILTER_FORMAT=png $(PANDOC) $(PDF_OPTS) -o $(OUTDIR)/$@ $<
-	$(cleanup_mermaid_err)
-	@$(RM) .mermaid-config.json 2>$(NULL) || true
+%.pdf: %.html check-deps-pdf
+	$(WEASYPRINT) $(OUTDIR)/$*.html $(OUTDIR)/$@
 	@echo "Created $(OUTDIR)/$@"
 
 %.html: $(SRCDIR)/%.md check-deps
@@ -129,7 +119,7 @@ check:
 	@echo "Checking dependencies..."
 	@$(MAKE) --no-print-directory check-pandoc
 	@$(MAKE) --no-print-directory check-mermaid
-	@$(MAKE) --no-print-directory check-latex
+	@$(MAKE) --no-print-directory check-weasyprint
 	@echo ""
 	@echo "All checks complete."
 
@@ -138,7 +128,7 @@ check-deps:
 	@$(MAKE) --no-print-directory check-mermaid
 
 check-deps-pdf: check-deps
-	@$(MAKE) --no-print-directory check-latex
+	@$(MAKE) --no-print-directory check-weasyprint
 
 .PHONY: check-pandoc
 check-pandoc:
@@ -158,14 +148,16 @@ else
 endif
 	@echo "[OK] mermaid-filter found"
 
-.PHONY: check-latex
-check-latex:
+.PHONY: check-weasyprint
+check-weasyprint:
 ifeq ($(DETECTED_OS),Windows)
-	@where xelatex >$(NULL) 2>&1 || (echo WARNING: xelatex is not installed. PDF generation will not work. && echo Install a LaTeX distribution like MiKTeX or TeX Live.)
+	@where weasyprint >$(NULL) 2>&1 || (echo ERROR: weasyprint is not installed. PDF generation will not work. && echo Install with: pip install --user weasyprint && exit 1)
+else ifeq ($(DETECTED_OS),Darwin)
+	@which weasyprint > $(NULL) 2>&1 || (echo "ERROR: weasyprint is not installed. PDF generation will not work." && echo "Install with: brew install weasyprint" && exit 1)
 else
-	@which xelatex > $(NULL) 2>&1 || (echo "WARNING: xelatex is not installed. PDF generation will not work." && echo "Install a LaTeX distribution like TeX Live or MacTeX.")
+	@which weasyprint > $(NULL) 2>&1 || (echo "ERROR: weasyprint is not installed. PDF generation will not work." && echo "Install with: pip3 install --user weasyprint" && exit 1)
 endif
-	@echo "[OK] xelatex found (PDF generation available)"
+	@echo "[OK] weasyprint found (PDF generation available)"
 
 # Install dependencies (only missing ones)
 .PHONY: install
@@ -182,9 +174,9 @@ ifeq ($(DETECTED_OS),Windows)
 		echo "  Install Node.js from: https://nodejs.org/" && \
 		echo "  Then run: npm install -g mermaid-filter" \
 	)
-	@where xelatex >$(NULL) 2>&1 && echo "[OK] xelatex already installed" || ( \
-		echo "[MISSING] xelatex (needed for PDF)" && \
-		echo "  Install MiKTeX from: https://miktex.org/" \
+	@where weasyprint >$(NULL) 2>&1 && echo "[OK] weasyprint already installed" || ( \
+		echo "[MISSING] weasyprint (needed for PDF)" && \
+		echo "  Install with: pip install --user weasyprint" \
 	)
 else ifeq ($(DETECTED_OS),Darwin)
 	@echo "Detected: macOS"
@@ -211,12 +203,11 @@ else ifeq ($(DETECTED_OS),Darwin)
 		fi; \
 	fi
 	@echo ""
-	@if which xelatex > $(NULL) 2>&1; then \
-		echo "[OK] xelatex already installed (PDF generation available)"; \
+	@if which weasyprint > $(NULL) 2>&1; then \
+		echo "[OK] weasyprint already installed (PDF generation available)"; \
 	else \
-		echo "[MISSING] xelatex (needed for PDF generation)"; \
-		echo "  Install MacTeX: https://www.tug.org/mactex/"; \
-		echo "  Or via Homebrew: brew install --cask mactex"; \
+		echo "[MISSING] weasyprint (needed for PDF generation)"; \
+		echo "  Install with: brew install weasyprint"; \
 	fi
 else
 	@echo "Detected: Linux"
@@ -250,13 +241,11 @@ else
 		fi; \
 	fi
 	@echo ""
-	@if which xelatex > $(NULL) 2>&1; then \
-		echo "[OK] xelatex already installed (PDF generation available)"; \
+	@if which weasyprint > $(NULL) 2>&1; then \
+		echo "[OK] weasyprint already installed (PDF generation available)"; \
 	else \
-		echo "[MISSING] xelatex (needed for PDF generation)"; \
-		echo "  Debian/Ubuntu: sudo apt-get install texlive-xetex"; \
-		echo "  Fedora: sudo dnf install texlive-xetex"; \
-		echo "  Arch: sudo pacman -S texlive-xetex"; \
+		echo "[MISSING] weasyprint (needed for PDF generation)"; \
+		echo "  Install with: pip3 install --user weasyprint"; \
 	fi
 endif
 	@echo ""
