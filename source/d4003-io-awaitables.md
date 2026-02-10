@@ -1,13 +1,14 @@
-::: {.document-info}
-
-| **Document:** |  D4003 |
-|----------|-------|
-| **Date:**      | 2026-01-21
-| **Reply-to:**   | Vinnie Falco \<vinnie.falco@gmail.com\><br>Steve Gerbino \<steve@gerbino.co\><br>Amlal El Mahrouss \<amlalelmahrouss@icloud.com\><br>Mungo Gill \<mungo.gill@me.com\>
-| **Audience:**   | Boost, C++
-:::
-
-# IoAwaitables: A Coroutines-Only Framework
+---
+title: "IoAwaitables: A Coroutines-Only Framework"
+document: D4003
+date: 2026-01-21
+reply-to:
+  - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Steve Gerbino <steve@gerbino.co>"
+  - "Amlal El Mahrouss <amlalelmahrouss@icloud.com>"
+  - "Mungo Gill <mungo.gill@me.com>"
+audience: Boost, C++
+---
 
 ## Abstract
 

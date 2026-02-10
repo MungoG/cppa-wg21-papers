@@ -4,10 +4,35 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   Google Font Import - Inter (modern variable sans-serif with width axis)
+   Local Font Faces - embedded in HTML via pandoc --embed-resources
+   Included weights: GSF 400 (body), 700 (bold/headings);
+                     JBM 400 (code), 500 (keywords/control flow).
+   Additional weights (GSF 500/600, JBM 600) can be added if needed.
    -------------------------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wdth,wght@0,14..32,75..100,100..900;1,14..32,75..100,100..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
-@supports (display: block) { /* import-guard */ }
+@font-face {
+  font-family: 'Google Sans Flex';
+  font-style: normal;
+  font-weight: 400;
+  src: url('fonts/GoogleSansFlex-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans Flex';
+  font-style: normal;
+  font-weight: 700;
+  src: url('fonts/GoogleSansFlex-Bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: url('fonts/JetBrainsMono-Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  src: url('fonts/JetBrainsMono-Medium.ttf') format('truetype');
+}
 
 /* --------------------------------------------------------------------------
    CSS Custom Properties (Theme Variables)
@@ -41,11 +66,11 @@
   --syntax-operator: #555555;
 
   /* Typography */
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Google Sans Flex", "Google Sans", "Product Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Spacing - optimized for A3 paper (297mm x 420mm) */
-  --content-width: 257mm; /* A3 width minus 20mm margins on each side */
+  /* Spacing */
+  --content-width: 60em; /* Comfortable reading width for screen */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -78,8 +103,7 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 400;
-  line-height: 1.55;
-  font-variation-settings: "wdth" 75, "opsz" 16;
+  line-height: 1.85;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -102,13 +126,17 @@ body {
   justify-content: space-between;
   padding-bottom: var(--spacing-lg);
   margin-bottom: var(--spacing-xl);
-  border-bottom: 3px solid var(--text);
+  border-bottom: 3px solid var(--primary);
+}
+
+.cpp-alliance-logo {
+  display: flex;
+  align-items: center;
 }
 
 .cpp-alliance-logo img {
   height: 70px;
   width: auto;
-  float:right
 }
 
 .paper-header .header-text {
@@ -126,6 +154,7 @@ body {
    -------------------------------------------------------------------------- */
 .document-info {
   background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-left: 4px solid var(--primary);
   border-radius: 0 4px 4px 0;
   padding: var(--spacing-lg);
@@ -142,7 +171,7 @@ body {
   color: var(--text-secondary);
   min-width: 160px;
   display: inline-block;
-  font-variation-settings: 'wght' 550, 'wdth' 75;
+  font-weight: 700;
 }
 
 /* --------------------------------------------------------------------------
@@ -150,7 +179,7 @@ body {
    -------------------------------------------------------------------------- */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-body);
-  font-variation-settings: 'wght' 575, 'wdth' 75;
+  font-weight: 700;
   line-height: 1.3;
   color: var(--text);
   margin-top: var(--spacing-xxl);
@@ -158,21 +187,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: 1.5rem;
-  color: var(--text);
-  border-bottom: 3px solid var(--text);
+  font-size: 2rem;
+  color: var(--primary);
+  border-bottom: 3px solid var(--primary);
   padding-bottom: var(--spacing-sm);
   margin-top: 0;
 }
 
 h2 {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  color: var(--primary);
   border-bottom: 1px solid var(--border);
   padding-bottom: var(--spacing-xs);
 }
 
 h3 {
-  font-size: 1.10rem;
+  font-size: 1.15rem;
   color: var(--text);
 }
 
@@ -192,20 +222,17 @@ h5, h6 {
 p {
   margin-top: 0;
   margin-bottom: var(--spacing-md);
+  text-align: justify;
   hyphens: auto;
 }
 
 strong {
-  font-variation-settings: 'wght' 550, 'wdth' 75;
+  font-weight: 700;
   color: var(--text);
 }
 
 em {
-    font-family: var(--font-body);
-    font-style: oblique 10deg;
-    font-synthesis: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  font-style: italic;
 }
 
 small {
@@ -243,6 +270,7 @@ code {
   color: var(--syntax-preprocessor);
   padding: 0.2em 0.45em;
   border-radius: 3px;
+  border: 1px solid var(--border-light);
   white-space: nowrap;
 }
 
@@ -251,6 +279,7 @@ code {
    -------------------------------------------------------------------------- */
 pre {
   background-color: var(--bg-code);
+  border: 1px solid var(--border);
   border-left: 4px solid var(--primary);
   border-radius: 0 4px 4px 0;
   padding: var(--spacing-lg);
@@ -259,11 +288,6 @@ pre {
   line-height: 1.55;
   tab-size: 4;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-blockquote pre{
-    border-left: none; 
-    background-color: white;
 }
 
 pre code {
@@ -277,7 +301,36 @@ pre code {
 }
 
 /* --------------------------------------------------------------------------
+   Pandoc sourceCode compatibility
+   -------------------------------------------------------------------------- */
+div.sourceCode {
+  background-color: var(--bg-code);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 4px 4px 0;
+  margin: var(--spacing-lg) 0;
+  overflow-x: auto;
+}
+
+div.sourceCode pre {
+  border: none;
+  box-shadow: none;
+  margin: 0;
+}
+
+/* Pandoc wraps code in <code class="sourceCode"> inside <pre> */
+pre > code.sourceCode {
+  white-space: pre;
+  position: relative;
+}
+
+pre > code.sourceCode > span {
+  display: inline;
+}
+
+/* --------------------------------------------------------------------------
    Syntax Highlighting (Warm Light Theme)
+   Includes both custom class names and pandoc class names
    -------------------------------------------------------------------------- */
 
 /* Keywords: if, else, for, while, return, template, typename, class, struct,
@@ -318,16 +371,19 @@ pre .fm {
 pre .string,
 pre .s,
 pre .s1,
-pre .s2 {
+pre .s2,
+pre .st {
   color: #448844;
 }
 
 /* Numbers */
 pre .number,
-pre .n,
 pre .mi,
 pre .mf,
-pre .mh {
+pre .mh,
+pre .dv,
+pre .fl,
+pre .bn {
   color: #b35900;
 }
 
@@ -336,21 +392,26 @@ pre .comment,
 pre .c,
 pre .c1,
 pre .cm,
-pre .cp {
+pre .cp,
+pre .co,
+pre .ch {
   color: #8a8a8a;
   font-style: italic;
 }
 
 /* Preprocessor directives: #include, #define, etc. */
 pre .preprocessor,
-pre .meta {
+pre .meta,
+pre .pp,
+pre .in {
   color: #aa3344;
 }
 
 /* Operators: =, +, -, *, /, ->, ::, etc. */
 pre .operator,
 pre .o,
-pre .p {
+pre .p,
+pre .op {
   color: #666666;
 }
 
@@ -362,7 +423,8 @@ pre .punctuation {
 /* Variables and identifiers */
 pre .variable,
 pre .v,
-pre .nv {
+pre .nv,
+pre .va {
   color: #994444;
 }
 
@@ -375,7 +437,8 @@ pre .nb {
 
 /* Attributes and decorators */
 pre .attribute,
-pre .attr {
+pre .attr,
+pre .at {
   color: #448844;
 }
 
@@ -383,6 +446,22 @@ pre .attr {
 pre .namespace {
   color: #0077aa;
 }
+
+/* Pandoc additional token types */
+pre .dt { color: #0077aa; }    /* DataType */
+pre .fu { color: #2266bb; }    /* Function */
+pre .cf { color: #7b3294; font-weight: 500; } /* ControlFlow */
+pre .sc { color: #448844; }    /* SpecialChar */
+pre .ss { color: #448844; }    /* SpecialString */
+pre .im { color: #aa3344; }    /* Import */
+pre .do { color: #8a8a8a; font-style: italic; } /* Documentation */
+pre .an { color: #8a8a8a; }    /* Annotation */
+pre .cv { color: #8a8a8a; font-style: italic; } /* CommentVar */
+pre .wa { color: #aa3344; font-weight: 500; }   /* Warning */
+pre .al { color: #bf0303; font-weight: 500; }   /* Alert */
+pre .er { color: #bf0303; }    /* Error */
+pre .ot { color: #7b3294; }    /* Other */
+pre .ex { color: #2266bb; }    /* Extension */
 
 /* --------------------------------------------------------------------------
    Blockquotes
@@ -465,40 +544,20 @@ table {
 }
 
 thead {
-  background-color: var(--bg-secondary);
+  background-color: var(--primary);
   color: white;
 }
 
-.document-info table thead {
-  background-color: transparent;
-  color: var(--body-text);
-}
-
-.document-info table colgroup col:first-child {
-    width:1% !important;
-}
-
-.document-info table colgroup col:last-child {
-    width:99% !important;
-}
-
-.document-info table {
-    margin: 0;
-}
-
-.document-info table td:first-child, .document-info table th:first-child  {
-    min-width:75px;
+thead code {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: inherit;
 }
 
 th {
-    background-color: var(--text-secondary);
   font-weight: 700;
   text-align: left;
   padding: var(--spacing-sm) var(--spacing-md);
-}
-
-.document-info th {
-    background-color: transparent;
 }
 
 td {
@@ -506,13 +565,12 @@ td {
   border-bottom: 1px solid var(--border);
 }
 
-.document-info table td {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: none;
-}
-
 tbody tr:nth-child(even) {
   background-color: var(--bg-secondary);
+}
+
+tbody tr:hover {
+  background-color: var(--border-light);
 }
 
 /* Compact table variant */
@@ -528,6 +586,7 @@ table.compact td {
 hr {
   border: none;
   height: 1px;
+  background-color: var(--border);
   margin: var(--spacing-xxl) 0;
 }
 
@@ -582,6 +641,7 @@ figcaption {
    -------------------------------------------------------------------------- */
 .toc {
   background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: var(--spacing-lg);
   margin: var(--spacing-xl) 0;
@@ -590,10 +650,10 @@ figcaption {
 .toc-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--primary);
   margin: 0 0 var(--spacing-md) 0;
   padding-bottom: var(--spacing-sm);
-  border-bottom: 2px solid var(--text);
+  border-bottom: 2px solid var(--primary);
 }
 
 .toc ul {
@@ -635,6 +695,7 @@ figcaption {
    -------------------------------------------------------------------------- */
 .wording {
   background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: var(--spacing-lg);
   margin: var(--spacing-lg) 0;
@@ -648,31 +709,85 @@ figcaption {
 .wording-remove {
   background-color: #fdf2f2;
   border-color: var(--cpp-alliance-red);
+}
+
+.wording-remove > p:not(:first-child) {
   text-decoration: line-through;
+}
+
+/* Paragraph numbers in wording sections */
+.pnum {
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--text-muted);
+  vertical-align: super;
+  margin-right: 0.3em;
+}
+
+/* Example and note formatting */
+.example,
+.note {
+  font-size: 0.92em;
+  color: var(--text-secondary);
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-lg);
+}
+
+.example em,
+.note em {
+  font-style: normal;
 }
 
 ins {
-  background-color: #d4edda;
-  text-decoration: none;
-  padding: 0 2px;
+  color: #006e28;
+  text-decoration: underline;
 }
 
 del {
-  background-color: #f8d7da;
+  color: #bf0303;
   text-decoration: line-through;
-  padding: 0 2px;
+}
+
+/* Added code: green, no syntax highlighting */
+ins code,
+ins .keyword,
+ins .type,
+ins .function,
+ins .string,
+ins .number,
+ins .comment,
+ins .preprocessor,
+ins .operator,
+ins .namespace,
+ins .variable {
+  color: inherit;
+}
+
+/* Deleted code: red, no syntax highlighting */
+del code,
+del .keyword,
+del .type,
+del .function,
+del .string,
+del .number,
+del .comment,
+del .preprocessor,
+del .operator,
+del .namespace,
+del .variable {
+  color: inherit;
 }
 
 /* --------------------------------------------------------------------------
-   Print Styles - A3 Paper (297mm x 420mm)
+   Print Styles - A4 Paper (210mm x 297mm)
    -------------------------------------------------------------------------- */
 @media print {
   html {
-    font-size: 12pt;
+    font-size: 10pt;
   }
 
   body {
-    max-width: none;
+    max-width: 170mm; /* A4 width minus 20mm margins on each side */
     padding: 0;
     margin: 0;
     color: #000;
@@ -710,6 +825,7 @@ del {
   /* Ensure code blocks are readable in print */
   pre {
     background-color: #f5f5f5 !important;
+    border: 1px solid #ccc;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
@@ -720,18 +836,17 @@ del {
 
   /* Table styling for print */
   thead {
-    background-color: #ddd;;
-    color: #000;
+    background-color: #ddd !important;
+    color: #000 !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .document-info table thead {
-    background-color: transparent;
-    color: var(--body-text);
+  tbody tr:nth-child(even) {
+    background-color: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-
-
 }
 
 /* --------------------------------------------------------------------------
@@ -743,14 +858,14 @@ del {
 
   @top-center {
     content: "WG21 Proposal";
-    font-family: "Inter", sans-serif;
+    font-family: "Google Sans Flex", sans-serif;
     font-size: 10pt;
     color: #666;
   }
 
   @bottom-center {
     content: counter(page);
-    font-family: "Inter", sans-serif;
+    font-family: "Google Sans Flex", sans-serif;
     font-size: 10pt;
   }
 }
