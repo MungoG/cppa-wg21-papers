@@ -284,10 +284,8 @@ pre {
   border-radius: 0 4px 4px 0;
   padding: var(--spacing-lg);
   margin: var(--spacing-lg) 0;
-  overflow-x: auto;
   line-height: 1.55;
   tab-size: 4;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 pre code {
@@ -309,13 +307,22 @@ div.sourceCode {
   border-left: 4px solid var(--primary);
   border-radius: 0 4px 4px 0;
   margin: var(--spacing-lg) 0;
-  overflow-x: auto;
 }
 
 div.sourceCode pre {
   border: none;
-  box-shadow: none;
   margin: 0;
+}
+
+/* Screen-only: scrollable overflow and decorative shadows (unsupported by WeasyPrint) */
+@media screen {
+  pre {
+    overflow-x: auto;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  div.sourceCode {
+    overflow-x: auto;
+  }
 }
 
 /* Pandoc wraps code in <code class="sourceCode"> inside <pre> */
@@ -804,12 +811,18 @@ del .variable {
     break-after: avoid;
   }
 
-  pre, blockquote, table, figure {
+  pre, blockquote, figure {
     page-break-inside: avoid;
     break-inside: avoid;
   }
 
-  /* Show link URLs in print */
+  /* Prevent orphan/widow lines */
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Show link URLs in print (useful for physical printouts) */
   a[href^="http"]::after {
     content: " (" attr(href) ")";
     font-size: 0.8em;
@@ -838,14 +851,10 @@ del .variable {
   thead {
     background-color: #ddd !important;
     color: #000 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 
   tbody tr:nth-child(even) {
     background-color: #f5f5f5 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
   }
 }
 
@@ -871,115 +880,114 @@ del .variable {
 }
 
 /* --------------------------------------------------------------------------
-   Responsive Adjustments
+   Responsive Adjustments (screen only; ignored by WeasyPrint for PDF)
    -------------------------------------------------------------------------- */
+@media screen {
+  /* Large screens / A3 optimised view */
+  @media (min-width: 1200px) {
+    html {
+      font-size: 16px;
+    }
 
-/* Large screens / A3 optimized view */
-@media screen and (min-width: 1200px) {
-  html {
-    font-size: 16px;
+    body {
+      padding: var(--spacing-xxl) var(--spacing-xl);
+    }
+
+    .cpp-alliance-logo img {
+      height: 70px;
+    }
   }
 
-  body {
-    padding: var(--spacing-xxl) var(--spacing-xl);
+  /* Medium screens */
+  @media (max-width: 1199px) and (min-width: 769px) {
+    :root {
+      --content-width: 720px;
+    }
+
+    html {
+      font-size: 15px;
+    }
   }
 
-  .cpp-alliance-logo img {
-    height: 70px;
-  }
-}
+  /* Tablet */
+  @media (max-width: 768px) {
+    :root {
+      --content-width: 100%;
+    }
 
-/* Medium screens */
-@media screen and (max-width: 1199px) and (min-width: 769px) {
-  :root {
-    --content-width: 720px;
-  }
+    html {
+      font-size: 14px;
+    }
 
-  html {
-    font-size: 15px;
-  }
-}
+    body {
+      padding: var(--spacing-lg);
+    }
 
-/* Tablet */
-@media screen and (max-width: 768px) {
-  :root {
-    --content-width: 100%;
-  }
+    h1 {
+      font-size: 1.6rem;
+    }
 
-  html {
-    font-size: 14px;
-  }
+    h2 {
+      font-size: 1.2rem;
+    }
 
-  body {
-    padding: var(--spacing-lg);
+    .cpp-alliance-logo img {
+      height: 55px;
+    }
   }
 
-  h1 {
-    font-size: 1.6rem;
+  /* Mobile */
+  @media (max-width: 600px) {
+    html {
+      font-size: 13px;
+    }
+
+    body {
+      padding: var(--spacing-md);
+    }
+
+    h1 {
+      font-size: 1.4rem;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+    }
+
+    pre {
+      padding: var(--spacing-md);
+      font-size: 0.78rem;
+    }
+
+    table {
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .paper-header {
+      flex-direction: column;
+      text-align: center;
+      gap: var(--spacing-md);
+    }
+
+    .cpp-alliance-logo img {
+      height: 45px;
+    }
   }
 
-  h2 {
-    font-size: 1.2rem;
-  }
+  /* Accessibility: Reduced Motion (no animations in PDF anyway) */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
 
-  .cpp-alliance-logo img {
-    height: 55px;
-  }
-}
-
-/* Mobile */
-@media screen and (max-width: 600px) {
-  html {
-    font-size: 13px;
-  }
-
-  body {
-    padding: var(--spacing-md);
-  }
-
-  h1 {
-    font-size: 1.4rem;
-  }
-
-  h2 {
-    font-size: 1.1rem;
-  }
-
-  pre {
-    padding: var(--spacing-md);
-    font-size: 0.78rem;
-  }
-
-  table {
-    font-size: 0.85rem;
-  }
-
-  th, td {
-    padding: var(--spacing-xs) var(--spacing-sm);
-  }
-
-  .paper-header {
-    flex-direction: column;
-    text-align: center;
-    gap: var(--spacing-md);
-  }
-
-  .cpp-alliance-logo img {
-    height: 45px;
-  }
-}
-
-/* --------------------------------------------------------------------------
-   Accessibility: Reduced Motion
-   -------------------------------------------------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: none !important;
-  }
-
-  html {
-    scroll-behavior: auto;
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 
