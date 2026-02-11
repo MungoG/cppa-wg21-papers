@@ -21,12 +21,8 @@
 #include <cstdio>
 
 // ============================================================
-// coro alias
-// ============================================================
 
 namespace capy {
-
-using coro = std::coroutine_handle<>;
 
 // ============================================================
 // execution_context (minimal for demo)
@@ -126,8 +122,8 @@ public:
     execution_context& context() const noexcept { return vt_->context(ex_); }
     void on_work_started() const noexcept { vt_->on_work_started(ex_); }
     void on_work_finished() const noexcept { vt_->on_work_finished(ex_); }
-    coro dispatch(coro h) const { return vt_->dispatch(ex_, h); }
-    void post(coro h) const { vt_->post(ex_, h); }
+    std::coroutine_handle<> dispatch(std::coroutine_handle<> h) const { return vt_->dispatch(ex_, h); }
+    void post(std::coroutine_handle<> h) const { vt_->post(ex_, h); }
 
     bool operator==(executor_ref const& other) const noexcept
     {
@@ -157,8 +153,14 @@ struct io_env
 namespace this_coro {
 
 struct environment_tag {};
+struct executor_tag {};
+struct stop_token_tag {};
+struct allocator_tag {};
 
 inline constexpr environment_tag environment{};
+inline constexpr executor_tag executor{};
+inline constexpr stop_token_tag stop_token{};
+inline constexpr allocator_tag allocator{};
 
 } // namespace this_coro
 
@@ -181,7 +183,7 @@ template<typename A>
 concept IoAwaitable =
     requires(
         A a,
-        coro h,
+        std::coroutine_handle<> h,
         io_env const* env)
     {
         a.await_suspend(h, env);
@@ -215,7 +217,7 @@ template<typename Derived>
 class io_awaitable_support
 {
     io_env const* env_ = nullptr;
-    mutable coro cont_{std::noop_coroutine()};
+    mutable std::coroutine_handle<> cont_{std::noop_coroutine()};
 
     static constexpr std::size_t ptr_alignment = alignof(void*);
 
@@ -262,12 +264,12 @@ public:
             cont_.destroy();
     }
 
-    void set_continuation(coro cont) noexcept
+    void set_continuation(std::coroutine_handle<> cont) noexcept
     {
         cont_ = cont;
     }
 
-    coro continuation() const noexcept
+    std::coroutine_handle<> continuation() const noexcept
     {
         return std::exchange(cont_, std::noop_coroutine());
     }
@@ -291,16 +293,51 @@ public:
     template<typename T>
     auto await_transform(T&& t)
     {
-        if constexpr (std::is_same_v<std::decay_t<T>, this_coro::environment_tag>)
+        using Tag = std::decay_t<T>;
+
+        if constexpr (std::is_same_v<Tag, this_coro::environment_tag>)
         {
             struct awaiter
             {
                 io_env const* env_;
                 bool await_ready() const noexcept { return true; }
-                void await_suspend(coro) const noexcept {}
+                void await_suspend(std::coroutine_handle<>) const noexcept {}
                 io_env const* await_resume() const noexcept { return env_; }
             };
             return awaiter{env_};
+        }
+        else if constexpr (std::is_same_v<Tag, this_coro::executor_tag>)
+        {
+            struct awaiter
+            {
+                executor_ref executor_;
+                bool await_ready() const noexcept { return true; }
+                void await_suspend(std::coroutine_handle<>) const noexcept {}
+                executor_ref await_resume() const noexcept { return executor_; }
+            };
+            return awaiter{env_->executor};
+        }
+        else if constexpr (std::is_same_v<Tag, this_coro::stop_token_tag>)
+        {
+            struct awaiter
+            {
+                std::stop_token token_;
+                bool await_ready() const noexcept { return true; }
+                void await_suspend(std::coroutine_handle<>) const noexcept {}
+                std::stop_token await_resume() const noexcept { return token_; }
+            };
+            return awaiter{env_->stop_token};
+        }
+        else if constexpr (std::is_same_v<Tag, this_coro::allocator_tag>)
+        {
+            struct awaiter
+            {
+                std::pmr::memory_resource* allocator_;
+                bool await_ready() const noexcept { return true; }
+                void await_suspend(std::coroutine_handle<>) const noexcept {}
+                std::pmr::memory_resource* await_resume() const noexcept { return allocator_; }
+            };
+            return awaiter{env_->allocator};
         }
         else
         {
@@ -357,7 +394,7 @@ struct [[nodiscard]] task
 
                 bool await_ready() const noexcept { return false; }
 
-                void await_suspend(coro) const noexcept
+                void await_suspend(std::coroutine_handle<>) const noexcept
                 {
                 }
 
@@ -379,7 +416,7 @@ struct [[nodiscard]] task
 
                 bool await_ready() const noexcept { return false; }
 
-                coro await_suspend(coro) const noexcept
+                std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept
                 {
                     return p_->continuation();
                 }
@@ -400,7 +437,7 @@ struct [[nodiscard]] task
             std::decay_t<Awaitable> a_;
             promise_type* p_;
 
-            bool await_ready() { return a_.await_ready(); }
+            bool await_ready() noexcept { return a_.await_ready(); }
 
             decltype(auto) await_resume()
             {
@@ -453,7 +490,7 @@ struct [[nodiscard]] task
             return;
     }
 
-    coro await_suspend(coro cont, io_env const* env)
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<> cont, io_env const* env)
     {
         h_.promise().set_continuation(cont);
         h_.promise().set_environment(env);
@@ -570,7 +607,7 @@ struct immediate_value
 
     bool await_ready() const noexcept { return true; }
 
-    coro await_suspend(coro, io_env const*)
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<>, io_env const*)
     {
         return std::noop_coroutine();
     }
