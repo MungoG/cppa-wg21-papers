@@ -140,16 +140,25 @@ public:
 };
 
 // ============================================================
+// io_env - execution environment
+// ============================================================
+
+struct io_env
+{
+    executor_ref executor;
+    std::stop_token stop_token;
+    std::pmr::memory_resource* allocator = nullptr;
+};
+
+// ============================================================
 // this_coro tags
 // ============================================================
 
 namespace this_coro {
 
-struct executor_tag {};
-struct stop_token_tag {};
+struct environment_tag {};
 
-inline constexpr executor_tag executor{};
-inline constexpr stop_token_tag stop_token{};
+inline constexpr environment_tag environment{};
 
 } // namespace this_coro
 
@@ -173,10 +182,9 @@ concept IoAwaitable =
     requires(
         A a,
         coro h,
-        executor_ref ex,
-        std::stop_token token)
+        io_env const& env)
     {
-        a.await_suspend(h, ex, token);
+        a.await_suspend(h, env);
     };
 
 // ============================================================
@@ -190,15 +198,13 @@ concept IoAwaitableTask =
     requires(
         typename T::promise_type& p,
         typename T::promise_type const& cp,
+        io_env const& env,
         executor_ref ex,
-        std::stop_token st,
         coro cont)
     {
-        { p.set_executor(ex) } noexcept;
-        { p.set_stop_token(st) } noexcept;
+        { p.set_environment(env) } noexcept;
         { p.set_continuation(cont, ex) } noexcept;
-        { cp.executor() } noexcept -> std::same_as<executor_ref>;
-        { cp.stop_token() } noexcept -> std::same_as<std::stop_token const&>;
+        { cp.environment() } noexcept -> std::same_as<io_env const&>;
         { cp.complete() } noexcept -> std::same_as<coro>;
     };
 
@@ -228,9 +234,7 @@ concept IoLaunchableTask =
 template<typename Derived>
 class io_awaitable_support
 {
-    executor_ref executor_;
-    std::stop_token stop_token_;
-    std::pmr::memory_resource* alloc_ = nullptr;
+    io_env const* env_ = nullptr;
     executor_ref caller_ex_;
     mutable coro cont_{nullptr};
 
@@ -279,16 +283,6 @@ public:
             cont_.destroy();
     }
 
-    void set_frame_allocator(std::pmr::memory_resource* alloc) noexcept
-    {
-        alloc_ = alloc;
-    }
-
-    std::pmr::memory_resource* frame_allocator() const noexcept
-    {
-        return alloc_;
-    }
-
     void set_continuation(coro cont, executor_ref caller_ex) noexcept
     {
         cont_ = cont;
@@ -299,30 +293,20 @@ public:
     {
         if(!cont_)
             return std::noop_coroutine();
-        if(executor_ == caller_ex_)
+        if(env_->executor == caller_ex_)
             return std::exchange(cont_, nullptr);
         caller_ex_.dispatch(std::exchange(cont_, nullptr));
         return std::noop_coroutine();
     }
 
-    void set_stop_token(std::stop_token token) noexcept
+    void set_environment(io_env const& env) noexcept
     {
-        stop_token_ = token;
+        env_ = &env;
     }
 
-    std::stop_token const& stop_token() const noexcept
+    io_env const& environment() const noexcept
     {
-        return stop_token_;
-    }
-
-    void set_executor(executor_ref ex) noexcept
-    {
-        executor_ = ex;
-    }
-
-    executor_ref executor() const noexcept
-    {
-        return executor_;
+        return *env_;
     }
 
     template<typename A>
@@ -334,27 +318,16 @@ public:
     template<typename T>
     auto await_transform(T&& t)
     {
-        if constexpr (std::is_same_v<std::decay_t<T>, this_coro::stop_token_tag>)
+        if constexpr (std::is_same_v<std::decay_t<T>, this_coro::environment_tag>)
         {
             struct awaiter
             {
-                std::stop_token token_;
+                io_env const* env_;
                 bool await_ready() const noexcept { return true; }
                 void await_suspend(coro) const noexcept {}
-                std::stop_token await_resume() const noexcept { return token_; }
+                io_env const& await_resume() const noexcept { return *env_; }
             };
-            return awaiter{stop_token_};
-        }
-        else if constexpr (std::is_same_v<std::decay_t<T>, this_coro::executor_tag>)
-        {
-            struct awaiter
-            {
-                executor_ref executor_;
-                bool await_ready() const noexcept { return true; }
-                void await_suspend(coro) const noexcept {}
-                executor_ref await_resume() const noexcept { return executor_; }
-            };
-            return awaiter{executor_};
+            return awaiter{env_};
         }
         else
         {
@@ -413,13 +386,13 @@ struct [[nodiscard]] task
 
                 void await_suspend(coro) const noexcept
                 {
-                    p_->set_frame_allocator(current_frame_allocator());
                 }
 
                 void await_resume() const noexcept
                 {
-                    if(p_->frame_allocator())
-                        current_frame_allocator() = p_->frame_allocator();
+                    auto* fa = p_->environment().allocator;
+                    if(fa && fa != current_frame_allocator())
+                        current_frame_allocator() = fa;
                 }
             };
             return awaiter{this};
@@ -458,15 +431,16 @@ struct [[nodiscard]] task
 
             decltype(auto) await_resume()
             {
-                if(p_->frame_allocator())
-                    current_frame_allocator() = p_->frame_allocator();
+                auto* fa = p_->environment().allocator;
+                if(fa && fa != current_frame_allocator())
+                    current_frame_allocator() = fa;
                 return a_.await_resume();
             }
 
             template<class Promise>
-            auto await_suspend(std::coroutine_handle<Promise> h)
+            auto await_suspend(std::coroutine_handle<Promise> h) noexcept
             {
-                return a_.await_suspend(h, p_->executor(), p_->stop_token());
+                return a_.await_suspend(h, p_->environment());
             }
         };
 
@@ -506,11 +480,10 @@ struct [[nodiscard]] task
             return;
     }
 
-    coro await_suspend(coro cont, executor_ref caller_ex, std::stop_token token)
+    coro await_suspend(coro cont, io_env const& env)
     {
-        h_.promise().set_continuation(cont, caller_ex);
-        h_.promise().set_executor(caller_ex);
-        h_.promise().set_stop_token(token);
+        h_.promise().set_continuation(cont, env.executor);
+        h_.promise().set_environment(env);
         return h_;
     }
 
@@ -596,8 +569,7 @@ auto run_sync(executor_ref ex, std::stop_token token, Task t)
 {
     auto h = t.handle();
     auto& p = h.promise();
-    p.set_executor(ex);
-    p.set_stop_token(token);
+    p.set_environment(io_env{ex, token});
     // No continuation — this is the root
     t.release();
     h.resume();
@@ -626,7 +598,7 @@ struct immediate_value
 
     bool await_ready() const noexcept { return true; }
 
-    coro await_suspend(coro, executor_ref, std::stop_token)
+    coro await_suspend(coro, io_env const&)
     {
         return std::noop_coroutine();
     }
@@ -639,14 +611,13 @@ static_assert(IoAwaitable<immediate_value>);
 // Child task: receives context from parent
 task<int> compute(int x)
 {
-    // Retrieve the propagated executor and stop token
-    executor_ref ex = co_await this_coro::executor;
-    std::stop_token token = co_await this_coro::stop_token;
+    // Retrieve the propagated environment
+    auto const& env = co_await this_coro::environment;
 
     std::printf("  compute(%d): has executor=%s, stop_possible=%s\n",
         x,
-        ex ? "yes" : "no",
-        token.stop_possible() ? "yes" : "no");
+        env.executor ? "yes" : "no",
+        env.stop_token.stop_possible() ? "yes" : "no");
 
     // Await an IoAwaitable — context propagates automatically
     int v = co_await immediate_value{x * 10};
@@ -656,8 +627,8 @@ task<int> compute(int x)
 // Parent task: composes child tasks
 task<int> parent_task()
 {
-    executor_ref ex = co_await this_coro::executor;
-    std::printf("parent_task: has executor=%s\n", ex ? "yes" : "no");
+    auto const& env = co_await this_coro::environment;
+    std::printf("parent_task: has executor=%s\n", env.executor ? "yes" : "no");
 
     int a = co_await compute(3);
     int b = co_await compute(7);
@@ -667,9 +638,9 @@ task<int> parent_task()
 // Void task
 task<> void_task()
 {
-    std::stop_token token = co_await this_coro::stop_token;
+    auto const& env = co_await this_coro::environment;
     std::printf("void_task: stop_requested=%s\n",
-        token.stop_requested() ? "yes" : "no");
+        env.stop_token.stop_requested() ? "yes" : "no");
     co_return;
 }
 
