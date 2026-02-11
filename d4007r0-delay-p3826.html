@@ -981,8 +981,8 @@ outline: none;
 <h2 id="abstract">Abstract</h2>
 <p><code>std::execution</code> brings valuable ideas to C++ - structured
 concurrency, composable task graphs, and a clean separation of work
-description from execution policy. However, a fundamental
-workflow-ordering gap prevents coroutine-based I/O from using stateful
+description from execution policy. However, a fundamental allocator
+sequencing gap prevents coroutine-based I/O from using stateful
 allocators: <code>operator new</code> runs before the receiver exists,
 so the allocator arrives too late. This gap is architectural, not a
 missing feature that can be extended stably without destabilising the
@@ -1026,8 +1026,8 @@ it.</p>
 breaking API change or (2) leaving the current interface as vestigial
 cruft. Section 4 examines each proposed escape route; unfortunately, the
 authors have been unable to find a way to close this gap.</p>
-<p>The allocator timing gap is not a missing feature that can be added
-later; it is architectural: <code>operator new</code> runs before
+<p>The allocator sequencing gap is not a missing feature that can be
+added later; it is architectural: <code>operator new</code> runs before
 <code>connect()</code>, and no library-level change can alter that
 sequencing without destabilising the API. Discovering this gap before
 standardisation is fortunate, not a failure. The feature’s size and
@@ -1063,7 +1063,7 @@ I/O:</p>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    ctx<span class="op">.</span>run<span class="op">();</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>The critical timing:</p>
+<p>The critical sequencing:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span>executor<span class="op">,</span> alloc<span class="op">)(</span>handle_client<span class="op">(</span>sock<span class="op">))</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>                                 <span class="op">|</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>                                 <span class="op">+-&gt;</span> <span class="dt">promise_type</span><span class="op">::</span><span class="kw">operator</span> <span class="kw">new</span> runs HERE</span>
@@ -1075,10 +1075,10 @@ coroutine body executes, before any <code>co_await</code>, before any
 connection to a receiver.</p>
 <hr />
 <h2 id="the-problem">3. The Problem</h2>
-<p>The allocator timing gap has three facets: the cost of uncontrolled
-allocation, the absence of any interception mechanism besides
-<code>operator new</code>, and the ordering constraint that places
-allocation before the receiver exists.</p>
+<p>The allocator sequencing gap has three facets: the cost of
+uncontrolled allocation, the absence of any interception mechanism
+besides <code>operator new</code>, and the ordering constraint that
+places allocation before the receiver exists.</p>
 <h3 id="the-cost-of-uncontrolled-allocation">3.1 The Cost of
 Uncontrolled Allocation</h3>
 <p>High-performance I/O servers cannot tolerate uncontrolled heap
@@ -1194,8 +1194,8 @@ the point of allocation.</p>
 <h3 id="the-receiver-arrives-too-late">3.5 The Receiver Arrives Too
 Late</h3>
 <p>Context in the sender/receiver model in <code>std::execution</code>
-flows backward from receiver to sender. This creates an ordering gap for
-coroutine frame allocation: <!-- JSL:
+flows backward from receiver to sender. This creates an allocator
+sequencing gap for coroutine frame allocation: <!-- JSL:
 The comments above are one two close to the longest statement.  Standard is
 two spaces if possible.  Also, I'd like to see consistent punctuation:
 1. Colon after first line.
@@ -1212,7 +1212,7 @@ JSL --> <!-- MG: Sorry I don't understand this feedback --></p>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>start<span class="op">(</span>op<span class="op">);</span>                                <span class="co">// Step 3: Operation starts</span></span></code></pre></div>
 <p><a href="https://wg21.link/p2300r4">P2300R4</a> (“std::execution,”
-2022-01-18) acknowledges this timing:</p>
+2022-01-18) acknowledges this sequencing:</p>
 <blockquote>
 <p>“In the sender/receiver model… contextual information is associated
 with the receiver and is queried by the sender and/or operation state
@@ -1400,7 +1400,7 @@ required.</p>
 <p>LWG 4356 (<code>connect()</code> should use
 <code>get_allocator(get_env(rcvr))</code>) confirms the gap has been
 filed as a specification defect - not merely an external complaint, but
-a committee-level acknowledgement of the timing problem.</p>
+a committee-level acknowledgement of the sequencing problem.</p>
 <h3 id="post-approval-changes">5.2 Post-Approval Changes</h3>
 <p>The volume of papers written to fix, rework, or complete
 <code>std::execution</code> after its approval for C++26 is
@@ -1516,7 +1516,7 @@ then send the revised paper to LWG for C++23 with priority 1”</p>
 </blockquote>
 <p>Recorded SA reasons included “maturity/readiness” and “Feels like
 ranges all over again. Needs maturity.” The same pattern of ongoing
-design changes - algorithm reworks, allocator timing unresolved,
+design changes - algorithm reworks, allocator sequencing unresolved,
 multiple LWG issues opened during review - is present again. The
 difference is that the concerns which were speculative in 2022 are now
 concrete: specific LWG issues, neutral committee polls, and unresolved
@@ -1524,16 +1524,17 @@ NB comments document the gaps rather than merely anticipate them.</p>
 <hr />
 <h2 id="a-path-forward">6. A Path Forward</h2>
 <p>This paper asks the committee to consider whether the allocator
-timing gap should be resolved before the <code>std::execution</code> API
-is frozen in the IS.</p>
+sequencing gap should be resolved before the <code>std::execution</code>
+API is frozen in the IS.</p>
 <h3 id="avoiding-api-lock-in">6.1 Avoiding API Lock-in</h3>
 <p>The P2300 authors are best placed to propose a resolution to the
-allocator timing gap. We welcome any solution that closes it - whether
-by changes to the <code>task</code> type, to the coroutine promise
-protocol, or to the interaction between <code>operator new</code> and
-<code>connect</code>. Our concern is that freezing the API in the IS
-before the gap is addressed would lock C++ into an interface that cannot
-serve coroutine-based I/O without workarounds.</p>
+allocator sequencing gap. We welcome any solution that closes it -
+whether by changes to the <code>task</code> type, to the coroutine
+promise protocol, or to the interaction between
+<code>operator new</code> and <code>connect</code>. Our concern is that
+freezing the API in the IS before the gap is addressed would lock C++
+into an interface that cannot serve coroutine-based I/O without
+workarounds.</p>
 <p>If no solution is forthcoming in the C++26 time frame, deferral to a
 later revision of the standard would avoid ABI lock-in while preserving
 the committee’s freedom to fix what remains.</p>
@@ -1542,7 +1543,7 @@ the committee’s freedom to fix what remains.</p>
 work done by the P2300 authors and implementers. Production-quality
 implementations already exist and are in active use. Deferral means the
 committee does not freeze the ABI until the remaining architectural gaps
-- allocator timing, allocator propagation, and the interaction with
+- allocator sequencing, allocator propagation, and the interaction with
 coroutine task types - are resolved.</p>
 <p>Deferral is not failure. The committee deferred trivial relocation to
 C++29 because open design questions remained; the result was a stronger
@@ -1603,8 +1604,8 @@ question.</p>
 structured asynchronous programming for C++. Its contributions -
 structured concurrency, composable pipelines, and a formal model for
 async completion - are valuable and worth building upon.</p>
-<p>For coroutine-based asynchronous I/O, however, a fundamental timing
-gap remains:</p>
+<p>For coroutine-based asynchronous I/O, however, a fundamental
+allocator sequencing gap remains:</p>
 <ol type="1">
 <li><strong>Allocation is mandatory</strong> - HALO cannot optimise away
 frames that outlive their callers</li>
@@ -1638,7 +1639,7 @@ reliant on non-standard alternatives.</p>
 that when it ships, it will be capable of serving the full spectrum of
 its intended use cases - including coroutine-based I/O - so that the C++
 community gets one async framework, not two.</p>
-<p><strong>We ask the committee to address the allocator timing gap
+<p><strong>We ask the committee to address the allocator sequencing gap
 before freezing the <code>std::execution</code> API in the IS. We
 welcome a solution from the P2300 authors and are eager to collaborate
 on one. If the gap cannot be closed in the C++26 time frame, we
@@ -1709,8 +1710,8 @@ throughout the codebase.</p>
 <h3 id="a.3-the-connectstartoperator-new-sequence">A.3 The
 <code>connect</code>/<code>start</code>/<code>operator new</code>
 Sequence</h3>
-<p>The complete timing sequence showing the gap between frame allocation
-and receiver connection:</p>
+<p>The complete evaluation sequence showing the gap between frame
+allocation and receiver connection:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> sndr <span class="op">=</span> my_coro<span class="op">();</span>                    <span class="co">// Step 1: operator new runs HERE</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>                                          <span class="co">//         Frame already allocated</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -1720,7 +1721,7 @@ and receiver connection:</p>
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>start<span class="op">(</span>op<span class="op">);</span>                                <span class="co">// Step 3: Operation starts</span></span></code></pre></div>
 <p><a href="https://wg21.link/p2300r4">P2300R4</a> (2022-01-18)
-acknowledges this timing:</p>
+acknowledges this sequencing:</p>
 <blockquote>
 <p>“In the sender/receiver model… contextual information is associated
 with the receiver and is queried by the sender and/or operation state
@@ -1734,9 +1735,9 @@ the consequence for customisation:</p>
 early customization is irreparably broken.”</p>
 </blockquote>
 <p>Note: the P3826R3 quote refers specifically to algorithm dispatch
-customisation, not to allocator timing. But the underlying cause is the
-same: the receiver - and its environment including the allocator - is
-not available until <code>connect()</code>.</p>
+customisation, not to allocator sequencing. But the underlying cause is
+the same: the receiver - and its environment including the allocator -
+is not available until <code>connect()</code>.</p>
 <h3 id="a.4-senderreceiver-vs-coroutine---side-by-side">A.4
 Sender/Receiver vs Coroutine - Side by Side</h3>
 <p>The same <code>handle_connection</code> logic in both models
@@ -1767,7 +1768,8 @@ which point the receiver’s environment - including the allocator - is
 available for the entire operation state tree. A custom sender
 theoretically <em>could</em> allocate earlier, but the protocol’s design
 defers allocation to <code>connect()</code> precisely so that the
-receiver’s allocator can be used. There is no timing gap.</p>
+receiver’s allocator can be used. There is no allocator sequencing
+gap.</p>
 <p><strong>Coroutine model:</strong></p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> handle_connection<span class="op">(</span>tcp_socket socket<span class="op">)</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
@@ -1779,12 +1781,13 @@ receiver’s allocator can be used. There is no timing gap.</p>
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The coroutine frame is allocated during the function call - before
 any receiver exists. This is the precise moment the gap opens. Any
-sender that allocates storage at creation time faces the same timing
-mismatch, but coroutines make it pervasive: <code>task&lt;T&gt;</code>
-always allocates a frame in <code>operator new</code> before any
-receiver exists. Since <code>task&lt;T&gt;</code> is the primary
-usability layer for writing sender/receiver code, the gap affects the
-most common authoring path.</p>
+sender that allocates storage at creation time faces the same allocator
+sequencing gap, but coroutines make it pervasive:
+<code>task&lt;T&gt;</code> always allocates a frame in
+<code>operator new</code> before any receiver exists. Since
+<code>task&lt;T&gt;</code> is the primary usability layer for writing
+sender/receiver code, the gap affects the most common authoring
+path.</p>
 <hr />
 <h2 id="appendix-b---counterarguments-examined">Appendix B -
 Counterarguments Examined</h2>
@@ -1796,16 +1799,17 @@ resolution went through three revisions before acceptance in January
 2026 - evidence of ongoing design evolution, but not itself an
 indictment.</p>
 <p>P3826 targets algorithm dispatch and was never intended to address
-allocator timing. Because its Solution 4.5 restructures
+allocator sequencing. Because its Solution 4.5 restructures
 <code>transform_sender</code> to accept the receiver’s environment,
 however, a natural question is whether that change also closes the
-allocator gap. It does not - but examining why is instructive.</p>
+allocator sequencing gap. It does not - but examining why is
+instructive.</p>
 <p>P3826 offers five solutions. All target algorithm dispatch - i.e.,
 which implementation of <code>then</code>, <code>let_value</code>, or
 <code>bulk</code> should run:</p>
 <p><strong>Solution 4.1: Remove all
-<code>std::execution</code>.</strong> This would resolve the timing gap
-by deferral.</p>
+<code>std::execution</code>.</strong> This would resolve the allocator
+sequencing gap by deferral.</p>
 <p><strong>Solution 4.2: Remove customisable sender algorithms.</strong>
 This removes <code>then</code>, <code>let_value</code>,
 <code>bulk</code>, etc. It does not change when the allocator becomes
@@ -1827,9 +1831,9 @@ receiver’s environment is still only queryable after
 <p>There was an assertion made during the Kona discussion that removing
 sender algorithm customisation could preclude shipping the task type
 entirely, since the task type’s utility depends on the ability to
-customise algorithms. This would imply that the allocator timing issue,
-the algorithm customisation issue, and the task type are architecturally
-intertwined.</p>
+customise algorithms. This would imply that the allocator sequencing
+issue, the algorithm customisation issue, and the task type are
+architecturally intertwined.</p>
 <h3 id="b.2-why-await_transform-cannot-close-the-gap">B.2 Why
 <code>await_transform</code> Cannot Close the Gap</h3>
 <p>A reader familiar with C++ coroutine machinery may ask whether
@@ -2190,7 +2194,7 @@ forever.</li>
 mandate receiver completion-signals.</li>
 <li><strong>LWG 4356:</strong> <code>connect()</code> should use
 <code>get_allocator(get_env(rcvr))</code> - directly relevant to the
-allocator timing issue.</li>
+allocator sequencing issue.</li>
 </ul>
 <p>Priority 1 issues in an approved feature are a concrete signal that
 the specification has not yet stabilised. These are not obscure corner
@@ -2694,7 +2698,7 @@ completion-signals</td>
 <td><code>connect()</code> should use
 <code>get_allocator(get_env(rcvr))</code></td>
 <td>2025-08-27</td>
-<td>Open - directly relevant to allocator timing issue.</td>
+<td>Open - directly relevant to allocator sequencing issue.</td>
 <td><code>connect-awaitable</code> should respect the receiver’s
 allocator.</td>
 </tr>
