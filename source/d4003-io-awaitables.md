@@ -365,7 +365,7 @@ struct io_env
 template< typename A >
 concept IoAwaitable =
     requires(
-        A a, std::coroutine_handle<> h, io_env const& env )
+        A a, std::coroutine_handle<> h, io_env const* env )
     {
         a.await_suspend( h, env );
     };
@@ -379,8 +379,8 @@ The _IoAwaitable_ concept is the foundation of the protocol. Any type that can b
 
 **Requirements:**
 
-1. Implement `await_suspend(std::coroutine_handle<> cont, io_env const& env)`
-2. Store the environment by pointer or reference (never by copy); the referenced `io_env` is guaranteed to outlive the coroutine
+1. Implement `await_suspend(std::coroutine_handle<> cont, io_env const* env)`
+2. Store the environment by pointer (never by copy); the pointed-to `io_env` is guaranteed to outlive the coroutine
 3. Return a `std::coroutine_handle<>` for symmetric transfer (or `void`/`bool` per standard rules)
 4. Implement `await_ready()` and `await_resume()` per standard awaitable requirements
 
@@ -397,10 +397,10 @@ struct my_awaitable
     bool await_ready() const noexcept { return false; }
 
     // This signature satisfies IoAwaitable
-    std::coroutine_handle<> await_suspend( std::coroutine_handle<> cont, io_env const& env )
+    std::coroutine_handle<> await_suspend( std::coroutine_handle<> cont, io_env const* env )
     {
         cont_ = cont;
-        env_ = &env;
+        env_ = env;
         start_async_operation();
         return std::noop_coroutine();
     }
@@ -416,7 +416,7 @@ template<typename A>
 auto await_transform(A&& a) {
     static_assert(IoAwaitable<A>,
         "Awaitable does not satisfy IoAwaitable; "
-        "await_suspend(std::coroutine_handle<>, io_env const&) is required");
+        "await_suspend(std::coroutine_handle<>, io_env const*) is required");
     // Return wrapper that forwards to: a.await_suspend(h, environment())
     ...
 }
@@ -522,7 +522,7 @@ struct task
     T await_resume() { return h_.promise().result(); }
 
     // Satisfies IoAwaitable
-    std::coroutine_handle<> await_suspend( std::coroutine_handle<> cont, io_env const& env )
+    std::coroutine_handle<> await_suspend( std::coroutine_handle<> cont, io_env const* env )
     {
         h_.promise().set_continuation( cont );
         h_.promise().set_environment( env );
@@ -567,13 +567,13 @@ Coroutines can access their context directly using `this_coro::environment`. Thi
 ```cpp
 task<void> cancellable_work()
 {
-    auto const& env = co_await this_coro::environment;  // never suspends
+    auto env = co_await this_coro::environment;  // never suspends
     
     for (int i = 0; i < 1000; ++i)
     {
-        if (env.stop_token.stop_requested())
+        if (env->stop_token.stop_requested())
             co_return;  // Exit gracefully on cancellation
-        co_await process_chunk(env.executor, i);
+        co_await process_chunk(env->executor, i);
     }
 }
 ```
@@ -1140,8 +1140,8 @@ public:
     void set_continuation( std::coroutine_handle<> cont ) noexcept;
     std::coroutine_handle<> continuation() const noexcept;
 
-    void set_environment( io_env const& env ) noexcept;
-    io_env const& environment() const noexcept;
+    void set_environment( io_env const* env ) noexcept;
+    io_env const* environment() const noexcept;
 
     template<typename A>
     decltype(auto) transform_awaitable( A&& a );
@@ -1256,20 +1256,20 @@ namespace std {
 ```cpp
 template<class A>
 concept io_awaitable =
-  requires(A a, coroutine_handle<> h, io_env const& env) {
+  requires(A a, coroutine_handle<> h, io_env const* env) {
     a.await_suspend(h, env);
   };
 ```
 
 1 A type `A` meets the `io_awaitable` requirements if it satisfies the syntactic requirements above and the semantic requirements below.
 
-2 In Table 1, `a` denotes a value of type `A`, `h` denotes a value of type `coroutine_handle<>` representing the calling coroutine, and `env` denotes a value of type `io_env const&`.
+2 In Table 1, `a` denotes a value of type `A`, `h` denotes a value of type `coroutine_handle<>` representing the calling coroutine, and `env` denotes a value of type `io_env const*`.
 
 **Table 1 — io_awaitable requirements**
 
 | expression | return type | assertion/note pre/post-conditions |
 |------------|-------------|-----------------------------------|
-| `a.await_suspend(h, env)` | `void`, `bool`, or `coroutine_handle<>` | *Effects:* Initiates the asynchronous operation represented by `a`. The environment `env` is propagated to the operation. If the return type is `coroutine_handle<>`, the returned handle is suitable for symmetric transfer. *Preconditions:* `h` is a suspended coroutine. `env.executor` refers to a valid executor. The referenced `io_env` object remains valid for the duration of the asynchronous operation; the caller is responsible for ensuring this lifetime guarantee. *Synchronization:* The call to `await_suspend` synchronizes with the resumption of `h` or any coroutine to which control is transferred. |
+| `a.await_suspend(h, env)` | `void`, `bool`, or `coroutine_handle<>` | *Effects:* Initiates the asynchronous operation represented by `a`. The environment `env` is propagated to the operation. If the return type is `coroutine_handle<>`, the returned handle is suitable for symmetric transfer. *Preconditions:* `h` is a suspended coroutine. `env->executor` refers to a valid executor. The pointed-to `io_env` object remains valid for the duration of the asynchronous operation; the caller is responsible for ensuring this lifetime guarantee. *Synchronization:* The call to `await_suspend` synchronizes with the resumption of `h` or any coroutine to which control is transferred. |
 
 3 [ *Note:* The two-argument `await_suspend` signature distinguishes `io_awaitable` types from standard awaitables. A compliant coroutine's `await_transform` calls this signature, enabling static detection of protocol mismatches at compile time. *— end note* ]
 
@@ -1770,7 +1770,7 @@ inline constexpr environment_tag environment;
 
 1 When awaited via `co_await this_coro::environment` inside a coroutine whose promise type satisfies `io_runnable`:
 
-2 *Returns:* A reference to the `io_env` bound to the current coroutine, as would be returned by `promise.environment()`.
+2 *Returns:* A pointer to the `io_env` bound to the current coroutine, as would be returned by `promise.environment()`.
 
 3 *Remarks:* This operation never suspends. The promise's `await_transform` intercepts the `environment_tag` type and returns an immediate awaiter where `await_ready()` returns `true`.
 
@@ -1780,10 +1780,10 @@ inline constexpr environment_tag environment;
 
 ```cpp
 task<void> cancellable_work() {
-    auto const& env = co_await this_coro::environment;
+    auto env = co_await this_coro::environment;
     
     for (int i = 0; i < 1000; ++i) {
-        if (env.stop_token.stop_requested())
+        if (env->stop_token.stop_requested())
             co_return;  // Exit gracefully
         co_await process_chunk(i);
     }

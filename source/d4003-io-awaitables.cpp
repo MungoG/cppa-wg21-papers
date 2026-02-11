@@ -182,7 +182,7 @@ concept IoAwaitable =
     requires(
         A a,
         coro h,
-        io_env const& env)
+        io_env const* env)
     {
         a.await_suspend(h, env);
     };
@@ -272,14 +272,14 @@ public:
         return std::exchange(cont_, std::noop_coroutine());
     }
 
-    void set_environment(io_env const& env) noexcept
+    void set_environment(io_env const* env) noexcept
     {
-        env_ = &env;
+        env_ = env;
     }
 
-    io_env const& environment() const noexcept
+    io_env const* environment() const noexcept
     {
-        return *env_;
+        return env_;
     }
 
     template<typename A>
@@ -298,7 +298,7 @@ public:
                 io_env const* env_;
                 bool await_ready() const noexcept { return true; }
                 void await_suspend(coro) const noexcept {}
-                io_env const& await_resume() const noexcept { return *env_; }
+                io_env const* await_resume() const noexcept { return env_; }
             };
             return awaiter{env_};
         }
@@ -363,7 +363,7 @@ struct [[nodiscard]] task
 
                 void await_resume() const noexcept
                 {
-                    auto* fa = p_->environment().allocator;
+                    auto* fa = p_->environment()->allocator;
                     if(fa && fa != current_frame_allocator())
                         current_frame_allocator() = fa;
                 }
@@ -404,7 +404,7 @@ struct [[nodiscard]] task
 
             decltype(auto) await_resume()
             {
-                auto* fa = p_->environment().allocator;
+                auto* fa = p_->environment()->allocator;
                 if(fa && fa != current_frame_allocator())
                     current_frame_allocator() = fa;
                 return a_.await_resume();
@@ -453,7 +453,7 @@ struct [[nodiscard]] task
             return;
     }
 
-    coro await_suspend(coro cont, io_env const& env)
+    coro await_suspend(coro cont, io_env const* env)
     {
         h_.promise().set_continuation(cont);
         h_.promise().set_environment(env);
@@ -540,7 +540,8 @@ auto run_sync(executor_ref ex, std::stop_token token, Task t)
 {
     auto h = t.handle();
     auto& p = h.promise();
-    p.set_environment(io_env{ex, token});
+    io_env env{ex, token};
+    p.set_environment(&env);
     // No continuation — cont_ defaults to noop_coroutine()
     t.release();
     h.resume();
@@ -569,7 +570,7 @@ struct immediate_value
 
     bool await_ready() const noexcept { return true; }
 
-    coro await_suspend(coro, io_env const&)
+    coro await_suspend(coro, io_env const*)
     {
         return std::noop_coroutine();
     }
@@ -583,12 +584,12 @@ static_assert(IoAwaitable<immediate_value>);
 task<int> compute(int x)
 {
     // Retrieve the propagated environment
-    auto const& env = co_await this_coro::environment;
+    auto env = co_await this_coro::environment;
 
     std::printf("  compute(%d): has executor=%s, stop_possible=%s\n",
         x,
-        env.executor ? "yes" : "no",
-        env.stop_token.stop_possible() ? "yes" : "no");
+        env->executor ? "yes" : "no",
+        env->stop_token.stop_possible() ? "yes" : "no");
 
     // Await an IoAwaitable — context propagates automatically
     int v = co_await immediate_value{x * 10};
@@ -598,8 +599,8 @@ task<int> compute(int x)
 // Parent task: composes child tasks
 task<int> parent_task()
 {
-    auto const& env = co_await this_coro::environment;
-    std::printf("parent_task: has executor=%s\n", env.executor ? "yes" : "no");
+    auto env = co_await this_coro::environment;
+    std::printf("parent_task: has executor=%s\n", env->executor ? "yes" : "no");
 
     int a = co_await compute(3);
     int b = co_await compute(7);
@@ -609,9 +610,9 @@ task<int> parent_task()
 // Void task
 task<> void_task()
 {
-    auto const& env = co_await this_coro::environment;
+    auto env = co_await this_coro::environment;
     std::printf("void_task: stop_requested=%s\n",
-        env.stop_token.stop_requested() ? "yes" : "no");
+        env->stop_token.stop_requested() ? "yes" : "no");
     co_return;
 }
 
