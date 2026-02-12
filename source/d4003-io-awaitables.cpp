@@ -165,14 +165,27 @@ inline constexpr allocator_tag allocator{};
 } // namespace this_coro
 
 // ============================================================
-// current_frame_allocator (thread-local)
+// get/set_current_frame_allocator (thread-local)
 // ============================================================
 
-inline std::pmr::memory_resource*&
-current_frame_allocator() noexcept
+namespace detail {
+inline std::pmr::memory_resource*& tls_frame_allocator() noexcept
 {
     static thread_local std::pmr::memory_resource* mr = nullptr;
     return mr;
+}
+} // namespace detail
+
+inline std::pmr::memory_resource*
+get_current_frame_allocator() noexcept
+{
+    return detail::tls_frame_allocator();
+}
+
+inline void
+set_current_frame_allocator(std::pmr::memory_resource* mr) noexcept
+{
+    detail::tls_frame_allocator() = mr;
 }
 
 // ============================================================
@@ -231,9 +244,9 @@ public:
     static void*
     operator new(std::size_t size)
     {
-        auto* mr = current_frame_allocator();
+        auto* mr = get_current_frame_allocator();
         if(!mr)
-            mr = std::pmr::get_default_resource();
+            mr = std::pmr::new_delete_resource();
 
         std::size_t ptr_offset = aligned_offset(size);
         std::size_t total = ptr_offset + sizeof(std::pmr::memory_resource*);
@@ -401,8 +414,8 @@ struct [[nodiscard]] task
                 void await_resume() const noexcept
                 {
                     auto* fa = p_->environment()->allocator;
-                    if(fa && fa != current_frame_allocator())
-                        current_frame_allocator() = fa;
+                    if(fa && fa != get_current_frame_allocator())
+                        set_current_frame_allocator(fa);
                 }
             };
             return awaiter{this};
@@ -442,8 +455,8 @@ struct [[nodiscard]] task
             decltype(auto) await_resume()
             {
                 auto* fa = p_->environment()->allocator;
-                if(fa && fa != current_frame_allocator())
-                    current_frame_allocator() = fa;
+                if(fa && fa != get_current_frame_allocator())
+                    set_current_frame_allocator(fa);
                 return a_.await_resume();
             }
 

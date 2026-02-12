@@ -973,38 +973,87 @@ Our approach:
 
 3. **Maintain lifetime via frame extension.** The allocator lives in the launch coroutine's frame. Because coroutine parameter lifetimes extend until final suspension, the allocator remains valid for the entire operation chain.
 
-4. **Propagate through thread-locals.** Before any child coroutine is invoked, the current allocator is set in TLS. The child's `promise_type::operator new` reads it. This is an example implementation (non-normative):
+4. **Propagate through thread-locals.** Before any child coroutine is invoked, the current allocator is set in TLS. The child's `promise_type::operator new` reads it. TLS serves as a delivery mechanism, not the source of truth. The canonical allocator resides in `io_env`, a heap-stable structure owned by the launch coroutine's frame. Every resume point restores TLS from `io_env`, making TLS a write-through cache that is always repopulated before it is read. This is an example implementation (non-normative):
 
 ```cpp
-// Thread-local accessor (returns reference to enable setting)
-inline std::pmr::memory_resource*&
-current_frame_allocator() noexcept {
-    static thread_local std::pmr::memory_resource* mr = nullptr;
-    return mr;
+// Global accessors for the current frame allocator.
+// An implementation using thread_local might look like this:
+//
+//   std::pmr::memory_resource*
+//   get_current_frame_allocator() noexcept {
+//       static thread_local std::pmr::memory_resource* mr = nullptr;
+//       return mr;
+//   }
+//
+//   void
+//   set_current_frame_allocator(
+//       std::pmr::memory_resource* mr) noexcept {
+//       static thread_local std::pmr::memory_resource* p = nullptr;
+//       p = mr;
+//   }
+//
+// Implementations without thread_local may use whatever
+// mechanism is available.
+
+std::pmr::memory_resource*
+get_current_frame_allocator() noexcept;
+
+void
+set_current_frame_allocator(
+    std::pmr::memory_resource* mr) noexcept;
+
+// These accessors are a thin wrapper over a thread-local pointer.
+// get always returns exactly what set stored, including nullptr.
+// No dynamic initializer on the thread-local; a dynamic TLS
+// initializer moves you into a costlier implementation bucket
+// on some platforms - avoid it.
+//
+// Null handling is the caller's responsibility. The accessor
+// must not substitute a default, because there are multiple
+// valid choices (new_delete_resource, the default pmr resource,
+// or something else entirely). If the allocator is not set,
+// the accessor reports "not set" and the caller interprets
+// that however it wants - as shown in operator new below.
+
+// In promise_type
+static std::size_t aligned_offset(std::size_t n) noexcept {
+    constexpr auto a = alignof(std::pmr::memory_resource*);
+    return (n + a - 1) & ~(a - 1);
 }
 
-// In promise_type::operator new
 static void* operator new( std::size_t size ) {
-    auto* mr = current_frame_allocator();
+    auto* mr = get_current_frame_allocator();
     if(!mr)
-        mr = std::pmr::get_default_resource();
+        mr = std::pmr::new_delete_resource();
 
     // Store allocator pointer at end of frame for correct deallocation
-    std::size_t total = size + sizeof(std::pmr::memory_resource*);
+    std::size_t off = aligned_offset(size);
+    std::size_t total = off + sizeof(std::pmr::memory_resource*);
     void* raw = mr->allocate(total, alignof(std::max_align_t));
     *reinterpret_cast<std::pmr::memory_resource**>(
-        static_cast<char*>(raw) + size) = mr;
+        static_cast<char*>(raw) + off) = mr;
     return raw;
 }
 
 static void operator delete( void* ptr, std::size_t size ) {
     // Read the allocator pointer from the end of the frame
+    std::size_t off = aligned_offset(size);
     auto* mr = *reinterpret_cast<std::pmr::memory_resource**>(
-        static_cast<char*>(ptr) + size);
-    std::size_t total = size + sizeof(std::pmr::memory_resource*);
+        static_cast<char*>(ptr) + off);
+    std::size_t total = off + sizeof(std::pmr::memory_resource*);
     mr->deallocate(ptr, total, alignof(std::max_align_t));
 }
 ```
+
+`get_current_frame_allocator` can return null when a coroutine frame is
+created without going through a launch function:
+
+```cpp
+auto co = my_coro();        // frame allocated here - no launcher set TLS
+run_async( ex )( co );      // too late, frame already exists
+```
+
+The fallback to `pmr::new_delete_resource()` gives the same behavior the user would get if the coroutine had no custom `operator new` at all - plain `new`/`delete`. We choose `new_delete_resource` rather than `pmr::get_default_resource()` because the latter is a mutable global whose value can change at any time, which could produce surprising allocations depending on what some other part of the program stored there. One might ask why the thread-local is not simply initialized to `pmr::new_delete_resource()` so the null check is unnecessary. The reason is portability: thread-local storage works best when the variable is a plain pointer zero-initialized by the loader. A dynamic initializer - even a trivial function call - moves the variable into a costlier TLS implementation bucket on some platforms. Keeping the default as null and handling it at the call site avoids that cost entirely.
 
 This design keeps allocator policy where it belongs - at the application layer - while coroutine algorithms remain blissfully unaware of memory strategy. The propagation happens during what we call "the window": a narrow interval of execution where the correct state is guaranteed in thread-locals.
 
@@ -1038,12 +1087,12 @@ auto initial_suspend() noexcept {
         bool await_ready() const noexcept { return false; }
         void await_suspend(std::coroutine_handle<>) const noexcept {
             // Capture TLS allocator while it's still valid
-            p_->set_frame_allocator( current_frame_allocator() );
+            p_->set_frame_allocator( get_current_frame_allocator() );
         }
         void await_resume() const noexcept {
             // Restore TLS when body starts executing
             if( p_->frame_allocator() )
-                current_frame_allocator() = p_->frame_allocator();
+                set_current_frame_allocator( p_->frame_allocator() );
         }
     };
     return awaiter{this};
@@ -1069,10 +1118,65 @@ child calls grandchild() → grandchild uses TLS
 ```
 
 This is safe because:
-- TLS is only read in `operator new`
-- TLS is set by the currently-running coroutine
-- Single-threaded: only one coroutine runs at a time per thread
-- No dangling: the coroutine that set TLS is still on the stack when `operator new` reads it
+- TLS is only read in `operator new` - no other code path inspects the thread-local allocator
+- TLS is written by the currently-running coroutine before any child is created, and restored from the heap-stable `io_env` on every resume via `await_resume`
+- Thread migration is handled: when a coroutine suspends on thread A and resumes on thread B, the `await_resume` path writes the correct allocator into thread B's TLS before the coroutine body continues. TLS is never *read* on a thread unless the coroutine that wrote it is actively executing on that thread
+- No dangling: the coroutine that set TLS is still on the call stack when `operator new` reads it
+- Deallocation is thread-independent: `operator delete` reads the allocator from a pointer embedded in the frame footer, not from TLS. A frame can be destroyed on any thread
+
+### 6.5 Anticipated Concerns
+
+Thread-local storage has a well-deserved reputation for creating hidden coupling and brittle behavior. The concerns are familiar and worth addressing directly.
+
+#### Concern: Hidden Behavior
+
+The classic objection to TLS is that functions behave differently depending on state set at some distant point in execution. In the general case, the objection is sound. A thread-local that silently changes the semantics of an arbitrary function call is a maintenance hazard.
+
+The allocator window is not that. TLS here is a **write-through cache** - a single-purpose delivery mechanism that bridges a gap in the compiler's calling convention. The canonical allocator lives in `io_env`, a heap-stable structure owned by the launch coroutine's frame and propagated explicitly through `await_suspend`. Every resume point restores TLS from `io_env` before the coroutine body continues. TLS is never the source of truth; `io_env` is.
+
+The thread-local is read in exactly one place: `promise_type::operator new`. No other function inspects it. No algorithm changes its behavior based on TLS contents. The allocator does not alter what a coroutine *does* - it alters where the coroutine frame's memory *comes from*, which is an allocation policy decision orthogonal to program logic.
+
+The reason TLS is involved at all is a constraint imposed by the language: `operator new` has a fixed signature (`static void* operator new(std::size_t)`). The allocator cannot arrive as a parameter unless every coroutine signature is polluted with `allocator_arg_t` (Section 6.2). Given that constraint, an out-of-band channel is the only alternative. The standard library already provides one: `std::pmr::get_default_resource()` is a global (optionally thread-local) allocator propagation mechanism that the committee accepted in C++17. The allocator window applies the same principle with tighter scoping - per-chain rather than per-process.
+
+#### Concern: Thread Migration
+
+If a coroutine suspends on one thread and resumes on another, a naive TLS-based design would read stale or unrelated state. The concern is correct in the general case.
+
+The allocator window does not read TLS on resume. It *writes* TLS on resume. The flow is:
+
+1. Coroutine suspends on thread A (e.g., waiting for I/O)
+2. I/O completes; executor dispatches resumption on thread B
+3. `await_resume` fires *before* the coroutine body continues
+4. `await_resume` writes the allocator from `io_env` into thread B's TLS
+5. Coroutine body resumes on thread B with correct TLS
+6. Any child coroutine created reads the value just written
+
+The restore happens in two places. At `initial_suspend`, the awaiter's `await_resume` restores TLS from the environment that was established by the launcher:
+
+```cpp
+void await_resume() const noexcept {
+    // Restore TLS from heap-stable io_env
+    auto* fa = p_->environment()->allocator;
+    if(fa && fa != get_current_frame_allocator())
+        set_current_frame_allocator(fa);
+}
+```
+
+At every subsequent `co_await`, the `await_transform` machinery wraps the awaitable in a `transform_awaiter` whose `await_resume` performs the same restoration. The coroutine body never executes without first re-establishing TLS from the frame-resident environment. Thread migration cannot produce a stale read because the write always precedes the read on the new thread.
+
+The key invariant: **TLS is never read on a thread unless the coroutine that wrote it is actively executing on that same thread.** No suspended coroutine depends on TLS retaining a value across a suspension point.
+
+Deallocation is also thread-independent. Each frame stores its `memory_resource*` in a footer appended to the allocation. `operator delete` reads the pointer from that footer, not from TLS. A frame allocated on thread A can be destroyed on thread C without consulting any thread-local state.
+
+#### Concern: Implicit Propagation and Lifetime
+
+Containers in the standard library propagate allocators explicitly. The user passes the allocator, and the container holds it. The concern is that implicit propagation - silently binding an allocator without the user's awareness - risks use-after-free if the allocator is destroyed before the objects it allocated.
+
+Coroutine chains differ structurally from containers. A container can outlive its creator. A coroutine chain cannot outlive its launch site. The launch function (`run_async`, `run`) creates a trampoline coroutine whose frame owns the `io_env`, which holds the `memory_resource*`. Every child frame in the chain is destroyed before the trampoline reaches final suspension. The allocator outlives all frames that use it - not by convention, but by the structural nesting of coroutine lifetimes.
+
+Consider the "store the awaitable" scenario: a caller evaluates `my_task()` and stores the returned `task<T>` without immediately `co_await`ing it. The frame was allocated from whatever `memory_resource` TLS contained at call time, and the `memory_resource*` was embedded in the frame footer at allocation. The `task<T>` destructor deallocates via that embedded pointer, not via TLS. The lifetime guarantee rests on the allocator itself (owned by the trampoline), not on the thread-local being in any particular state at destruction time. A task that outlives its chain would need to outlive the `run_async` trampoline that owns it, and `release()` explicitly transfers frame ownership to prevent that.
+
+Finally, `std::execution`'s `get_allocator(get_env(receiver))` is also an implicit lookup - the operation reads the allocator from the receiver environment without the user explicitly passing it at the call site. The mechanism is structurally similar: an ambient environment provides the allocator. The difference is only *when* the implicit lookup occurs. In `std::execution`, the lookup happens after `connect()`, which is too late for coroutine frame allocation. In the IoAwaitable model, the lookup happens before the frame is created - the one point in time where it can actually work.
 
 ---
 
@@ -1292,9 +1396,9 @@ public:
 
     static void* operator new(std::size_t size)
     {
-        auto* mr = current_frame_allocator();
+        auto* mr = get_current_frame_allocator();
         if (!mr)
-            mr = std::pmr::get_default_resource();
+            mr = std::pmr::new_delete_resource();
         std::size_t off = aligned_offset(size);
         std::size_t total =
             off + sizeof(std::pmr::memory_resource*);
