@@ -826,7 +826,7 @@ del .variable {
     break-after: avoid;
   }
 
-  pre, blockquote, figure {
+  pre, blockquote, figure, tr {
     page-break-inside: avoid;
     break-inside: avoid;
   }

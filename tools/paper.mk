@@ -1,7 +1,7 @@
 # Makefile for converting Markdown to PDF/HTML/LaTeX using Pandoc
 # Supports Windows, macOS, and Linux
 # Requires: pandoc, mermaid-filter (npm package)
-# For PDF output: also requires weasyprint (pip3 install --user weasyprint)
+# For PDF output: also requires Google Chrome or Chromium
 
 # Detect OS
 ifeq ($(OS),Windows_NT)
@@ -33,8 +33,26 @@ TOOLDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 PANDOC := pandoc
 PANDOC_COMMON := --standalone --filter mermaid-filter
 
-# PDF generation via WeasyPrint (converts HTML to PDF, preserving CSS styling)
-WEASYPRINT := weasyprint
+# PDF generation via headless Chrome (supports variable fonts,
+# font-variation-settings, break-inside on table rows, and
+# CSS @page margin boxes).
+ifeq ($(DETECTED_OS),Windows)
+    CHROME := $(firstword $(wildcard \
+        $(LOCALAPPDATA)/Google/Chrome/Application/chrome.exe \
+        C:/Program\ Files/Google/Chrome/Application/chrome.exe \
+        C:/Program\ Files\ (x86)/Google/Chrome/Application/chrome.exe))
+else ifeq ($(DETECTED_OS),Darwin)
+    CHROME := $(shell \
+        if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then \
+            echo "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; \
+        elif [ -x "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then \
+            echo "/Applications/Chromium.app/Contents/MacOS/Chromium"; \
+        fi)
+else
+    CHROME := $(shell which google-chrome chromium-browser chromium 2>/dev/null | head -1)
+endif
+
+CHROME_PDF_FLAGS := --headless --no-pdf-header-footer --disable-gpu --no-sandbox
 
 # HTML-specific options
 HTML_OPTS := $(PANDOC_COMMON) --embed-resources --toc --template=$(TOOLDIR)/wg21.html5 --css=$(TOOLDIR)/paperstyle.css
@@ -61,7 +79,7 @@ help:
 	@echo "Requirements:"
 	@echo "  - pandoc"
 	@echo "  - mermaid-filter (npm install -g mermaid-filter)"
-	@echo "  - For PDF: weasyprint (pip3 install --user weasyprint)"
+	@echo "  - For PDF: Google Chrome or Chromium"
 
 # Copy mermaid config to current directory (mermaid-filter requires it here)
 # Remove empty mermaid-filter.err after successful conversion
@@ -89,7 +107,7 @@ endif
 
 # Pattern rules for conversion
 %.pdf: %.html check-deps-pdf
-	$(WEASYPRINT) $(OUTDIR)/$*.html $(OUTDIR)/$@
+	"$(CHROME)" $(CHROME_PDF_FLAGS) --print-to-pdf=$(OUTDIR)/$@ "file://$(abspath $(OUTDIR)/$*.html)"
 	@echo "Created $(OUTDIR)/$@"
 
 %.html: $(SRCDIR)/%.md check-deps
@@ -119,7 +137,7 @@ check:
 	@echo "Checking dependencies..."
 	@$(MAKE) --no-print-directory check-pandoc
 	@$(MAKE) --no-print-directory check-mermaid
-	@$(MAKE) --no-print-directory check-weasyprint
+	@$(MAKE) --no-print-directory check-chrome
 	@echo ""
 	@echo "All checks complete."
 
@@ -128,7 +146,7 @@ check-deps:
 	@$(MAKE) --no-print-directory check-mermaid
 
 check-deps-pdf: check-deps
-	@$(MAKE) --no-print-directory check-weasyprint
+	@$(MAKE) --no-print-directory check-chrome
 
 .PHONY: check-pandoc
 check-pandoc:
@@ -148,16 +166,23 @@ else
 endif
 	@echo "[OK] mermaid-filter found"
 
-.PHONY: check-weasyprint
-check-weasyprint:
-ifeq ($(DETECTED_OS),Windows)
-	@where weasyprint >$(NULL) 2>&1 || (echo ERROR: weasyprint is not installed. PDF generation will not work. && echo Install with: pip install --user weasyprint && exit 1)
-else ifeq ($(DETECTED_OS),Darwin)
-	@which weasyprint > $(NULL) 2>&1 || (echo "ERROR: weasyprint is not installed. PDF generation will not work." && echo "Install with: brew install weasyprint" && exit 1)
+.PHONY: check-chrome
+check-chrome:
+ifeq ($(CHROME),)
+	@echo "ERROR: Google Chrome or Chromium is not installed."
+	@echo "PDF generation requires Chrome or Chromium."
+ifeq ($(DETECTED_OS),Darwin)
+	@echo "Install from: https://www.google.com/chrome/"
+else ifeq ($(DETECTED_OS),Windows)
+	@echo "Install from: https://www.google.com/chrome/"
 else
-	@which weasyprint > $(NULL) 2>&1 || (echo "ERROR: weasyprint is not installed. PDF generation will not work." && echo "Install with: pip3 install --user weasyprint" && exit 1)
+	@echo "Install with: sudo apt install google-chrome-stable"
+	@echo "  or: sudo apt install chromium-browser"
 endif
-	@echo "[OK] weasyprint found (PDF generation available)"
+	@exit 1
+else
+	@echo "[OK] Chrome found: $(CHROME)"
+endif
 
 # Install dependencies (only missing ones)
 .PHONY: install
@@ -174,10 +199,12 @@ ifeq ($(DETECTED_OS),Windows)
 		echo "  Install Node.js from: https://nodejs.org/" && \
 		echo "  Then run: npm install -g mermaid-filter" \
 	)
-	@where weasyprint >$(NULL) 2>&1 && echo "[OK] weasyprint already installed" || ( \
-		echo "[MISSING] weasyprint (needed for PDF)" && \
-		echo "  Install with: pip install --user weasyprint" \
-	)
+ifeq ($(CHROME),)
+	@echo "[MISSING] Google Chrome (needed for PDF)"
+	@echo "  Install from: https://www.google.com/chrome/"
+else
+	@echo "[OK] Chrome already installed"
+endif
 else ifeq ($(DETECTED_OS),Darwin)
 	@echo "Detected: macOS"
 	@echo ""
@@ -203,11 +230,11 @@ else ifeq ($(DETECTED_OS),Darwin)
 		fi; \
 	fi
 	@echo ""
-	@if which weasyprint > $(NULL) 2>&1; then \
-		echo "[OK] weasyprint already installed (PDF generation available)"; \
+	@if [ -n "$(CHROME)" ]; then \
+		echo "[OK] Chrome already installed"; \
 	else \
-		echo "[MISSING] weasyprint (needed for PDF generation)"; \
-		echo "  Install with: brew install weasyprint"; \
+		echo "[MISSING] Google Chrome (needed for PDF)"; \
+		echo "  Install from: https://www.google.com/chrome/"; \
 	fi
 else
 	@echo "Detected: Linux"
@@ -241,11 +268,12 @@ else
 		fi; \
 	fi
 	@echo ""
-	@if which weasyprint > $(NULL) 2>&1; then \
-		echo "[OK] weasyprint already installed (PDF generation available)"; \
+	@if [ -n "$(CHROME)" ]; then \
+		echo "[OK] Chrome already installed"; \
 	else \
-		echo "[MISSING] weasyprint (needed for PDF generation)"; \
-		echo "  Install with: pip3 install --user weasyprint"; \
+		echo "[MISSING] Google Chrome or Chromium (needed for PDF)"; \
+		echo "  Install with: sudo apt install google-chrome-stable"; \
+		echo "  or: sudo apt install chromium-browser"; \
 	fi
 endif
 	@echo ""
