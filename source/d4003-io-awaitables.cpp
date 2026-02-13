@@ -223,11 +223,11 @@ concept IoRunnable =
      });
 
 // ============================================================
-// io_awaitable_support CRTP mixin
+// io_awaitable_promise_base CRTP mixin
 // ============================================================
 
 template<typename Derived>
-class io_awaitable_support
+class io_awaitable_promise_base
 {
     io_env const* env_ = nullptr;
     mutable std::coroutine_handle<> cont_{std::noop_coroutine()};
@@ -271,7 +271,7 @@ public:
         mr->deallocate(ptr, total, alignof(std::max_align_t));
     }
 
-    ~io_awaitable_support()
+    ~io_awaitable_promise_base()
     {
         if(cont_ != std::noop_coroutine())
             cont_.destroy();
@@ -387,7 +387,7 @@ template<typename T = void>
 struct [[nodiscard]] task
 {
     struct promise_type
-        : io_awaitable_support<promise_type>
+        : io_awaitable_promise_base<promise_type>
         , detail::task_return_base<T>
     {
         std::exception_ptr ep_;

@@ -350,7 +350,7 @@ flowchart LR
     IoAwaitable["IoAwaitable"] --> IoRunnable["IoRunnable"] --> task["io_task&lt;T&gt;"]
 ```
 
-To help readers understand how these requirements fit together, this paper provides the `io_awaitable_support` CRTP mixin (§9.1) as a non-normative reference implementation. It is not proposed for standardization - implementors may write their own machinery - but examining it clarifies how the protocol works in practice. The mixin also provides the `this_coro::environment` accessor, which allows coroutines to retrieve their bound context without suspending.
+To help readers understand how these requirements fit together, this paper provides the `io_awaitable_promise_base` CRTP mixin (§9.1) as a non-normative reference implementation. It is not proposed for standardization - implementors may write their own machinery - but examining it clarifies how the protocol works in practice. The mixin also provides the `this_coro::environment` accessor, which allows coroutines to retrieve their bound context without suspending.
 
 ### 4.1 IoAwaitable
 
@@ -521,7 +521,7 @@ This decoupling enables library authors to write launch utilities that work with
 template<typename T>
 struct task
 {
-    struct promise_type : io_awaitable_support<promise_type>
+    struct promise_type : io_awaitable_promise_base<promise_type>
     {
         std::exception_ptr ep_;
         std::optional<T> result_;
@@ -558,7 +558,7 @@ For `task<void>`, the `result()` method is not required since there is no value 
   requires( typename T::promise_type& p ) { p.result(); } );
 ```
 
-> **Non-normative note.** The `io_awaitable_support` CRTP mixin (§9.1) provides the promise-internal machinery (context storage, continuation management, awaitable transformation) as a convenience. It is not proposed for standardization—implementors may write their own. The `handle()` and `release()` methods are task-specific and not part of the mixin.
+> **Non-normative note.** The `io_awaitable_promise_base` CRTP mixin (§9.1) provides the promise-internal machinery (context storage, continuation management, awaitable transformation) as a convenience. It is not proposed for standardization—implementors may write their own. The `handle()` and `release()` methods are task-specific and not part of the mixin.
 
 ### 4.3 executor_ref
 
@@ -979,17 +979,23 @@ Our approach:
 // Global accessors for the current frame allocator.
 // An implementation using thread_local might look like this:
 //
-//   std::pmr::memory_resource*
-//   get_current_frame_allocator() noexcept {
+//   namespace detail {
+//   inline std::pmr::memory_resource*&
+//   current_frame_allocator_ref() noexcept {
 //       static thread_local std::pmr::memory_resource* mr = nullptr;
 //       return mr;
+//   }
+//   } // namespace detail
+//
+//   std::pmr::memory_resource*
+//   get_current_frame_allocator() noexcept {
+//       return detail::current_frame_allocator_ref();
 //   }
 //
 //   void
 //   set_current_frame_allocator(
 //       std::pmr::memory_resource* mr) noexcept {
-//       static thread_local std::pmr::memory_resource* p = nullptr;
-//       p = mr;
+//       detail::current_frame_allocator_ref() = mr;
 //   }
 //
 // Implementations without thread_local may use whatever
@@ -1008,12 +1014,24 @@ set_current_frame_allocator(
 // initializer moves you into a costlier implementation bucket
 // on some platforms - avoid it.
 //
-// Null handling is the caller's responsibility. The accessor
-// must not substitute a default, because there are multiple
-// valid choices (new_delete_resource, the default pmr resource,
-// or something else entirely). If the allocator is not set,
-// the accessor reports "not set" and the caller interprets
-// that however it wants - as shown in operator new below.
+// Only IoAwaitable machinery and launch functions should call
+// these accessors. The thread-local value is valid only during
+// the execution window (Section 6.4): between a coroutine's
+// resumption and its next suspension point.
+//
+// A null return from get means "not specified" - no allocator
+// has been established for this chain. The caller is free to
+// use whatever allocation strategy makes best sense for its
+// situation. Null handling is the caller's responsibility;
+// the accessor must not substitute a default, because there
+// are multiple valid choices (new_delete_resource, the default
+// pmr resource, or something else entirely).
+//
+// Use of the frame allocator is optional. An awaitable that
+// ignores this value and allocates its frame by other means
+// is never wrong. However, a conforming awaitable must still
+// propagate the allocator faithfully (via set before invoking
+// child coroutines) so that downstream frames can use it.
 
 // In promise_type
 static std::size_t aligned_offset(std::size_t n) noexcept {
@@ -1056,6 +1074,8 @@ run_async( ex )( co );      // too late, frame already exists
 The fallback to `pmr::new_delete_resource()` gives the same behavior the user would get if the coroutine had no custom `operator new` at all - plain `new`/`delete`. We choose `new_delete_resource` rather than `pmr::get_default_resource()` because the latter is a mutable global whose value can change at any time, which could produce surprising allocations depending on what some other part of the program stored there. One might ask why the thread-local is not simply initialized to `pmr::new_delete_resource()` so the null check is unnecessary. The reason is portability: thread-local storage works best when the variable is a plain pointer zero-initialized by the loader. A dynamic initializer - even a trivial function call - moves the variable into a costlier TLS implementation bucket on some platforms. Keeping the default as null and handling it at the call site avoids that cost entirely.
 
 This design keeps allocator policy where it belongs - at the application layer - while coroutine algorithms remain blissfully unaware of memory strategy. The propagation happens during what we call "the window": a narrow interval of execution where the correct state is guaranteed in thread-locals.
+
+**Use of the frame allocator is optional.** An awaitable whose `promise_type::operator new` ignores the thread-local value and allocates its frame by other means is never wrong - the program remains correct. The allocator controls *where* a frame's memory comes from, not what the coroutine does. However, a conforming awaitable must still propagate the allocator faithfully: before invoking any child coroutine, the currently running coroutine restores the thread-local from its `io_env` so that the child's `operator new` sees the intended value. An awaitable that consumes the allocator for its own frame without restoring it would silently break allocation policy for every downstream coroutine in the chain. Correct propagation is a protocol obligation even when the awaitable itself does not use the allocator.
 
 An important distinction: other coroutine libraries that use thread-local storage for allocation set it once globally, so all coroutine chains share the same allocator for the lifetime of the program. Our approach is per-chain. Each launch site can choose a different allocator, and that allocator is scoped to the specific chain it launches. When a chain suspends for I/O, another chain with a different allocator can run without interference. When the first chain resumes, the window mechanism restores its allocator before any child coroutines are created. This is how allocators should work in practice - stateful and scoped to the work they serve, not a global policy that every coroutine chain must share.
 
@@ -1367,13 +1387,13 @@ A simpler, networking-focused design achieves the same I/O goals without this ov
 
 This section is non-normative. It provides implementation guidance for library authors who want to adopt the IoAwaitable protocol.
 
-### 9.1 The `io_awaitable_support` Mixin
+### 9.1 The `io_awaitable_promise_base` Mixin
 
 This utility simplifies promise type implementation by providing the internal machinery that every _IoRunnable_-conforming promise type needs:
 
 ```cpp
 template<typename Derived>
-class io_awaitable_support
+class io_awaitable_promise_base
 {
     io_env const* env_ = nullptr;
     mutable std::coroutine_handle<> cont_{
@@ -1422,7 +1442,7 @@ public:
             ptr, total, alignof(std::max_align_t));
     }
 
-    ~io_awaitable_support()
+    ~io_awaitable_promise_base()
     {
         // Abnormal teardown: destroy orphaned continuation
         if (cont_ != std::noop_coroutine())
@@ -1512,9 +1532,9 @@ The `await_transform` method uses `if constexpr` to dispatch tag types to immedi
 > **Non-normative note.** Derived promise types that need additional `await_transform` overloads should override `transform_awaitable` rather than `await_transform` itself. Defining `await_transform` in the derived class shadows the base class version, silently breaking `this_coro::environment` support. If a separate `await_transform` overload is truly necessary, import the base class overloads with a using-declaration:
 >
 > ```cpp
-> struct promise_type : io_awaitable_support<promise_type>
+> struct promise_type : io_awaitable_promise_base<promise_type>
 > {
->     using io_awaitable_support<promise_type>::await_transform;
+>     using io_awaitable_promise_base<promise_type>::await_transform;
 >     auto await_transform(my_custom_type&& t); // additional overload
 > };
 > ```
