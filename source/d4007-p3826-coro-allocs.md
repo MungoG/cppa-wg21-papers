@@ -198,6 +198,26 @@ one operation when the connection closes. These policies
 require the stateful allocators listed above - and that
 state must be accessible when `operator new` executes.
 
+The performance difference is measurable.
+[P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A
+Coroutines-First Execution Model") benchmarks a 4-deep
+coroutine call chain (2 million iterations) with and
+without a recycling frame allocator:
+
+| Allocator           | Time (ms) | Speedup |
+|---------------------|----------:|--------:|
+| `std::allocator`    |   4251.46 |       - |
+| Recycling allocator |   2398.20 |   77.3% |
+
+The recycling allocator exploits the uniform, short-lived
+allocation pattern that coroutine frames produce -
+precisely the pattern that general-purpose allocators
+cannot optimise for. With proper allocator support,
+coroutine-based networking matches or exceeds
+callback-based frameworks in throughput (see Section 6.4).
+Stateful allocators are not a luxury; for coroutine-based
+I/O they are a prerequisite for competitive performance.
+
 ### 3.2 HALO Cannot Help
 
 HALO (Heap Allocation eLision Optimisation) allows compilers to
@@ -573,6 +593,17 @@ behaviour of allocators." Wording remains outstanding.
 US 253 (LWG4333) requests arbitrary allocator support for the
 coroutine frame; wording is also still required.
 
+[D3980R0](https://isocpp.org/files/papers/D3980R0.html)
+(Dietmar Kuhl, "Task's Allocator Use," 2026-01-25)
+addresses NB comments US 253, US 254, US 255, and US 261.
+Notably, D3980R0 changes the allocator propagation model
+relative to [P3552R3](https://wg21.link/p3552r3), which was
+adopted at Sofia in June 2025. The fact that the task
+author's own design for allocator handling has changed
+between the adopted text and the NB comment resolution
+underscores that the allocator story for coroutine task
+types remains under active development.
+
 LWG 4356 (`connect()` should use
 `get_allocator(get_env(rcvr))`) confirms the gap has been filed
 as a specification defect - not merely an external complaint, but
@@ -590,8 +621,8 @@ and reflects the feature's scope and ambition.
 | Pre-Hagenberg (Nov 2024-Feb 25) |    1     |    -    |    2    |           2           |   3   |  **8** |
 | Pre-Sofia (Mar-Jun 2025)        |    -     |    2    |    -    |           7           |   1   | **10** |
 | Pre-Kona (Jul-Nov 2025)         |    -     |    3    |    3    |           1           |   7   | **14** |
-| Pre-London (Dec 2025-Feb 2026)  |    -     |    1    |    1    |           -           |   -   |  **2** |
-| **Total**                       |  **2**   | **11**  |  **6**  |        **11**         |**11** | **41** |
+| Pre-London (Dec 2025-Feb 2026)  |    -     |    2    |    1    |           -           |   -   |  **3** |
+| **Total**                       |  **2**   | **12**  |  **6**  |        **11**         |**11** | **42** |
 
 See Appendix D for the complete listing with dates, authors, and
 current status.
@@ -616,7 +647,7 @@ Key observations:
   `task_scheduler` bulk execution, January 2026) - 11 rework
   papers over 22 months.
 
-In total: **30 papers, 11 LWG defects, and 2 NB comments - 43
+In total: **31 papers, 11 LWG defects, and 2 NB comments - 44
 items modifying a single feature after its approval.**
 
 ### 5.3 The C++23 Precedent
@@ -742,6 +773,42 @@ usability layer - it exists so that users can write
 cannot access the allocator, the I/O use case is effectively
 unserved. See Appendix C.1-C.3 for the complete committee record on
 this question.
+
+Coroutine-based networking is not merely a theoretical
+possibility - it is already competitive with established
+callback-based frameworks.
+[P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A
+Coroutines-First Execution Model") reports throughput
+benchmarks comparing a coroutine-based networking library
+(with frame recycling allocators) against Asio's callback
+model:
+
+| Threads | Coroutine (Kops/s) | Asio (Kops/s) | Ratio |
+|--------:|-------------------:|---------------:|------:|
+|       1 |             229.68 |         227.80 | 1.01x |
+|       2 |             348.89 |         336.79 | 1.04x |
+|       4 |             493.08 |         479.70 | 1.03x |
+|       8 |             588.18 |         497.07 | 1.18x |
+|      16 |             625.25 |         460.21 | 1.36x |
+
+At low thread counts the two approaches match; at higher
+concurrency the coroutine-based approach pulls ahead - 18%
+higher throughput at 8 threads and 36% at 16. Asio's
+callback model degrades from 8 to 16 threads (497 to 460
+Kops/s) while the coroutine-based framework continues to
+scale (588 to 625 Kops/s). The coroutine approach exhibits
+better contention behaviour under load.
+
+The same paper reports a 77% throughput improvement when
+using a recycling frame allocator instead of
+`std::allocator` on a 4-deep coroutine call chain (2
+million iterations). Without allocator support, those
+gains disappear.
+
+These results demonstrate that coroutine-based networking
+with proper allocator support is production-viable today.
+The allocator sequencing gap is what stands between
+`std::execution` and this level of performance.
 
 ---
 
@@ -982,6 +1049,118 @@ the same allocator sequencing gap, but coroutines make it pervasive:
 any receiver exists. Since `task<T>` is the primary usability
 layer for writing sender/receiver code, the gap affects the
 most common authoring path.
+
+### A.5 The Full Ceremony for Allocator-Aware Coroutines
+
+The current sender/receiver model requires five layers of
+machinery to propagate a custom allocator through a
+coroutine call chain. The following example uses the P3552
+mechanism with `write_env` to inject the allocator at the
+launch site:
+
+```cpp
+namespace ex = std::execution;
+
+// 1. Define a custom environment with the allocator
+struct my_env
+{
+    using allocator_type = recycling_allocator<>;
+    allocator_type alloc;
+
+    friend auto tag_invoke(
+        ex::get_allocator_t, my_env const& e) noexcept
+    {
+        return e.alloc;
+    }
+};
+
+// 2. Alias the task type with the custom allocator
+using my_task = ex::basic_task<
+    ex::task_traits<my_env::allocator_type>>;
+
+// 3. Every coroutine accepts and forwards the allocator
+my_task level_two(
+    int x,
+    std::allocator_arg_t = {},
+    auto alloc = std::allocator<>{})
+{
+    co_return;
+}
+
+my_task level_one(
+    int v,
+    std::allocator_arg_t = {},
+    auto alloc = std::allocator<>{})
+{
+    // 4. Query the allocator from the environment
+    auto a =
+        co_await ex::read_env(ex::get_allocator);
+    // 5. Forward it to every child call
+    co_await level_two(42, std::allocator_arg, a);
+    co_return;
+}
+
+// At the launch site: inject the allocator via write_env
+void launch(ex::io_context& ctx)
+{
+    my_env env{recycling_allocator<>{}};
+    auto sndr =
+        ex::write_env(level_one(0), env)
+      | ex::continues_on(ctx.get_scheduler());
+    ex::spawn(std::move(sndr), ctx.get_token());
+}
+```
+
+The five requirements are:
+
+1. A custom environment struct with the allocator type
+   and a `get_allocator` query
+2. A task type alias parameterised on the allocator type
+3. `std::allocator_arg_t` + allocator parameter on every
+   coroutine in the chain
+4. `read_env(get_allocator)` to query the current
+   allocator at each call site
+5. `write_env` at the launch site to inject the allocator
+   into the sender's environment
+
+Forgetting any one of steps 3-5 silently falls back to
+the default allocator. The compiler provides no diagnostic.
+
+By contrast, [P4003R0](https://wg21.link/p4003r0)
+demonstrates a model where the allocator propagates
+automatically through the coroutine call chain. The
+allocator is set once at the launch site; every child
+coroutine's `operator new` reads it from thread-local
+storage without any parameter forwarding:
+
+```cpp
+// P4003 model: allocator propagates automatically
+task<int> level_two(int x)
+{
+    co_return x;   // inherits caller's allocator
+}
+
+task<int> level_one(int v)
+{
+    auto r = co_await level_two(42);  // no forwarding
+    co_return v + r;
+}
+
+void launch(auto& ex)
+{
+    recycling_allocator<> alloc;
+    // allocator supplied once; propagates to all children
+    run_async(ex, stop_token{}, alloc,
+        [](int) {},
+        [](std::exception_ptr) {})(level_one(0));
+}
+```
+
+The function signatures reflect algorithmic intent. The
+allocator is supplied once at the launch site and
+propagates to every child in the chain without user
+intervention. Forgetting nothing is possible because
+there is nothing to forget.
 
 ---
 
@@ -1391,6 +1570,7 @@ are excluded.
 | P3481R5 | `std::execution::bulk()` issues                     | Lucian Radu Teodorescu, Lewis Baker, Ruslan Arutyunyan | 2024-10-17 | Plenary-approved - closed. Five revisions. SG1 Wroclaw (Nov 2024) achieved unanimous consent on splitting bulk into `bulk`, `bulk_chunked`, and `bulk_unchunked`. Wording merged into draft.                                         | Addresses outstanding issues with the bulk algorithm; required five revisions and addition of two new API variants (`bulk_chunked`, `bulk_unchunked`).               |
 | P3796R1 | Coroutine Task Issues                               | Dietmar Kuhl                                           | 2025-07-24 | In Progress - open, 2026-telecon milestone. Under active LEWG telecon review (Aug-Sep 2025); some sections achieved consensus, others still pending. Multiple LWG issues opened (4329-4332, 4344). Linked to NB comments.            | Collects issues discovered after the task type was forwarded, including `unhandled_stopped` missing `noexcept`, wording issues, and performance concerns.            |
 | P3801R0 | Concerns about the design of `std::execution::task` | Jonathan Wakely                                        | 2025-07-24 | In Progress - open, 2026-telecon milestone. LEWG telecon review (2025-08-26) reached "no consensus" on the core stack overflow issue; "consensus against" treating dangling reference concern as C++26 blocker. Linked to NB comment. | Documents significant concerns including stack overflow risk due to lack of symmetric transfer support.                                                              |
+| D3980R0 | Task's Allocator Use                                | Dietmar Kuhl                                           | 2026-01-25 | In Progress - pre-London mailing. Addresses NB comments US 253, US 254, US 255, US 261.                                                                                                                                              | Changes allocator propagation model for coroutine task types relative to P3552R3.                                                                                    |
 
 ### LWG Issues
 
@@ -1415,7 +1595,7 @@ are excluded.
 | [US 255](https://github.com/cplusplus/nbballot/issues/959) (LWG4335)       | Use allocator from receiver's environment            | Needs wording |
 | [US 253](https://github.com/cplusplus/nbballot/issues/961) (LWG4333)       | Allow use of arbitrary allocators for coroutine frame | Needs wording |
 
-**Total: 30 papers, 11 LWG issues, and 2 NB comments - 43 items
+**Total: 31 papers, 11 LWG issues, and 2 NB comments - 44 items
 modifying a single feature after its approval.**
 
 ---
@@ -1461,6 +1641,8 @@ modifying a single feature after its approval.**
 - [P3927R0](https://wg21.link/p3927r0) Eric Niebler.
   "task_scheduler Support for Parallel Bulk Execution."
   2026-01-17.
+- [D3980R0](https://isocpp.org/files/papers/D3980R0.html)
+  Dietmar Kuhl. "Task's Allocator Use." 2026-01-25.
 - [P4003R0](https://wg21.link/p4003r0) Vinnie Falco.
   "IoAwaitables: A Coroutines-First Execution Model."
   2026-01-21.
