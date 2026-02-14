@@ -1339,7 +1339,7 @@ The _IoAwaitable_ protocol is designed for networking. We would not suggest usin
 
 ### Implementation and Next Steps
 
-A reference implementation of this protocol exists as a complete library: [Capy](https://github.com/cppalliance/capy). It is the foundation for [Corosio](https://github.com/cppalliance/corosio), which provides sockets, timers, signals, DNS resolution, and TLS on multiple platforms. An HTTP server, WebSocket support, and a URL parser are built on top. A self-contained demonstration of the protocol is available on [Compiler Explorer](https://godbolt.org/z/3YG6d3jx3).
+A reference implementation of this protocol exists as a complete library: [Capy](https://github.com/cppalliance/capy). It is the foundation for [Corosio](https://github.com/cppalliance/corosio), which provides sockets, timers, signals, DNS resolution, and TLS on multiple platforms. An HTTP server, WebSocket support, and a URL parser are built on top. A self-contained demonstration of the protocol is available on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT).
 
 These libraries arose from use-case-first development with a simple mandate: produce a networking library built only for coroutines. Every design decision emerged from solving real problems in production I/O code. Standards should follow implementations, not the reverse. The _IoAwaitable_ protocol is offered in that spirit: not as a theoretical construct, but as a distillation of patterns proven in practice.
 

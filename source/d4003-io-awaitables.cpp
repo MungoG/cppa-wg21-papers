@@ -210,12 +210,16 @@ template<typename T>
 concept IoRunnable =
     IoAwaitable<T> &&
     requires { typename T::promise_type; } &&
-    requires(T& t, T const& ct, typename T::promise_type const& cp)
+    requires(T& t, T const& ct,
+             typename T::promise_type const& cp,
+             typename T::promise_type& p)
     {
         { ct.handle() } noexcept
             -> std::same_as<std::coroutine_handle<typename T::promise_type>>;
         { cp.exception() } noexcept -> std::same_as<std::exception_ptr>;
         { t.release() } noexcept;
+        { p.set_continuation(std::coroutine_handle<>{}) } noexcept;
+        { p.set_environment(static_cast<io_env const*>(nullptr)) } noexcept;
     } &&
     (std::is_void_v<decltype(std::declval<T&>().await_resume())> ||
      requires(typename T::promise_type& p) {
@@ -413,9 +417,7 @@ struct [[nodiscard]] task
 
                 void await_resume() const noexcept
                 {
-                    auto* fa = p_->environment()->allocator;
-                    if(fa && fa != get_current_frame_allocator())
-                        set_current_frame_allocator(fa);
+                    set_current_frame_allocator(p_->environment()->allocator);
                 }
             };
             return awaiter{this};
@@ -454,9 +456,7 @@ struct [[nodiscard]] task
 
             decltype(auto) await_resume()
             {
-                auto* fa = p_->environment()->allocator;
-                if(fa && fa != get_current_frame_allocator())
-                    set_current_frame_allocator(fa);
+                set_current_frame_allocator(p_->environment()->allocator);
                 return a_.await_resume();
             }
 
@@ -591,8 +591,8 @@ auto run_sync(executor_ref ex, std::stop_token token, Task t)
     auto h = t.handle();
     auto& p = h.promise();
     io_env env{ex, token};
+    p.set_continuation(std::noop_coroutine());
     p.set_environment(&env);
-    // No continuation — cont_ defaults to noop_coroutine()
     t.release();
     h.resume();
 
