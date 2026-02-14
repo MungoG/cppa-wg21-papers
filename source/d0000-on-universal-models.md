@@ -48,29 +48,49 @@ The asymmetry of risk makes this question worth asking. If `std::execution` is t
 
 ## 2. The Historical Record
 
-### 2.1 OSI vs TCP/IP
+### 2.1 CORBA vs. REST
 
-The Open Systems Interconnection model is the canonical example of a universal framework that lost to a pragmatic alternative.
+CORBA (Common Object Request Broker Architecture) is the closest historical parallel to `std::execution`. It was designed by a standards consortium (the OMG) as a universal middleware framework for distributed computing. It bundled object lifecycle, naming, transactions, security, concurrency, and interface definition into a single specification. It had institutional backing, vendor support, and a decade of investment. It failed.
 
-OSI was designed by talented, well-intentioned engineers solving a real problem. Its seven-layer architecture was comprehensive, well-documented, and backed by international standards bodies, governments, and major corporations. By the mid-1980s, its adoption appeared inevitable. As the [IEEE Spectrum article](https://spectrum.ieee.org/osi-the-internet-that-wasnt) documents, "The Defense Department officially embraced the conclusions of a 1985 National Research Council recommendation to transition away from TCP/IP and toward OSI," and "the Department of Commerce issued a mandate in 1988 that the OSI standard be used in all computers purchased by U.S. government agencies."
+Michi Henning, who spent years inside the CORBA effort, wrote the post-mortem:
 
-And yet TCP/IP won. Einar Stefferud captured the outcome:
-
-> "OSI is a beautiful dream, and TCP/IP is living it!"
+> "Developers who gained experience with CORBA found that writing any nontrivial CORBA application was surprisingly difficult. Many of the APIs were complex, inconsistent, and downright arcane, forcing the developer to take care of a lot of detail."
 >
-> [IEEE Spectrum, "OSI: The Internet That Wasn't"](https://spectrum.ieee.org/osi-the-internet-that-wasnt) (Andrew Russell, 2013)
+> [Michi Henning, "The Rise and Fall of CORBA"](https://dl.acm.org/doi/10.1145/1142031.1142044), ACM Queue (2006)
 
-The same article identifies what went wrong:
+The CORBA Component Model (CCM) was supposed to fix the usability problem. It did not:
 
-> "Openness and modularity, the key principles for coordinating the project, ended up killing OSI."
+> "The specification was large and complex and much of it had never been implemented, not even as a proof of concept. Reading the document made it clear that CCM was technically immature; sections of it were essentially unimplementable."
+>
+> Henning (2006)
 
-Louis Pouzin, a veteran of the effort, observed in 1991 (quoted in the [same article](https://spectrum.ieee.org/osi-the-internet-that-wasnt)):
+David Chappell, writing in 1998 while CORBA was still considered viable, identified the deeper issue:
 
-> "Government and corporate policies never fail to recommend OSI as the solution. But, it is easier and quicker to implement homogeneous networks based on proprietary architectures, or else to interconnect heterogeneous systems with TCP-based products."
+> "Is it even possible for committees to successfully create new technology? History is not encouraging. Confusing the production of paper with the production of products is perhaps the classic error for a standardization body."
+>
+> [David Chappell, "The Trouble With CORBA"](https://davidchappell.com/writing/article_Trouble_CORBA.php) (1998)
 
-OSI did not fail because its designers were incompetent. It failed because the universal framework was too heavy to compete with pragmatic, deployed alternatives. The comprehensive design that looked like a strength on paper became a liability in practice.
+REST and HTTP won because they were narrow: resources, verbs, and status codes over a single protocol. CORBA did not fail before deployment. It failed *after* deployment, when the weight of the specification became apparent in practice. Chappell saw where it was heading:
 
-A natural objection is that OSI failed simply because TCP/IP had too much momentum — an installed base that was too large to displace. But OSI had enormous institutional momentum of its own. The U.S. government mandated it for procurement ([GOSIP](https://en.wikipedia.org/wiki/Government_Open_Systems_Interconnection_Profile), 1988). European governments imposed similar requirements. ISO, the ITU, and major corporations backed it ([IEEE Spectrum](https://spectrum.ieee.org/osi-the-internet-that-wasnt)). If momentum were the deciding factor, the mandates should have worked. They didn't. TCP/IP kept winning despite active institutional resistance, because it was simpler to implement, faster to deploy, and cheaper to maintain. The momentum TCP/IP accumulated was a consequence of its narrow, pragmatic design — not an independent variable that happened to favor it.
+> "The opportunity for a true standard, a TCP/IP for distributed objects, has been lost."
+>
+> Chappell (1998)
+
+The structural parallels to `std::execution` are difficult to ignore:
+
+| | CORBA | `std::execution` |
+|---|---|---|
+| Designed by | Standards consortium (OMG) | Standards committee (WG21) |
+| Scope | Universal distributed object middleware | Universal async execution model |
+| Bundled concerns | Object lifecycle, naming, transactions, security, concurrency, IDL | Scheduling, context propagation, error handling, cancellation, algorithm dispatch, hardware backends |
+| Companion specs in flight | CCM, security service, transaction service | P2079, P3164, P3373, P3388, P3425, P3481, P3552, P3557, P3564, P3826 |
+| Competing narrow alternatives | REST/HTTP, EJB, then microservices | Asio, folly, Seastar, TooManyCooks, Taskflow |
+| Primary use case deferred | Web integration (arrived too late) | Networking (deferred to C++29) |
+| Institutional backing | ISO, telecom vendors, government contracts | WG21, NVIDIA, national body votes |
+
+The pattern has older precedent. The OSI model had government procurement mandates ([GOSIP](https://en.wikipedia.org/wiki/Government_Open_Systems_Interconnection_Profile), 1988), ISO backing, and major corporate support. TCP/IP won anyway because it was simpler to deploy ([IEEE Spectrum, "OSI: The Internet That Wasn't"](https://spectrum.ieee.org/osi-the-internet-that-wasnt)). Institutional momentum could not overcome the weight of the abstraction.
+
+CORBA's failure was not inevitable. A narrower middleware - one that solved object communication without trying to standardize lifecycle, naming, transactions, and security in the same specification - might have succeeded. The lesson is not that distributed computing is impossible to standardize. It is that the scope of the standardization attempt determines its fate.
 
 ### 2.2 "Everything Is an Object"
 
@@ -104,21 +124,43 @@ Google bans `<ranges>` from most of its codebase. Daisy Hollman (then at Google)
 
 Compile-time overhead is substantial. Range-V3 headers compile in 3.44 seconds versus 0.44 seconds for STL `<algorithm>`, roughly an 8x slowdown ([NanoRange wiki: Compile times](https://github.com/tcbrindle/NanoRange/wiki/Compile-times)). Deeply nested range adapters exhibit a "cubic stack blowup" in template instantiation ([Hacker News discussion](https://news.ycombinator.com/item?id=40317350)). Daniel Lemire's analysis suggests that ["std::ranges may not deliver the performance that you expect"](https://lemire.me/blog/2025/10/05/stdranges-may-not-deliver-the-performance-that-you-expect/) (2025).
 
-Ranges brought real value to the language. But the pattern of a universal abstraction that proved too costly for the largest codebases is worth noting as precedent.
+Ranges brought real value to the language. The parallel to `std::execution` is imperfect - ranges shipped, they work, and many codebases use them productively. But the difference in *kind* of cost matters more than the difference in degree. With ranges, Google can ban the header; the cost is compile time and ergonomic complexity, real but recoverable. With `std::execution`, the cost is architectural: ABI lock-in on an execution model that has not proven itself for I/O, the domain that started the executor discussion a decade ago. WG21's insistence on ABI stability means that each feature must land right, because mistakes cannot be corrected without breaking the world. Every wide abstraction that lands imperfectly adds permanent technical debt to the standard - and the rate of that accumulation increases with the scope of what is frozen. Ranges show that even successful universal abstractions can prove too costly for major adopters. The question is whether C++ can afford to discover that *after* the ABI is frozen, rather than before.
+
+A narrower ranges - one with the discernment to recognize that reaching for the last few percent of unlikely use cases would add disproportionate complexity - would have avoided these costs entirely. The instinct to make an abstraction cover every case is what turns a useful tool into an expensive one. `std::execution` makes the same reach, at higher stakes.
+
+But the ranges experience also points toward a solution. The abstractions that succeed in C++ are narrow: iterators, RAII, allocators. A narrow async abstraction - one that captures the essential I/O operation and leaves everything else to the user - would follow the pattern that works.
 
 ### 3.3 IETF TAPS
 
-The IETF Transport Services (TAPS) initiative represents a top-down universality attempt for transport protocols. The working group was chartered in 2014. After a decade, the core documents remain Internet-Drafts. The [TAPS charter page](https://datatracker.ietf.org/wg/taps/about/) notes:
+The IETF Transport Services initiative ([RFC 9621](https://datatracker.ietf.org/doc/html/rfc9621), [RFC 9622](https://datatracker.ietf.org/doc/html/rfc9622), January 2025) proposes replacing the traditional socket API with a property-based model. Applications declare requirements - reliability, multistreaming, congestion control, multipath support, checksums, keep-alive, security protocols, certificate policies, preference levels - and the system selects the transport. [P3482](https://wg21.link/p3482) (Rodgers & Kühl) proposes basing C++ networking on this model. The result is an abstraction with an opinion about everything, in a domain where the abstractions that survive have opinions about almost nothing.
 
-> "TAPS has delivered all the deliverables it was chartered for... With a hope that TAPS will be deployed gradually."
+The POSIX socket interface - `socket`, `connect`, `read`, `write`, `close`, `shutdown` - has endured for four decades not despite its age but because of it. An interface that has survived the transition from 10 Mbps Ethernet to 400 Gbps, from single-threaded servers to million-connection event loops, from plaintext to ubiquitous TLS, and remained unchanged, is an interface whose abstraction is correct. As Ousterhout observes: "Implementations of the Unix I/O interface have evolved radically over the years, but the five basic kernel calls have not changed" ([*A Philosophy of Software Design*](https://web.stanford.edu/~ouster/cgi-bin/aposd.php)). What C++ needs is the async equivalent of what POSIX already provides - read bytes, write bytes, connect, close - not a new transport selection framework.
 
-After a decade of work, deployment remains aspirational.
+To make this concrete, we looked up the TAPS equivalent of a POSIX connect-and-send. In POSIX, the entire operation is three function calls:
 
-One proprietary implementation exists: Apple's Network.framework (2018). [P3482R1](https://wg21.link/p3482) acknowledges: "Unfortunately, at present, Apple's Network Framework is the only such implementation." One open-source implementation, NEAT (EU Horizon 2020 project), was active from 2015 to 2018 and [abandoned when EU funding ended](https://www.neat-project.org/).
+```c
+int fd = socket(AF_INET, SOCK_STREAM, 0);
+connect(fd, &addr, sizeof(addr));
+write(fd, buf, len);
+```
 
-[P3482](https://wg21.link/p3482) (Rodgers & Kühl) proposes basing C++ networking on TAPS. The pattern is familiar: abstract away protocol selection entirely, let the system choose. But web servers need TCP. DNS needs UDP. The use cases dictate the protocol.
+We expected the TAPS version to be somewhat larger. It was so much larger that a side-by-side comparison is physically impossible - the TAPS client example from [RFC 9622](https://datatracker.ietf.org/doc/html/rfc9622) Section 3.1.2 occupies its own page and is reproduced in full in Appendix A. The specification that surrounds it runs to over 150 pages across two Standards Track RFCs. Instead, the following table places the POSIX code next to a summary of what TAPS requires for the same operation:
 
-TAPS contains useful analysis of transport protocol capabilities. But as a foundation for C++ networking, it follows the same top-down universality pattern that OSI exemplified.
+| POSIX                                      | TAPS (RFC 9622) Summary                                          |
+|--------------------------------------------|------------------------------------------------------------------|
+| `socket(AF_INET, SOCK_STREAM, 0);`         | Create `RemoteEndpoint`, configure hostname and service           |
+| `connect(fd, &addr, sizeof(addr));`        | Create `TransportProperties`, set 18 Selection Properties (each with a 5-valued Preference Enumeration: Prohibit, Avoid, No Preference, Prefer, Require) |
+|                                            | Create `SecurityParameters`, configure 8 security parameter categories (certificates, ALPN, ciphersuites, session cache, PSK, callbacks) |
+|                                            | Create `Preconnection` from endpoints, properties, and security   |
+|                                            | Call `Initiate()`, which triggers DNS resolution, candidate gathering, and protocol racing |
+|                                            | Handle asynchronous `Ready` event                                 |
+| `write(fd, buf, len);`                     | Create `MessageContext`, configure 8 per-message properties (lifetime, priority, ordering, reliability, checksum coverage, capacity profile, fragmentation, segmentation) |
+|                                            | Call `Connection.Send(messageData, messageContext)`                |
+|                                            | Handle asynchronous `Sent`, `Expired`, or `SendError` events      |
+
+Three function calls versus four object types, 18 selection properties, 8 security parameter categories, 8 message properties, and a mandatory asynchronous event-driven interaction pattern. RFC 9622 itself states that implementations "SHOULD implement each Selection Property, Connection Property, and MessageContext Property specified in this document" and adds: "These features SHOULD be implemented even when, in a specific implementation, it will always result in no operation." The specification requires implementations to carry the weight of the full abstraction even when the application needs none of it.
+
+One proprietary implementation of TAPS exists: Apple's Network.framework (2018). [P3482R1](https://wg21.link/p3482) acknowledges: "Unfortunately, at present, Apple's Network Framework is the only such implementation." The one open-source attempt, NEAT, was [abandoned when EU funding ended](https://www.neat-project.org/). Standardizing C++ networking on an API with no portable implementation experience would repeat the top-down pattern this paper examines. The proven alternative is simpler: take the narrow waist that has worked for forty years and make it async.
 
 ### 3.4 The Networking TS Schism
 
@@ -138,20 +180,26 @@ Nobody objected to portable socket wrappers. The schism was entirely about which
 
 `std::execution` is the central case study. It proposes sender/receiver as the universal async model for C++. The authors are talented, the structured concurrency ideas have real value, and the work represents years of effort. The question is whether the evidence supports declaring it universal.
 
-#### 3.5.1 GPU-Oriented Design
+#### 3.5.1 Design Priorities
 
-The [P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) author list draws predominantly from GPU and large-scale compute companies. The reference implementation, `stdexec`, is hosted at [nvidia.github.io](https://nvidia.github.io/stdexec/). No author of a shipping, production-deployed networking library appears on the paper. This matters because the design machinery reflects the domains its authors work in:
+`std::execution` has been visibly proven to excel for two specific domains: heterogeneous computing (GPU dispatch, data-parallel execution, hardware backend selection) and latency-critical compute (compile-time work graph construction, zero-allocation pipelines, deterministic execution). These are worthy domains, and the design serves them well. The evidence is in the specification itself:
 
-- P2300R10 §1.1 frames the motivation around "GPUs in the world's fastest supercomputer."
+- [P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) §1.1 frames the motivation around "GPUs in the world's fastest supercomputer."
 - P2300R10 §1.2 prioritizes "the diversity of execution resources and execution agents, because not all execution agents are created equal."
 - The second end-user example (§1.3.2) is "Asynchronous inclusive scan," a classic GPU parallel primitive using `bulk` to spawn data-parallel execution agents. This is not an I/O pattern.
 - `bulk` (§4.20.9) spawns N execution agents for data-parallel work. No networking analog exists.
 - `continues_on` / transfer moves work between execution contexts, a CPU-to-GPU pattern. Networking does not transfer between hardware backends.
 - Completion domains dispatch algorithms based on execution resource, so GPU backends can substitute custom implementations. TCP reads have one implementation per platform, not multiple hardware backends.
 
-The entire sender algorithm customization lineage ([P2999R3](https://wg21.link/p2999r3), [P3303R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3303r1.html), [P3826](https://wg21.link/p3826)) is about domain-based algorithm dispatch. These papers contain zero mentions of networking, sockets, or I/O.
+The entire sender algorithm customization lineage ([P2999R3](https://wg21.link/p2999r3), [P3303R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3303r1.html), [P3826](https://wg21.link/p3826)) is about domain-based algorithm dispatch. These papers contain zero mentions of networking, sockets, or I/O. Robert Leahy of Hudson River Trading, a core contributor who authored [P3373](https://wg21.link/p3373) and [P3388](https://wg21.link/p3388), [presented at CppCon 2025](https://cppcon2025.sched.com/event/27bQ1/stdexecution-in-asio-codebases-adopting-senders-without-a-rewrite) on adopting sender/receiver in financial infrastructure - precisely the domain where compile-time work graph construction and zero-overhead pipelines matter most.
 
-Among the 10 companion papers in flight (see §3.5.5), the authors come from NVIDIA, Intel, Meta, or are working on `std::execution` machinery itself. When a framework claims universality across domains, the absence of I/O and networking domain experts from its design process is worth noting.
+But the properties that serve these domains are precisely what makes `std::execution` unsuitable as a universal model. The compile-time visibility that HFT values means everything is templates - separate compilation is impossible. The zero-allocation pipeline that embedded systems need means type erasure is structurally resisted. The very properties that serve GPU dispatch and latency-critical compute *underserve* the ordinary developer who needs fast compile times, stable ABIs, and type-erased interfaces behind shared libraries.
+
+The ordinary async C++ developer - the one writing a web service, a database client, a monitoring agent, a chat server - needs to open a socket, read data, handle errors, and compile in reasonable time. They need `pimpl`, shared libraries, and `any_completion_handler`. The framework does not serve them.
+
+The design reflects its origins in GPU and HFT infrastructure. Of the companion papers in flight (see §3.5.5), zero address networking. The specification examples are parallel primitives, not I/O operations. The algorithm customization machinery serves hardware backend dispatch, not socket reads. A framework optimized for these domains will naturally optimize for these domains, and the claim of universality requires evidence from outside them.
+
+The ordinary developer's needs are simpler. A design that serves them is correspondingly smaller. And smaller is achievable.
 
 #### 3.5.2 Networking Deferred
 
@@ -179,7 +227,7 @@ The fix was never implemented. C++26 `std::execution` provides no type-erased se
 
 **ABI stability.** WG21 has maintained ABI stability across C++14, C++17, and C++20 ([P1863R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1863r1.pdf)). Breaking ABI costs the ecosystem "engineer-millennia." Templates and header-only libraries create ABI fragility because "template implementations must appear in headers, forcing recompilation into every translation unit that uses them" ([Gentoo C++ ABI analysis](https://blogs.gentoo.org/mgorny/2012/08/20/the-impact-of-cxx-templates-on-library-abi/)). Type-erased interfaces provide stable ABI boundaries: implementation changes stay behind the erasure wall, no recompilation needed. A framework that structurally resists type erasure maximizes ABI risk. A design that embraces type erasure, like coroutine handles which are inherently type-erased, would give the committee what it wants: async capabilities with ABI stability. This is a design that solves the committee's own stated problem.
 
-**Error model mismatch.** Networking code vastly prefers `error_code` over exceptions. Boost.Asio's own documentation explains why EOF is an error_code: "An EOF error may be used to distinguish the end of a stream from a successful read of size 0" ([Boost.Asio Design](https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html)). Conditions like cancellation and EOF are alternate success states, not catastrophic failures. In [libunifex #244](https://github.com/facebookexperimental/libunifex/issues/244), Niebler confirms `any_sender_of` is hard-coded to `exception_ptr` while io_uring propagates `error_code`. The framework that claims universality produces a type-erased form that is itself not universal.
+**Error model mismatch.** Networking code vastly prefers `error_code` over exceptions. Boost.Asio's own documentation explains why EOF is an error_code: "An EOF error may be used to distinguish the end of a stream from a successful read of size 0" ([Boost.Asio Design](https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html)). Conditions like cancellation and EOF are alternate success states, not catastrophic failures. In [libunifex #244](https://github.com/facebookexperimental/libunifex/issues/244), Niebler confirms `any_sender_of` is hard-coded to `exception_ptr` while io_uring propagates `error_code`. The framework that claims universality produces a type-erased form that is itself not universal. The deeper problem is that the three-channel completion model (`set_value`, `set_error`, `set_stopped`) forces every I/O library to classify its error codes into channels, and no convention exists for which channel is correct. When two libraries make different choices, generic algorithms like `when_all` produce silently different behavior depending on which convention a given sender follows. [D4000](https://wg21.link/p4000) ("Where Does the Error Code Go?") examines this classification problem in detail.
 
 **Compile times.** [Asio issue #1100](https://github.com/chriskohlhoff/asio/issues/1100) is a feature request for type-erased handlers. The author states: "Some of us still care about compile times and being able to apply the Pimpl idiom. This is not possible when our libraries are forced to be header-only because of Asio." Kohlhoff responded by implementing `any_completion_handler`. A framework that structurally resists type erasure forces the template-heavy model on every user.
 
@@ -191,35 +239,17 @@ The fix was never implemented. C++26 `std::execution` provides no type-erased se
 
 When the lead author of a framework describes part of its design as "irreparably broken," that is evidence worth weighing.
 
+The companion paper "The Velocity of Change in `std::execution`" surveys the published record systematically: since `std::execution` was approved for C++26 at Tokyo in March 2024, the committee has processed 50 items - 34 papers, 11 LWG defects, and 5 national body comments - modifying a single feature in 22 months. The rate of change has accelerated from 0.88 items/month to 2.80 items/month over the first four complete meeting periods, the subjects are not converging, and the severity of discovered defects has not decreased - two Priority 1 safety defects were filed 16 months after approval. A feature approaching stability would show the opposite trajectory on all three measures.
+
 #### 3.5.5 Papers Still in Flight
 
-At least 10 companion papers are actively fixing, extending, and patching `std::execution` in the 2025-2026 mailings. Each reveals design immaturity, GPU/parallel focus, or both:
+"The Velocity of Change in `std::execution`" catalogues all 50 items in detail. The summary: of the 34 post-approval papers, 2 removed features entirely (`ensure_started`, `start_detached`, `split`), 13 reworked fundamental design aspects (sender algorithm customization was rewritten three times), 11 added missing functionality (including `system_context`, `async_scope`, and `task` itself), and the remaining papers fix wording or address post-adoption issues. The 11 LWG defects include two at Priority 1 - a dangling-reference vulnerability in `transform_sender` and an unconstrained alias in `connect_result_t`. Five national body comments target `task`'s allocator model, requiring architectural changes to the coroutine type adopted only six months earlier. Switzerland's CD ballot comment identifies signal-safety as "a serious defect."
 
-- [P2079](https://wg21.link/p2079) "System execution context": A global thread pool for parallel forward progress. Explicitly GPU/parallel: "System scheduler works best with CPU-intensive workloads." I/O is deferred as future work.
-
-- [P3164](https://wg21.link/p3164) "Improving diagnostics for sender expressions" (Niebler): Fixes a design flaw where type errors in sender expressions are diagnosed too late.
-
-- [P3373](https://wg21.link/p3373) "Of Operation States and Their Lifetimes" (Leahy): Reveals that basic lifetime semantics were not properly designed. The paper observes: "the analogue thereof for asynchronous code under the framework of std::execution moves in only one direction (i.e. such storage is only ever 'allocated')."
-
-- [P3388](https://wg21.link/p3388) "When Do You Know connect Doesn't Throw?" (Leahy): The framework cannot answer a basic question: will `connect` throw? LEWG voted unanimously (SF:8 F:7 N:0 A:0 SA:0) that this is a real deficiency.
-
-- [P3425](https://wg21.link/p3425) "Reducing operation-state sizes" (Baker): Operation states are bloated. Filed as a national body comment against C++26. The Hagenberg review noted no deployment experience. Real-world frameworks like HPX and pika already solved this problem. `std::execution` regressed relative to existing practice.
-
-- [P3481](https://wg21.link/p3481) "std::execution::bulk() issues": Explicitly GPU-focused: "For GPUs is important to have a version of `bulk` that ensures one execution agent per iteration." Fundamental API gaps remain: "the following are unclear: Can `bulk` invoke the given functor concurrently? Can `bulk` create decayed copies?"
-
-- [P3552](https://wg21.link/p3552) "Add a Coroutine Task Type" (Kühl, Nadolski): Voted into C++26 at Sofia (77-11-29), but with documented open design issues. [P3801R0](https://wg21.link/p3801) raises concerns about stack-overflow risk in iterative `co_await` patterns, surprising parameter lifetimes, and dangling-reference hazards. [P3796R1](https://wg21.link/p3796) collects additional unresolved issues including stop-token and allocator semantics.
-
-- [P3557](https://wg21.link/p3557) "High-Quality Sender Diagnostics" (Niebler): Sender misuse produces "megabytes of incomprehensible diagnostics." The paper "exposed several bugs in the Working Draft for C++26."
-
-- [P3564](https://wg21.link/p3564) "Make concurrent forward progress usable in bulk" (Hoemmen, NVIDIA): Explicitly GPU: "CUDA distinguishes ordinary bulk execution ('device kernel') launch... from so-called 'cooperative' bulk execution launch." Forward progress guarantees are fundamentally broken.
-
-- [P3826](https://wg21.link/p3826) "Fix Sender Algorithm Customization" (Niebler): Predecessor papers [P2999R3](https://wg21.link/p2999r3) and [P3303R1](https://wg21.link/p3303r1) address domain-based algorithm dispatch for GPU backends.
-
-Of these 10 papers, zero are about networking. At least four are explicitly GPU/parallel focused (P2079, P3481, P3564, P3826). The rest fix fundamental design deficiencies: lifetimes, exception safety, diagnostics, memory bloat, and a task type whose own design is still contested. A framework with this many open design questions is not ready to be declared universal.
+Of the papers that address design rather than wording, zero are about networking. The subjects span GPU dispatch, operation-state lifetimes, scheduler affinity, forward progress guarantees, allocator propagation, and diagnostic quality - the breadth of a framework still finding its shape, not one converging toward stability.
 
 #### 3.5.6 The Design Space Remains Open
 
-[D4003](https://wg21.link/p4003) ("IoAwaitables: A Coroutines-Only Execution Model") demonstrates an alternative execution model purpose-built for I/O that diverges significantly from `std::execution`. Its existence proves the design space has not converged.
+[D4003](https://wg21.link/p4003) ("IoAwaitables: A Coroutines-Only Framework") demonstrates an alternative execution model purpose-built for I/O that diverges significantly from `std::execution`. Its existence proves the design space has not converged.
 
 If WG21 commits to one execution model as universal, it may close off the design space for alternatives like IoAwaitables, [TooManyCooks](https://github.com/tzcnt/TooManyCooks) (a C++20 coroutine runtime optimized for raw performance), and Asio's completion token model. The history of C++ suggests that enabling multiple approaches, and letting the ecosystem converge naturally, has served the language better than mandating convergence from above.
 
@@ -271,6 +301,8 @@ The existence of these models is not a failure to be corrected. It is evidence t
 
 If the cost of mandating the wrong model is borne by every C++ programmer for decades, this question deserves careful, unhurried consideration.
 
+But the diversity of these models is not just a warning - it is an asset. Each has solved real problems for real users. The question is not which one to anoint, but what narrow contract would let them interoperate. That contract is smaller than any of these frameworks, and it may already exist.
+
 ---
 
 ## 5. What Works and What Doesn't
@@ -294,6 +326,8 @@ The models that fail look different. They are wide, comprehensive, and designed 
 The pattern is consistent. Narrow contracts enable broad ecosystems. Wide abstractions constrain them. When universality succeeds, it is minimal. When it fails, it is comprehensive.
 
 If a universal model exists for async in C++, it will follow the practice-first pattern: broad voluntary adoption across disparate domains, without mandating it. If you have to mandate it, it is not universal. `std::execution` has not yet passed this test. If it does not, the alternative is not chaos. It is specialization with interoperation through narrow contracts, the approach that has worked everywhere else.
+
+The ingredients for async C++'s narrow waist are not hypothetical. Coroutines provide the suspension mechanism. Buffer sequences provide the I/O vocabulary. `error_code` provides the error model. `stop_token` provides cancellation. The pieces exist. What remains is assembling them into the contract that lets the ecosystem build.
 
 ---
 
@@ -335,21 +369,50 @@ David Sankel (Adobe) captured the risk in [P3023R1](https://open-std.org/jtc1/sc
 
 Adding `std::execution` to the standard carries a cost. That cost must be weighed against the benefit.
 
-### 6.4 The Cost of Not Standardizing Is Negligible
+### 6.4 The Costs Are Socialized, the Benefits Are Not
 
 The strongest argument for standardization is that it solves a coordination problem: if everyone needs the same thing and nobody can agree on which library to use, the standard breaks the deadlock by picking one.
 
-But no such coordination problem exists for `std::execution`.
+But no such coordination problem exists for `std::execution`. And the domains it serves do not need what standardization provides.
 
-**The library is already available.** `stdexec`, the reference implementation of `std::execution`, is available today as a standalone library ([GitHub](https://github.com/NVIDIA/stdexec), [nvidia.github.io/stdexec](https://nvidia.github.io/stdexec/)). It can be installed with a single command via [vcpkg](https://vcpkg.link/ports/stdexec): `vcpkg install stdexec`. Anyone who wants sender/receiver can use it right now. Standardization adds nothing to its availability.
+**GPU developers do not need the standard.** They use NVIDIA's compiler with CUDA extensions and a GPU-specific fork (`nvexec`) that standard C++ cannot express (see §6.5). They need `__device__`, `__global__`, `<<<>>>`, and `cudaStream_t`. The standard cannot give them any of these. They will use `nvexec` regardless of what WG21 decides.
 
-**Package managers have eliminated the distribution problem.** vcpkg offers over 2,600 C++ libraries ([vcpkg.io](https://vcpkg.io/en/)). Conan hosts nearly 1,900 recipes with over 9,600 references ([conan.io/center](https://conan.io/center)). The era when the standard library was the only reliable way to distribute a C++ library is over. Modern C++ projects routinely depend on dozens of third-party libraries obtained through package managers. `std::execution` on vcpkg gives developers the same access as `std::execution` in the standard, without burdening implementers.
+**HFT and financial infrastructure do not need the standard.** They use user-mode networking stacks on specified hardware. They routinely fork entire libraries for nanosecond-level optimization. They do not want portability - they want the opposite: deterministic, hardware-specific, fully controllable execution. Standardization's benefits - long-term maintenance, cross-platform guarantees, canonical implementations - are properties these domains actively avoid.
 
-**Boost proved the model.** Boost has achieved over 10 million downloads and is described by Herb Sutter and Andrei Alexandrescu as "one of the most highly regarded and expertly designed C++ library projects in the world" ([boost.org](https://www.boost.org/users/)). Many Boost libraries thrive for years or decades without being standardized. Some are eventually adopted into the standard after proving themselves through widespread deployment. That is the TCP/IP pattern: prove it first, standardize it later.
+**The ordinary developer gets no benefit either.** The ordinary async C++ developer - the majority - would benefit from portability and long-term maintenance. But they get a framework that does not serve their use case: networking, I/O, fast compile times, separate compilation, type erasure. They bear the cost of standardization without receiving the benefit.
 
-**Google proved it too.** As noted in section 6.2, Google published [Abseil](https://github.com/abseil/abseil-cpp) (17k GitHub stars) as a standalone open-source library, making their internal C++ building blocks available to everyone. As Abseil's documentation states, these are "the fundamental building blocks that underpin most of what Google runs," and they are "production-tested and fully maintained" ([abseil.io/about](https://abseil.io/about/)). Google did not push Abseil through the C++ standard. They did not burden standard library implementers. They did not consume committee time. They simply published it, and the community adopted it voluntarily. Abseil is now available to every C++ programmer, without costing the standard a single page.
+**The library is already available.** `stdexec` is on [vcpkg](https://vcpkg.link/ports/stdexec): `vcpkg install stdexec`. Anyone who wants sender/receiver can use it right now. Boost has thrived for decades without standardization ([boost.org](https://www.boost.org/users/)). Google published [Abseil](https://github.com/abseil/abseil-cpp) (17k GitHub stars) as a standalone library without consuming a single page of the standard ([abseil.io/about](https://abseil.io/about/)). Package managers have eliminated the distribution problem - vcpkg offers over 2,600 libraries ([vcpkg.io](https://vcpkg.io/en/)), Conan hosts nearly 1,900 recipes ([conan.io/center](https://conan.io/center)). Nobody is blocked. NVIDIA ships CUDA. Meta ships folly. Intel ships oneTBB. ScyllaDB ships Seastar. The ecosystem is not waiting.
 
-**Nobody is blocked.** NVIDIA ships CUDA. Meta ships folly. Google ships Abseil. Intel ships oneTBB. ScyllaDB ships Seastar. The ecosystem is not waiting for the standard to provide an execution model. Every major company that needs heterogeneous or parallel computing has already built or adopted one. Delaying `std::execution` from the standard does not prevent anyone from using it. It only prevents the standard from locking in a design before the evidence justifies it.
+**The framework's complexity is not abstract.** Consider a tree search from the stdexec examples repository ([backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp)):
+
+```cpp
+auto search_tree(auto                    test,
+                 tree::NodePtr<int>      tree,
+                 stdexec::scheduler auto sch,
+                 any_node_sender&&       fail) -> any_node_sender {
+    if (tree == nullptr) {
+        return std::move(fail);
+    }
+    if (test(tree)) {
+        return stdexec::just(tree);
+    }
+    return stdexec::on(sch, stdexec::just()) |
+           stdexec::let_value([=, fail = std::move(fail)]() mutable {
+               return search_tree(
+                   test,
+                   tree->left(),
+                   sch,
+                   stdexec::on(sch, stdexec::just()) |
+                       stdexec::let_value(
+                           [=, fail = std::move(fail)]() mutable {
+                               return search_tree(
+                                   test, tree->right(), sch, std::move(fail));
+                           }));
+           });
+}
+```
+
+The failure continuation is itself a sender pipeline (`on(sch, just()) | let_value(...)`) passed as a parameter to a recursive function. Each recursive call nests another `let_value` lambda that [captures and moves](https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda) the failure sender. This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) expressed as sender composition - a technique [used more frequently by compilers than by programmers](https://en.wikipedia.org/wiki/Continuation-passing_style) as an intermediate representation, not as a style intended for human authorship. The reader must trace the `fail` parameter through three levels of `std::move` to understand which path executes - the same [pyramid of nesting](https://callbackhell.com/) that drove JavaScript's evolution from callbacks to promises to `async`/`await`. For further illustration, the same repository demonstrates [a fold operation requiring type-erased recursive sender returns](https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp) and [a loop using mutable lambda captures with reference-captured locals inside nested senders](https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp). This is what the committee is asking ordinary developers to adopt as their universal async model.
 
 **The asymmetry is stark.** If `std::execution` is removed from C++26 and offered as a standalone library:
 
@@ -365,7 +428,9 @@ If `std::execution` stays in C++26 and the design proves wrong:
 - The ABI is locked. Mistakes cannot be corrected without breaking the world.
 - The standard's credibility is diminished.
 
-The cost of including `std::execution` in the standard is real and permanent. The cost of not including it is negligible by comparison.
+The cost of including `std::execution` in the standard is enormous and permanent. The benefit accrues to few, and those few are already well-served without it.
+
+But the alternative is not nothing. The alternative is a standard that gives ordinary developers what they actually need: async I/O that compiles fast, erases types cleanly, and lets them build the applications that every other language already supports.
 
 ### 6.5 NVIDIA Already Ships Sender/Receiver for GPU Without the Standard
 
@@ -412,17 +477,234 @@ The asymmetry of risk favors caution. Deferring `std::execution` costs nothing: 
 
 ### Recommendations
 
-This paper respectfully asks the committee to consider the following:
+This paper makes two asks. They are different in scope and political feasibility, and the paper deliberately separates them so the committee can act on either independently.
 
-1. **Defer `std::execution` from C++26.** Offer it as a standalone library while the 10+ companion papers resolve open design questions. Standardize when deployment experience - across domains, not only GPU and parallel computing - justifies the commitment.
+**The primary recommendation: do not gate networking on `std::execution`.** Networking should proceed on its own terms, with I/O-optimized concepts that serve the ordinary developer, without waiting for `std::execution` to solve problems it was not designed for. This is the paper's strongest ask and the one most directly supported by the evidence. The SG1 poll (§3.1), the GPU-oriented design artifacts (§3.5.1), the networking deferral (§3.5.2), and the deployment reality (§6.4, §6.5) all point to the same conclusion: `std::execution` should not be a prerequisite for networking. If the committee does nothing else, it should ensure that networking is not held hostage to an execution model that has not proven itself for I/O.
 
-2. **Prioritize networking.** Every other major language ships socket-level I/O in its standard library. C++ still cannot connect to the internet. Networking is a more broadly needed capability than heterogeneous algorithm dispatch, and it has been waiting longer.
+**The secondary recommendation: defer `std::execution` from C++26.** The evidence supports this too - the 10+ companion papers in flight, the contested task type, the absence of type-erased senders, the structural resistance to the needs of ordinary async developers. If the committee is willing to take this larger step, the paper argues it is justified. But it is a bigger ask with lower political probability, and the primary recommendation does not depend on it.
 
-3. **Let execution models compete.** The ecosystem already has multiple production-proven models (Asio, folly, Seastar, TooManyCooks, Taskflow, and others). Rather than picking a winner, let voluntary adoption identify which abstractions deserve standardization - the same process that produced TCP/IP, IEEE 754, and the STL.
+Beyond these two asks, this paper respectfully suggests:
 
-4. **Standardize narrow interop contracts.** Define a minimal spanning layer through which different execution models can interoperate, rather than mandating a single wide framework. Narrow contracts enable broad ecosystems. Wide abstractions constrain them.
+1. **Let execution models compete.** The ecosystem already has multiple production-proven models (Asio, folly, Seastar, TooManyCooks, Taskflow, and others). Rather than picking a winner, let voluntary adoption identify which abstractions deserve standardization - the same process that produced TCP/IP, IEEE 754, and the STL.
 
-The people behind `std::execution` are talented, and their work contains genuine insights about structured concurrency. The question is not quality but timing and scope. Deferral gives the design room to mature, to prove itself across domains, and to earn the voluntary adoption that every successful universal model in computing history demonstrated before standardization. That outcome would serve both the authors and the C++ community better than premature commitment.
+2. **Standardize the narrow async I/O contract, not the execution model.** [D4003](https://wg21.link/p4003) ("IoAwaitables: A Coroutines-Only Framework") proposes this contract and provides production benchmarks. The contract is small. The concept for a writable byte stream fits in six lines:
+
+    ```cpp
+    // error code and byte count delivered together
+    struct io_result
+    {
+        std::error_code ec;
+        std::size_t bytes_transferred = 0;
+    };
+
+    // An awaitable whose await_suspend receives the I/O environment
+    template<typename A>
+    concept IoAwaitable =
+        requires(A a, std::coroutine_handle<> h, io_env const* env)
+        { a.await_suspend(h, env); };
+
+    // A writable byte stream
+    template<typename T>
+    concept WriteStream =
+        requires(T& stream, const_buffer buffers)
+        {
+            { stream.write_some(buffers) } -> IoAwaitable;
+            requires awaitable_decomposes_to<
+                decltype(stream.write_some(buffers)),
+                std::error_code, std::size_t>;
+        };
+    ```
+
+    A concrete `write_sink` satisfying this concept. The implementation of `do_write` lives in a `.cpp` file behind an ABI boundary:
+
+    ```cpp
+    class write_sink
+    {
+        void* impl_;
+
+        std::coroutine_handle<>
+        do_write(
+            std::coroutine_handle<> h,
+            const_buffer buf,
+            io_env const* env,
+            std::error_code* ec,
+            std::size_t* n);
+
+    public:
+        struct write_some_awaitable
+        {
+            write_sink* self_;
+            const_buffer buf_;
+            std::error_code ec_;
+            std::size_t n_ = 0;
+
+            bool await_ready() const noexcept { return false; }
+
+            std::coroutine_handle<>
+            await_suspend(
+                std::coroutine_handle<> h,
+                io_env const* env)
+            {
+                // stop token, executor, allocator available via env
+                return self_->do_write(h, buf_, env, &ec_, &n_);
+            }
+
+            io_result await_resume() noexcept { return {ec_, n_}; }
+        };
+
+        write_some_awaitable
+        write_some(const_buffer buf)
+        {
+            return write_some_awaitable{this, buf};
+        }
+    };
+    ```
+
+    A coroutine uses it:
+
+    ```cpp
+    task<> send_response(write_sink& sink, std::string_view msg)
+    {
+        auto [ec, n] = co_await sink.write_some(
+            const_buffer(msg.data(), msg.size()));
+        if (ec)
+            log("write stopped after", n, "bytes:", ec.message());
+    }
+    ```
+
+    The `io_env` carries the stop token, executor, and allocator - all delivered through `await_suspend` without coupling the awaitable to any promise type. The `do_write` signature takes `std::coroutine_handle<>` and `io_env const*`, both fixed types. The implementation can change without recompiling callers. This is the entire narrow waist for writable byte streams. `ReadStream`, `Stream`, `connect`, and `close` follow the same pattern. The network runtime itself - the event loop, the thread pool, the platform reactor - stays in the ecosystem, where it belongs. The standard provides only the narrow contract through which libraries interoperate. The benefits are substantial:
+
+    - **Second-order library effects.** A narrow I/O abstraction enables an entire ecosystem of libraries built on top of it: HTTP, WebSocket, database clients, message queues, monitoring agents - all interoperable, all composable, without mandating a single runtime. This is the tower of abstraction that [D4008](https://wg21.link/p4008) identifies as C++'s missing piece.
+
+    - **Runtime choice becomes less consequential.** When the standard provides the I/O concepts, the user's choice of network runtime - Asio, libuv, a custom io_uring loop - matters less. Libraries written against the standard concepts work with any runtime that satisfies them. Interoperability comes from the contract, not from mandating a single framework.
+
+    - **ABI stability through type erasure.** Coroutines are inherently type-erased at the `coroutine_handle` boundary. A coroutine-based I/O contract takes enormous pressure off the ABI stability mandate because the runtime is behind the erasure wall. Implementation changes stay behind it. No recompilation needed. This gives the committee what it has always wanted: async capabilities with ABI stability.
+
+    - **Faster compile times and better encapsulation.** I/O concepts behind type-erased coroutine interfaces enable separate compilation, `pimpl`, and shared libraries. The ordinary developer - the one writing a web service, not a GPU kernel - gets fast builds and clean module boundaries.
+
+    - **TLS stays in the ecosystem, where it belongs.** TLS/SSL has been a point of contention for WG21 since the Networking TS, and a specification of that size and complexity would overwhelm the committee. A narrow I/O contract sidesteps this entirely: the standard specifies async read/write/connect/close on byte streams. TLS wraps a byte stream and produces another byte stream. The TLS implementation - OpenSSL, BoringSSL, SChannel, SecureTransport - lives in the ecosystem where domain experts maintain it and platform vendors integrate their native APIs. Apple uses SecureTransport. Microsoft uses SChannel. The standard does not get in their way. The committee gets 80% of what it needs for 20% of the cost.
+
+A narrow async I/O contract in the standard library would unlock the ecosystem that every other major language already enjoys. HTTP clients and servers. WebSocket connections for real-time data. REST API endpoints. Interactive chat applications. Multiplayer game networking. gRPC services. Database connection pools. Cloud service integrations. Message queue consumers. Monitoring agents. All of these exist today in Python, Go, Rust, Java, and JavaScript as composable libraries built on a standard async I/O foundation. C++ has the users who need them, the performance characteristics they demand, and the coroutine machinery to express them elegantly. What it lacks is the six-function contract at the bottom that makes everything above it composable across libraries without mandating a single runtime.
+
+The people behind `std::execution` are talented, and their work contains genuine insights about structured concurrency. The question is not quality but timing and scope. The research exists. The implementations exist. The design space has converged on a narrow answer. The committee's job is not to design a universal execution framework. It is to standardize the narrow waist that the ecosystem has already identified - and then get out of the way.
+
+---
+
+## Appendix A: TAPS Client Example (RFC 9622 Section 3.1.2)
+
+The following is the complete client example from [RFC 9622](https://datatracker.ietf.org/doc/html/rfc9622), Section 3.1.2, "Client Example." It shows how an application opens two Connections to a remote server, sends a request, and receives a response on each. This is the TAPS equivalent of a POSIX `socket` / `connect` / `write` / `read` / `close` sequence. It is reproduced verbatim from the specification.
+
+```
+RemoteSpecifier := NewRemoteEndpoint()
+RemoteSpecifier.WithHostName("example.com")
+RemoteSpecifier.WithService("https")
+
+TransportProperties := NewTransportProperties()
+TransportProperties.Require(preserve-msg-boundaries)
+// Reliable data transfer and preserve order are required by default
+
+SecurityParameters := NewSecurityParameters()
+TrustCallback := NewCallback({
+    // Verify the identity of the Remote Endpoint and return the result
+})
+SecurityParameters.SetTrustVerificationCallback(TrustCallback)
+
+// Specifying a Local Endpoint is optional when using Initiate
+Preconnection := NewPreconnection(RemoteSpecifier,
+                                  TransportProperties,
+                                  SecurityParameters)
+
+Connection := Preconnection.Initiate()
+Connection2 := Connection.Clone()
+
+Connection -> Ready<>
+Connection2 -> Ready<>
+
+//---- Ready event handler for any Connection C begin ----
+C.Send(messageDataRequest)
+
+// Only receive complete messages
+C.Receive()
+//---- Ready event handler for any Connection C end ----
+
+Connection -> Received<messageDataResponse, messageContext>
+Connection2 -> Received<messageDataResponse, messageContext>
+
+// Close the Connection in a Receive event handler
+Connection.Close()
+Connection2.Close()
+```
+
+The example above is the *happy path*. It does not show the configuration surface that surrounds it. RFC 9622 defines 18 Selection Properties (Section 6.2), each taking a 5-valued Preference Enumeration (`Prohibit`, `Avoid`, `No Preference`, `Prefer`, `Require`):
+
+1. Reliable Data Transfer
+2. Preservation of Message Boundaries
+3. Configure Per-Message Reliability
+4. Preservation of Data Ordering
+5. Use 0-RTT Session Establishment with a Safely Replayable Message
+6. Multistream Connections in a Group
+7. Full Checksum Coverage on Sending
+8. Full Checksum Coverage on Receiving
+9. Congestion Control
+10. Keep-Alive Packets
+11. Interface Instance or Type
+12. Provisioning Domain Instance or Type
+13. Use Temporary Local Address
+14. Multipath Transport
+15. Advertisement of Alternative Addresses
+16. Direction of Communication
+17. Notification of ICMP Soft Error Message Arrival
+18. Initiating Side Is Not the First to Write
+
+8 Security Parameter categories (Section 6.3):
+
+1. Allowed Security Protocols
+2. Certificate Bundles
+3. Pinned Server Certificate
+4. Application-Layer Protocol Negotiation
+5. Groups, Ciphersuites, and Signature Algorithms
+6. Session Cache Options
+7. Pre-Shared Key
+8. Connection Establishment Callbacks
+
+11 Connection Properties for runtime tuning (Section 8.1):
+
+1. Required Minimum Corruption Protection Coverage for Receiving
+2. Connection Priority
+3. Timeout for Aborting Connection
+4. Timeout for Keep-Alive Packets
+5. Connection Group Transmission Scheduler
+6. Capacity Profile
+7. Policy for Using Multipath Transports
+8. Bounds on Send or Receive Rate
+9. Group Connection Limit
+10. Isolate Session
+11. Read-Only Connection Properties
+
+8 per-Message Properties set on each Send (Section 9.1.3):
+
+1. Lifetime (`msgLifetime`)
+2. Priority (`msgPriority`)
+3. Ordered (`msgOrdered`)
+4. Reliable (`msgReliable`)
+5. Checksum Coverage (`msgChecksumLen`)
+6. Capacity Profile (`msgCapacityProfile`)
+7. No Fragmentation (`noFragmentation`)
+8. No Segmentation (`noSegmentation`)
+
+And 10+ asynchronous events the application must be prepared to handle, including `Ready`, `Sent`, `Expired`, `SendError`, `Received`, `ReceivedPartial`, `ReceiveError`, `SoftError`, and `PathChange`.
+
+The specification states:
+
+> "It is intended to replace the BSD Socket API as the common interface to the transport layer."
+>
+> [RFC 9622](https://datatracker.ietf.org/doc/html/rfc9622), Abstract
+
+> "These features SHOULD be implemented even when, in a specific implementation, it will always result in no operation."
+>
+> [RFC 9622](https://datatracker.ietf.org/doc/html/rfc9622), Section 5
+
+This is the model that [P3482](https://wg21.link/p3482) proposes as the basis for C++ networking.
 
 ---
 
@@ -510,7 +792,7 @@ The people behind `std::execution` are talented, and their work contains genuine
 
 41. P3564. "Make the concurrent forward progress guarantee usable in bulk." WG21. https://wg21.link/p3564
 
-42. D4003. Falco et al. "IoAwaitables: A Coroutines-Only Execution Model." WG21. https://wg21.link/p4003
+42. D4003. Falco et al. "IoAwaitables: A Coroutines-Only Framework." WG21. https://wg21.link/p4003
 
 43. TooManyCooks. https://github.com/tzcnt/TooManyCooks
 
@@ -619,3 +901,29 @@ The people behind `std::execution` are talented, and their work contains genuine
 95. nvexec stream_context.cuh source. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh
 
 96. NVIDIA CUDA C/C++ Language Extensions. https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html
+
+97. Michi Henning. "The Rise and Fall of CORBA." ACM Queue 4, no. 5 (June 2006). https://dl.acm.org/doi/10.1145/1142031.1142044
+
+98. David Chappell. "The Trouble With CORBA." 1998. https://davidchappell.com/writing/article_Trouble_CORBA.php
+
+99. RFC 9621. "Architecture and Requirements for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9621
+
+100. RFC 9622. "An Abstract Application Programming Interface (API) for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9622
+
+101. John Ousterhout. *A Philosophy of Software Design.* Yaknyam Press, 2018. https://web.stanford.edu/~ouster/cgi-bin/aposd.php
+
+102. Robert Leahy. "std::execution in Asio Codebases: Adopting Senders Without a Rewrite." CppCon 2025. https://cppcon2025.sched.com/event/27bQ1/stdexecution-in-asio-codebases-adopting-senders-without-a-rewrite
+
+103. Wikipedia. "Continuation-passing style." https://en.wikipedia.org/wiki/Continuation-passing_style
+
+104. callbackhell.com. "Callback Hell: Taming JavaScript's Async Complexity." https://callbackhell.com/
+
+105. steve-downey/sender-examples. "backtrack.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp
+
+106. steve-downey/sender-examples. "fold.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp
+
+107. steve-downey/sender-examples. "loop.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp
+
+108. Stack Overflow. "Moving a lambda: once you've move-captured a move-only type, how can the lambda be used?" https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda
+
+109. D4008. Falco. "The C++ Standard Cannot Connect to the Internet." WG21. https://wg21.link/p4008

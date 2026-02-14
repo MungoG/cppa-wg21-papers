@@ -1,5 +1,5 @@
 ::: {.document-info}
-| Document | D4008R0 |
+| Document | D4000R0 |
 |----------|---------|
 | Date:       | 2026-02-09
 | Reply-to:   | Vinnie Falco \<vinnie.falco@gmail.com\>
@@ -97,6 +97,73 @@ Networking is not just another feature. It is the infrastructure through which m
 GPU users already have CUDA, which requires NVIDIA's non-standard compiler. The `__device__`, `__global__`, and `<<<>>>` syntax are not valid C++ ([CUDA C/C++ Language Extensions](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html)). Adding `std::execution` to the standard provides no benefit to GPU users that [stdexec on vcpkg](https://vcpkg.link/ports/stdexec) does not already provide.
 
 `std::execution`'s design priorities explicitly target GPU computing. [P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) section 1.1 frames the motivation around "GPUs in the world's fastest supercomputer." Section 1.3.2's second end-user example is "Asynchronous inclusive scan," a GPU parallel primitive using `bulk`. The `bulk` algorithm has no networking analog.
+
+What does the committee's chosen model actually look like for networking? Maikel Nadolski's [senders-io](https://github.com/maikel/senders-io) library is the most complete attempt to build networking on top of `stdexec` senders. The following is the complete TCP echo server from that repository - the simplest possible network program that reads data and writes it back:
+
+```cpp
+#include <sio/net_concepts.hpp>
+#include <sio/ip/tcp.hpp>
+#include <sio/io_uring/socket_handle.hpp>
+#include <sio/sequence/let_value_each.hpp>
+#include <sio/sequence/ignore_all.hpp>
+
+#include <exec/repeat_effect_until.hpp>
+#include <exec/variant_sender.hpp>
+#include <exec/when_any.hpp>
+
+#include <iostream>
+
+template <class ThenSender, class ElseSender>
+exec::variant_sender<ThenSender, ElseSender>
+  if_then_else(bool condition, ThenSender then, ElseSender otherwise) {
+  if (condition) {
+    return then;
+  }
+  return otherwise;
+}
+
+using tcp_socket = sio::io_uring::socket_handle<sio::ip::tcp>;
+using tcp_acceptor = sio::io_uring::acceptor_handle<sio::ip::tcp>;
+
+auto echo_input(tcp_socket client) {
+  return stdexec::let_value(
+    stdexec::just(client, std::array<std::byte, 1024>{}),
+    [](auto socket, std::span<std::byte> buffer) {
+      return sio::async::read_some(socket, sio::mutable_buffer{buffer}) //
+           | stdexec::let_value([=](std::size_t nbytes) {
+               return if_then_else(
+                 nbytes != 0,
+                 sio::async::write(socket, sio::const_buffer{buffer}.prefix(nbytes)),
+                 stdexec::just(0));
+             })
+           | stdexec::then([](std::size_t nbytes) { return nbytes == 0; })
+           | exec::repeat_effect_until()
+           | stdexec::then([] { std::cout << "Connection closed.\n"; });
+    });
+}
+
+int main() {
+  exec::io_uring_context context{};
+  auto endpoint = sio::ip::endpoint{sio::ip::address_v4::any(), 1080};
+  auto acceptor = sio::io_uring::acceptor{&context, sio::ip::tcp::v4(), endpoint};
+
+  auto accept_connections = sio::async::use_resources(
+    [&](tcp_acceptor acceptor) {
+      return sio::async::accept(acceptor) //
+           | sio::let_value_each([](tcp_socket client) {
+               return exec::finally(echo_input(client), sio::async::close(client));
+             })
+           | sio::ignore_all();
+    },
+    acceptor);
+
+  stdexec::sync_wait(exec::when_any(std::move(accept_connections), context.run()));
+}
+```
+
+Source: [senders-io/examples/tcp_echo_server.cpp](https://github.com/maikel/senders-io/blob/main/examples/tcp_echo_server.cpp)
+
+This is an echo server. It accepts a connection, reads bytes, and writes them back. In Python this is a ten-line program. In Go it is twelve. In C++ built on the committee's chosen execution model, it is 60 lines of `variant_sender`, `let_value`, `repeat_effect_until`, and `use_resources`. A simple conditional branch requires a helper function template returning `exec::variant_sender`. The program is unrecognizable to the ordinary C++ programmer and completely divorced from the way most of the C++ community writes code. If this is the standard's answer to networking, the standard is not speaking to the people who need networking.
 
 **Networking creates towers. GPU does not.** The tower of abstraction argument only works if standardization actually enables higher-level libraries to proliferate. For networking, the evidence is overwhelming: sockets lead to HTTP, which leads to REST, which leads to web frameworks, which lead to full-stack applications. Django, Express, Spring Boot, Axum (500k+ combined GitHub stars) all sit atop standardized async I/O foundations. Each layer builds on the one below.
 
@@ -245,3 +312,5 @@ The C++ Standard cannot connect to the Internet. It should.
 42. C++26 Working Draft, [exec] section. https://eel.is/c++draft/exec
 
 43. Boost.HTTP. https://github.com/cppalliance/http
+
+44. senders-io. Nadolski. https://github.com/maikel/senders-io
