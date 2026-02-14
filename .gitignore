@@ -8,3 +8,5 @@ node_modules/
 *.latex
 mermaid-filter.err
 .mermaid-config.json
+
+/reports/

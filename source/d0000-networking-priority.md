@@ -185,12 +185,10 @@ capy::task<> do_session() {
         buf_.resize(4096);
         auto [ec, n] = co_await sock_.read_some(
             capy::mutable_buffer(buf_.data(), buf_.size()));
-        if (ec)
-            break;
         buf_.resize(n);
         auto [wec, wn] = co_await capy::write(
             sock_, capy::const_buffer(buf_.data(), buf_.size()));
-        if (wec)
+        if (wec || ec)
             break;
     }
     sock_.close();
@@ -357,18 +355,17 @@ The pattern is clear: standardize the buffer-oriented async I/O concepts and typ
 To make this concrete, the following algorithm writes an HTTP response body to any stream that satisfies the `WriteStream` concept. It has zero knowledge of the transport underneath:
 
 ```cpp
-template<WriteStream Stream>
-task<> send_body(Stream& stream, std::string_view body)
+using namespace capy;
+io_task<>
+send_body( WriteStream auto& stream, std::string_view body )
 {
     auto header = "Content-Length: " +
         std::to_string(body.size()) + "\r\n\r\n";
-
-    auto [ec1, n1] = co_await capy::write(
-        stream, const_buffer(header.data(), header.size()));
-    if (ec1) co_return;
-
-    auto [ec2, n2] = co_await capy::write(
-        stream, const_buffer(body.data(), body.size()));
+    auto [ec1, _] = co_await write( stream, make_buffer(header) );
+    if (ec1)
+      co_return ec1;
+    auto [ec2, _] = co_await write( stream, make_buffer(body) );
+    co_return ec2;
 }
 ```
 
