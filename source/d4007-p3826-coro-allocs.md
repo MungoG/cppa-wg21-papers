@@ -93,7 +93,7 @@ For most C++ developers, coroutines represent the practical ceiling for writing 
 
 Even `co_await` carries irreducible complexity. Coroutine-based async I/O involves use-after-free risks from captured references across suspension points, lifetime hazards in lambda coroutines, and thread-safety concerns when resumption occurs on a different thread. `co_await` and structured coroutine patterns are the best tool C++ offers for managing that complexity.
 
-Coroutine-based networking can be made performant. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-First Execution Model") demonstrates coroutine- based networking matching or exceeding callback-based frameworks in throughput (see Section 6.5 for benchmarks). The question this paper raises is whether `std::execution` can serve this use case with competitive allocator support.
+Coroutine-based networking can be made performant. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") demonstrates coroutine- based networking matching or exceeding callback-based frameworks in throughput (see Section 6.5 for benchmarks). The question this paper raises is whether `std::execution` can serve this use case with competitive allocator support.
 
 ---
 
@@ -133,7 +133,7 @@ A recycling allocator tuned for coroutine frames maintains a freelist of previou
 
 More fundamentally, a general-purpose allocator has no notion of application-level context. Different coroutine chains might require different policies. A multi-tenant server may enforce per-tenant memory limits, with each tenant's connections using an allocator bound to that tenant's quota. A connection-scoped arena can reclaim all frames in one operation when the connection closes. These policies require the stateful allocators listed above - and that state must be accessible when `operator new` executes.
 
-The performance difference is measurable. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-First Execution Model") benchmarks a 4-deep coroutine call chain (2 million iterations) with three allocator strategies across two platforms:
+The performance difference is measurable. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") benchmarks a 4-deep coroutine call chain (2 million iterations) with three allocator strategies across two platforms:
 
 | Platform    | Allocator        | Time (ms) | vs std::allocator |
 |-------------|------------------|----------:|------------------:|
@@ -355,9 +355,7 @@ The design space may contain other approaches: a new coroutine customization poi
 
 ## 5. The Committee's Own Record
 
-The committee's own proceedings confirm that the allocator story is unresolved and the design is still actively evolving.
-
-### 5.1 The Allocator Poll
+The committee's own proceedings confirm that the allocator story is unresolved.
 
 [P3796R1](https://wg21.link/p3796r1) (Dietmar Kuhl, "Coroutine Task Issues") was reviewed by LEWG in a September 2025 telecon. The allocator question was polled directly:
 
@@ -389,43 +387,6 @@ The sole A vote - from the task paper's author - noted that using the receiver's
 [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (Dietmar Kuhl, "Task's Allocator Use," 2026-01-25) addresses NB comments US 253, US 254, US 255, and US 261. Notably, D3980R0 changes the allocator propagation model relative to [P3552R3](https://wg21.link/p3552r3), which was adopted at Sofia in June 2025. The fact that the task author's own design for allocator handling has changed between the adopted text and the NB comment resolution underscores that the allocator story for coroutine task types remains under active development.
 
 LWG 4356 (`connect()` should use `get_allocator(get_env(rcvr))`) confirms the gap has been filed as a specification defect - not merely an external complaint, but a committee-level acknowledgement of the sequencing problem.
-
-### 5.2 Post-Approval Changes
-
-The volume of papers written to fix, rework, or complete `std::execution` after its approval for C++26 is substantial, and reflects the feature's scope and ambition.
-
-| Period                          | Removals | Reworks | Wording | Missing Functionality |  LWG  | Total  |
-|---------------------------------|:--------:|:-------:|:-------:|:---------------------:|:-----:|:------:|
-| Pre-Wroclaw (Mar-Oct 2024)      |    1     |    5    |    -    |           1           |   -   |  **7** |
-| Pre-Hagenberg (Nov 2024-Feb 25) |    1     |    -    |    2    |           2           |   3   |  **8** |
-| Pre-Sofia (Mar-Jun 2025)        |    -     |    2    |    -    |           7           |   1   | **10** |
-| Pre-Kona (Jul-Nov 2025)         |    -     |    3    |    3    |           1           |   7   | **14** |
-| Pre-London (Dec 2025-Feb 2026)  |    -     |    2    |    1    |           -           |   -   |  **3** |
-| **Total**                       |  **2**   | **12**  |  **6**  |        **11**         |**11** | **42** |
-
-See Appendix D for the complete listing with dates, authors, and current status.
-
-Key observations:
-
-- **The churn is accelerating, not slowing.** The pre-Kona period produced 14 items - the highest volume - including   Priority 1 safety defects. Two more papers appeared in the   January 2026 mailing, with the London meeting still months   away.
-- **The severity has not decreased.** The pre-Kona period includes Priority 1 LWG defects: a dangling-reference   vulnerability in `transform_sender` (LWG 4368) and an   unconstrained alias in `connect_result_t` (LWG 4206). Two   outstanding NB comments on allocator support remain without   wording.
-- **Design reworks span the entire timeline since `std::execution` was voted into the C++26 working draft   (Tokyo, March 2024).** From P2855R1   (replacing `tag_invoke`, March 2024) through P3927R0 (fixing   `task_scheduler` bulk execution, January 2026) - 11 rework   papers over 22 months.
-
-In total: **31 papers, 11 LWG defects, and 2 NB comments - 44 items modifying a single feature after its approval.**
-
-### 5.3 The C++23 Precedent
-
-This is not the first time maturity concerns have led to deferral. P2300 failed to achieve consensus for C++23:
-
-> LEWG 2022-01-12: "Produce a P2300R4, modified as described
-> below, and then send the revised paper to LWG for C++23 with
-> priority 1"
->
-> SF:15 / F:9 / N:1 / A:3 / SA:6 (Attendance: 39)
-
-Recorded SA reasons included "maturity/readiness" and "Feels like ranges all over again. Needs maturity." Some of the same categories of open work - algorithm reworks, allocator sequencing unresolved, LWG issues opened during review - are visible in the current cycle.
-
-The parallel is worth examining at the level of specifics, not merely categories. The 2022 "tag_invoke" concern has been addressed - [P2855R1](https://wg21.link/p2855r1) replaced `tag_invoke` with member customization points - but the replacement was itself a breaking change to the API. The post-approval modification count (44 items, see Section 5.2) now exceeds what `<ranges>` required in a comparable period after its adoption for C++20. The concerns that were speculative in 2022 are now documented in specific LWG issues (including two Priority 1 safety defects), committee polls, and unresolved NB comments.
 
 ---
 
@@ -479,7 +440,7 @@ SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2) ("Sen
 
 Networking must be built on `std::execution`'s sender/receiver model. The task type ([P3552R3](https://wg21.link/p3552r3)) is the primary I/O usability layer - it exists so that users can write `co_await socket.async_read(buf)`. If the coroutine integration cannot access the allocator, the I/O use case is effectively unserved. See Appendix C.1-C.3 for the complete committee record on this question.
 
-Coroutine-based networking is not merely a theoretical possibility - it is already competitive with established callback-based frameworks. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-First Execution Model") reports throughput benchmarks comparing a coroutine-based networking library (with frame recycling allocators) against Asio's callback model:
+Coroutine-based networking is not merely a theoretical possibility - it is already competitive with established callback-based frameworks. [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") reports throughput benchmarks comparing a coroutine-based networking library (with frame recycling allocators) against Asio's callback model:
 
 | Threads | Coroutine (Kops/s) | Asio (Kops/s) | Ratio |
 |--------:|-------------------:|---------------:|------:|
@@ -508,8 +469,6 @@ For coroutine-based asynchronous I/O, however, a fundamental allocator sequencin
 3. **`operator new` is the only interception point** - the allocator must be known when the frame is allocated
 4. **`std::execution` provides the allocator too late** - the receiver's environment is available only after `connect()`
 5. **The gap is difficult to fix later** - `operator new` runs before `connect()`, and no library change known to the authors can alter that sequencing without destabilising the API
-
-[P2300R4](https://wg21.link/p2300r4) established the sender/receiver context model in January 2022. Four years later, the design continues to evolve: [P3826R3](https://wg21.link/p3826r3) proposes significant architectural changes to `transform_sender`, removes early customization entirely, and restructures the relationship between `continues_on` and `schedule_from`. This level of active change reflects a design that is still evolving and suggests there may be value in allowing that evolution to complete before freezing the ABI.
 
 If `std::execution` ships with C++26 but cannot serve coroutine-based I/O without workarounds, the committee risks standardising a framework that works for CPU-bound parallelism and GPU dispatch but leaves the largest async constituency - networking - reliant on non-standard alternatives.
 
@@ -919,144 +878,15 @@ The NB comment identifies the same allocator sequencing constraint that this pap
 
 US 253 ([cplusplus/nbballot#961](https://github.com/cplusplus/nbballot/issues/961), LWG4333): "Allow use of arbitrary allocators for coroutine frame." Status: needs wording.
 
-### C.7 Kona Algorithm Customisation Straw Poll
-
-At Kona (November 2025), LEWG reviewed P3826's proposed fix for algorithm customisation:
-
-| Option | Description                                                |  F |  A |
-|--------|--------------------------------------------------------------|---:|---:|
-| 1      | Remove all of the C++26 `std::execution`                     |  3 | 30 |
-| 2      | Remove all of the customisable sender algorithms for C++26   | 12 | 14 |
-| 3      | Remove sender algorithm customisation (early & late)         | 17 |  5 |
-| 4      | Fix customisations now (only late CPs)                       | 21 |  7 |
-| 5      | Ship as-is and fix algorithm customisation in a DR           |  6 | 21 |
-
-Attendance: 44.
-
-Option 4 (fix now) won the most support. The resolution went through three revisions before eventual acceptance in January 2026.
-
-### C.8 Outstanding LWG Defects
-
-Two Priority 1 defects remain open as of the Kona meeting:
-
-- **LWG 4206:** `connect_result_t` unconstrained, causing hard errors instead of SFINAE-friendly failures.
-- **LWG 4368:** Dangling-reference vulnerability in `transform_sender` (stack-use-after-scope) - returns xvalue   to a dead temporary, potential undefined behaviour.
-
-Additional open defects:
-
-- **LWG 4190:** `completion-signatures-for` specification is recursive - a circular dependency that cannot be satisfied.
-- **LWG 4215:** `run_loop::finish` should be `noexcept` - throwing causes `sync_wait` to hang forever.
-- **LWG 4355:** `connect-awaitable()` should mandate receiver completion-signals.
-- **LWG 4356:** `connect()` should use `get_allocator(get_env(rcvr))` - directly relevant to the   allocator sequencing issue.
-
-Priority 1 issues are not unprecedented in newly standardised features - `<ranges>` accumulated roughly 30 LWG issues in its first two years after C++20 adoption, most at Priority 2-3. `std::execution` has 11 in less time, including two Priority 1 safety defects (a dangling-reference vulnerability and an unconstrained alias). The defect rate may be comparable; the severity is not. Both Priority 1 defects affect core mechanisms (`connect` and `transform_sender`) that most sender/receiver programs exercise.
-
----
-
-## Appendix D - Post-Approval Modification Catalogue
-
-The following tables list all WG21 papers identified as fixing, reworking, removing, or completing missing functionality in `std::execution` (P2300) after its approval for C++26. Papers that extend the framework into new domains (e.g., networking) are excluded.
-
-### Removals
-
-| Paper   | Title                                                   | Author(s)                 | Date       | Status          | Change                                                                                                              |
-|---------|---------------------------------------------------------|---------------------------|------------|-----------------|---------------------------------------------------------------------------------------------------------------------|
-| P3187R1 | Remove `ensure_started` and `start_detached` from P2300 | Lewis Baker, Eric Niebler | 2024-10-15 | Adopted         | Removes two algorithms that dynamically allocate with no allocator customization and break structured concurrency.   |
-| P3682R0 | Remove `std::execution::split`                          | Eric Niebler              | 2025-02-04 | Adopted (Sofia) | Removes `split` due to incorrect description of its purpose and problematic semantics.                              |
-
-### Major Design Reworks
-
-| Paper   | Title                                                     | Author(s)         | Date       | Status                                                                                                                                                                                       | Change                                                                                                                                                           |
-|---------|-----------------------------------------------------------|-------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| P2855R1 | Member customization points for Senders and Receivers     | Ville Voutilainen | 2024-03-18 | Adopted                                                                                                                                                                                      | Replaces `tag_invoke`-based ADL customization with member functions - a breaking change.                                                                         |
-| P2999R3 | Sender Algorithm Customization                            | Eric Niebler      | 2024-04-16 | Adopted                                                                                                                                                                                      | Removes ADL-based customization of sender algorithms in favour of member-function customization on a domain object.                                              |
-| P3303R1 | Fixing Lazy Sender Algorithm Customization                | Eric Niebler      | 2024-10-15 | Adopted                                                                                                                                                                                      | Fixes gross oversight in P2999 where wording changes that implement the approved design were missing.                                                            |
-| P3175R3 | Reconsidering the `std::execution::on` algorithm          | Eric Niebler      | 2024-10-15 | Adopted                                                                                                                                                                                      | Renames `on` to `starts_on` and `transfer` to `continues_on` because usage revealed a gap between users' expectations and actual behaviour. Also fixes a bug in `get_scheduler`. |
-| P3557R3 | High-Quality Sender Diagnostics with Constexpr Exceptions | Eric Niebler      | 2025-06-10 | Adopted (Sofia)                                                                                                                                                                              | Reworks `get_completion_signatures` from member function to static constexpr function template. Adds `dependent_sender` concept.                                 |
-| P3570R2 | Optional variants in sender/receiver                      | Lewis Baker       | 2025-06-14 | Adopted - forwarded to LWG for C++26.                                                                                                                                                        | Adds `get_await_completion_adapter` for coroutine users.                                                                                                         |
-| P3718R0 | Fixing Lazy Sender Algorithm Customization, Again         | Eric Niebler      | 2025-07-24 | In Progress - open, bumped from 2025-telecon to 2026-telecon milestone. Third paper attempting to fix lazy customization (after P2999, P3303). Linked to NB comment.                         | Further fixes to the lazy customization mechanism after P3303.                                                                                                   |
-| P3826R3 | Fix Sender Algorithm Customization                        | Eric Niebler      | 2025-11-14 | In Progress - open, 2026-telecon milestone. Title evolved from "Defer...to C++29" (R0) to "Fix or Remove..." (R1) to "Fix..." (R3). Linked to 5 NB comments. Under active LEWG review.     | Proposes deferring algorithm customization features that cannot be fixed in time for C++26.                                                                      |
-| P3927R0 | `task_scheduler` Support for Parallel Bulk Execution      | Eric Niebler      | 2026-01-17 | In Progress - open, 2026-telecon milestone. January 2026 mailing. Not yet reviewed in telecon. Implemented in NVIDIA CCCL.                                                                  | Fixes `task_scheduler` not parallelizing bulk work when wrapping a `parallel_scheduler`.                                                                         |
-
-### Wording Fixes and Corrections
-
-| Paper   | Title                                                      | Author(s)                | Date       | Status                                                                                                                                               | Change                                                                                                                                 |
-|---------|------------------------------------------------------------|--------------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| P3396R1 | `std::execution` wording fixes                             | Eric Niebler             | 2024-11-22 | Adopted                                                                                                                                               | Omnibus paper addressing multiple wording issues: `run_loop` preconditions, environment ownership, scheduler concept inconsistencies.  |
-| P3388R3 | When Do You Know `connect` Doesn't Throw?                  | Ville Voutilainen        | 2025-02-14 | Adopted                                                                                                                                               | Fixes incorrect `noexcept` clause of the constructor of `basic-state`.                                                                 |
-| P3914R0 | Assorted NB comment resolutions for Kona 2025              | Various                  | 2025-11-07 | In Progress - omnibus NB comment resolution paper. Sections 2.2-2.5 address `std::execution`. Individual resolutions adopted piecemeal.              | Addresses national body comments on the C++26 CD related to `std::execution`.                                                          |
-| P3887R1 | Make `when_all` a Ronseal Algorithm                        | Robert Leahy             | 2025-11-07 | Adopted - forwarded at Kona (SF:10/F:5/N:0/A:0/SA:0), wording merged into draft (Dec 2025).                                                         | Fixes `when_all` stop-request handling - removes unnecessary stop-detection complexity that made the algorithm's behaviour surprising.  |
-| P3940R0 | Rename concept tags for C++26: `sender_t` to `sender_tag` | Arthur O'Dwyer, Yi'an Ye | 2025-12-15 | In Progress - open, 2026-telecon milestone. Post-Kona mailing. Not yet reviewed in telecon.                                                          | Renames concept tag types (`sender_t` to `sender_tag`, etc.) for naming consistency - another post-approval naming correction.         |
-
-### Missing Functionality
-
-| Paper    | Title                                                        | Author(s)                                      | Date       | Status                                                                          | Change                                                                                                                                                              |
-|----------|--------------------------------------------------------------|-------------------------------------------------|------------|---------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| P3425R1  | Reducing operation-state sizes for subobject child operations | Eric Niebler                                   | 2024-11-19 | Design approved - LEWG Wroclaw (Nov 2024) strong consensus. C++26-targeted.     | Optimisation saving 8 bytes per nesting level - performance fix for deeply nested sender expressions.                                                               |
-| P3284R4  | `write_env` and `unstoppable` Sender Adaptors                | Eric Niebler                                   | 2025-02-14 | Adopted (Sofia)                                                                 | Adds missing sender adaptors for modifying execution environments.                                                                                                  |
-| P3685R0  | Rename `async_scope_token`                                   | Ian Petersen, Jessica Wong                     | 2025-04-09 | Adopted                                                                         | Renames `async_scope_token` to `scope_token` for clarity.                                                                                                           |
-| P3706R0  | Rename `join` and `nest` in async scope proposal             | Ian Petersen, Jessica Wong                     | 2025-04-09 | Adopted                                                                         | Renames `nest` to `associate` because original names were misleading.                                                                                               |
-| P3325R5  | A Utility for Creating Execution Environments                | Eric Niebler                                   | 2025-05-22 | Adopted                                                                         | Adds `prop` and `env` class templates for creating and manipulating environments - fundamental infrastructure that was absent.                                       |
-| P2079R10 | Parallel scheduler                                           | Lee Howes                                      | 2025-06-02 | Adopted (Sofia)                                                                 | Provides `system_context` and `system_scheduler` - a basic execution context needed to actually run code.                                                           |
-| P3149R11 | `async_scope`                                                | Ian Petersen, Jessica Wong, Kirk Shoop, et al. | 2025-06-02 | Adopted (Sofia)                                                                 | Provides the async scope abstraction needed for safe non-sequential concurrency - replacing the removed `ensure_started`/`start_detached`.                          |
-| P3164R4  | Early Diagnostics for Sender Expressions                     | Eric Niebler                                   | 2025-06-02 | Adopted                                                                         | Moves diagnosis of invalid sender expressions to construction time rather than connection time.                                                                     |
-| P3552R3  | Add a Coroutine Task Type                                    | Dietmar Kuhl, Maikel Nadolski                  | 2025-06-20 | Adopted (Sofia)                                                                 | Adds `std::execution::task` - the coroutine type that users need to use the framework. Adopted at Sofia with 29 abstentions and 11 against (77-11-29).             |
-| P3815R1  | Add `scope_association` concept to P3149                     | Jessica Wong, Ian Petersen                     | 2025-09-12 | Adopted - closed Dec 2025. NB comment resolution.                               | Adds missing `scope_association` concept needed by the async scope facility.                                                                                        |
-
-### Post-Adoption Issues
-
-| Paper   | Title                                               | Author(s)                                              | Date       | Status                                                                                                                                                                                                                                | Change                                                                                                                                                               |
-|---------|-----------------------------------------------------|--------------------------------------------------------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| P3433R1 | Allocator Support for Operation States              | Dietmar Kuhl                                           | 2024-10-17 | Plenary-approved - closed. LEWG Wroclaw (Nov 2024) approved design with strong consensus (SF:4/F:6/N:0/A:0/SA:0). Wording merged into draft.                                                                                        | Identifies allocator gaps in `ensure_started`, `split`, and `start_detached` operation states - confirming allocator support was missing from the original design.   |
-| P3481R5 | `std::execution::bulk()` issues                     | Lucian Radu Teodorescu, Lewis Baker, Ruslan Arutyunyan | 2024-10-17 | Plenary-approved - closed. Five revisions. SG1 Wroclaw (Nov 2024) achieved unanimous consent on splitting bulk into `bulk`, `bulk_chunked`, and `bulk_unchunked`. Wording merged into draft.                                         | Addresses outstanding issues with the bulk algorithm; required five revisions and addition of two new API variants (`bulk_chunked`, `bulk_unchunked`).               |
-| P3796R1 | Coroutine Task Issues                               | Dietmar Kuhl                                           | 2025-07-24 | In Progress - open, 2026-telecon milestone. Under active LEWG telecon review (Aug-Sep 2025); some sections achieved consensus, others still pending. Multiple LWG issues opened (4329-4332, 4344). Linked to NB comments.            | Collects issues discovered after the task type was forwarded, including `unhandled_stopped` missing `noexcept`, wording issues, and performance concerns.            |
-| P3801R0 | Concerns about the design of `std::execution::task` | Jonathan Wakely                                        | 2025-07-24 | In Progress - open, 2026-telecon milestone. LEWG telecon review (2025-08-26) reached "no consensus" on the core stack overflow issue; "consensus against" treating dangling reference concern as C++26 blocker. Linked to NB comment. | Documents significant concerns including stack overflow risk due to lack of symmetric transfer support.                                                              |
-| D3980R0 | Task's Allocator Use                                | Dietmar Kuhl                                           | 2026-01-25 | In Progress - pre-London mailing. Addresses NB comments US 253, US 254, US 255, US 261.                                                                                                                                              | Changes allocator propagation model for coroutine task types relative to P3552R3.                                                                                    |
-
-### LWG Issues
-
-| Issue    | Title                                                              | Date       | Status                                                       | Change                                                                                                                          |
-|----------|--------------------------------------------------------------------|------------|--------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| LWG 4190 | `completion-signatures-for` specification is recursive             | 2025-01-02 | Open - circular dependency in spec.                          | Specification defect: recursive definition makes the requirement impossible to implement.                                       |
-| LWG 4206 | `connect_result_t` should be constrained with `sender_to`          | 2025-02-04 | Open - Priority 1.                                           | Unconstrained alias causes hard errors instead of SFINAE-friendly failures.                                                     |
-| LWG 4215 | `run_loop::finish` should be `noexcept`                            | 2025-02-13 | Open - correctness bug.                                      | Throwing `finish()` causes `sync_wait` to hang forever.                                                                         |
-| LWG 4260 | Query objects must be default constructible                        | 2025-05-07 | Resolved (Kona 2025)                                         | CPO constructors were not mandated `noexcept`.                                                                                  |
-| LWG 4355 | `connect-awaitable()` should mandate receiver completion-signals   | 2025-08-27 | Open                                                         | Redundant `requires`-clause should defer to parent `Mandates`.                                                                  |
-| LWG 4356 | `connect()` should use `get_allocator(get_env(rcvr))`              | 2025-08-27 | Open - directly relevant to allocator sequencing issue.          | `connect-awaitable` should respect the receiver's allocator.                                                                    |
-| LWG 4358 | `[exec.as.awaitable]` uses Preconditions when should be constraint | 2025-08-27 | Resolved (Kona 2025)                                         | Incorrectly-written preconditions should be `Mandates`.                                                                         |
-| LWG 4360 | `awaitable-sender` concept should qualify `awaitable-receiver`     | 2025-08-27 | Resolved (Kona 2025)                                         | Ambiguous type reference in the `awaitable-sender` concept.                                                                     |
-| LWG 4368 | Potential dangling reference from `transform_sender`               | 2025-08-31 | Open - Priority 1. Stack-use-after-scope vulnerability.      | Returns xvalue to a dead temporary - potential undefined behaviour.                                                             |
-| LWG 4369 | `check-types` for `upon_error` and `upon_stopped` is wrong         | 2025-08-31 | Resolved (Kona 2025)                                         | Uses `set_value_t` where `set_error_t`/`set_stopped_t` should be used.                                                         |
-| LWG 4336 | `bulk` vs. `task_scheduler`                                        | 2025-10-23 | Open - NB comment. C++26-targeted.                           | `task_scheduler` does not parallelise bulk work - dispatching `bulk` via a `task_scheduler` wrapping `parallel_scheduler` serialises execution. P3927R0 proposes the fix. |
-
-### Allocator-Related NB Comments (Kona 2025)
-
-| NB Comment                                                                  | Title                                                | Status        |
-|-----------------------------------------------------------------------------|------------------------------------------------------|---------------|
-| [US 255](https://github.com/cplusplus/nbballot/issues/959) (LWG4335)       | Use allocator from receiver's environment            | Needs wording |
-| [US 253](https://github.com/cplusplus/nbballot/issues/961) (LWG4333)       | Allow use of arbitrary allocators for coroutine frame | Needs wording |
-
-**Total: 31 papers, 11 LWG issues, and 2 NB comments - 44 items modifying a single feature after its approval.**
-
 ---
 
 ## References
 
-- [P2079R10](https://wg21.link/p2079r10) Lee Howes. "Parallel scheduler." 2025-06-02.
 - [P2300R4](https://wg21.link/p2300r4) Michal Dominiak, et al. "std::execution." 2022-01-18.
 - [P2300R10](https://wg21.link/p2300r10) Michal Dominiak, et al. "std::execution." 2024-07-16.
 - [P2762R2](https://wg21.link/p2762r2) Dietmar Kuhl. "Sender/Receiver Interface For Networking." 2023-10-15.
-- [P2855R1](https://wg21.link/p2855r1) Ville Voutilainen. "Member customization points for Senders and Receivers."   2024-03-18.
-- [P2999R3](https://wg21.link/p2999r3) Eric Niebler. "Sender Algorithm Customization." 2024-04-16.
-- [P3149R11](https://wg21.link/p3149r11) Ian Petersen, Jessica Wong, Kirk Shoop, et al. "async_scope."   2025-06-02.
-- [P3175R3](https://wg21.link/p3175r3) Eric Niebler. "Reconsidering the std::execution::on algorithm."   2024-10-15.
-- [P3187R1](https://wg21.link/p3187r1) Lewis Baker, Eric Niebler. "Remove ensure_started and start_detached from   P2300." 2024-10-15.
-- [P3433R1](https://wg21.link/p3433r1) Dietmar Kuhl. "Allocator Support for Operation States." 2025-06-18.
 - [P3552R3](https://wg21.link/p3552r3) Dietmar Kuhl, Maikel Nadolski. "Add a Coroutine Task Type." 2025-06-20.
-- [P3557R3](https://wg21.link/p3557r3) Eric Niebler. "High-Quality Sender Diagnostics with Constexpr   Exceptions." 2025-06-10.
 - [P3796R1](https://wg21.link/p3796r1) Dietmar Kuhl. "Coroutine Task Issues." 2025-07-24.
-- [P3801R0](https://wg21.link/p3801r0) Jonathan Wakely. "Concerns about the design of std::execution::task."   2025-07-24.
 - [P3826R3](https://wg21.link/p3826r3) Eric Niebler. "Fix Sender Algorithm Customization." 2026-01-05.
-- [P3927R0](https://wg21.link/p3927r0) Eric Niebler. "task_scheduler Support for Parallel Bulk Execution."   2026-01-17.
 - [D3980R0](https://isocpp.org/files/papers/D3980R0.html) Dietmar Kuhl. "Task's Allocator Use." 2026-01-25.
-- [P4003R0](https://wg21.link/p4003r0) Vinnie Falco. "IoAwaitables: A Coroutines-First Execution Model."   2026-01-21.
+- [P4003R0](https://wg21.link/p4003r0) Vinnie Falco. "IoAwaitables: A Coroutines-Only Framework." 2026-01-21.

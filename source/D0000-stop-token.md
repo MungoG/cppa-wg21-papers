@@ -314,7 +314,9 @@ The approach demonstrated in Section 4 has real limitations.
 
 A plain awaitable `co_await`ed inside `std::execution::task` has no standard mechanism to receive a stop token. The sender path creates an `awaitable-receiver` that bridges the sender to the promise's environment; the plain awaitable path does not. [P3552R3](https://wg21.link/p3552) explicitly requires "awaiter/awaitable friendly" behavior. [P3796R1](https://wg21.link/p3796r1) explicitly acknowledges that "awaitable non-senders are not supported."
 
-At least one library-level solution exists, demonstrating that the design space is not empty. We suggest the committee address this gap before freezing the `std::execution` API in the IS.
+At least one library-level solution exists, demonstrating that the design space is not empty. The stop token gap - like the allocator sequencing gap described in [D4007R0](https://wg21.link/p4007) - arises from fitting coroutine-based I/O into a protocol designed for a different use case. C++ might be better served by allowing each major use case - GPU dispatch, CPU-bound parallelism, networked I/O - to have an asynchronous execution model optimized for its requirements, rather than searching for a single universal model that serves all of them equally well.
+
+We suggest the committee address this gap before freezing the `std::execution` API in the IS.
 
 ---
 

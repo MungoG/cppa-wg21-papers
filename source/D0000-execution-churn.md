@@ -17,13 +17,13 @@ All data in this paper is gathered from the published WG21 paper mailings (open-
 
 The committee's work on `std::execution` falls naturally into five periods aligned with the plenary meetings since Tokyo:
 
-| Period                          | Months | Removals | Reworks | Wording | Missing | LWG | Total |
-|---------------------------------|:------:|:--------:|:-------:|:-------:|:-------:|:---:|:-----:|
-| Pre-Wroclaw (Mar-Oct 2024)      |    8   |    1     |    5    |    0    |    1    |  0  |     7 |
-| Pre-Hagenberg (Nov 2024-Feb 25) |    4   |    1     |    0    |    2    |    2    |  3  |     8 |
-| Pre-Sofia (Mar-Jun 2025)        |    4   |    0     |    2    |    0    |    7    |  1  |    10 |
-| Pre-Kona (Jul-Nov 2025)         |    5   |    0     |    3    |    3    |    1    |  7  |    14 |
-| Pre-London (Dec 2025-Feb 2026)  |    3   |    0     |    2    |    1    |    0    |  0  |     3 |
+| Period                          | Months | Removals | Reworks | Wording | Missing | LWG  | Total  |
+|---------------------------------|:------:|:--------:|:-------:|:-------:|:-------:|:----:|:------:|
+| Pre-Wroclaw (Mar-Oct 2024)      |    8   |    1     |    5    |    0    |    1    |  0   |     7  |
+| Pre-Hagenberg (Nov 2024-Feb 25) |    4   |    1     |    0    |    2    |    2    |  3   |     8  |
+| Pre-Sofia (Mar-Jun 2025)        |    4   |    0     |    2    |    0    |    7    |  1   |    10  |
+| Pre-Kona (Jul-Nov 2025)         |    5   |    0     |    3    |    3    |    1    |  7   |    14  |
+| Pre-London (Dec 2025-Feb 2026)  |    3   |    0     |    2    |    1    |    0    |  0   |     3  |
 | **Total**                       | **24** |  **2**   | **12**  |  **6**  | **11**  |**11**| **42** |
 
 Two NB comments on allocator support (US 253 and US 255) bring the total to 44 items.
