@@ -8,7 +8,6 @@ Rules for all work on WG21 papers in this repository.
 2. Single dashes (`-`) for all dashes - no em-dashes, no double dashes
 3. Human-written tone - not wordy, no AI-characteristic phrasing
 4. No git operations - user handles all git manually
-5. 80-character line wrapping where possible (tables excepted)
 6. Padded tables with aligned pipe characters in every table on every rewrite
 7. WG21-appropriate style
 8. `[P####R#](https://wg21.link/p####r#)` link convention for all paper references

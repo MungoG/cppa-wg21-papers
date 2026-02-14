@@ -3,19 +3,19 @@ title: "How Do Plain Awaitables Receive a Stop Token?"
 document: D0000
 date: 2026-02-14
 reply-to:
-  - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
+  - "Vinnie Falco \<vinnie.falco@gmail.com\>"
+audience: SG1, LEWG
 ---
 
 ## Abstract
 
-[P3552R3](https://wg21.link/p3552) requires that `std::execution::task` be "awaiter/awaitable friendly." The sender/receiver protocol delivers the stop token through `get_stop_token(get_env(receiver))`, available only after `connect()`. A plain awaitable - one that is not a sender - has no receiver, no environment, and no standard mechanism to receive a stop token. This paper asks how that gap should be addressed.
+[P3552R3](https://wg21.link/p3552) ("Add a Coroutine Task Type") requires that `std::execution::task` be "awaiter/awaitable friendly." The sender/receiver protocol delivers the stop token through `get_stop_token(get_env(receiver))`, available only after `connect()`. A plain awaitable - one that is not a sender - has no receiver, no environment, and no standard mechanism to receive a stop token. Sections 1-3 describe the gap. Section 4 demonstrates that at least one library-level solution exists. Section 5 examines that solution's shortcomings honestly.
 
 ---
 
 ## 1. Introduction
 
-[P3552R3](https://wg21.link/p3552) states that a coroutine task "needs to be awaiter/awaitable friendly, i.e., it should be possible to `co_await` awaitables which includes both library provided and user provided ones" (Section 3). [P3796R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html) Section 3.5.8 identifies that "awaitable non-senders are not supported."
+[P3552R3](https://wg21.link/p3552) states that a coroutine task "needs to be awaiter/awaitable friendly, i.e., it should be possible to `co_await` awaitables which includes both library provided and user provided ones" (Section 3). [P3796R1](https://wg21.link/p3796r1) Section 3.5.8 identifies that "awaitable non-senders are not supported."
 
 When a plain awaitable is `co_await`ed inside `std::execution::task`, how does it receive a stop token?
 
@@ -139,9 +139,182 @@ How do we get the stop token into `do_write`?
 
 ---
 
-## 4. Conclusion
+## 4. An Alternative Approach
 
-We suggest this question be answered before `std::execution` ships in C++26.
+The gap described above is not inherent to C++ coroutines. The following listing demonstrates a library-level mechanism that delivers the stop token to a plain awaitable without requiring the awaitable to know the promise type. The listing is not a proposal for standardization; it demonstrates that the design space is not empty.
+
+The idea: the promise type wraps each co_awaited awaitable so that `await_suspend` receives a second argument - a pointer to an environment struct carrying the stop token. The awaitable accepts `std::coroutine_handle<>` (ABI-stable) and never couples to the promise type.
+
+```cpp
+#include <coroutine>
+#include <stop_token>
+#include <cassert>
+
+// the environment passed to every awaitable
+struct io_env
+{
+    std::stop_token stop_token;
+};
+
+// a plain awaitable that receives the stop token
+// through await_suspend - no promise type knowledge
+struct cancellable_op
+{
+    bool was_stopped = false;
+
+    bool await_ready() const noexcept { return false; }
+
+    void await_suspend(
+        std::coroutine_handle<> h, io_env const* env)
+    {
+        // the stop token arrives here
+        was_stopped = env->stop_token.stop_requested();
+        h.resume();
+    }
+
+    bool await_resume() noexcept { return was_stopped; }
+};
+
+// the promise wraps awaitables to inject the environment
+struct promise_type
+{
+    io_env const* env_ = nullptr;
+
+    template<class Awaitable>
+    struct wrapper
+    {
+        Awaitable& a_;
+        io_env const* env_;
+
+        bool await_ready() { return a_.await_ready(); }
+
+        void await_suspend(std::coroutine_handle<> h)
+        {
+            // inject the environment as a second argument
+            a_.await_suspend(h, env_);
+        }
+
+        auto await_resume() { return a_.await_resume(); }
+    };
+
+    template<class A>
+    auto await_transform(A&& a)
+    {
+        return wrapper<A>{a, env_};
+    }
+
+    // --- minimal coroutine boilerplate ---
+    struct task
+    {
+        using promise_type = ::promise_type;
+        std::coroutine_handle<::promise_type> h_;
+    };
+    task get_return_object()
+    {
+        return {std::coroutine_handle<promise_type>
+            ::from_promise(*this)};
+    }
+    std::suspend_always initial_suspend() noexcept
+    {
+        return {};
+    }
+    std::suspend_always final_suspend() noexcept
+    {
+        return {};
+    }
+    void return_void() {}
+    void unhandled_exception() {}
+};
+
+using task = promise_type::task;
+
+// a coroutine that co_awaits the plain awaitable
+task example()
+{
+    cancellable_op op;
+    bool stopped = co_await op;
+    assert(stopped);
+}
+
+int main()
+{
+    std::stop_source src;
+    src.request_stop();
+    io_env env{src.get_token()};
+
+    auto t = example();
+    t.h_.promise().env_ = &env;
+    t.h_.resume();
+    t.h_.destroy();
+}
+```
+
+The awaitable `cancellable_op` receives the stop token through `await_suspend(std::coroutine_handle<>, io_env const*)`. It does not know the promise type. Its `await_suspend` takes `coroutine_handle<>` - an ABI-stable signature suitable for use behind a shared library boundary.
+
+The `string_sink` from Section 3 would look like this under the same model:
+
+```cpp
+class string_sink
+{
+    void* impl_;
+
+    std::coroutine_handle<>
+    do_write(
+        std::coroutine_handle<> h,
+        std::string_view sv,
+        io_env const* env);
+
+public:
+    struct write_awaitable
+    {
+        string_sink* self_;
+        std::string_view sv_;
+
+        bool await_ready() const noexcept { return false; }
+
+        std::coroutine_handle<>
+        await_suspend(
+            std::coroutine_handle<> h,
+            io_env const* env)
+        {
+            // stop token available via env->stop_token
+            return self_->do_write(h, sv_, env);
+        }
+        void await_resume() noexcept {}
+    };
+
+    write_awaitable write(std::string_view sv)
+    {
+        return write_awaitable{this, sv};
+    }
+};
+```
+
+The signature remains ABI-stable: `do_write` takes `std::coroutine_handle<>` and `io_env const*`, both of which are fixed types. The stop token reaches the implementation behind the ABI boundary without templating on the promise type.
+
+[P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") provides a complete execution model built on this mechanism, including automatic propagation through nested coroutine chains, `when_all` with sibling cancellation, and production benchmarks.
+
+---
+
+## 5. Shortcomings
+
+The approach demonstrated in Section 4 has real limitations.
+
+**Non-standard `await_suspend` signature.** The C++ coroutine specification defines `await_suspend` as taking `std::coroutine_handle<>` or `std::coroutine_handle<Promise>`. The two-argument form is not part of the language. The promise's `await_transform` wraps the awaitable to inject the second argument, so the mechanism works - but awaitables must be designed for the protocol. Plain awaitables written for the standard one-argument signature still have no path without wrapping.
+
+**Protocol coupling.** An awaitable designed for `await_suspend(handle, io_env const*)` works only with promise types that inject `io_env`. The awaitable does not work with `std::execution::task`, `cppcoro::task`, or other coroutine types without adaptation. The coupling is to a protocol rather than to a specific promise type, but it is coupling nonetheless.
+
+**No language-level support.** A language-level mechanism - such as a standard way for promise types to inject context into `await_suspend` - would be more general than any library-level wrapper. Whether such a mechanism is feasible or desirable is a question for CWG, but the direction is worth exploring.
+
+**Does not fix `std::execution::task`.** The listing demonstrates that the problem is solvable, but it does not propose changes to `std::execution`. The gap in `task` remains. Closing it would require changes to how `as_awaitable` handles plain awaitables - either by creating a receiver for them (analogous to the sender path) or by some other mechanism that delivers the environment.
+
+---
+
+## 6. Conclusion
+
+A plain awaitable `co_await`ed inside `std::execution::task` has no standard mechanism to receive a stop token. The sender path creates an `awaitable-receiver` that bridges the sender to the promise's environment; the plain awaitable path does not. [P3552R3](https://wg21.link/p3552) explicitly requires "awaiter/awaitable friendly" behavior. [P3796R1](https://wg21.link/p3796r1) explicitly acknowledges that "awaitable non-senders are not supported."
+
+At least one library-level solution exists, demonstrating that the design space is not empty. We suggest the committee address this gap before freezing the `std::execution` API in the IS.
 
 ---
 
@@ -149,4 +322,5 @@ We suggest this question be answered before `std::execution` ships in C++26.
 
 1. [P2300R10](https://wg21.link/p2300) - std::execution (Michal Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler)
 2. [P3552R3](https://wg21.link/p3552) - Add a Coroutine Task Type (Dietmar Kuhl, Maikel Nadolski)
-3. [P3796R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html) - Coroutine Task Issues (Dietmar Kuhl)
+3. [P3796R1](https://wg21.link/p3796r1) - Coroutine Task Issues (Dietmar Kuhl)
+4. [P4003R0](https://wg21.link/p4003r0) - IoAwaitables: A Coroutines-Only Framework (Vinnie Falco)

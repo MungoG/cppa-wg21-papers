@@ -1,9 +1,7 @@
 ---
-title: "Where Does the Error Code Go?"
-document: D0000
-date: 2026-02-14
-reply-to: "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
+title: "Where Does the Error Code Go?" document: D4000R0 date: 2026-02-14 reply-to:
+  - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Mungo Gill <mungo.gill@me.com>" audience: SG1, LEWG
 ---
 
 ## Abstract
