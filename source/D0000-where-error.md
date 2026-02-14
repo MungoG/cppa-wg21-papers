@@ -127,7 +127,102 @@ The sender/receiver model's three-channel design assumes a clean classification:
 
 ---
 
-## 6. Questions
+## 6. An Alternative Approach
+
+The classification problem is not inherent to asynchronous I/O. It arises from the three-channel completion model. A coroutine-based model that returns the error code and byte count together as a single value has no channel to choose.
+
+The following listing demonstrates the idea. A `write_sink` whose `write_some` member function returns an awaitable. The implementation of `do_write` is declared but not defined - it lives in a `.cpp` file behind an ABI boundary:
+
+```cpp
+struct io_result
+{
+    std::error_code ec;
+    std::size_t bytes_transferred = 0;
+};
+
+struct io_env {};
+
+class write_sink
+{
+    void* impl_;
+
+    io_result
+    do_write(
+        std::coroutine_handle<> h,
+        std::string_view sv,
+        io_env const* env,
+        io_result* result);
+
+public:
+    struct write_some_awaitable
+    {
+        write_sink* self_;
+        std::string_view sv_;
+        io_result result_;
+
+        bool await_ready() const noexcept { return false; }
+
+        std::coroutine_handle<>
+        await_suspend(
+            std::coroutine_handle<> h,
+            io_env const* env)
+        {
+            result_ = self_->do_write(h, sv_, env, &result_);
+            return std::noop_coroutine();
+        }
+
+        // std::error_code and std::size_t delivered to caller together
+        io_result await_resume() noexcept { return result_; }
+    };
+
+    write_some_awaitable
+    write_some(std::string_view sv)
+    {
+        return write_some_awaitable{this, sv};
+    }
+};
+```
+
+A coroutine uses it:
+
+```cpp
+task<void> send_response(write_sink& sink, std::string_view msg)
+{
+    auto [ec, n] = co_await sink.write_some(msg);
+    // ec and n arrive together - no channel classification
+    if (ec)
+        log("write stopped after", n, "bytes:", ec.message());
+}
+```
+
+The `io_result` carries both values across the ABI boundary. There is no `set_value` or `set_error` decision. Partial success is a value, not a routing decision. A `when_all` over two such operations gets both results - both error codes, both byte counts - because neither operation triggers a cancellation channel. The caller decides what constitutes failure.
+
+[P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") provides a complete execution model built on this pattern, with production benchmarks.
+
+---
+
+## 7. Shortcomings
+
+The coroutine-based model does not have generic error-handling algorithms that key off a separate error channel. An algorithm like `retry_on_error` must inspect the return value rather than intercepting a channel:
+
+```cpp
+task<io_result> retry_on_error(write_sink& sink, std::string_view msg)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        auto [ec, n] = co_await sink.write_some(msg);
+        if (!ec)
+            return {ec, n};
+    }
+    return co_await sink.write_some(msg);
+}
+```
+
+This is how Asio users have always written retry logic - by inspecting the error code. It works, but it means the algorithm must know the return type's structure. A channel-based model can express `retry_on_error` generically over any sender. The tradeoff is that the channel-based model forces every I/O operation to classify its errors, while the value-based model forces error-handling algorithms to understand return types.
+
+---
+
+## 8. Questions
 
 - [P2762R2](https://wg21.link/p2762) delivers `error_code` through `set_value`. Should all I/O senders follow this convention? If so, how do generic error-handling algorithms like `retry` or `log_errors` distinguish I/O errors from successful completions?
 
@@ -137,9 +232,11 @@ The sender/receiver model's three-channel design assumes a clean classification:
 
 ---
 
-## 7. Conclusion
+## 9. Conclusion
 
-We suggest these questions be answered before `std::execution` ships in C++26.
+The error-code classification problem - like the allocator sequencing gap described in [D4007R0](https://wg21.link/p4007) and the stop-token gap described in D0000 - arises from fitting I/O into a protocol designed for a different use case. C++ might be better served by allowing each major use case - GPU dispatch, CPU-bound parallelism, networked I/O - to have an asynchronous execution model optimized for its requirements, rather than searching for a single universal model that serves all of them equally well.
+
+We suggest the questions presented in this paper be answered before `std::execution` ships in C++26.
 
 ---
 
@@ -149,3 +246,4 @@ We suggest these questions be answered before `std::execution` ships in C++26.
 2. [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - Partial success scenarios with P2300 (Chris Kohlhoff)
 3. [P2762R2](https://wg21.link/p2762) - Sender/Receiver Interface for Networking (Dietmar Kuhl)
 4. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Chris Kohlhoff)
+5. [P4003R0](https://wg21.link/p4003r0) - IoAwaitables: A Coroutines-Only Framework (Vinnie Falco)
