@@ -69,7 +69,13 @@ struct my_timer
 };
 ```
 
-Where is the receiver? Where is the environment? Where is the stop token?
+Questions arise:
+
+1. Where is the receiver?
+
+2. Where is the environment?
+
+3. Where is the stop token?
 
 The awaitable can template `await_suspend` on the promise type. The `task::promise_type` does expose `get_env()` ([[task.promise]](https://eel.is/c++draft/exec.task)):
 
@@ -93,6 +99,43 @@ Four observations:
 3. The same awaitable might be `co_await`ed by `std::execution::task`, by a user's custom coroutine type, by `cppcoro::task`, or by any other coroutine. Each has a different promise type. Most do not expose `get_env()`.
 
 4. Senders do not have this problem. A sender receives its environment through `connect(sender, receiver)` - a well-defined protocol that does not depend on who is awaiting the result. The sender does not need to know its caller's promise type. Plain awaitables have no such protocol.
+
+Consider a concrete example. A `string_sink` whose `write` member function returns a plain awaitable. The implementation of `do_write` is declared but not defined - it lives in a `.cpp` file behind an ABI boundary:
+
+```cpp
+class string_sink
+{
+    void* impl_;
+
+    std::coroutine_handle<>
+    do_write( std::coroutine_handle<> h, std::string_view sv );
+
+public:
+    struct write_awaitable
+    {
+        string_sink* self_;
+        std::string_view sv_;
+
+        bool await_ready() const noexcept { return false; }
+
+        std::coroutine_handle<>
+        await_suspend( std::coroutine_handle<> h )
+        {
+            // returns std::noop_coroutine
+            return self_->do_write(h, sv_, impl_);
+        }
+        void await_resume() noexcept {}
+    };
+
+    // write the string asynchronously
+    write_awaitable write( std::string_view sv )
+    {
+        return write_awaitable{ this, sv };
+    }
+};
+```
+
+How do we get the stop token into `do_write`?
 
 ---
 
