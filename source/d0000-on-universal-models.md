@@ -20,29 +20,29 @@ The desire for a universal model is one of the most natural instincts in softwar
 
 That instinct is often productive. But it has a well-documented failure mode.
 
-Joel Spolsky identified it in 2001, coining the term "architecture astronaut":
-
-> "When you go too far up, abstraction-wise, you run out of oxygen. Sometimes, smart thinkers just don't know when to stop, and they create these absurd, all-encompassing, high-level pictures of the universe that are all good and fine, but don't actually mean anything at all."
->
-> [Joel Spolsky, "Don't Let Architecture Astronauts Scare You"](https://www.joelonsoftware.com/2001/04/21/dont-let-architecture-astronauts-scare-you/) (2001)
-
-The MIT Exokernel paper put the same observation in more formal terms:
+The MIT Exokernel paper put it in formal terms:
 
 > "It is fundamentally impossible to define abstractions that are appropriate for all areas and implement them efficiently in all situations."
 >
 > [Engler et al., "Exokernel: An Operating System Architecture for Application-Level Resource Management"](https://people.eecs.berkeley.edu/~brewer/cs262b/hotos-exokernel.pdf) (1995)
 
-And Ted Elliot captured the tradeoff precisely:
+Butler Lampson, in his Turing Award lecture on systems design, put the corrective plainly:
+
+> "An interface should capture the minimum essentials of an abstraction. Don't generalize; generalizations are generally wrong."
+>
+> [Butler Lampson, "Hints for Computer System Design"](http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf) (1983)
+
+And Ted Kaminski captured the tradeoff precisely:
 
 > "An all-powerful abstraction is a meaningless one. You've just got a new word for 'thing'."
 >
-> [Ted Elliot, "The One Ring Problem"](https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html) (2018)
+> [Ted Kaminski, "The One Ring Problem"](https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html) (2018)
 
 None of this means universal models are impossible. They exist and they matter. But the history of computing suggests they are rare, and that the instinct to create them runs far ahead of the evidence needed to justify them.
 
 This paper examines `std::execution` through that lens. The people who designed it are talented. The work they have done contains genuine insights. The question is whether the evidence supports declaring it the universal execution model for C++, or whether the direction has gotten ahead of itself in a domain that is genuinely difficult.
 
-The asymmetry of risk makes this question worth asking. If `std::execution` is truly universal, it will prove itself through adoption and this paper will have been an unnecessary caution. If it is not universal and we mandate it anyway, the cost compounds for decades. The C++ standard still cannot connect to the internet. Getting the execution model wrong makes that problem harder, not easier.
+The asymmetry of risk makes this question worth asking. If `std::execution` is truly universal, it will prove itself through adoption and this paper will have been an unnecessary caution. If it is not universal and we mandate it anyway, the cost compounds for decades. Every major programming language ships standard networking. C++ does not. Getting the execution model wrong makes that problem harder, not easier.
 
 ---
 
@@ -96,7 +96,7 @@ CORBA's failure was not inevitable. A narrower middleware - one that solved obje
 
 Object-oriented programming went through a similar cycle. The claim that "everything is an object" positioned OOP as a universal modeling philosophy. Richard Gabriel argued at OOPSLA 2002 that this claim gave OOP a privileged position that starved research into alternative paradigms ([Gabriel, "Objects Have Failed"](https://dreamsongs.com/Files/ObjectsHaveFailed.pdf)).
 
-The Gang of Four's *Design Patterns* (1994) articulated the corrective: "Favor object composition over class inheritance." The industry eventually learned that deep inheritance hierarchies were brittle and that composition through narrow interfaces produced better designs ([Wikipedia: Composition over inheritance](https://en.wikipedia.org/wiki/Composition_over_inheritance)).
+The Gang of Four's *Design Patterns* (1994) articulated the corrective: "Favor object composition over class inheritance." The industry eventually learned that deep inheritance hierarchies were brittle and that composition through narrow interfaces produced better designs ([Wikipedia: Composition over inheritance](https://en.wikipedia.org/wiki/Composition_over_inheritance)). The structural parallel to async is direct: a single wide execution model that subsumes scheduling, error handling, cancellation, and hardware dispatch is the async equivalent of a single deep inheritance hierarchy. The corrective is the same - narrow interfaces that compose.
 
 ### 2.3 The Pattern
 
@@ -120,9 +120,9 @@ This is worth pausing on. The foundational premise of the current direction did 
 
 Ranges are the most recent precedent for a universal abstraction in C++. They were positioned as the universal iteration and algorithm model. Adoption tells a more nuanced story.
 
-Google bans `<ranges>` from most of its codebase. Daisy Hollman (then at Google) explained at [CppCon 2024](https://cppcon2024.sched.com/event/1gZgc/why-google-doesnt-allow-ranges-in-our-codebase) that ranges are "perhaps the largest and most ambitious single feature ever added to the C++ standard library" but "it's unreasonable to expect that those trade-offs will result in the same cost-benefit ratio in every context."
+Google bans `<ranges>` from most of its codebase. Daisy Hollman (Google) explained at [CppCon 2024](https://cppcon2024.sched.com/event/1gZgc/why-google-doesnt-allow-ranges-in-our-codebase) that ranges are "perhaps the largest and most ambitious single feature ever added to the C++ standard library" but "it's unreasonable to expect that those trade-offs will result in the same cost-benefit ratio in every context."
 
-Compile-time overhead is substantial. Range-V3 headers compile in 3.44 seconds versus 0.44 seconds for STL `<algorithm>`, roughly an 8x slowdown ([NanoRange wiki: Compile times](https://github.com/tcbrindle/NanoRange/wiki/Compile-times)). Deeply nested range adapters exhibit a "cubic stack blowup" in template instantiation ([Hacker News discussion](https://news.ycombinator.com/item?id=40317350)). Daniel Lemire's analysis suggests that ["std::ranges may not deliver the performance that you expect"](https://lemire.me/blog/2025/10/05/stdranges-may-not-deliver-the-performance-that-you-expect/) (2025).
+Compile-time overhead is substantial. Range-V3, the precursor library that informed the standard design, compiles its headers in 3.44 seconds versus 0.44 seconds for STL `<algorithm>`, roughly an 8x slowdown ([NanoRange wiki: Compile times](https://github.com/tcbrindle/NanoRange/wiki/Compile-times)). Deeply nested range adapters exhibit a "cubic stack blowup" in template instantiation ([Hacker News discussion](https://news.ycombinator.com/item?id=40317350)). Daniel Lemire's analysis suggests that ["std::ranges may not deliver the performance that you expect"](https://lemire.me/blog/2025/10/05/stdranges-may-not-deliver-the-performance-that-you-expect/) (2025).
 
 Ranges brought real value to the language. The parallel to `std::execution` is imperfect - ranges shipped, they work, and many codebases use them productively. But the difference in *kind* of cost matters more than the difference in degree. With ranges, Google can ban the header; the cost is compile time and ergonomic complexity, real but recoverable. With `std::execution`, the cost is architectural: ABI lock-in on an execution model that has not proven itself for I/O, the domain that started the executor discussion a decade ago. WG21's insistence on ABI stability means that each feature must land right, because mistakes cannot be corrected without breaking the world. Every wide abstraction that lands imperfectly adds permanent technical debt to the standard - and the rate of that accumulation increases with the scope of what is frozen. Ranges show that even successful universal abstractions can prove too costly for major adopters. The question is whether C++ can afford to discover that *after* the ABI is frozen, rather than before.
 
@@ -178,7 +178,7 @@ Nobody objected to portable socket wrappers. The schism was entirely about which
 
 ### 3.5 std::execution (P2300)
 
-`std::execution` is the central case study. It proposes sender/receiver as the universal async model for C++. The authors are talented, the structured concurrency ideas have real value, and the work represents years of effort. The question is whether the evidence supports declaring it universal.
+`std::execution` is the central case study. It proposes sender/receiver as the universal async model for C++. The question is whether the evidence supports declaring it universal.
 
 #### 3.5.1 Design Priorities
 
@@ -195,11 +195,48 @@ The entire sender algorithm customization lineage ([P2999R3](https://wg21.link/p
 
 But the properties that serve these domains are precisely what makes `std::execution` unsuitable as a universal model. The compile-time visibility that HFT values means everything is templates - separate compilation is impossible. The zero-allocation pipeline that embedded systems need means type erasure is structurally resisted. The very properties that serve GPU dispatch and latency-critical compute *underserve* the ordinary developer who needs fast compile times, stable ABIs, and type-erased interfaces behind shared libraries.
 
-The ordinary async C++ developer - the one writing a web service, a database client, a monitoring agent, a chat server - needs to open a socket, read data, handle errors, and compile in reasonable time. They need `pimpl`, shared libraries, and `any_completion_handler`. The framework does not serve them.
+That developer - the one writing a web service, a database client, a monitoring agent, a chat server - needs to open a socket, read data, handle errors, and compile in reasonable time. They need `pimpl`, shared libraries, and `any_completion_handler`. The framework does not serve them. What they want to write is:
+
+```cpp
+auto [ec, n] = co_await stream.read(buf);
+```
+
+What `std::execution` requires them to write is:
+
+```cpp
+auto s = just(buf)
+       | let_value([&](auto b) {
+           return async_read(stream, b);
+         })
+       | then([](std::size_t n) { /* ... */ });
+sync_wait(on(system_ctx.get_scheduler(), std::move(s)));
+```
+
+[P3552](https://wg21.link/p3552)'s `task` type narrows the ergonomic gap - a coroutine using `task` and `co_await` on a sender-based operation would look less verbose. But the underlying model differences persist regardless of surface syntax: the architectural costs remain. [P2079](https://wg21.link/p2079) (`system_context`) provides a default scheduler - a place to run the second snippet. It does not let you write the first one. The problem is not the absence of a scheduler. It is the programming model itself: the template machinery underneath, which cannot be hidden behind `pimpl` or compiled separately.
 
 The design reflects its origins in GPU and HFT infrastructure. Of the companion papers in flight (see §3.5.5), zero address networking. The specification examples are parallel primitives, not I/O operations. The algorithm customization machinery serves hardware backend dispatch, not socket reads. A framework optimized for these domains will naturally optimize for these domains, and the claim of universality requires evidence from outside them.
 
 The ordinary developer's needs are simpler. A design that serves them is correspondingly smaller. And smaller is achievable.
+
+#### 3.5.1a Structured Concurrency
+
+A natural response is that `std::execution` provides structured concurrency guarantees - structured lifetimes for async operations that prevent use-after-free - and that these guarantees justify the framework's scope.
+
+Structured concurrency is a genuine contribution. The question is whether it is uniquely achievable through sender/receiver, or whether multiple execution models can provide it, each optimized for different domains.
+
+Sender/receiver achieves structured lifetimes through operation states with explicit connect/start phases and compile-time work graph construction. This serves GPU dispatch and latency-critical compute well, where the entire execution graph is known at compile time and zero-allocation pipelines matter. Coroutines achieve structured lifetimes through a different mechanism: the coroutine frame lives as long as its handle, `co_await` suspends without detaching, and RAII destructors run at scope exit. Coroutine-based primitives - `when_all`, `when_any`, `async_scope`, `async_mutex`, channels - are implementable on top of coroutines without sender/receiver ([D4003](https://wg21.link/p4003) §4.1-4.2). This serves I/O-oriented code well, where the execution graph is dynamic and type erasure matters.
+
+Each approach optimizes for its domain. The sender/receiver model pays for compile-time visibility with template weight and resistance to erasure. The coroutine model pays for erasure and fast compilation with runtime frame allocation. These are legitimate engineering tradeoffs, and different users will make different choices.
+
+A natural concern is that coroutines lack portable heap allocation elision (HALO), making them unsuitable as a standardization foundation. This concern is less impactful for async I/O than it first appears. At the end of an I/O call chain, the coroutine escapes the caller: it suspends and its handle is passed to the OS reactor (epoll, IOCP, io_uring). HALO can never apply at the I/O boundary because the coroutine inherently outlives the call that created it. HALO matters for short-lived compute coroutines that return inline to the caller. I/O coroutines do not. The domain where HALO matters most - tight compute loops - is the domain sender/receiver already serves well. The domain where coroutines serve I/O - long-lived suspended operations waiting on the OS - is the domain where HALO is structurally inapplicable.
+
+Both approaches have open problems. `std::execution`'s own structured concurrency record is mixed: [P3373](https://wg21.link/p3373) reworks operation-state lifetimes, [LWG 4368](https://cplusplus.github.io/LWG/issue4368) is a Priority 1 dangling-reference vulnerability in `transform_sender`, and `ensure_started`, `start_detached`, and `split` were removed precisely because they broke structured concurrency ([P3187R1](https://wg21.link/p3187r1)). Coroutine-based models face their own challenges in allocator propagation, which [D4007](https://wg21.link/p4007) and [D4003](https://wg21.link/p4003) address. Neither approach has a monopoly on safety.
+
+Structured concurrency is a property worth having, not an argument for a single framework. The question before the committee is not which mechanism achieves it best in the abstract, but whether mandating one forecloses the others - and whether that foreclosure is justified by the evidence.
+
+A related objection is that sender pipelines compose at the type level - `then | when_all | continues_on` - in ways that coroutines do not. This is true. Coroutines compose at the expression level: `co_await when_all(a(), b())`. The two styles optimize for different things. Type-level composition gives the compiler full visibility into the work graph at compile time, which serves GPU dispatch and latency-critical compute. Expression-level composition gives the programmer fast compilation and ABI stability, which serves I/O. But the claim that one composition style must subsume the other is itself the universality instinct this paper examines. Different domains compose differently. Demanding that every async abstraction compose identically is the same error as demanding that one execution model serve all domains. The question is not whether coroutines replicate sender composition, but whether the committee should foreclose coroutine-native composition by mandating a single model.
+
+A further response is that `std::execution` provides a vocabulary type for async - a common currency that lets libraries interoperate regardless of which runtime they use. This is the strongest form of the universality claim, and it deserves a direct answer. A vocabulary type must be widely adopted, cheaply convertible at library boundaries, and stable across ABI versions. The evidence shows `std::execution` satisfies none of these: adoption outside GPU and HFT is thin (Section 3.5.2), the type-erasure boundary needed for cheap conversion does not exist (Section 3.5.3), and the ABI surface is maximally fragile because the framework is template-heavy and structurally resists erasure (Section 3.5.3). A narrower vocabulary - coroutine-based I/O concepts with type-erased `coroutine_handle` boundaries - would serve the same interoperability purpose with less cost, less risk, and a smaller ABI footprint.
 
 #### 3.5.2 Networking Deferred
 
@@ -211,23 +248,37 @@ The official stdexec documentation states under "Standardization Status (as of 2
 
 The framework ships in C++26 without the use case that started the entire executor discussion a decade ago.
 
-stdexec's only I/O example ([io_uring.cpp](https://github.com/NVIDIA/stdexec/blob/main/examples/io_uring.cpp)) contains zero socket operations, zero reads, zero writes. It demonstrates only timers (`schedule_after`, `schedule_at`). When a user asked about file reading, the maintainer directed them to a third-party repo ([NVIDIA/stdexec#1062](https://github.com/NVIDIA/stdexec/issues/1062)). The framework has never been proven for I/O in practice.
+stdexec's only I/O example ([io_uring.cpp](https://github.com/NVIDIA/stdexec/blob/main/examples/io_uring.cpp)) contains zero socket operations, zero reads, zero writes. It demonstrates only timers (`schedule_after`, `schedule_at`). When a user asked about file reading, the maintainer directed them to a third-party repo ([NVIDIA/stdexec#1062](https://github.com/NVIDIA/stdexec/issues/1062)).
+
+The reference implementations - [stdexec](https://github.com/NVIDIA/stdexec) (NVIDIA, 2.2k stars) and [libunifex](https://github.com/facebookexperimental/libunifex) (Meta, 1.7k stars) - have been freely available for years. Adoption stories exist in the domains the framework was designed for: GPU computing, financial infrastructure, heterogeneous hardware. But the broader open-source community has not reached for them. The framework has not achieved the broad voluntary adoption that genuine universal models achieve before standardization. Section 6.4 examines the adoption evidence in detail.
 
 #### 3.5.3 Type Erasure and ABI
 
-[libunifex issue #244](https://github.com/facebookexperimental/libunifex/issues/244) (still open) shows a user trying to implement networking with SSL sockets who hits a fundamental type-erasure wall. Eric Niebler responds:
+[libunifex issue #244](https://github.com/facebookexperimental/libunifex/issues/244) (opened March 2021, still open) documents the structural difficulty of type-erasing senders. The evidence chain is worth tracing in detail.
 
-> "There currently isn't a generalization of `any_sender_of<>` than can handle more than `std::exception_ptr`."
+A user ([Garcia6l20](https://github.com/facebookexperimental/libunifex/issues/244)) tried to implement SSL sockets with libunifex. The SSL handshake requires type-erasing different sender types into a single `any_sender_of<>`. The code failed to compile because `any_sender_of<>` cannot forward the `error_code` that io_uring propagates through `set_error`.
 
-Lewis Baker proposes a fix:
+Eric Niebler [diagnosed the structural limitation](https://github.com/facebookexperimental/libunifex/issues/244#issuecomment-810854513):
 
-> "Longer term, it probably makes sense to allow the any_sender_of type to be parameterisable with both a list of set_value overloads and a list of set_error overloads."
+> "The problem is that the io_uring_context can propagate errors of two types: `std::exception_ptr` and `std::error_code`. `any_sender_of<>` is only able to handle `std::exception_ptr`. There currently isn't a generalization of `any_sender_of<>` than can handle more than `std::exception_ptr`."
 
-The fix was never implemented. C++26 `std::execution` provides no type-erased sender at all. This matters for three reasons.
+His proposed workaround: convert the `error_code` into an `exception_ptr` before it crosses the type-erasure boundary. Niebler [called this](https://github.com/facebookexperimental/libunifex/issues/244#issuecomment-810854513) "not a super-awesome solution."
+
+Lewis Baker [provided the specific mechanism](https://github.com/facebookexperimental/libunifex/issues/244#issuecomment-812866957): the type-erasing receiver would have two `set_error` overloads - one taking `exception_ptr` (passed through), one taking `error_code` that wraps it:
+
+> "the receiver it passes down could have two overloads of `set_error()`. One taking `exception_ptr` and the other taking an `error_code` that forwards on to `set_error(*this, std::make_exception_ptr(std::system_error(ec)))`"
+
+Baker also proposed a proper generalization - parameterizing `any_sender_of` with both value and error overload lists:
+
+> "Longer term, it probably makes sense to allow the any_sender_of type to be parameterisable with both a list of set_value overloads and a list of set_error overloads that it expects/supports, rather than have them hard-coded to exception_ptr or some other error-types."
+
+Neither fix was ever implemented. The issue remains open five years later. The only existing `any_sender_of` implementation - libunifex's [`any_sender_of.hpp`](https://github.com/facebookexperimental/libunifex/blob/main/include/unifex/any_sender_of.hpp) - confirms the structural limitation in source code: its type-erased receiver hard-codes `set_error` to accept only `std::exception_ptr`. NVIDIA's [stdexec](https://nvidia.github.io/stdexec/reference/index.html) ships no type-erased sender at all. No WG21 paper proposes one for C++26 or C++29.
+
+C++26 `std::execution` ships without a type-erased sender, and the gap is not a missing paper - it is a structural consequence of the multi-channel completion model. The sender/receiver completion model has multiple error channels, the type-erasure boundary can only erase one, and the framework's own authors' workaround is to convert `error_code` to `exception_ptr` via `make_exception_ptr(system_error(ec))` - a mechanism the lead author calls "not a super-awesome solution." Whether the three-channel model is itself universal is an open question; [D4000](https://wg21.link/p4000) ("Where Does the Error Code Go?") examines the classification problem and finds that the three-channel model (`set_value`, `set_error`, `set_stopped`) forces every I/O library to choose which channel carries the error code, with no convention for the correct answer, and silently different `when_all` behavior depending on which convention a given sender follows. This matters for three reasons.
 
 **ABI stability.** WG21 has maintained ABI stability across C++14, C++17, and C++20 ([P1863R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1863r1.pdf)). Breaking ABI costs the ecosystem "engineer-millennia." Templates and header-only libraries create ABI fragility because "template implementations must appear in headers, forcing recompilation into every translation unit that uses them" ([Gentoo C++ ABI analysis](https://blogs.gentoo.org/mgorny/2012/08/20/the-impact-of-cxx-templates-on-library-abi/)). Type-erased interfaces provide stable ABI boundaries: implementation changes stay behind the erasure wall, no recompilation needed. A framework that structurally resists type erasure maximizes ABI risk. A design that embraces type erasure, like coroutine handles which are inherently type-erased, would give the committee what it wants: async capabilities with ABI stability. This is a design that solves the committee's own stated problem.
 
-**Error model mismatch.** Networking code vastly prefers `error_code` over exceptions. Boost.Asio's own documentation explains why EOF is an error_code: "An EOF error may be used to distinguish the end of a stream from a successful read of size 0" ([Boost.Asio Design](https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html)). Conditions like cancellation and EOF are alternate success states, not catastrophic failures. In [libunifex #244](https://github.com/facebookexperimental/libunifex/issues/244), Niebler confirms `any_sender_of` is hard-coded to `exception_ptr` while io_uring propagates `error_code`. The framework that claims universality produces a type-erased form that is itself not universal. The deeper problem is that the three-channel completion model (`set_value`, `set_error`, `set_stopped`) forces every I/O library to classify its error codes into channels, and no convention exists for which channel is correct. When two libraries make different choices, generic algorithms like `when_all` produce silently different behavior depending on which convention a given sender follows. [D4000](https://wg21.link/p4000) ("Where Does the Error Code Go?") examines this classification problem in detail.
+**Error model mismatch.** Networking code vastly prefers `error_code` over exceptions. Boost.Asio's own documentation explains why EOF is an error_code: "An EOF error may be used to distinguish the end of a stream from a successful read of size 0" ([Boost.Asio Design](https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html)). Conditions like cancellation and EOF are alternate success states, not catastrophic failures. In [libunifex #244](https://github.com/facebookexperimental/libunifex/issues/244), Niebler confirms `any_sender_of` is hard-coded to `exception_ptr` while io_uring propagates `error_code`. The framework that claims universality produces a type-erased form that is itself not universal.
 
 **Compile times.** [Asio issue #1100](https://github.com/chriskohlhoff/asio/issues/1100) is a feature request for type-erased handlers. The author states: "Some of us still care about compile times and being able to apply the Pimpl idiom. This is not possible when our libraries are forced to be header-only because of Asio." Kohlhoff responded by implementing `any_completion_handler`. A framework that structurally resists type erasure forces the template-heavy model on every user.
 
@@ -239,13 +290,29 @@ The fix was never implemented. C++26 `std::execution` provides no type-erased se
 
 When the lead author of a framework describes part of its design as "irreparably broken," that is evidence worth weighing.
 
-The companion paper "The Velocity of Change in `std::execution`" surveys the published record systematically: since `std::execution` was approved for C++26 at Tokyo in March 2024, the committee has processed 50 items - 34 papers, 11 LWG defects, and 5 national body comments - modifying a single feature in 22 months. The rate of change has accelerated from 0.88 items/month to 2.80 items/month over the first four complete meeting periods, the subjects are not converging, and the severity of discovered defects has not decreased - two Priority 1 safety defects were filed 16 months after approval. A feature approaching stability would show the opposite trajectory on all three measures.
+The companion paper ["The Velocity of Change in `std::execution`"](https://github.com/cppalliance/wg21-papers/blob/master/source/D0000-execution-churn.md) surveys the published record systematically: since `std::execution` was approved for C++26 at Tokyo in March 2024, the committee has processed 50 items - 34 papers, 11 LWG defects, and 5 national body comments - modifying a single feature in 22 months. The rate of change has accelerated from 0.88 items/month to 2.80 items/month over the first four complete meeting periods, the subjects are not converging, and the severity of discovered defects has not decreased - two Priority 1 safety defects were filed 16 months after approval. A feature approaching stability would show the opposite trajectory on all three measures.
+
+The closest precedent for comparison is `<ranges>`. After its adoption for C++20, `<ranges>` accumulated roughly 30 LWG issues in its first two years, most at Priority 2-3. `std::execution` has accumulated 11 LWG issues in less time, including two Priority 1 safety defects affecting core mechanisms (`connect` and `transform_sender`) that most sender/receiver programs exercise. The defect count may be comparable; the severity is not. Ranges' P1 defects at comparable maturity were design-quality issues: return types ([LWG 3186](https://cplusplus.github.io/LWG/issue3186)), naming ([LWG 3379](https://cplusplus.github.io/LWG/issue3379)), and semantic constraints ([LWG 3363](https://cplusplus.github.io/LWG/issue3363)). None were safety defects. `std::execution`'s P1 defects are dangling-reference vulnerabilities and unconstrained type aliases in core mechanisms. As of February 2026, the [LWG priority tracker](https://cplusplus.github.io/LWG/unresolved-prioritized.html) lists 8 Priority 1 issues in section 33 (`std::execution`) and zero in ranges. The severity profile is qualitatively different. Beyond defects, `std::execution` has required 34 papers to fix, rework, or complete - a volume that `<ranges>` did not require in a comparable period.
 
 #### 3.5.5 Papers Still in Flight
 
-"The Velocity of Change in `std::execution`" catalogues all 50 items in detail. The summary: of the 34 post-approval papers, 2 removed features entirely (`ensure_started`, `start_detached`, `split`), 13 reworked fundamental design aspects (sender algorithm customization was rewritten three times), 11 added missing functionality (including `system_context`, `async_scope`, and `task` itself), and the remaining papers fix wording or address post-adoption issues. The 11 LWG defects include two at Priority 1 - a dangling-reference vulnerability in `transform_sender` and an unconstrained alias in `connect_result_t`. Five national body comments target `task`'s allocator model, requiring architectural changes to the coroutine type adopted only six months earlier. Switzerland's CD ballot comment identifies signal-safety as "a serious defect."
+["The Velocity of Change in `std::execution`"](https://github.com/cppalliance/wg21-papers/blob/master/source/D0000-execution-churn.md) catalogues all 50 items in detail. The summary: of the 34 post-approval papers, 2 removed features entirely (`ensure_started`, `start_detached`, `split`), 13 reworked fundamental design aspects (sender algorithm customization was rewritten three times), 11 added missing functionality (including `system_context`, `async_scope`, and `task` itself), and the remaining papers fix wording or address post-adoption issues. The 11 LWG defects include two at Priority 1 - a dangling-reference vulnerability in `transform_sender` and an unconstrained alias in `connect_result_t`. Five national body comments target `task`'s allocator model, requiring architectural changes to the coroutine type adopted only six months earlier. Switzerland's CD ballot comment identifies signal-safety as "a serious defect."
 
 Of the papers that address design rather than wording, zero are about networking. The subjects span GPU dispatch, operation-state lifetimes, scheduler affinity, forward progress guarantees, allocator propagation, and diagnostic quality - the breadth of a framework still finding its shape, not one converging toward stability.
+
+#### 3.5.5a The Universality Test
+
+Beyond the velocity of change, three companion papers examine specific points where `std::execution` fails the universality test - cases where the framework cannot accommodate features already in the C++ language or error handling models already dominant in practice:
+
+1. **Stop token gap.** C++20 added `std::stop_token` as a standard cancellation mechanism. When a plain awaitable - not a sender - is `co_await`ed inside `std::execution::task`, it has no standard mechanism to receive the stop token. The sender path creates an `awaitable-receiver` that bridges to the promise's environment; the plain awaitable path does not. [P3552R3](https://wg21.link/p3552) requires `task` to be "awaiter/awaitable friendly." [P3796R1](https://wg21.link/p3796r1) acknowledges the opposite: "awaitable non-senders are not supported." [D0000](https://wg21.link/p0000) ("How Do Plain Awaitables Receive a Stop Token?") documents this gap and demonstrates that the design space for solving it is not empty.
+
+2. **Error classification gap.** The three-channel completion model forces every I/O library to classify its error codes into channels, with no convention for the correct answer. [D4000](https://wg21.link/p4000) ("Where Does the Error Code Go?") shows that when two libraries make different choices, generic algorithms like `when_all` produce silently different behavior. The framework that claims universality cannot agree with itself on how errors should be reported.
+
+3. **Allocator timing gap.** [D4007](https://wg21.link/p4007) ("std::execution Needs More Time") documents that the backward-flow context model delivers the allocator too late for coroutine frame allocation. The receiver - and with it the allocator - is not known until `connect()`, but the coroutine frame must be allocated before `connect()` can be called.
+
+A framework that cannot propagate `std::stop_token` to plain awaitables, cannot type-erase its own senders without losing `error_code`, and has no convention for which completion channel carries the error code - can it be called universal?
+
+These are not edge cases. `std::stop_token` is a C++20 language feature. `error_code` is the dominant error model in networking code. Plain awaitables are the mechanism that C++20 coroutines provide for async composition. A universal execution model must accommodate the language's own features. The evidence shows `std::execution` does not.
 
 #### 3.5.6 The Design Space Remains Open
 
@@ -295,7 +362,7 @@ In async, no similarly narrow universal abstraction has emerged. Instead, multip
 
 **[Seastar](https://github.com/scylladb/seastar)**, 9.1k GitHub stars. The framework behind ScyllaDB. Seastar uses a shared-nothing design that "shards all requests onto individual cores" with "explicit message passing rather than shared memory between threads" ([seastar.io](https://www.seastar.io/)). Its futures-and-promises execution model is fundamentally incompatible with sender/receiver. It does not use `std::execution`.
 
-**[cppcoro](https://github.com/lewissbaker/cppcoro)**, 3.8k GitHub stars. A C++ coroutine abstractions library created by Lewis Baker, who is a co-author of [P2300](https://wg21.link/p2300). It provides its own task types, schedulers, and async primitives. It does not use `std::execution`. When a co-author of the framework builds a separate library with a different execution model, that is evidence the design space has not converged.
+**[cppcoro](https://github.com/lewissbaker/cppcoro)**, 3.8k GitHub stars. A C++ coroutine abstractions library created by Lewis Baker, who went on to co-author [P2300](https://wg21.link/p2300). cppcoro predates P2300, and Baker's experience with it informed the sender/receiver design. It provides its own task types, schedulers, and async primitives. It does not use `std::execution`. The point is not that Baker should have stuck with cppcoro, but that the design space accommodates fundamentally different execution models - and it has not converged on one.
 
 The existence of these models is not a failure to be corrected. It is evidence that the problem space is too rich for a single wide model to dominate.
 
@@ -333,6 +400,8 @@ The ingredients for async C++'s narrow waist are not hypothetical. Coroutines pr
 
 ## 6. The Problem Is Already Solved
 
+Before presenting that contract, we address the argument that standardization is needed to solve a coordination problem - and show that no such problem exists.
+
 A key premise of `std::execution` is that C++ needs a standard framework for heterogeneous and parallel computing. But the ecosystem has not been waiting. The coordination problems that `std::execution` aims to solve are already solved by widely adopted, production-proven libraries.
 
 ### 6.1 GPU and Heterogeneous Computing
@@ -363,7 +432,7 @@ Every feature added to the C++ standard must be implemented and maintained by st
 
 The committee itself is strained. Bryce Adelstein Lelbach notes the committee has received "10x more proposals over the past decade" and describes it as "300 individual authors, not 1 team" ([Convenor candidacy](https://brycelelbach.github.io/cpp_convenor/)). [P2656R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2656r2.html) observes that "the community is struggling to manage the challenges of the complexity and variability of the tools, technologies, and systems that make C++ possible."
 
-David Sankel (Adobe) captured the risk in [P3023R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2023/p3023r0.html):
+David Sankel (Adobe) captured the risk in [P3023R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2023/p3023r1.html):
 
 > "The surest way to sabotage a standard is to say yes to everything."
 
@@ -379,11 +448,11 @@ But no such coordination problem exists for `std::execution`. And the domains it
 
 **HFT and financial infrastructure do not need the standard.** They use user-mode networking stacks on specified hardware. They routinely fork entire libraries for nanosecond-level optimization. They do not want portability - they want the opposite: deterministic, hardware-specific, fully controllable execution. Standardization's benefits - long-term maintenance, cross-platform guarantees, canonical implementations - are properties these domains actively avoid.
 
-**The ordinary developer gets no benefit either.** The ordinary async C++ developer - the majority - would benefit from portability and long-term maintenance. But they get a framework that does not serve their use case: networking, I/O, fast compile times, separate compilation, type erasure. They bear the cost of standardization without receiving the benefit.
+**The ordinary developer gets no benefit either.** The ordinary async C++ developer - the majority - would benefit from portability and long-term maintenance. But they get a framework that does not serve their use case: networking and I/O with the build-time and ABI properties they need (Section 3.5.1). They bear the cost of standardization without receiving the benefit. An objection: ordinary developers doing task parallelism (not I/O) could benefit from a standard `when_all` and `task` without needing networking. This is true but does not change the calculus - those users are equally well-served by [oneTBB](https://github.com/uxlfoundation/oneTBB), [Taskflow](https://github.com/taskflow/taskflow), or coroutine-based alternatives, all available on vcpkg today without consuming pages of the standard.
 
 **The library is already available.** `stdexec` is on [vcpkg](https://vcpkg.link/ports/stdexec): `vcpkg install stdexec`. Anyone who wants sender/receiver can use it right now. Boost has thrived for decades without standardization ([boost.org](https://www.boost.org/users/)). Google published [Abseil](https://github.com/abseil/abseil-cpp) (17k GitHub stars) as a standalone library without consuming a single page of the standard ([abseil.io/about](https://abseil.io/about/)). Package managers have eliminated the distribution problem - vcpkg offers over 2,600 libraries ([vcpkg.io](https://vcpkg.io/en/)), Conan hosts nearly 1,900 recipes ([conan.io/center](https://conan.io/center)). Nobody is blocked. NVIDIA ships CUDA. Meta ships folly. Intel ships oneTBB. ScyllaDB ships Seastar. The ecosystem is not waiting.
 
-**The framework's complexity is not abstract.** Consider a tree search from the stdexec examples repository ([backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp)):
+**The framework's complexity is not hypothetical.** Consider a tree search from the stdexec examples repository ([backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp)):
 
 ```cpp
 auto search_tree(auto                    test,
@@ -412,9 +481,9 @@ auto search_tree(auto                    test,
 }
 ```
 
-The failure continuation is itself a sender pipeline (`on(sch, just()) | let_value(...)`) passed as a parameter to a recursive function. Each recursive call nests another `let_value` lambda that [captures and moves](https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda) the failure sender. This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) expressed as sender composition - a technique [used more frequently by compilers than by programmers](https://en.wikipedia.org/wiki/Continuation-passing_style) as an intermediate representation, not as a style intended for human authorship. The reader must trace the `fail` parameter through three levels of `std::move` to understand which path executes - the same [pyramid of nesting](https://callbackhell.com/) that drove JavaScript's evolution from callbacks to promises to `async`/`await`. For further illustration, the same repository demonstrates [a fold operation requiring type-erased recursive sender returns](https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp) and [a loop using mutable lambda captures with reference-captured locals inside nested senders](https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp). This is what the committee is asking ordinary developers to adopt as their universal async model.
+The failure continuation is itself a sender pipeline (`on(sch, just()) | let_value(...)`) passed as a parameter to a recursive function. Each recursive call nests another `let_value` lambda that [captures and moves](https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda) the failure sender. This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) expressed as sender composition - a technique [used more frequently by compilers than by programmers](https://en.wikipedia.org/wiki/Continuation-passing_style) as an intermediate representation, not as a style intended for human authorship. The reader must trace the `fail` parameter through three levels of `std::move` to understand which path executes - the same [pyramid of nesting](https://callbackhell.com/) that drove JavaScript's evolution from callbacks to promises to `async`/`await`. For further illustration, the same repository demonstrates [a fold operation requiring type-erased recursive sender returns](https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp) and [a loop using mutable lambda captures with reference-captured locals inside nested senders](https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp). This is what the committee is asking developers to adopt as their universal async model.
 
-**The asymmetry is stark.** If `std::execution` is removed from C++26 and offered as a standalone library:
+**The asymmetry is stark.** If `std::execution` is deferred from C++26 and offered as a standalone library:
 
 - Users who want it lose nothing. They install it from vcpkg.
 - Implementers gain relief from a massive implementation burden.
@@ -479,15 +548,17 @@ The asymmetry of risk favors caution. Deferring `std::execution` costs nothing: 
 
 This paper makes two asks. They are different in scope and political feasibility, and the paper deliberately separates them so the committee can act on either independently.
 
-**The primary recommendation: do not gate networking on `std::execution`.** Networking should proceed on its own terms, with I/O-optimized concepts that serve the ordinary developer, without waiting for `std::execution` to solve problems it was not designed for. This is the paper's strongest ask and the one most directly supported by the evidence. The SG1 poll (§3.1), the GPU-oriented design artifacts (§3.5.1), the networking deferral (§3.5.2), and the deployment reality (§6.4, §6.5) all point to the same conclusion: `std::execution` should not be a prerequisite for networking. If the committee does nothing else, it should ensure that networking is not held hostage to an execution model that has not proven itself for I/O.
+**The primary recommendation: do not gate networking on `std::execution`.** Networking should proceed on its own terms, with I/O-optimized concepts that serve the ordinary developer, without waiting for `std::execution` to solve problems it was not designed for. This is the paper's strongest ask and the one most directly supported by the evidence. The SG1 poll (§3.1), the GPU-oriented design artifacts (§3.5.1), the networking deferral (§3.5.2), and the deployment reality (§6.4, §6.5) all point to the same conclusion: `std::execution` should not be a prerequisite for networking. If the committee does nothing else, it should ensure that networking need not wait for an execution model that has not proven itself for I/O.
 
-**The secondary recommendation: defer `std::execution` from C++26.** The evidence supports this too - the 10+ companion papers in flight, the contested task type, the absence of type-erased senders, the structural resistance to the needs of ordinary async developers. If the committee is willing to take this larger step, the paper argues it is justified. But it is a bigger ask with lower political probability, and the primary recommendation does not depend on it.
+**The secondary recommendation: defer `std::execution` from C++26.** The evidence supports this too - the 10+ companion papers in flight, the contested task type, the absence of type-erased senders, the mismatch with the needs of most async developers. If the committee is willing to take this larger step, the paper argues it is justified. But it is a bigger ask with lower political probability, and the primary recommendation does not depend on it.
+
+Other options exist - shipping `std::execution` in C++26 while pursuing networking in parallel, or shipping the sender/receiver core without the contested `task` type. Both are compatible with the primary recommendation but neither addresses the disproportionate risk of freezing a wide abstraction before it has stabilized. Fifty post-approval items, two Priority 1 safety defects, and an accelerating rate of change are properties of the sender/receiver framework itself, not of `task` alone.
 
 Beyond these two asks, this paper respectfully suggests:
 
 1. **Let execution models compete.** The ecosystem already has multiple production-proven models (Asio, folly, Seastar, TooManyCooks, Taskflow, and others). Rather than picking a winner, let voluntary adoption identify which abstractions deserve standardization - the same process that produced TCP/IP, IEEE 754, and the STL.
 
-2. **Standardize the narrow async I/O contract, not the execution model.** [D4003](https://wg21.link/p4003) ("IoAwaitables: A Coroutines-Only Framework") proposes this contract and provides production benchmarks. The contract is small. The concept for a writable byte stream fits in six lines:
+2. **Standardize the narrow async I/O contract, not the execution model.** [D4003](https://wg21.link/p4003) ("IoAwaitables: A Coroutines-Only Framework") demonstrates what such a contract looks like in practice and provides production benchmarks. The contract is small:
 
     ```cpp
     // error code and byte count delivered together
@@ -572,21 +643,37 @@ Beyond these two asks, this paper respectfully suggests:
     }
     ```
 
-    The `io_env` carries the stop token, executor, and allocator - all delivered through `await_suspend` without coupling the awaitable to any promise type. The `do_write` signature takes `std::coroutine_handle<>` and `io_env const*`, both fixed types. The implementation can change without recompiling callers. This is the entire narrow waist for writable byte streams. `ReadStream`, `Stream`, `connect`, and `close` follow the same pattern. The network runtime itself - the event loop, the thread pool, the platform reactor - stays in the ecosystem, where it belongs. The standard provides only the narrow contract through which libraries interoperate. The benefits are substantial:
+    The `io_env` carries the stop token, executor, and allocator - all delivered through `await_suspend` without coupling the awaitable to any promise type. The `do_write` signature takes `std::coroutine_handle<>` and `io_env const*`, both fixed types. The implementation can change without recompiling callers. `ReadStream`, `Stream`, `connect`, and `close` follow the same pattern. The network runtime itself - the event loop, the thread pool, the platform reactor - stays in the ecosystem, where it belongs. The standard provides only the contract through which libraries interoperate.
 
-    - **Second-order library effects.** A narrow I/O abstraction enables an entire ecosystem of libraries built on top of it: HTTP, WebSocket, database clients, message queues, monitoring agents - all interoperable, all composable, without mandating a single runtime. This is the tower of abstraction that [D4008](https://wg21.link/p4008) identifies as C++'s missing piece.
+    Ousterhout captures the design principle:
+
+    > "The best modules are deep: they have a lot of functionality hidden behind a simple interface. A deep module is a good abstraction because only a small fraction of its internal complexity is visible to its users."
+    >
+    > [Ousterhout, *A Philosophy of Software Design*](https://web.stanford.edu/~ouster/cgi-bin/aposd.php) (2018)
+
+    An async I/O contract that standardizes `read`, `write`, `connect`, and `close` is a deep module: a small interface hiding the event loop, the reactor, and the platform behind a few fixed types. The benefits are substantial:
+
+    - **Second-order library effects.** A deep I/O abstraction enables an entire ecosystem of libraries built on top of it: HTTP, WebSocket, database clients, message queues, monitoring agents - all interoperable, all composable, without mandating a single runtime. This is the tower of abstraction that [D4008](https://wg21.link/p4008) identifies as C++'s missing piece.
 
     - **Runtime choice becomes less consequential.** When the standard provides the I/O concepts, the user's choice of network runtime - Asio, libuv, a custom io_uring loop - matters less. Libraries written against the standard concepts work with any runtime that satisfies them. Interoperability comes from the contract, not from mandating a single framework.
 
     - **ABI stability through type erasure.** Coroutines are inherently type-erased at the `coroutine_handle` boundary. A coroutine-based I/O contract takes enormous pressure off the ABI stability mandate because the runtime is behind the erasure wall. Implementation changes stay behind it. No recompilation needed. This gives the committee what it has always wanted: async capabilities with ABI stability.
 
-    - **Faster compile times and better encapsulation.** I/O concepts behind type-erased coroutine interfaces enable separate compilation, `pimpl`, and shared libraries. The ordinary developer - the one writing a web service, not a GPU kernel - gets fast builds and clean module boundaries.
+    - **Faster compile times and better encapsulation.** I/O concepts behind type-erased coroutine interfaces enable separate compilation, `pimpl`, and shared libraries. The developer writing a web service gets fast builds and clean module boundaries.
 
     - **TLS stays in the ecosystem, where it belongs.** TLS/SSL has been a point of contention for WG21 since the Networking TS, and a specification of that size and complexity would overwhelm the committee. A narrow I/O contract sidesteps this entirely: the standard specifies async read/write/connect/close on byte streams. TLS wraps a byte stream and produces another byte stream. The TLS implementation - OpenSSL, BoringSSL, SChannel, SecureTransport - lives in the ecosystem where domain experts maintain it and platform vendors integrate their native APIs. Apple uses SecureTransport. Microsoft uses SChannel. The standard does not get in their way. The committee gets 80% of what it needs for 20% of the cost.
 
+A note on maturity. The bigger the framework, the wider the abstraction, the greater the need for evidence of maturity before standardization. Scope determines the maturity bar, not the other way around.
+
+`std::execution` bundles six concerns - scheduling, context propagation, error handling, cancellation, algorithm dispatch, hardware backend selection - and has produced 50 post-approval items including two Priority 1 safety defects. A framework of this scope demands a high maturity bar, and the evidence shows it has not met it.
+
+[D4003](https://wg21.link/p4003) and its implementations (Capy, Corosio) are deliberately deep - a small interface over a six-function I/O contract. They ask less of the standard: fewer concepts, a smaller ABI surface, no algorithm customization machinery, no completion domains. They cover sockets, timers, TLS, and DNS resolution on multiple platforms, with production benchmarks showing parity or better than Asio callbacks (1.01x-1.36x throughput depending on thread count; no comparison against `stdexec` is possible because `stdexec` has no networking implementation to benchmark). They do not yet cover every edge case of a decade-old framework. Specific gaps include: TCP only (no UDP or other transports), no io_uring backend (epoll, IOCP, and kqueue are implemented; io_uring is planned), heap allocation elision (HALO) depends on a Clang-specific attribute (`[[clang::coro_await_elidable]]`) and only applies to immediately-awaited tasks, and allocator propagation uses a thread-local window mechanism that requires a specific two-call invocation syntax. These are real limitations - and they are disclosed here so the committee can weigh them alongside `std::execution`'s own open problems.
+
+But these are the kind of gaps a narrow contract can close incrementally. TCP-only becomes TCP+UDP in a point release. An io_uring backend is an implementation detail behind an existing concept. These are bounded problems with bounded solutions. The open problems in `std::execution` - type-erasure, the error model, algorithm customization rewritten three times ([P2999R3](https://wg21.link/p2999r3), [P3303R1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3303r1.html), [P3826R3](https://wg21.link/p3826)) - are fundamental design questions that a wide framework may never resolve. A narrow contract carries less risk and should be afforded a correspondingly lower bar for maturation evidence. After all, it asks less of the standard. The standard's job is the narrow waist, not the full stack. The asymmetry in maturity is itself a consequence of the asymmetry in scope. That is the point.
+
 A narrow async I/O contract in the standard library would unlock the ecosystem that every other major language already enjoys. HTTP clients and servers. WebSocket connections for real-time data. REST API endpoints. Interactive chat applications. Multiplayer game networking. gRPC services. Database connection pools. Cloud service integrations. Message queue consumers. Monitoring agents. All of these exist today in Python, Go, Rust, Java, and JavaScript as composable libraries built on a standard async I/O foundation. C++ has the users who need them, the performance characteristics they demand, and the coroutine machinery to express them elegantly. What it lacks is the six-function contract at the bottom that makes everything above it composable across libraries without mandating a single runtime.
 
-The people behind `std::execution` are talented, and their work contains genuine insights about structured concurrency. The question is not quality but timing and scope. The research exists. The implementations exist. The design space has converged on a narrow answer. The committee's job is not to design a universal execution framework. It is to standardize the narrow waist that the ecosystem has already identified - and then get out of the way.
+The committee's job is not to design a universal execution framework. It is to standardize that narrow waist, that *deep module*, that **elegant minimal abstraction** - and let practitioners build on top.
 
 ---
 
@@ -710,11 +797,11 @@ This is the model that [P3482](https://wg21.link/p3482) proposes as the basis fo
 
 ## References
 
-1. Joel Spolsky. "Don't Let Architecture Astronauts Scare You." 2001. https://www.joelonsoftware.com/2001/04/21/dont-let-architecture-astronauts-scare-you/
+1. Butler Lampson. "Hints for Computer System Design." 1983. http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf
 
 2. Engler et al. "Exokernel: An Operating System Architecture for Application-Level Resource Management." MIT, 1995. https://people.eecs.berkeley.edu/~brewer/cs262b/hotos-exokernel.pdf
 
-3. Ted Elliot. "The One Ring Problem." 2018. https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html
+3. Ted Kaminski. "The One Ring Problem." 2018. https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html
 
 4. Andrew Russell. "OSI: The Internet That Wasn't." IEEE Spectrum, 2013. https://spectrum.ieee.org/osi-the-internet-that-wasnt
 
@@ -738,192 +825,202 @@ This is the model that [P3482](https://wg21.link/p3482) proposes as the basis fo
 
 14. P2300R10. Dominiak et al. "std::execution." WG21, 2024. https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html
 
-15. Bryce Adelstein Lelbach. NVIDIA developer bio. https://developer.nvidia.com/blog/author/blelbach/
+15. P1241R0. "Merging Coroutines into C++." WG21, 2018. https://open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1241r0.html
 
-16. Eric Niebler. GitHub. https://github.com/ericniebler
+16. libunifex. Facebook Experimental. https://github.com/facebookexperimental/libunifex
 
-17. Georgy Evtushenko. GitHub. https://github.com/gevtushenko
+17. stdexec. NVIDIA. https://nvidia.github.io/stdexec/
 
-18. Lee Howes. Meta developer blog. https://developers.facebook.com/blog/post/2021/09/16/async-stack-traces-folly-Introduction/
+18. P2999R3. Niebler. "Sender Algorithm Customization." WG21, 2023. https://wg21.link/p2999r3
 
-19. P1241R0. "Merging Coroutines into C++." WG21, 2018. https://open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1241r0.html
+19. P3303R1. Niebler. "Fixing Lazy Sender Algorithm Customization." WG21, 2024. https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3303r1.html
 
-20. libunifex. Facebook Experimental. https://github.com/facebookexperimental/libunifex
+20. P3826R3. Niebler. "Fix Sender Algorithm Customization." WG21, 2026. https://wg21.link/p3826
 
-21. stdexec. NVIDIA. https://nvidia.github.io/stdexec/
+21. D4007R0. Falco. "std::execution Needs More Time." WG21, 2026. https://wg21.link/p4007
 
-22. P2999R3. Niebler. "Sender Algorithm Customization." WG21, 2023. https://wg21.link/p2999r3
+22. stdexec io_uring.cpp. https://github.com/NVIDIA/stdexec/blob/main/examples/io_uring.cpp
 
-23. P3303R1. Niebler. "Fixing Lazy Sender Algorithm Customization." WG21, 2024. https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3303r1.html
+23. NVIDIA/stdexec#1062. "io_uring reading files." https://github.com/NVIDIA/stdexec/issues/1062
 
-24. P3826R3. Niebler. "Fix Sender Algorithm Customization." WG21, 2026. https://wg21.link/p3826
+24. libunifex issue #244. "Question about any_sender_of usage." https://github.com/facebookexperimental/libunifex/issues/244
 
-25. D4007R0. Falco. "std::execution Needs More Time." WG21, 2026. https://wg21.link/p4007
+25. P1863R1. "ABI breakage." WG21, 2020. https://open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1863r1.pdf
 
-26. stdexec io_uring.cpp. https://github.com/NVIDIA/stdexec/blob/main/examples/io_uring.cpp
+26. Gentoo. "The impact of C++ templates on library ABI." 2012. https://blogs.gentoo.org/mgorny/2012/08/20/the-impact-of-cxx-templates-on-library-abi/
 
-27. NVIDIA/stdexec#1062. "io_uring reading files." https://github.com/NVIDIA/stdexec/issues/1062
+27. Boost.Asio. "Why EOF is an error." https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html
 
-28. libunifex issue #244. "Question about any_sender_of usage." https://github.com/facebookexperimental/libunifex/issues/244
+28. Asio issue #1100. "Feature request: Type-erased handler wrapper." https://github.com/chriskohlhoff/asio/issues/1100
 
-29. P1863R1. "ABI breakage." WG21, 2020. https://open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1863r1.pdf
+29. P2079. "System execution context." WG21. https://wg21.link/p2079
 
-30. Gentoo. "The impact of C++ templates on library ABI." 2012. https://blogs.gentoo.org/mgorny/2012/08/20/the-impact-of-cxx-templates-on-library-abi/
+30. P3164. "Improving diagnostics for sender expressions." WG21. https://wg21.link/p3164
 
-31. Boost.Asio. "Why EOF is an error." https://www.boost.org/doc/libs/release/doc/html/boost_asio/design/eof.html
+31. P3373. "Of Operation States and Their Lifetimes." WG21. https://wg21.link/p3373
 
-32. Asio issue #1100. "Feature request: Type-erased handler wrapper." https://github.com/chriskohlhoff/asio/issues/1100
+32. P3388. "When Do You Know connect Doesn't Throw?" WG21. https://wg21.link/p3388
 
-33. P2079. "System execution context." WG21. https://wg21.link/p2079
+33. P3425. "Reducing operation-state sizes for subobject child operations." WG21. https://wg21.link/p3425
 
-34. P3164. "Improving diagnostics for sender expressions." WG21. https://wg21.link/p3164
+34. P3481. "std::execution::bulk() issues." WG21. https://wg21.link/p3481
 
-35. P3373. "Of Operation States and Their Lifetimes." WG21. https://wg21.link/p3373
+35. P3552. "Add a Coroutine Task Type." WG21. https://wg21.link/p3552
 
-36. P3388. "When Do You Know connect Doesn't Throw?" WG21. https://wg21.link/p3388
+36. P3557. "High-Quality Sender Diagnostics with Constexpr Exceptions." WG21. https://wg21.link/p3557
 
-37. P3425. "Reducing operation-state sizes for subobject child operations." WG21. https://wg21.link/p3425
+37. P3564. "Make the concurrent forward progress guarantee usable in bulk." WG21. https://wg21.link/p3564
 
-38. P3481. "std::execution::bulk() issues." WG21. https://wg21.link/p3481
+38. D4003. Falco et al. "IoAwaitables: A Coroutines-Only Framework." WG21. https://wg21.link/p4003
 
-39. P3552. "Add a Coroutine Task Type." WG21. https://wg21.link/p3552
+39. TooManyCooks. https://github.com/tzcnt/TooManyCooks
 
-40. P3557. "High-Quality Sender Diagnostics with Constexpr Exceptions." WG21. https://wg21.link/p3557
+40. N3747. Kohlhoff. "A Universal Model for Asynchronous Operations." WG21, 2013. https://open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3747.pdf
 
-41. P3564. "Make the concurrent forward progress guarantee usable in bulk." WG21. https://wg21.link/p3564
+41. Wikipedia. "Unix philosophy." https://en.wikipedia.org/wiki/Unix_philosophy
 
-42. D4003. Falco et al. "IoAwaitables: A Coroutines-Only Framework." WG21. https://wg21.link/p4003
+42. Wikipedia. "Hourglass model." https://en.wikipedia.org/wiki/Hourglass_model
 
-43. TooManyCooks. https://github.com/tzcnt/TooManyCooks
+43. David Clark. "The Design Philosophy of the DARPA Internet Protocols." 1988. https://www.cs.princeton.edu/~jrex/teaching/spring2005/reading/clark88.pdf
 
-44. N3747. Kohlhoff. "A Universal Model for Asynchronous Operations." WG21, 2013. https://open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3747.pdf
+44. William Kahan. "An Interview with the Old Man of Floating-Point." https://people.eecs.berkeley.edu/~wkahan/ieee754status/754story.html
 
-45. Wikipedia. "Unix philosophy." https://en.wikipedia.org/wiki/Unix_philosophy
+45. Hacker News discussion on std::ranges. https://news.ycombinator.com/item?id=40317350
 
-46. Wikipedia. "Hourglass model." https://en.wikipedia.org/wiki/Hourglass_model
+46. Boost.Asio. https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
 
-47. David Clark. "The Design Philosophy of the DARPA Internet Protocols." 1988. https://www.cs.princeton.edu/~jrex/teaching/spring2005/reading/clark88.pdf
+47. Capy. https://github.com/cppalliance/capy
 
-48. William Kahan. "An Interview with the Old Man of Floating-Point." https://people.eecs.berkeley.edu/~wkahan/ieee754status/754story.html
+48. Corosio. https://github.com/cppalliance/corosio
 
-49. Hacker News discussion on std::ranges. https://news.ycombinator.com/item?id=40317350
+49. NVIDIA CCCL (Thrust, CUB, libcu++). https://github.com/NVIDIA/cccl
 
-50. Boost.Asio. https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
+50. NVIDIA Thrust documentation. https://nvidia.github.io/cccl/thrust/
 
-51. Capy. https://github.com/cppalliance/capy
+51. Kokkos. https://github.com/kokkos/kokkos
 
-52. Corosio. https://github.com/cppalliance/corosio
+52. Kokkos Programming Guide: Introduction. https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/Introduction.html
 
-53. NVIDIA CCCL (Thrust, CUB, libcu++). https://github.com/NVIDIA/cccl
+53. RAJA. Lawrence Livermore National Laboratory. https://github.com/llnl/RAJA
 
-54. NVIDIA Thrust documentation. https://nvidia.github.io/cccl/thrust/
+54. RAJA project page. LLNL. https://computing.llnl.gov/projects/raja-managing-application-portability-next-generation-platforms
 
-55. Kokkos. https://github.com/kokkos/kokkos
+55. "Quantifying OpenMP: Statistical Insights into Usage and Adoption." 2023. https://arxiv.org/pdf/2308.08002
 
-56. Kokkos Programming Guide: Introduction. https://kokkos.org/kokkos-core-wiki/ProgrammingGuide/Introduction.html
+56. OpenMP 6.0 announcement. https://openmp.org/home-news/openmp-arb-releases-openmp-6-0-for-easier-programming
 
-57. RAJA. Lawrence Livermore National Laboratory. https://github.com/llnl/RAJA
+57. Taskflow. https://github.com/taskflow/taskflow
 
-58. RAJA project page. LLNL. https://computing.llnl.gov/projects/raja-managing-application-portability-next-generation-platforms
+58. Taskflow paper. https://arxiv.org/pdf/2004.10908
 
-59. "Quantifying OpenMP: Statistical Insights into Usage and Adoption." 2023. https://arxiv.org/pdf/2308.08002
+59. oneTBB (Intel). https://github.com/uxlfoundation/oneTBB
 
-60. OpenMP 6.0 announcement. https://openmp.org/home-news/openmp-arb-releases-openmp-6-0-for-easier-programming
+60. oneTBB documentation. https://uxlfoundation.github.io/oneTBB/
 
-61. Taskflow. https://github.com/taskflow/taskflow
+61. HPX. https://github.com/STEllAR-GROUP/hpx
 
-62. Taskflow paper. https://arxiv.org/pdf/2004.10908
+62. HPX website. https://hpx.stellar-group.org/
 
-63. oneTBB (Intel). https://github.com/uxlfoundation/oneTBB
+63. folly (Meta). https://github.com/facebook/folly
 
-64. oneTBB documentation. https://uxlfoundation.github.io/oneTBB/
+64. Abseil (Google). https://github.com/abseil/abseil-cpp
 
-65. HPX. https://github.com/STEllAR-GROUP/hpx
+65. Abseil about page. https://abseil.io/about/
 
-66. HPX website. https://hpx.stellar-group.org/
+66. Christopher Di Bella. "What Does It Take to Implement the C++ Standard Library?" C++Now 2024. https://www.youtube.com/watch?v=bXlm3taD6lw
 
-67. folly (Meta). https://github.com/facebook/folly
+67. Bryce Adelstein Lelbach. Convenor candidacy. https://brycelelbach.github.io/cpp_convenor/
 
-68. Abseil (Google). https://github.com/abseil/abseil-cpp
+68. P2656R2. "C++ Ecosystem International Standard." WG21, 2023. https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2656r2.html
 
-69. Abseil about page. https://abseil.io/about/
+69. P3023R1. Sankel. "C++ Should Be C++." WG21, 2023. https://open-std.org/jtc1/sc22/wg21/docs/papers/2023/p3023r1.html
 
-70. Christopher Di Bella. "What Does It Take to Implement the C++ Standard Library?" C++Now 2024. https://www.youtube.com/watch?v=bXlm3taD6lw
+70. Stepanov. "The Standard Template Library." 1994. https://stepanovpapers.com/Stepanov-The_Standard_Template_Library-1994.pdf
 
-71. Bryce Adelstein Lelbach. Convenor candidacy. https://brycelelbach.github.io/cpp_convenor/
+71. gRPC. https://github.com/grpc/grpc
 
-72. P2656R2. "C++ Ecosystem International Standard." WG21, 2023. https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2656r2.html
+72. gRPC C++ Callback API Tutorial. https://grpc.io/docs/languages/cpp/callback
 
-73. P3023R1. Sankel. "C++ Should Be C++." WG21, 2023. https://open-std.org/jtc1/sc22/wg21/docs/papers/2023/p3023r0.html
+73. libuv. https://github.com/libuv/libuv
 
-74. Stepanov. "The Standard Template Library." 1994. https://stepanovpapers.com/Stepanov-The_Standard_Template_Library-1994.pdf
+74. libuv documentation. https://docs.libuv.org/en/stable
 
-75. gRPC. https://github.com/grpc/grpc
+75. Seastar. https://github.com/scylladb/seastar
 
-76. gRPC C++ Callback API Tutorial. https://grpc.io/docs/languages/cpp/callback
+76. Seastar website. https://www.seastar.io/
 
-77. libuv. https://github.com/libuv/libuv
+77. cppcoro. Lewis Baker. https://github.com/lewissbaker/cppcoro
 
-78. libuv documentation. https://docs.libuv.org/en/stable
+78. stdexec on vcpkg. https://vcpkg.link/ports/stdexec
 
-79. Seastar. https://github.com/scylladb/seastar
+79. vcpkg. Microsoft. https://vcpkg.io/en/
 
-80. Seastar website. https://www.seastar.io/
+80. Conan Center. https://conan.io/center
 
-81. cppcoro. Lewis Baker. https://github.com/lewissbaker/cppcoro
+81. Boost background information. https://www.boost.org/users/
 
-82. stdexec on vcpkg. https://vcpkg.link/ports/stdexec
+82. cppreference. "RAII." https://en.cppreference.com/w/cpp/language/raii
 
-83. vcpkg. Microsoft. https://vcpkg.io/en/
+83. cppreference. "Allocator (named requirement)." https://en.cppreference.com/w/cpp/named_req/Allocator
 
-84. Conan Center. https://conan.io/center
+84. Python standard library: socket. https://docs.python.org/3/library/socket.html
 
-85. Boost background information. https://www.boost.org/users/
+85. Java standard library: java.net. https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/package-summary.html
 
-86. cppreference. "RAII." https://en.cppreference.com/w/cpp/language/raii
+86. Go standard library: net. https://pkg.go.dev/net
 
-87. cppreference. "Allocator (named requirement)." https://en.cppreference.com/w/cpp/named_req/Allocator
+87. Rust standard library: std::net. https://doc.rust-lang.org/std/net/
 
-88. Python standard library: socket. https://docs.python.org/3/library/socket.html
+88. C# standard library: System.Net.Sockets. https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets
 
-89. Java standard library: java.net. https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/package-summary.html
+89. Node.js standard library: net. https://nodejs.org/api/net.html
 
-90. Go standard library: net. https://pkg.go.dev/net
+90. nvexec (NVIDIA GPU sender/receiver integration). https://github.com/NVIDIA/stdexec/tree/main/include/nvexec
 
-91. Rust standard library: std::net. https://doc.rust-lang.org/std/net/
+91. nvexec stream_context.cuh source. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh
 
-92. C# standard library: System.Net.Sockets. https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets
+92. NVIDIA CUDA C/C++ Language Extensions. https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html
 
-93. Node.js standard library: net. https://nodejs.org/api/net.html
+93. Michi Henning. "The Rise and Fall of CORBA." ACM Queue 4, no. 5 (June 2006). https://dl.acm.org/doi/10.1145/1142031.1142044
 
-94. nvexec (NVIDIA GPU sender/receiver integration). https://github.com/NVIDIA/stdexec/tree/main/include/nvexec
+94. David Chappell. "The Trouble With CORBA." 1998. https://davidchappell.com/writing/article_Trouble_CORBA.php
 
-95. nvexec stream_context.cuh source. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh
+95. RFC 9621. "Architecture and Requirements for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9621
 
-96. NVIDIA CUDA C/C++ Language Extensions. https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html
+96. RFC 9622. "An Abstract Application Programming Interface (API) for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9622
 
-97. Michi Henning. "The Rise and Fall of CORBA." ACM Queue 4, no. 5 (June 2006). https://dl.acm.org/doi/10.1145/1142031.1142044
+97. John Ousterhout. *A Philosophy of Software Design.* Yaknyam Press, 2018. https://web.stanford.edu/~ouster/cgi-bin/aposd.php
 
-98. David Chappell. "The Trouble With CORBA." 1998. https://davidchappell.com/writing/article_Trouble_CORBA.php
+98. Robert Leahy. "std::execution in Asio Codebases: Adopting Senders Without a Rewrite." CppCon 2025. https://cppcon2025.sched.com/event/27bQ1/stdexecution-in-asio-codebases-adopting-senders-without-a-rewrite
 
-99. RFC 9621. "Architecture and Requirements for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9621
+99. Wikipedia. "Continuation-passing style." https://en.wikipedia.org/wiki/Continuation-passing_style
 
-100. RFC 9622. "An Abstract Application Programming Interface (API) for Transport Services." IETF, January 2025. https://datatracker.ietf.org/doc/html/rfc9622
+100. callbackhell.com. "Callback Hell: Taming JavaScript's Async Complexity." https://callbackhell.com/
 
-101. John Ousterhout. *A Philosophy of Software Design.* Yaknyam Press, 2018. https://web.stanford.edu/~ouster/cgi-bin/aposd.php
+101. steve-downey/sender-examples. "backtrack.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp
 
-102. Robert Leahy. "std::execution in Asio Codebases: Adopting Senders Without a Rewrite." CppCon 2025. https://cppcon2025.sched.com/event/27bQ1/stdexecution-in-asio-codebases-adopting-senders-without-a-rewrite
+102. steve-downey/sender-examples. "fold.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp
 
-103. Wikipedia. "Continuation-passing style." https://en.wikipedia.org/wiki/Continuation-passing_style
+103. steve-downey/sender-examples. "loop.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp
 
-104. callbackhell.com. "Callback Hell: Taming JavaScript's Async Complexity." https://callbackhell.com/
+104. Stack Overflow. "Moving a lambda: once you've move-captured a move-only type, how can the lambda be used?" https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda
 
-105. steve-downey/sender-examples. "backtrack.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp
+105. D4008. Falco. "The C++ Standard Cannot Connect to the Internet." WG21. https://wg21.link/p4008
 
-106. steve-downey/sender-examples. "fold.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp
+106. GitHub dependency graph: NVIDIA/stdexec. https://github.com/NVIDIA/stdexec/network/dependents
 
-107. steve-downey/sender-examples. "loop.cpp." https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp
+107. GitHub dependency graph: facebookexperimental/libunifex. https://github.com/facebookexperimental/libunifex/network/dependents
 
-108. Stack Overflow. "Moving a lambda: once you've move-captured a move-only type, how can the lambda be used?" https://stackoverflow.com/questions/32486623/moving-a-lambda-once-youve-move-captured-a-move-only-type-how-can-the-lambda
+108. libunifex `any_sender_of.hpp` source. https://github.com/facebookexperimental/libunifex/blob/main/include/unifex/any_sender_of.hpp
 
-109. D4008. Falco. "The C++ Standard Cannot Connect to the Internet." WG21. https://wg21.link/p4008
+109. D4000. Falco & Gill. "Where Does the Error Code Go?" WG21, 2026. https://wg21.link/p4000
+
+110. LWG 3186. "ranges removal, partition, and partial_sort_copy algorithms discard useful information." https://cplusplus.github.io/LWG/issue3186
+
+111. LWG 3363. "drop_while_view should opt-out of sized_range." https://cplusplus.github.io/LWG/issue3363
+
+112. LWG 3379. "safe in several library names is misleading." https://cplusplus.github.io/LWG/issue3379
+
+113. LWG unresolved prioritized list. https://cplusplus.github.io/LWG/unresolved-prioritized.html
+
+114. D0000. Falco. "How Do Plain Awaitables Receive a Stop Token?" WG21, 2026. https://wg21.link/p0000
