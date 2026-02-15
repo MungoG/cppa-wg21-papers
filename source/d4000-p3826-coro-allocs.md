@@ -1,5 +1,5 @@
 ---
-title: "Does `std::execution` Need More Time?" document: D4007R0 date: 2026-02-02 reply-to:
+title: "Does `std::execution` Need More Time?" document: D4000R0 date: 2026-02-02 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>" audience: SG1, LEWG
 ---
@@ -137,11 +137,11 @@ The performance difference is measurable. [P4003R0](https://wg21.link/p4003r0) (
 
 | Platform    | Allocator        | Time (ms) | vs std::allocator |
 |-------------|------------------|----------:|------------------:|
-| Apple clang | Recycling        |   2297.08 |           +55.2%  |
-| Apple clang | `std::allocator` |   3565.49 |                 - |
 | MSVC        | Recycling        |   1265.2  |          +210.4%  |
 | MSVC        | mimalloc         |   1622.2  |          +142.1%  |
 | MSVC        | `std::allocator` |   3926.9  |                 - |
+| Apple clang | Recycling        |   2297.08 |           +55.2%  |
+| Apple clang | `std::allocator` |   3565.49 |                 - |
 
 The mimalloc result is the critical comparison. mimalloc is a state-of-the-art allocator with per-thread caches designed for high-throughput allocation - yet the recycling allocator is 28% faster, because recycling a fixed-size block from a freelist is inherently cheaper than performing a real allocation. The gap grows with contention.
 

@@ -80,11 +80,11 @@ Coroutine frames are allocated continuously - every `co_await` may spawn new fra
 
 | Platform    | Allocator        | Time (ms) | vs std::allocator |
 |-------------|------------------|----------:|------------------:|
-| Apple clang | Recycling        |   2297.08 |           +55.2%  |
-| Apple clang | `std::allocator` |   3565.49 |                 - |
 | MSVC        | Recycling        |   1265.2  |          +210.4%  |
 | MSVC        | mimalloc         |   1622.2  |          +142.1%  |
 | MSVC        | `std::allocator` |   3926.9  |                 - |
+| Apple clang | Recycling        |   2297.08 |           +55.2%  |
+| Apple clang | `std::allocator` |   3565.49 |                 - |
 
 The mimalloc result is the critical comparison: a state-of-the-art general-purpose allocator with per-thread caches, yet the recycling allocator is 28% faster. Different deployments need different strategies - bounded pools, per-tenant budgets, allocation tracking - so the execution model must make allocation a first-class customization point. The allocator must also be present at invocation time: `operator new` executes before the coroutine body, so any mechanism that delivers the allocator later arrives too late. Section 5 examines the timing constraint and our solution in detail.
 
