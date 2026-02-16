@@ -851,8 +851,8 @@ outline: none;
   Is Broken for Coroutines</a></li>
   <li><a href="#the-problem-is-unfixable" id="toc-the-problem-is-unfixable">2.4 The Problem Is
   Unfixable</a></li>
-  <li><a href="#io-should-adapt" id="toc-io-should-adapt">2.5 I/O Should
-  Adapt</a></li>
+  <li><a href="#always-use-set_value" id="toc-always-use-set_value">2.5
+  Always Use <code>set_value</code>?</a></li>
   <li><a href="#an-unforced-error" id="toc-an-unforced-error">2.6 An
   Unforced Error?</a></li>
   </ul></li>
@@ -889,10 +889,10 @@ outline: none;
   <ul>
   <li><a href="#await_transform-cannot-help" id="toc-await_transform-cannot-help">6.1 <code>await_transform</code>
   Cannot Help</a></li>
-  <li><a href="#no-path-to-operator-new" id="toc-no-path-to-operator-new">6.2 No Path to
-  <code>operator new</code></a></li>
-  <li><a href="#p3826r3-targets-a-different-problem" id="toc-p3826r3-targets-a-different-problem">6.3 P3826R3 Targets a
-  Different Problem</a></li>
+  <li><a href="#no-path-to-the-promises-operator-new" id="toc-no-path-to-the-promises-operator-new">6.2 No Path to the
+  Promise’s <code>operator new</code></a></li>
+  <li><a href="#p3826r3-and-the-allocator-sequencing-gap" id="toc-p3826r3-and-the-allocator-sequencing-gap">6.3 P3826R3 and the
+  Allocator Sequencing Gap</a></li>
   <li><a href="#abi-lock-in-makes-the-gap-permanent" id="toc-abi-lock-in-makes-the-gap-permanent">6.4 ABI Lock-In Makes the
   Gap Permanent</a></li>
   <li><a href="#the-three-channel-model-is-the-abi" id="toc-the-three-channel-model-is-the-abi">6.5 The Three-Channel
@@ -940,18 +940,17 @@ outline: none;
 <p>Three structural gaps exist in the coroutine integration of
 <code>std::execution</code>: the three-channel completion model makes
 correct I/O composition impossible, the standard’s own task type
-introduces risky new syntax to signal an error, and coroutines are
-denied the allocator that senders receive. In each case, coroutines bear
-a cost that sender pipelines avoid. Since approval for C++26, the
-committee has processed 50 modifications to <code>std::execution</code>
-in 22 months at an accelerating rate - and every one originates in
-sender/receiver machinery or in the cost of making sender/receiver work
-with coroutines. Not a single item represents a coroutine-intrinsic
-problem. Taken together, the evidence reveals a recurring pattern: a
-design conceived for sender pipelines that disadvantages coroutines at
+requires novel syntax to signal an error, and coroutines are denied the
+allocator that senders receive. In each case, coroutines bear a cost
+that sender pipelines avoid. Since approval for C++26, the committee has
+processed 50 modifications to <code>std::execution</code> in 22 months
+at an accelerating rate - and every one originates in sender/receiver
+machinery or in the cost of making sender/receiver work with coroutines.
+Not a single item represents a coroutine-intrinsic problem. Taken
+together, the evidence reveals a recurring pattern: an integration
+between sender/receiver and coroutines where coroutines bear the cost at
 every turn. Freezing this API without addressing these gaps risks
-permanent harm to the programming model most C++ developers will
-use.</p>
+permanent harm to the async model most C++ developers will use.</p>
 <hr />
 <h2 id="introduction">1. Introduction</h2>
 <h3 id="the-value-of-coroutines">1.1 The Value of Coroutines</h3>
@@ -1070,10 +1069,10 @@ be a sender. Coroutines access those operations through
 layer has structural gaps, every C++ developer who writes networked code
 with coroutines will encounter them.</p>
 <p>The question this paper asks is not whether sender/receiver has
-value. It does. The question is whether coroutines - the programming
-model that most C++ developers will actually use, and the one that
-inhabits the same syntactic world as the rest of C++ - receive the same
-level of support from <code>std::execution</code>.</p>
+value. It does. The question is whether coroutines, the async model that
+most C++ developers will actually use, and the one that inhabits the
+same syntactic world as the rest of C++, will receive the same level of
+support from <code>std::execution</code>.</p>
 <hr />
 <h2 id="where-does-the-error-code-go">2. Where Does the Error Code
 Go?</h2>
@@ -1161,10 +1160,11 @@ delivering both values together as <a href="https://wg21.link/p2762r2">P2762R2</
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[</span><span class="kw">this</span><span class="op">](</span><span class="bu">std::</span>error_code ec<span class="op">,</span> <span class="bu">std::</span>size_t n<span class="op">)</span> <span class="op">{</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>        set_value<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">rcvr_</span><span class="op">),</span> ec<span class="op">,</span> n<span class="op">);</span></span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">});</span></span></code></pre></div>
-<p>This preserves the byte count. It matches twenty years of Asio
-practice. But now the developer is reporting an error through the
-success channel. The name says “value.” They are sending an error code.
-Chris Kohlhoff identified this tension in 2021 in <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf">P2430R0</a>
+<p>The <code>set_value</code> approach preserves the byte count. It
+matches twenty years of Asio practice. But now the developer is
+reporting an error through the success channel. The name says “value.”
+They are sending an error code. Chris Kohlhoff identified this tension
+in 2021 in <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf">P2430R0</a>
 (“Partial success scenarios with P2300”):</p>
 <blockquote>
 <p><em>“Due to the limitations of the set_error channel (which has a
@@ -1174,14 +1174,14 @@ channel.”</em></p>
 </blockquote>
 <p>The naming is misleading. <code>set_error</code> looks right for an
 <code>error_code</code>, and for non-I/O senders it probably is. But for
-I/O - the domain with the broadest user base - it is a trap. The
-developer who follows the API’s own naming convention produces code that
-silently misbehaves under composition. The developer who does the right
-thing must override that naming convention and put an error into the
-value channel. There is no guidance in the standard for which choice to
-make. Every I/O library author must independently discover and resolve
-this tension, and the ecosystem has no mechanism to converge on an
-answer.</p>
+I/O - the domain with the broadest user base - the natural choice
+silently misbehaves. The developer who follows the API’s own naming
+convention produces code that silently misbehaves under composition. The
+developer who does the right thing must override that naming convention
+and put an error into the value channel. There is no guidance in the
+standard for which choice to make. Every I/O library author must
+independently discover and resolve this tension, and the ecosystem has
+no mechanism to converge on an answer.</p>
 <h3 id="coroutines">2.2 Coroutines</h3>
 <p>The same forced choice reaches coroutine authors through
 <code>std::execution::task</code>. <a href="https://wg21.link/p3552r3">P3552R3</a> provides two mechanisms for
@@ -1292,19 +1292,19 @@ eventually completes.</p>
 correct on some runs and incorrect on others, determined by which socket
 completes first.</p>
 <h3 id="the-problem-is-unfixable">2.4 The Problem Is Unfixable</h3>
-<p>This is not a missing convention waiting to be supplied. It is a
-structural mismatch between the three-channel model and I/O completion
-semantics. No convention, no adaptor, and no additional algorithm can
-resolve it without changing the model:</p>
+<p>The mismatch is not a missing convention waiting to be supplied. It
+is a structural mismatch between the three-channel model and I/O
+completion semantics. No convention, no adaptor, and no additional
+algorithm can resolve it without changing the model:</p>
 <ul>
 <li><p><strong>Converge on <code>set_value</code> for error
 codes</strong> (the Asio/<a href="https://wg21.link/p2762r2">P2762R2</a>
 approach). Every generic error-handling algorithm in
 <code>std::execution</code> - <code>upon_error</code>,
-<code>let_error</code>, any future <code>retry</code> - is dead code for
-I/O. The error channel exists but I/O never uses it. Half the
-framework’s error handling machinery becomes vestigial for the largest
-async use case.</p></li>
+<code>let_error</code>, any future <code>retry</code> - is inaccessible
+to I/O senders. The error channel exists but I/O never uses it. Half the
+framework’s error handling machinery has no path from the largest async
+use case.</p></li>
 <li><p><strong>Converge on <code>set_error</code> for error
 codes.</strong> Partial success is inexpressible. The byte count is
 lost. Twenty years of I/O practice says that is wrong. A
@@ -1329,26 +1329,22 @@ explains why: the three channels are a structural requirement of the
 compile-time work graph, and eliminating them would collapse the sender
 pipeline’s type-level routing into runtime dispatch.</p>
 <p>Kohlhoff identified the channel routing tension in <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf">P2430R0</a>
-(2021) but did not analyze the composition consequences. What is new in
-this paper is the <code>when_all</code> proof: regardless of which
-convention a sender author chooses, correct behavior under
-<code>when_all</code> is impossible by design. When two libraries choose
-differently, the result is a race condition over correctness determined
-by completion order. This is not the ambiguity Kohlhoff identified - it
-is a concrete correctness defect that follows from it.</p>
-<h3 id="io-should-adapt">2.5 I/O Should Adapt</h3>
+(2021). This paper extends the analysis to composition consequences. The
+<code>when_all</code> analysis: regardless of which convention a sender
+author chooses, correct behavior under <code>when_all</code> is
+impossible by design. When two libraries choose differently, the result
+is a race condition over correctness determined by completion order.
+This is not the ambiguity Kohlhoff identified - it is a concrete
+correctness defect that follows from it.</p>
+<h3 id="always-use-set_value">2.5 Always Use
+<code>set_value</code>?</h3>
 <p>One might argue that the channels are generic and I/O should simply
 adopt the <code>set_value</code> convention - treating error codes as
 domain values rather than framework errors.</p>
-<p>Here is what that costs. Every error-handling sender algorithm -
-<code>upon_error</code>, <code>let_error</code>, any future
-<code>retry</code> - becomes dead code for I/O. And
-<code>when_all</code> still breaks: when every I/O sender delivers
-<code>(error_code, size_t)</code> through <code>set_value</code>, I/O
-failure is indistinguishable from I/O success. Sibling cancellation on
-failure is impossible. All current and future sender algorithms that
-depend on channel routing are unusable for a domain that
-<code>std::execution</code> claims to universally serve.</p>
+<p>But <code>when_all</code> still breaks: when every I/O sender
+delivers <code>(error_code, size_t)</code> through
+<code>set_value</code>, I/O failure is indistinguishable from I/O
+success. Sibling cancellation on failure is impossible.</p>
 <p>The completion signature <code>void(error_code, size_t)</code>
 predates senders by 25 years. It is not a quirk of one library. It is
 the completion signature of every I/O operation in POSIX, Win32, Asio,
@@ -1407,6 +1403,12 @@ required.</p>
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// never gets here?</span></span>
 <span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> n<span class="op">;</span></span>
 <span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>For six years, every C++ coroutine library has taught the same two
+conventions: <code>co_return</code> for final values,
+<code>co_yield</code> for intermediate values that the coroutine
+continues to produce. The second example above breaks both:
+<code>co_yield</code> does not produce a value, and the coroutine does
+not continue.</p>
 <h3 id="established-practice">3.3 Established Practice</h3>
 <p>No production C++ coroutine library uses <code>co_yield</code> for
 error signaling:</p>
@@ -1483,6 +1485,14 @@ restriction.”</em></p>
 <code>return_void</code>/<code>return_value</code> mutual exclusion - is
 not part of C++26 and has no paper proposing it. The syntax ships
 as-is.</p>
+<p>One might argue that this is a flaw in the coroutine language
+feature, not in <code>std::execution</code>. But the
+<code>return_void</code>/<code>return_value</code> mutual exclusion has
+existed since C++20 and has not prevented any other coroutine library
+from delivering errors through <code>co_return</code>. The constraint
+becomes a problem only when the framework requires errors to reach a
+separate channel - a requirement that originates in the sender/receiver
+protocol, not in coroutines.</p>
 <p>This is not mere unfamiliarity. Unfamiliar syntax is learnable -
 <code>co_await</code> was unfamiliar in 2020 and developers adapted. The
 problem with <code>co_yield with_error(e)</code> is that it actively
@@ -1504,12 +1514,14 @@ senders?</strong></p>
 <p>Everyone has concerns about the frame allocation that I/O coroutines
 cannot avoid. They are right - HALO cannot elide frames that outlive
 their callers, and the coroutine’s implementation is often not visible
-(see Appendix A.1). Each <code>task&lt;T&gt;</code> call performs
-<code>operator new</code>. In a server handling thousands of connections
-at high request rates, frame allocations can reach the order of millions
-per second. A recycling allocator tuned for coroutine frames can
-outperform even state-of-the-art general-purpose allocators. <a href="https://wg21.link/p4003r0">P4003R0</a> benchmarks a 4-deep
-coroutine call chain (2 million iterations):</p>
+(see Appendix A.1). Each <code>task&lt;T&gt;</code> call invokes the
+coroutine promise’s <code>operator new</code>
+(<code>promise_type::operator new</code>). In a server handling
+thousands of connections at high request rates, frame allocations can
+reach the order of millions per second. A recycling allocator tuned for
+coroutine frames can outperform even state-of-the-art general-purpose
+allocators. <a href="https://wg21.link/p4003r0">P4003R0</a> benchmarks a
+4-deep coroutine call chain (2 million iterations):</p>
 <table>
 <thead>
 <tr>
@@ -1554,7 +1566,7 @@ coroutine call chain (2 million iterations):</p>
 </table>
 <p>Stateful allocators are not a luxury for coroutine-based I/O; they
 are a prerequisite for competitive performance.</p>
-<p>The question is how the allocator reaches
+<p>The question is how the allocator reaches the promise’s
 <code>operator new</code>.</p>
 <h3 id="senders-2">4.1 Senders</h3>
 <p>The <a href="https://wg21.link/p2300">P2300</a> authors solved the
@@ -1704,9 +1716,9 @@ through <code>promise_type::operator new</code>. If the promise does not
 cooperate, the allocator does not reach the frame.</p>
 <p>Our research in <a href="https://wg21.link/p4003r0">P4003R0</a>
 suggests that promise-level cooperation is the only viable path - but
-the right cooperation depends on the domain. A networking task needs
-per-connection recycling allocators. A GPU dispatch task needs device
-memory. A compute task might need arena allocation with bulk
+the right cooperation depends on the domain. A networking task might
+need per-connection recycling allocators. A GPU dispatch task might need
+device memory. A compute task might need arena allocation with bulk
 reclamation. These are different problems with different solutions.</p>
 <p>The escape hatch is to stop searching for a universal allocator model
 in one promise type. Let each domain’s task type cooperate with its own
@@ -1842,7 +1854,7 @@ design decisions cannot be cleanly captured in procedural or OO
 decomposition, forcing implementations to be <em>“scattered throughout
 the code, resulting in ‘tangled’ code that is excessively difficult to
 develop and maintain.”</em></p>
-<p>The recognized code smell is called <a href="https://softwareengineering.stackexchange.com/questions/335005">tramp
+<p>The pattern has a recognized name in software engineering: <a href="https://softwareengineering.stackexchange.com/questions/335005">tramp
 data</a> - parameters passed through intermediate functions that do not
 use them. Tramp data <em>“increases code rigidity, constraining how you
 can refactor methods in the call chain”</em> and <em>“distributes
@@ -1895,11 +1907,12 @@ used?</strong></p>
 <hr />
 <h2 id="the-gaps-cannot-be-fixed-later">6. The Gaps Cannot Be Fixed
 Later</h2>
-<p><code>operator new</code> runs before <code>connect()</code>. No
-library-level change known to the authors can alter this sequencing - it
-is determined by the C++ language specification for coroutines
-interacting with the sender/receiver protocol. Closing the gap appears
-to require changing the sequencing - which means changing the API.</p>
+<p>The promise’s <code>operator new</code> runs before
+<code>connect()</code>. No library-level change known to the authors can
+alter this sequencing - it is determined by the C++ language
+specification for coroutines interacting with the sender/receiver
+protocol. Closing the gap appears to require changing the sequencing -
+which means changing the API.</p>
 <h3 id="await_transform-cannot-help">6.1 <code>await_transform</code>
 Cannot Help</h3>
 <p>In <code>co_await child_coro(args...)</code>, the function call
@@ -1909,8 +1922,8 @@ Cannot Help</h3>
 <code>await_transform</code> sees the returned
 <code>task&lt;T&gt;</code>, the child’s frame has already been allocated
 without the parent’s allocator.</p>
-<h3 id="no-path-to-operator-new">6.2 No Path to
-<code>operator new</code></h3>
+<h3 id="no-path-to-the-promises-operator-new">6.2 No Path to the
+Promise’s <code>operator new</code></h3>
 <p><a href="https://wg21.link/p3552r3">P3552R3</a> establishes a
 two-tier model: the allocator is a creation-time concern passed at the
 call site, while the scheduler and stop token are connection-time
@@ -1922,24 +1935,26 @@ construction gives generic code a standard way to propagate. With
 coroutines, the return type is <code>task&lt;T&gt;</code> - it does not
 carry the allocator type, and there is no <em>uses_allocator</em>
 equivalent for coroutine frame allocation.</p>
-<h3 id="p3826r3-targets-a-different-problem">6.3 P3826R3 Targets a
-Different Problem</h3>
-<p><a href="https://wg21.link/p3826r3">P3826R3</a> proposes important
-fixes for sender algorithm customization. Its five proposed solutions
-all target algorithm dispatch - i.e., which implementation of
-<code>then</code>, <code>let_value</code>, or <code>bulk</code> should
-run. Four of the five do not change when the allocator becomes
-available. The fifth - remove all <code>std::execution</code> - resolves
-the gap by deferral. See Appendix A.3 for an analysis of each
-solution.</p>
+<h3 id="p3826r3-and-the-allocator-sequencing-gap">6.3 P3826R3 and the
+Allocator Sequencing Gap</h3>
+<p><a href="https://wg21.link/p3826r3">P3826R3</a> addresses sender
+algorithm customization - an important problem worth solving. We include
+it here not to criticize its scope but to clarify that its solutions do
+not change when the allocator becomes available to coroutines. Its five
+proposed solutions all target algorithm dispatch - i.e., which
+implementation of <code>then</code>, <code>let_value</code>, or
+<code>bulk</code> should run. Four of the five do not change when the
+allocator becomes available. The fifth - remove all
+<code>std::execution</code> - resolves the gap by deferral. See Appendix
+A.3 for an analysis of each solution.</p>
 <h3 id="abi-lock-in-makes-the-gap-permanent">6.4 ABI Lock-In Makes the
 Gap Permanent</h3>
-<p>Once standardized, the relationship between <code>operator new</code>
-and <code>connect()</code> becomes part of the ABI. The standard does
-not break ABI on standardized interfaces. A fix would likely need
-<code>connect()</code> to propagate allocator context before the
-coroutine frame is allocated - a structural change to the sender
-protocol. The committee would then face a choice: accept the gap
+<p>Once standardized, the relationship between the promise’s
+<code>operator new</code> and <code>connect()</code> becomes part of the
+ABI. The standard does not break ABI on standardized interfaces. A fix
+would likely need <code>connect()</code> to propagate allocator context
+before the coroutine frame is allocated - a structural change to the
+sender protocol. The committee would then face a choice: accept the gap
 permanently, or introduce a parallel framework that serves
 coroutine-based I/O alongside the original.</p>
 <h3 id="the-three-channel-model-is-the-abi">6.5 The Three-Channel Model
@@ -1955,7 +1970,7 @@ freeze would make the model permanent.</p>
 <p>The natural compromise - ship <code>task</code> with known
 limitations and fix via DR or C++29 addendum - assumes the fix is a
 minor adjustment. Sections 6.1 through 6.4 show it is not. The allocator
-sequencing gap requires changing the relationship between
+sequencing gap requires changing the relationship between the promise’s
 <code>operator new</code> and <code>connect()</code>. The channel
 routing gap requires changing the completion model. Both are structural,
 and both become ABI once shipped. A DR that changes ABI is not a DR - it
@@ -1971,7 +1986,8 @@ feature in 22 months. All data is gathered from the published <a href="https://o
 mailings</a>, the <a href="https://cplusplus.github.io/LWG/lwg-toc.html">LWG issues list</a>,
 and the <a href="https://github.com/cplusplus/nbballot">C++26 national
 body ballot comments</a>.</p>
-<p>We are not criticizing the amount of churn, or its direction.
+<p>Discovering these gaps before standardization is an opportunity, not
+a failure. We are not criticizing the amount of churn, or its direction.
 <code>std::execution</code> is a big feature; big features generate
 proportionate review activity. What we are asking is whether the
 unidirectional nature of the churn - every item flowing from
@@ -2175,22 +2191,19 @@ sender/receiver into the coroutine integration, never the reverse.</p>
 <p>The three structural gaps documented in this paper - the error
 channel mismatch, the <code>co_yield</code> workaround, and the
 allocator sequencing gap - are consistent with this pattern. All three
-arise because the sender/receiver model was designed for sender
-pipelines, and coroutines bear the cost. The churn data shows the
-committee investing heavily in the sender pipeline while the coroutine
-integration is repeatedly reworked to chase a moving target.</p>
+reflect a fundamental tension: the properties that make sender pipelines
+powerful are the same properties that impose costs on coroutines. The
+churn data shows the committee investing heavily in the sender pipeline
+while the coroutine integration is repeatedly reworked to chase a moving
+target.</p>
 <p>Discovering issues is a sign of thorough review, not careless design.
-But the unidirectional flow is not just a description of the past - it
-is predictive. If every one of 50 items originates in sender/receiver
-machinery and propagates cost into the coroutine integration, the
-structural relationship is clear: senders are the design center and
-coroutines are the adaptation layer. An adaptation layer absorbs the
-cost of every future change to the thing it adapts. As
-<code>std::execution</code> continues to evolve - and the expanding
-categories in Section 7.3 show it will - coroutines will continue to
-bear the integration cost. The three gaps documented in this paper are
-not the last. They are the first we found. The pattern predicts
-more.</p>
+But no amount of review will make the churn converge, because it
+originates in a structural mismatch, not in missing design effort.
+Sender pipelines and coroutine-based I/O have irreconcilable completion
+semantics (Section 2, Appendix A.4). Each evolution of the sender
+pipeline exercises this mismatch anew, and the coroutine integration
+absorbs the cost each time. The three gaps documented in this paper are
+the first we found. The structural relationship predicts more.</p>
 <p><strong>What are the implications when a language feature only ever
 absorbs cost from a library feature, and never the reverse?</strong></p>
 <hr />
@@ -2240,10 +2253,14 @@ possible).”</p>
 <p>SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with “if possible”
 qualifier.</p>
 </blockquote>
-<p>C++29 was unanimous. C++26 was conditional and weak. <a href="https://wg21.link/p3796r1">P3796R1</a> catalogues sixteen distinct
+<p>The earlier design approval poll for P3552R1 was notably soft: SF:5 /
+F:6 / N:6 / A:1 / SA:0 - six neutral votes matching six favorable votes.
+C++29 forwarding was unanimous. C++26 was conditional and weak. <a href="https://wg21.link/p3796r1">P3796R1</a> catalogues sixteen distinct
 open concerns about <code>task</code>. <a href="https://wg21.link/p3801r0">P3801R0</a> (Jonathan Wakely, “Concerns
 about the design of <code>std::execution::task</code>”) was filed in
-July 2025.</p>
+July 2025. P2300 was previously deferred from C++23 for maturity
+concerns; the same pattern of ongoing design changes is present
+again.</p>
 <hr />
 <h2 id="the-design-space-is-larger-than-one-model">9. The Design Space
 Is Larger Than One Model</h2>
@@ -2308,15 +2325,19 @@ it is free to serve its own domain:</p>
 <code>Environment</code> template parameter. No error channel routing
 decision. The task type is
 <code>template&lt;class T&gt; class task</code> - one parameter,
-matching established practice. None of the three gaps exist.</p>
+matching established practice. None of the three gaps exist. P4003R0
+achieves this by using <code>thread_local</code> propagation to deliver
+the allocator to <code>promise_type::operator new</code> before
+<code>connect()</code> - making explicit that the timing gap is solvable
+when the promise cooperates with a non-receiver mechanism.</p>
 <p>This is not an argument that P4003R0 is the answer. It is an argument
 that answers exist - if the committee is willing to look beyond a single
 model. GPU dispatch, heterogeneous computing, and coroutine-based I/O
 have different requirements. A model designed for compile-time work
-graph construction may not be the right foundation for the programming
-model most developers will use. The three gaps in this paper are
-evidence that one model may not serve both audiences equally. Perhaps
-the right answer is not a better integration between senders and
+graph construction may not be the right foundation for the more
+accessible async model coroutines enable. The three gaps in this paper
+are evidence that one model may not serve both audiences equally.
+Perhaps the right answer is not a better integration between senders and
 coroutines, but an honest acknowledgment that they serve different
 audiences, with interoperation at the boundary rather than forced
 unification.</p>
@@ -2342,8 +2363,7 @@ sender/receiver machinery into the coroutine integration. Not a single
 item represents a coroutine-intrinsic problem. The sender pipeline is
 still under active development; the coroutine integration is being
 repeatedly reworked to chase it.</p>
-<p>We ask the committee to choose a path forward. In order of descending
-preference:</p>
+<p>We ask the committee to choose a path forward:</p>
 <ol type="1">
 <li><p><strong>Fix the three gaps before shipping C++26.</strong>
 Address the error channel, the <code>co_yield</code> workaround, and the
@@ -2352,20 +2372,23 @@ and are eager to collaborate on one.</p></li>
 <li><p><strong>Ship <code>std::execution</code> without
 <code>task</code>.</strong> Iterate on the coroutine integration for
 C++29. This preserves the sender/receiver protocol, avoids ABI lock-in
-on the coroutine integration, and keeps the CPU/GPU use cases on
-track.</p></li>
+on the coroutine integration, and keeps the CPU/GPU use cases on track.
+Production users of sender/receiver (stdexec, NVIDIA CCCL) are not
+blocked - they ship independently of the IS.</p></li>
 <li><p><strong>Defer <code>std::execution</code> to C++29.</strong> Give
 <a href="https://wg21.link/p4003r0">P4003R0</a> and other alternatives
 time to explore whether the gaps can be closed - or whether
 coroutine-based I/O is better served by a different execution model
 entirely.</p></li>
-<li><p><strong>Consider that coroutines and senders may need to part
-ways.</strong> Each serves the use cases it was designed for. Coroutines
-serve developers who write asynchronous code. Senders serve architects
-who build execution frameworks. The current integration forces
-coroutines to bear costs that originate in sender/receiver design
-choices. Perhaps the answer is not a better integration, but an honest
-separation.</p></li>
+<li><p><strong>Acknowledge that senders are a different
+language.</strong> Sender pipelines route on types, dispatch on
+channels, and compose through continuation-passing - none of which
+participates in the direct-style C++ that coroutines inhabit. The models
+did not drift apart; sender pipelines were designed as a compile-time
+language from the start. The three gaps are what happens when two
+languages are forced to share a single type (<code>task&lt;T&gt;</code>)
+at the boundary. Interoperation may serve both audiences better than
+unification.</p></li>
 </ol>
 <hr />
 <h2 id="appendix-a---code-examples">Appendix A - Code Examples</h2>
@@ -2467,7 +2490,8 @@ Restructures <code>transform_sender</code> to take the receiver’s
 environment, changing information flow at <code>connect()</code> time.
 This enables correct algorithm dispatch but does not change when the
 allocator becomes available - the receiver’s environment is still only
-queryable after <code>connect()</code>.</p>
+queryable after <code>connect()</code>. This restructuring could enable
+future allocator solutions, but none has been proposed.</p>
 <h3 id="a.4-why-the-three-channel-model-exists">A.4 Why the
 Three-Channel Model Exists</h3>
 <p>The sender/receiver model constructs the entire work graph at compile
