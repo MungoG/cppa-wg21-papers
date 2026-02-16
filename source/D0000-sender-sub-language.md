@@ -55,9 +55,9 @@ The Sender Sub-Language provides equivalents for most of C++'s fundamental contr
 
 ### Control Flow
 
-In C++, a `for` loop iterates by mutating a counter and testing a condition. In the Sender Sub-Language, iteration is expressed as recursive continuation composition: a sender that, upon completion, constructs another sender that performs the next iteration. The recursion requires type erasure ([`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp), provided by the [stdexec](https://github.com/NVIDIA/stdexec) reference implementation but not yet part of the C++26 working paper) to break the otherwise infinite recursive type. Section 5 illustrates the pattern with working code.
+In C++, a `for` loop iterates by mutating a counter and testing a condition. In the Sender Sub-Language, iteration takes two forms. Dedicated loop combinators such as [`repeat_effect_until`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp) handle simple cases without type erasure. Recursive iteration, where a sender constructs another sender of the same shape on completion, requires type erasure ([`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)) to break the otherwise infinite recursive type. Both facilities are provided by the [stdexec](https://github.com/NVIDIA/stdexec) reference implementation but are not yet part of the C++26 working paper. Section 5 illustrates both patterns with working code.
 
-Branching in C++ uses `if`/`else` or `switch`. In the Sub-Language, conditional logic is expressed through `let_value` returning different sender types depending on a runtime condition. Each branch produces a sender, and the selected sender becomes the next stage of the pipeline.
+Branching in C++ uses `if`/`else` or `switch`. In the Sub-Language, conditional logic is expressed through `let_value` returning a sender depending on a runtime condition. Both branches must return the same concrete sender type; when they do not, [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp) or type erasure is required to unify the return types.
 
 ### Error Handling
 
@@ -170,18 +170,15 @@ v = v + 1;
 v = v * 2;
 ```
 
-The basic unit of composition in the Sender Sub-Language. A value is lifted into the sender context with `just`, and two transformations are applied through the pipe operator. The entire pipeline is lazy - nothing executes until `sync_wait` evaluates the reified continuation.
+This is the basic unit of composition in the Sender Sub-Language. A value is lifted into the sender context with `just`, and two transformations are applied through the pipe operator. The entire pipeline is lazy - nothing executes until `sync_wait` evaluates the reified continuation.
 
 ### 5.2 Branching
 
 ```cpp
 auto work = just(42)                                      // pure/return
-          | let_value([](int v) {                         // monadic bind (>>=)
-                if (v > 0)
-                    return just(v * 2);                   // left branch
-                else
-                    return just(-v);                      // right branch
-            });                                           // continuation selection
+          | then([](int v) {                              // fmap/functor lift
+                return v > 0 ? v * 2 : -v;               // conditional value
+            });
 ```
 
 The same program, expressed in C++:
@@ -194,7 +191,7 @@ else
     v = -v;
 ```
 
-Conditional logic in the Sender Sub-Language is expressed through continuation selection. The `let_value` lambda inspects the value and returns a different sender for each branch. Both branches must produce senders with compatible completion signatures.
+Conditional logic that produces a value (not a new sender) can use `then`. When the branches must return different sender types, `let_value` with [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp) is required.
 
 ### 5.3 Error Handling
 
@@ -528,7 +525,7 @@ The complexity documented in Section 5 is not accidental. It buys real engineeri
 
 ### 6.1 Full Type Visibility
 
-The compiler sees the entire work graph as a concrete type. Every sender, every continuation, every completion signature is a template parameter. The optimizer can inline through the entire pipeline without virtual dispatch, indirect calls, or opaque boundaries. The type of the operation state produced by [`connect`](https://eel.is/c++draft/exec.connect) encodes the complete structure of the computation.
+The compiler sees the work graph as a concrete type, except at type-erasure boundaries introduced by `any_sender_of<>` or similar facilities. Every sender, every continuation, every completion signature is a template parameter. The optimizer can inline through the entire pipeline without virtual dispatch, indirect calls, or opaque boundaries. The type of the operation state produced by [`connect`](https://eel.is/c++draft/exec.connect) encodes the complete structure of the computation.
 
 ### 6.2 Zero Allocation in Steady State
 
@@ -631,8 +628,10 @@ The Sender Sub-Language draws on a rich tradition of functional programming and 
 | `let_value(f)`                             | Monadic bind (`>>=`) - extracting the value from a monadic computation and passing it to a Kleisli arrow            |
 | `then(f)`                                  | `fmap` / functor map - applying a function to the value inside a context without changing the context structure     |
 | `when_all(a, b)`                           | Applicative `<*>` - parallel composition of independent monadic computations                                        |
-| `upon_error(f)` / `let_error(f)`           | Error channel continuation handler - intercepting the error branch of the sum type                                  |
-| `upon_stopped(f)`                          | Cancellation channel continuation handler - intercepting the stopped branch of the sum type                         |
+| `upon_error(f)`                            | `fmap` for the error channel - transforms the error value without leaving the error path (`then` equivalent for errors) |
+| `let_error(f)`                             | Monadic bind for the error channel - the callable returns a new sender that may switch to the value path (`let_value` equivalent for errors) |
+| `upon_stopped(f)`                          | `fmap` for the stopped channel - transforms the stopped signal (`then` equivalent for cancellation)                 |
+| `let_stopped(f)`                           | Monadic bind for the stopped channel - the callable returns a new sender that may switch to the value path (`let_value` equivalent for cancellation) |
 | `set_value` / `set_error` / `set_stopped`  | Algebraic effect channels - a fixed sum type over three completion outcomes                                          |
 | `connect(sndr, rcvr)`                      | Continuation reification - instantiating the CPS transform into a concrete operation                                |
 | `start(op)`                                | Evaluating the reified continuation - initiating the CPS computation                                                |
