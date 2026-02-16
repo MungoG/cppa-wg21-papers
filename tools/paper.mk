@@ -1,4 +1,4 @@
-# Makefile for converting Markdown to PDF/HTML/LaTeX using Pandoc
+# Makefile for converting Markdown to PDF/HTML using Pandoc
 # Supports Windows, macOS, and Linux
 # Requires: pandoc, mermaid-filter (npm package)
 # For PDF output: also requires Google Chrome or Chromium
@@ -52,13 +52,11 @@ else
     CHROME := $(shell which google-chrome chromium-browser chromium 2>/dev/null | head -1)
 endif
 
-CHROME_PDF_FLAGS := --headless --no-pdf-header-footer --disable-gpu --no-sandbox
+CHROME_PDF_FLAGS := --headless --no-pdf-header-footer \
+    --run-all-compositor-stages-before-draw --disable-gpu --no-sandbox
 
 # HTML-specific options
 HTML_OPTS := $(PANDOC_COMMON) --embed-resources --toc --template=$(TOOLDIR)/wg21.html5 --css=$(TOOLDIR)/paperstyle.css
-
-# LaTeX-specific options
-LATEX_OPTS := $(PANDOC_OPTS)
 
 # Default target
 .PHONY: help
@@ -69,7 +67,6 @@ help:
 	@echo "  make file.pdf    - Convert file.md to PDF (A4)"
 	@echo "  make file.html   - Convert file.md to HTML"
 	@echo "  make file.htm    - Convert file.md to HTML"
-	@echo "  make file.latex  - Convert file.md to LaTeX"
 	@echo ""
 	@echo "Other targets:"
 	@echo "  make check       - Check if required tools are installed"
@@ -84,21 +81,15 @@ help:
 # Copy mermaid config to current directory (mermaid-filter requires it here)
 # Remove empty mermaid-filter.err after successful conversion
 ifeq ($(DETECTED_OS),Windows)
-define setup_mermaid_pdf
-	@$(CP) $(TOOLDIR)\mermaid-config-pdf.json .mermaid-config.json >$(NULL) 2>&1
-endef
-define setup_mermaid_html
-	@$(CP) $(TOOLDIR)\mermaid-config-html.json .mermaid-config.json >$(NULL) 2>&1
+define setup_mermaid
+	@$(CP) $(TOOLDIR)\mermaid-config.json .mermaid-config.json >$(NULL) 2>&1
 endef
 define cleanup_mermaid_err
 	@if exist mermaid-filter.err for %%F in (mermaid-filter.err) do @if %%~zF==0 del mermaid-filter.err >$(NULL) 2>&1
 endef
 else
-define setup_mermaid_pdf
-	@$(CP) $(TOOLDIR)/mermaid-config-pdf.json .mermaid-config.json 2>/dev/null || true
-endef
-define setup_mermaid_html
-	@$(CP) $(TOOLDIR)/mermaid-config-html.json .mermaid-config.json 2>/dev/null || true
+define setup_mermaid
+	@$(CP) $(TOOLDIR)/mermaid-config.json .mermaid-config.json 2>/dev/null || true
 endef
 define cleanup_mermaid_err
 	@[ ! -s mermaid-filter.err ] && rm -f mermaid-filter.err 2>/dev/null || true
@@ -111,22 +102,15 @@ endif
 	@echo "Created $(OUTDIR)/$@"
 
 %.html: $(SRCDIR)/%.md check-deps
-	$(setup_mermaid_html)
+	$(setup_mermaid)
 	MERMAID_FILTER_FORMAT=svg $(PANDOC) $(HTML_OPTS) -o $(OUTDIR)/$@ $<
 	$(cleanup_mermaid_err)
 	@$(RM) .mermaid-config.json 2>$(NULL) || true
 	@echo "Created $(OUTDIR)/$@"
 
 %.htm: $(SRCDIR)/%.md check-deps
-	$(setup_mermaid_html)
+	$(setup_mermaid)
 	MERMAID_FILTER_FORMAT=svg $(PANDOC) $(HTML_OPTS) -o $(OUTDIR)/$@ $<
-	$(cleanup_mermaid_err)
-	@$(RM) .mermaid-config.json 2>$(NULL) || true
-	@echo "Created $(OUTDIR)/$@"
-
-%.latex: $(SRCDIR)/%.md check-deps
-	$(setup_mermaid_pdf)
-	$(PANDOC) $(LATEX_OPTS) -o $(OUTDIR)/$@ $<
 	$(cleanup_mermaid_err)
 	@$(RM) .mermaid-config.json 2>$(NULL) || true
 	@echo "Created $(OUTDIR)/$@"
@@ -282,7 +266,7 @@ endif
 # Clean generated files
 .PHONY: clean
 clean:
-	$(RM) *.pdf *.html *.htm *.latex mermaid-filter.err .mermaid-config.json 2>$(NULL) || true
+	$(RM) *.pdf *.html *.htm mermaid-filter.err .mermaid-config.json 2>$(NULL) || true
 	@echo "Cleaned generated files."
 
 # List available markdown files
