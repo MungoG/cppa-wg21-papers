@@ -3,7 +3,7 @@ title: "The Sender Sub-Language"
 document: D0000R0
 date: 2026-02-15
 reply-to:
-  - "Vinnie Falco \<vinnie.falco@gmail.com>"
+  - "Vinnie Falco <vinnie.falco@gmail.com>"
 audience: All of WG21
 ---
 

@@ -3,8 +3,8 @@ title: "Are Senders Replacing Coroutines?"
 document: D4007R0
 date: 2026-02-15
 reply-to:
-  - "Vinnie Falco \<vinnie.falco@gmail.com>"
-  - "Mungo Gill \<mungo.gill@me.com>"
+  - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Mungo Gill <mungo.gill@me.com>"
 audience: SG1, LEWG
 ---
 
