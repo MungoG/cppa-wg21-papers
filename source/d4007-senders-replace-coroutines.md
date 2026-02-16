@@ -10,7 +10,7 @@ audience: SG1, LEWG
 
 ## Abstract
 
-Three structural gaps exist in the coroutine integration of `std::execution`: the three-channel completion model makes correct I/O composition impossible, the standard's own task type introduces risky new syntax to signal an error, and coroutines are denied the allocator that senders receive. In each case, coroutines bear a cost that sender pipelines avoid. Since approval for C++26, the committee has processed 50 modifications to `std::execution` in 22 months at an accelerating rate - and every one originates in sender/receiver machinery or in the cost of making sender/receiver work with coroutines. Not a single item represents a coroutine-intrinsic problem. Taken together, the evidence reveals a recurring pattern: a design conceived for sender pipelines that disadvantages coroutines at every turn. Freezing this API without addressing these gaps risks permanent harm to the programming model most C++ developers will use.
+Three structural gaps exist in the coroutine integration of `std::execution`: the three-channel completion model makes correct I/O composition impossible, the standard's own task type requires novel syntax to signal an error, and coroutines are denied the allocator that senders receive. In each case, coroutines bear a cost that sender pipelines avoid. Since approval for C++26, the committee has processed 50 modifications to `std::execution` in 22 months at an accelerating rate - and every one originates in sender/receiver machinery or in the cost of making sender/receiver work with coroutines. Not a single item represents a coroutine-intrinsic problem. Taken together, the evidence reveals a recurring pattern: an integration between sender/receiver and coroutines where coroutines bear the cost at every turn. Freezing this API without addressing these gaps risks permanent harm to the async model most C++ developers will use.
 
 ---
 
@@ -84,7 +84,7 @@ SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2) ("Sen
 
 This means every future networking operation in the C++ standard must be a sender. Coroutines access those operations through `std::execution::task` - the integration layer documented in [P3552R3](https://wg21.link/p3552r3). If that integration layer has structural gaps, every C++ developer who writes networked code with coroutines will encounter them.
 
-The question this paper asks is not whether sender/receiver has value. It does. The question is whether coroutines - the programming model that most C++ developers will actually use, and the one that inhabits the same syntactic world as the rest of C++ - receive the same level of support from `std::execution`.
+The question this paper asks is not whether sender/receiver has value. It does. The question is whether coroutines, the async model that most C++ developers will actually use, and the one that inhabits the same syntactic world as the rest of C++, will receive the same level of support from `std::execution`.
 
 ---
 
@@ -170,11 +170,11 @@ socket_.async_read(buf_,
     });
 ```
 
-This preserves the byte count. It matches twenty years of Asio practice. But now the developer is reporting an error through the success channel. The name says "value." They are sending an error code. Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) ("Partial success scenarios with P2300"):
+The `set_value` approach preserves the byte count. It matches twenty years of Asio practice. But now the developer is reporting an error through the success channel. The name says "value." They are sending an error code. Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) ("Partial success scenarios with P2300"):
 
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
-The naming is misleading. `set_error` looks right for an `error_code`, and for non-I/O senders it probably is. But for I/O - the domain with the broadest user base - it is a trap. The developer who follows the API's own naming convention produces code that silently misbehaves under composition. The developer who does the right thing must override that naming convention and put an error into the value channel. There is no guidance in the standard for which choice to make. Every I/O library author must independently discover and resolve this tension, and the ecosystem has no mechanism to converge on an answer.
+The naming is misleading. `set_error` looks right for an `error_code`, and for non-I/O senders it probably is. But for I/O - the domain with the broadest user base - the natural choice silently misbehaves. The developer who follows the API's own naming convention produces code that silently misbehaves under composition. The developer who does the right thing must override that naming convention and put an error into the value channel. There is no guidance in the standard for which choice to make. Every I/O library author must independently discover and resolve this tension, and the ecosystem has no mechanism to converge on an answer.
 
 ### 2.2 Coroutines
 
@@ -274,9 +274,9 @@ Same two EOF events. Same `when_all`. The program is correct on some runs and in
 
 ### 2.4 The Problem Is Unfixable
 
-This is not a missing convention waiting to be supplied. It is a structural mismatch between the three-channel model and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
+The mismatch is not a missing convention waiting to be supplied. It is a structural mismatch between the three-channel model and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
 
-- **Converge on `set_value` for error codes** (the Asio/[P2762R2](https://wg21.link/p2762r2) approach). Every generic error-handling algorithm in `std::execution` - `upon_error`, `let_error`, any future `retry` - is dead code for I/O. The error channel exists but I/O never uses it. Half the framework's error handling machinery becomes vestigial for the largest async use case.
+- **Converge on `set_value` for error codes** (the Asio/[P2762R2](https://wg21.link/p2762r2) approach). Every generic error-handling algorithm in `std::execution` - `upon_error`, `let_error`, any future `retry` - is inaccessible to I/O senders. The error channel exists but I/O never uses it. Half the framework's error handling machinery has no path from the largest async use case.
 
 - **Converge on `set_error` for error codes.** Partial success is inexpressible. The byte count is lost. Twenty years of I/O practice says that is wrong. A `retry_on_error` algorithm that intercepts `set_error` will retry, but it cannot know how many bytes were already transferred - that information was discarded at the channel boundary.
 
@@ -286,13 +286,13 @@ This is not a missing convention waiting to be supplied. It is a structural mism
 
 The three-channel model assumes a clean separation: values are values, errors are errors. I/O does not have a clean separation. An `error_code` is a status report. EOF is not a failure - it is information. A partial write is not an error - it is a progress report. The model and the domain are structurally incompatible. Appendix A.4 explains why: the three channels are a structural requirement of the compile-time work graph, and eliminating them would collapse the sender pipeline's type-level routing into runtime dispatch.
 
-Kohlhoff identified the channel routing tension in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) (2021) but did not analyze the composition consequences. What is new in this paper is the `when_all` proof: regardless of which convention a sender author chooses, correct behavior under `when_all` is impossible by design. When two libraries choose differently, the result is a race condition over correctness determined by completion order. This is not the ambiguity Kohlhoff identified - it is a concrete correctness defect that follows from it.
+Kohlhoff identified the channel routing tension in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) (2021). This paper extends the analysis to composition consequences. The `when_all` analysis: regardless of which convention a sender author chooses, correct behavior under `when_all` is impossible by design. When two libraries choose differently, the result is a race condition over correctness determined by completion order. This is not the ambiguity Kohlhoff identified - it is a concrete correctness defect that follows from it.
 
-### 2.5 I/O Should Adapt
+### 2.5 Always Use `set_value`?
 
 One might argue that the channels are generic and I/O should simply adopt the `set_value` convention - treating error codes as domain values rather than framework errors.
 
-Here is what that costs. Every error-handling sender algorithm - `upon_error`, `let_error`, any future `retry` - becomes dead code for I/O. And `when_all` still breaks: when every I/O sender delivers `(error_code, size_t)` through `set_value`, I/O failure is indistinguishable from I/O success. Sibling cancellation on failure is impossible. All current and future sender algorithms that depend on channel routing are unusable for a domain that `std::execution` claims to universally serve.
+But `when_all` still breaks: when every I/O sender delivers `(error_code, size_t)` through `set_value`, I/O failure is indistinguishable from I/O success. Sibling cancellation on failure is impossible.
 
 The completion signature `void(error_code, size_t)` predates senders by 25 years. It is not a quirk of one library. It is the completion signature of every I/O operation in POSIX, Win32, Asio, and every networking library built on them. The three-channel model is optimized for type-level routing in sender pipelines (Appendix A.4 examines the design rationale). The friction with I/O completion semantics is a consequence of that optimization.
 
@@ -349,6 +349,8 @@ do_read(tcp_socket& s, buffer& buf)
 }
 ```
 
+For six years, every C++ coroutine library has taught the same two conventions: `co_return` for final values, `co_yield` for intermediate values that the coroutine continues to produce. The second example above breaks both: `co_yield` does not produce a value, and the coroutine does not continue.
+
 ### 3.3 Established Practice
 
 No production C++ coroutine library uses `co_yield` for error signaling:
@@ -375,6 +377,8 @@ The committee is aware of this problem. Jonathan Wakely's [P3801R0](https://wg21
 
 The proposed fix - a language change to the `return_void`/`return_value` mutual exclusion - is not part of C++26 and has no paper proposing it. The syntax ships as-is.
 
+One might argue that this is a flaw in the coroutine language feature, not in `std::execution`. But the `return_void`/`return_value` mutual exclusion has existed since C++20 and has not prevented any other coroutine library from delivering errors through `co_return`. The constraint becomes a problem only when the framework requires errors to reach a separate channel - a requirement that originates in the sender/receiver protocol, not in coroutines.
+
 This is not mere unfamiliarity. Unfamiliar syntax is learnable - `co_await` was unfamiliar in 2020 and developers adapted. The problem with `co_yield with_error(e)` is that it actively misleads. A developer who has learned what `co_yield` means - produce a value and continue - will read `co_yield with_error(ec)` and conclude that the coroutine continues after the yield point. It does not. The keyword's established meaning predicts the wrong behavior. Every other coroutine library on GitHub uses `co_return` for both values and errors. `std::execution::task` is the only coroutine type in the C++ ecosystem that requires `co_yield` to signal an error - not because it is a better design, but because the three-channel sender/receiver model requires a path that the C++ coroutine language does not provide.
 
 **Does `co_yield with_error` serve coroutines or senders?**
@@ -383,7 +387,7 @@ This is not mere unfamiliarity. Unfamiliar syntax is learnable - `co_await` was 
 
 ## 4. Where Is the Allocator?
 
-Everyone has concerns about the frame allocation that I/O coroutines cannot avoid. They are right - HALO cannot elide frames that outlive their callers, and the coroutine's implementation is often not visible (see Appendix A.1). Each `task<T>` call performs `operator new`. In a server handling thousands of connections at high request rates, frame allocations can reach the order of millions per second. A recycling allocator tuned for coroutine frames can outperform even state-of-the-art general-purpose allocators. [P4003R0](https://wg21.link/p4003r0) benchmarks a 4-deep coroutine call chain (2 million iterations):
+Everyone has concerns about the frame allocation that I/O coroutines cannot avoid. They are right - HALO cannot elide frames that outlive their callers, and the coroutine's implementation is often not visible (see Appendix A.1). Each `task<T>` call invokes the coroutine promise's `operator new` (`promise_type::operator new`). In a server handling thousands of connections at high request rates, frame allocations can reach the order of millions per second. A recycling allocator tuned for coroutine frames can outperform even state-of-the-art general-purpose allocators. [P4003R0](https://wg21.link/p4003r0) benchmarks a 4-deep coroutine call chain (2 million iterations):
 
 | Platform    | Allocator        | Time (ms) | vs std::allocator |
 |-------------|------------------|----------:|------------------:|
@@ -395,7 +399,7 @@ Everyone has concerns about the frame allocation that I/O coroutines cannot avoi
 
 Stateful allocators are not a luxury for coroutine-based I/O; they are a prerequisite for competitive performance.
 
-The question is how the allocator reaches `operator new`.
+The question is how the allocator reaches the promise's `operator new`.
 
 ### 4.1 Senders
 
@@ -506,7 +510,7 @@ Senders receive the allocator through the environment - automatically, at every 
 
 No workaround - global PMR, thread-local registries, or otherwise - can bypass the promise. Every path to `operator new` runs through `promise_type::operator new`. If the promise does not cooperate, the allocator does not reach the frame.
 
-Our research in [P4003R0](https://wg21.link/p4003r0) suggests that promise-level cooperation is the only viable path - but the right cooperation depends on the domain. A networking task needs per-connection recycling allocators. A GPU dispatch task needs device memory. A compute task might need arena allocation with bulk reclamation. These are different problems with different solutions.
+Our research in [P4003R0](https://wg21.link/p4003r0) suggests that promise-level cooperation is the only viable path - but the right cooperation depends on the domain. A networking task might need per-connection recycling allocators. A GPU dispatch task might need device memory. A compute task might need arena allocation with bulk reclamation. These are different problems with different solutions.
 
 The escape hatch is to stop searching for a universal allocator model in one promise type. Let each domain's task type cooperate with its own allocator strategy. Solutions exist when the promise is free to serve its domain rather than forced to serve all of them.
 
@@ -576,7 +580,7 @@ The pattern of threading infrastructure concerns through every function signatur
 
 Gregor Kiczales et al. identified the problem in ["Aspect-Oriented Programming"](https://www.cs.ubc.ca/~gregor/papers/kiczales-ECOOP1997-AOP.pdf) (ECOOP 1997) - the foundational AOP paper. Certain design decisions cannot be cleanly captured in procedural or OO decomposition, forcing implementations to be *"scattered throughout the code, resulting in 'tangled' code that is excessively difficult to develop and maintain."*
 
-The recognized code smell is called [tramp data](https://softwareengineering.stackexchange.com/questions/335005) - parameters passed through intermediate functions that do not use them. Tramp data *"increases code rigidity, constraining how you can refactor methods in the call chain"* and *"distributes architectural knowledge to functions that do not need it."*
+The pattern has a recognized name in software engineering: [tramp data](https://softwareengineering.stackexchange.com/questions/335005) - parameters passed through intermediate functions that do not use them. Tramp data *"increases code rigidity, constraining how you can refactor methods in the call chain"* and *"distributes architectural knowledge to functions that do not need it."*
 
 The React ecosystem calls the same problem [prop drilling](https://kentcdodds.com/blog/prop-drilling) (Kent C. Dodds) - passing data through intermediate components that do not need it. When it becomes burdensome, React Context provides an implicit channel. That implicit channel is architecturally identical to what P2300 environments do for senders, and to what thread-local propagation does for coroutines.
 
@@ -600,29 +604,29 @@ The practical consequence is predictable. The parameter burden means that in pra
 
 ## 6. The Gaps Cannot Be Fixed Later
 
-`operator new` runs before `connect()`. No library-level change known to the authors can alter this sequencing - it is determined by the C++ language specification for coroutines interacting with the sender/receiver protocol. Closing the gap appears to require changing the sequencing - which means changing the API.
+The promise's `operator new` runs before `connect()`. No library-level change known to the authors can alter this sequencing - it is determined by the C++ language specification for coroutines interacting with the sender/receiver protocol. Closing the gap appears to require changing the sequencing - which means changing the API.
 
 ### 6.1 `await_transform` Cannot Help
 
 In `co_await child_coro(args...)`, the function call `child_coro(args...)` is evaluated first - the child's `operator new` fires and the frame is allocated before `co_await` processing begins. By the time `await_transform` sees the returned `task<T>`, the child's frame has already been allocated without the parent's allocator.
 
-### 6.2 No Path to `operator new`
+### 6.2 No Path to the Promise's `operator new`
 
 [P3552R3](https://wg21.link/p3552r3) establishes a two-tier model: the allocator is a creation-time concern passed at the call site, while the scheduler and stop token are connection-time concerns from the receiver. Propagating the allocator through a chain of nested coroutine calls remains the harder and unsolved problem. With standard containers, the allocator type is part of the type signature (`vector<T, Alloc>`), and *uses_allocator* construction gives generic code a standard way to propagate. With coroutines, the return type is `task<T>` - it does not carry the allocator type, and there is no *uses_allocator* equivalent for coroutine frame allocation.
 
-### 6.3 P3826R3 Targets a Different Problem
+### 6.3 P3826R3 and the Allocator Sequencing Gap
 
-[P3826R3](https://wg21.link/p3826r3) proposes important fixes for sender algorithm customization. Its five proposed solutions all target algorithm dispatch - i.e., which implementation of `then`, `let_value`, or `bulk` should run. Four of the five do not change when the allocator becomes available. The fifth - remove all `std::execution` - resolves the gap by deferral. See Appendix A.3 for an analysis of each solution.
+[P3826R3](https://wg21.link/p3826r3) addresses sender algorithm customization - an important problem worth solving. We include it here not to criticize its scope but to clarify that its solutions do not change when the allocator becomes available to coroutines. Its five proposed solutions all target algorithm dispatch - i.e., which implementation of `then`, `let_value`, or `bulk` should run. Four of the five do not change when the allocator becomes available. The fifth - remove all `std::execution` - resolves the gap by deferral. See Appendix A.3 for an analysis of each solution.
 
 ### 6.4 ABI Lock-In Makes the Gap Permanent
 
-Once standardized, the relationship between `operator new` and `connect()` becomes part of the ABI. The standard does not break ABI on standardized interfaces. A fix would likely need `connect()` to propagate allocator context before the coroutine frame is allocated - a structural change to the sender protocol. The committee would then face a choice: accept the gap permanently, or introduce a parallel framework that serves coroutine-based I/O alongside the original.
+Once standardized, the relationship between the promise's `operator new` and `connect()` becomes part of the ABI. The standard does not break ABI on standardized interfaces. A fix would likely need `connect()` to propagate allocator context before the coroutine frame is allocated - a structural change to the sender protocol. The committee would then face a choice: accept the gap permanently, or introduce a parallel framework that serves coroutine-based I/O alongside the original.
 
 ### 6.5 The Three-Channel Model Is the ABI
 
 The three-channel completion model is the foundation of `std::execution`'s completion signature machinery. Every sender algorithm's behavior is defined in terms of which channel fires. Adding a fourth channel, changing `when_all` semantics, or redefining the relationship between error codes and channels would be a breaking change to the model. The channel routing problem identified by Kohlhoff in 2021 has no resolution within the current model, and the ABI freeze would make the model permanent.
 
-The natural compromise - ship `task` with known limitations and fix via DR or C++29 addendum - assumes the fix is a minor adjustment. Sections 6.1 through 6.4 show it is not. The allocator sequencing gap requires changing the relationship between `operator new` and `connect()`. The channel routing gap requires changing the completion model. Both are structural, and both become ABI once shipped. A DR that changes ABI is not a DR - it is a new framework.
+The natural compromise - ship `task` with known limitations and fix via DR or C++29 addendum - assumes the fix is a minor adjustment. Sections 6.1 through 6.4 show it is not. The allocator sequencing gap requires changing the relationship between the promise's `operator new` and `connect()`. The channel routing gap requires changing the completion model. Both are structural, and both become ABI once shipped. A DR that changes ABI is not a DR - it is a new framework.
 
 **Should the committee ship an API with acknowledged gaps?**
 
@@ -632,7 +636,7 @@ The natural compromise - ship `task` with known limitations and fix via DR or C+
 
 Since `std::execution` was approved for C++26 at Tokyo in March 2024, the committee has processed 50 items modifying this single feature in 22 months. All data is gathered from the published [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/), the [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html), and the [C++26 national body ballot comments](https://github.com/cplusplus/nbballot).
 
-We are not criticizing the amount of churn, or its direction. `std::execution` is a big feature; big features generate proportionate review activity. What we are asking is whether the unidirectional nature of the churn - every item flowing from sender/receiver machinery into the coroutine integration, never the reverse - harms an important language feature.
+Discovering these gaps before standardization is an opportunity, not a failure. We are not criticizing the amount of churn, or its direction. `std::execution` is a big feature; big features generate proportionate review activity. What we are asking is whether the unidirectional nature of the churn - every item flowing from sender/receiver machinery into the coroutine integration, never the reverse - harms an important language feature.
 
 ### 7.1 Items by Meeting Period
 
@@ -677,9 +681,9 @@ Every one of the 50 items falls into one of two categories:
 
 Every item is either a sender/receiver design issue or a consequence of making sender/receiver work with coroutines. Not a single item represents a coroutine-intrinsic design problem propagating into the sender pipeline. The complexity flows in one direction: from sender/receiver into the coroutine integration, never the reverse.
 
-The three structural gaps documented in this paper - the error channel mismatch, the `co_yield` workaround, and the allocator sequencing gap - are consistent with this pattern. All three arise because the sender/receiver model was designed for sender pipelines, and coroutines bear the cost. The churn data shows the committee investing heavily in the sender pipeline while the coroutine integration is repeatedly reworked to chase a moving target.
+The three structural gaps documented in this paper - the error channel mismatch, the `co_yield` workaround, and the allocator sequencing gap - are consistent with this pattern. All three reflect a fundamental tension: the properties that make sender pipelines powerful are the same properties that impose costs on coroutines. The churn data shows the committee investing heavily in the sender pipeline while the coroutine integration is repeatedly reworked to chase a moving target.
 
-Discovering issues is a sign of thorough review, not careless design. But the unidirectional flow is not just a description of the past - it is predictive. If every one of 50 items originates in sender/receiver machinery and propagates cost into the coroutine integration, the structural relationship is clear: senders are the design center and coroutines are the adaptation layer. An adaptation layer absorbs the cost of every future change to the thing it adapts. As `std::execution` continues to evolve - and the expanding categories in Section 7.3 show it will - coroutines will continue to bear the integration cost. The three gaps documented in this paper are not the last. They are the first we found. The pattern predicts more.
+Discovering issues is a sign of thorough review, not careless design. But no amount of review will make the churn converge, because it originates in a structural mismatch, not in missing design effort. Sender pipelines and coroutine-based I/O have irreconcilable completion semantics (Section 2, Appendix A.4). Each evolution of the sender pipeline exercises this mismatch anew, and the coroutine integration absorbs the cost each time. The three gaps documented in this paper are the first we found. The structural relationship predicts more.
 
 **What are the implications when a language feature only ever absorbs cost from a library feature, and never the reverse?**
 
@@ -711,7 +715,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-C++29 was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) (Jonathan Wakely, "Concerns about the design of `std::execution::task`") was filed in July 2025.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0 - six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) (Jonathan Wakely, "Concerns about the design of `std::execution::task`") was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 
@@ -764,9 +768,9 @@ task<> handle_request(tcp::socket sock)
 }
 ```
 
-No `allocator_arg` in any signature. No forwarding. No `Environment` template parameter. No error channel routing decision. The task type is `template<class T> class task` - one parameter, matching established practice. None of the three gaps exist.
+No `allocator_arg` in any signature. No forwarding. No `Environment` template parameter. No error channel routing decision. The task type is `template<class T> class task` - one parameter, matching established practice. None of the three gaps exist. P4003R0 achieves this by using `thread_local` propagation to deliver the allocator to `promise_type::operator new` before `connect()` - making explicit that the timing gap is solvable when the promise cooperates with a non-receiver mechanism.
 
-This is not an argument that P4003R0 is the answer. It is an argument that answers exist - if the committee is willing to look beyond a single model. GPU dispatch, heterogeneous computing, and coroutine-based I/O have different requirements. A model designed for compile-time work graph construction may not be the right foundation for the programming model most developers will use. The three gaps in this paper are evidence that one model may not serve both audiences equally. Perhaps the right answer is not a better integration between senders and coroutines, but an honest acknowledgment that they serve different audiences, with interoperation at the boundary rather than forced unification.
+This is not an argument that P4003R0 is the answer. It is an argument that answers exist - if the committee is willing to look beyond a single model. GPU dispatch, heterogeneous computing, and coroutine-based I/O have different requirements. A model designed for compile-time work graph construction may not be the right foundation for the more accessible async model coroutines enable. The three gaps in this paper are evidence that one model may not serve both audiences equally. Perhaps the right answer is not a better integration between senders and coroutines, but an honest acknowledgment that they serve different audiences, with interoperation at the boundary rather than forced unification.
 
 **Does the evidence support one model for all of asynchronous C++?**
 
@@ -780,15 +784,15 @@ Two independent lines of evidence support the conclusion that `std::execution`'s
 
 **Empirical churn data.** Fifty modifications in 22 months at an accelerating rate, with all complexity flowing from sender/receiver machinery into the coroutine integration. Not a single item represents a coroutine-intrinsic problem. The sender pipeline is still under active development; the coroutine integration is being repeatedly reworked to chase it.
 
-We ask the committee to choose a path forward. In order of descending preference:
+We ask the committee to choose a path forward:
 
 1. **Fix the three gaps before shipping C++26.** Address the error channel, the `co_yield` workaround, and the allocator sequencing gap. We welcome a solution from the P2300 authors and are eager to collaborate on one.
 
-2. **Ship `std::execution` without `task`.** Iterate on the coroutine integration for C++29. This preserves the sender/receiver protocol, avoids ABI lock-in on the coroutine integration, and keeps the CPU/GPU use cases on track.
+2. **Ship `std::execution` without `task`.** Iterate on the coroutine integration for C++29. This preserves the sender/receiver protocol, avoids ABI lock-in on the coroutine integration, and keeps the CPU/GPU use cases on track. Production users of sender/receiver (stdexec, NVIDIA CCCL) are not blocked - they ship independently of the IS.
 
 3. **Defer `std::execution` to C++29.** Give [P4003R0](https://wg21.link/p4003r0) and other alternatives time to explore whether the gaps can be closed - or whether coroutine-based I/O is better served by a different execution model entirely.
 
-4. **Consider that coroutines and senders may need to part ways.** Each serves the use cases it was designed for. Coroutines serve developers who write asynchronous code. Senders serve architects who build execution frameworks. The current integration forces coroutines to bear costs that originate in sender/receiver design choices. Perhaps the answer is not a better integration, but an honest separation.
+4. **Acknowledge that senders are a different language.** Sender pipelines route on types, dispatch on channels, and compose through continuation-passing - none of which participates in the direct-style C++ that coroutines inhabit. The models did not drift apart; sender pipelines were designed as a compile-time language from the start. The three gaps are what happens when two languages are forced to share a single type (`task<T>`) at the boundary. Interoperation may serve both audiences better than unification.
 
 ---
 
@@ -885,7 +889,7 @@ Forgetting any one of the five steps silently falls back to the default allocato
 
 **Solution 4.4: Ship as-is, fix via DR.** Defers the fix. Does not change when the allocator becomes available.
 
-**Solution 4.5: Fix algorithm customization now.** Restructures `transform_sender` to take the receiver's environment, changing information flow at `connect()` time. This enables correct algorithm dispatch but does not change when the allocator becomes available - the receiver's environment is still only queryable after `connect()`.
+**Solution 4.5: Fix algorithm customization now.** Restructures `transform_sender` to take the receiver's environment, changing information flow at `connect()` time. This enables correct algorithm dispatch but does not change when the allocator becomes available - the receiver's environment is still only queryable after `connect()`. This restructuring could enable future allocator solutions, but none has been proposed.
 
 ### A.4 Why the Three-Channel Model Exists
 
