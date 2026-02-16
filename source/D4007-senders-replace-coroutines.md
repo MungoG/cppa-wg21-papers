@@ -284,7 +284,7 @@ This is not a missing convention waiting to be supplied. It is a structural mism
 
 - **Add a fourth channel for partial success.** This would be a breaking change to the completion signature model that `std::execution` is built on.
 
-The three-channel model assumes a clean separation: values are values, errors are errors. I/O does not have a clean separation. An `error_code` is a status report. EOF is not a failure - it is information. A partial write is not an error - it is a progress report. The model and the domain are structurally incompatible.
+The three-channel model assumes a clean separation: values are values, errors are errors. I/O does not have a clean separation. An `error_code` is a status report. EOF is not a failure - it is information. A partial write is not an error - it is a progress report. The model and the domain are structurally incompatible. Appendix A.4 explains why: the three channels are a structural requirement of the compile-time work graph, and eliminating them would collapse the sender pipeline's type-level routing into runtime dispatch.
 
 Kohlhoff identified the channel routing tension in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) (2021) but did not analyze the composition consequences. What is new in this paper is the `when_all` proof: regardless of which convention a sender author chooses, correct behavior under `when_all` is impossible by design. When two libraries choose differently, the result is a race condition over correctness determined by completion order. This is not the ambiguity Kohlhoff identified - it is a concrete correctness defect that follows from it.
 
@@ -296,7 +296,9 @@ Here is what that costs. Every error-handling sender algorithm - `upon_error`, `
 
 The completion signature `void(error_code, size_t)` predates senders by 25 years. It is not a quirk of one library. It is the completion signature of every I/O operation in POSIX, Win32, Asio, and every networking library built on them. The three-channel model chose not to accommodate the dominant completion pattern in the domain it claims to serve.
 
-### 2.6 A Self-Inflicted Wound
+Note that `upon_error` cannot recover from an error; it transforms the error but stays in the error channel. Only `let_error` can switch from the error channel back to the value channel, because the callable returns a new sender that may complete with `set_value`. As of this writing, neither [P2300R10](https://wg21.link/p2300r10), [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html), nor the [stdexec](https://github.com/NVIDIA/stdexec) repository contains a published example of `let_error` being used to recover from an error.
+
+### 2.6 An Unforced Error
 
 Kohlhoff published [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) in August 2021, during the most intensive review period for P2300. He demonstrated that partial results must go through `set_value` and that the channel model does not accommodate I/O completion semantics. The paper was targeted at LEWG and SG1. It received no dedicated review, no minutes, no poll. The committee moved forward without addressing it. Every consequence documented in this section follows from that decision.
 
@@ -884,6 +886,36 @@ Forgetting any one of the five steps silently falls back to the default allocato
 **Solution 4.4: Ship as-is, fix via DR.** Defers the fix. Does not change when the allocator becomes available.
 
 **Solution 4.5: Fix algorithm customization now.** Restructures `transform_sender` to take the receiver's environment, changing information flow at `connect()` time. This enables correct algorithm dispatch but does not change when the allocator becomes available - the receiver's environment is still only queryable after `connect()`.
+
+### A.4 Why the Three-Channel Model Exists
+
+The sender/receiver model constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect) collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
+
+The three completion channels provide exactly this. [Completion signatures](https://eel.is/c++draft/exec.getcomplsigs) declare three distinct type-level paths:
+
+```cpp
+using completion_signatures =
+    stdexec::completion_signatures<
+        set_value_t(int),                                 // value path
+        set_error_t(error_code),                          // error path
+        set_stopped_t()>;                                 // stopped path
+```
+
+[`when_all`](https://eel.is/c++draft/exec.when.all) dispatches on which channel fired without inspecting payloads. [`upon_error`](https://eel.is/c++draft/exec.upon.error) attaches to the error path at the type level. [`let_value`](https://eel.is/c++draft/exec.let) attaches to the value path at the type level. The routing is in the types, not in the values.
+
+If errors were delivered as values (for example, `expected<int, error_code>` through `set_value`), the compiler would see one path carrying one type. `when_all` could not cancel siblings on error without runtime inspection of the payload. `upon_error` could not exist as a type-level construct. Every algorithm would need runtime branching logic to inspect the expected and route accordingly, rather than having separate continuations selected at compile time.
+
+**The three channels exist because the sender pipeline is a compile-time language.**
+
+Compile-time languages route on types. Runtime languages route on values. A coroutine returns `auto [ec, n] = co_await read(buf)` and branches with `if (ec)` at runtime. The sender pipeline encodes `set_value` and `set_error` as separate types in the completion signature and routes at compile time. The three-channel model is not an arbitrary design choice; it is a structural requirement of the compile-time work graph.
+
+**A compile-time language cannot express partial success.**
+
+I/O operations return `(error_code, size_t)` together because partial success is normal. A `read` that transfers 47 bytes before EOF is simultaneously a success (47 bytes delivered) and an error (EOF). The three-channel model demands that the sender author choose one channel. Choosing `set_error` loses the byte count. Choosing `set_value` hides the error from every type-level routing algorithm. No choice is correct because the compile-time type system cannot represent "both at once."
+
+**The problem is fundamental.**
+
+Eliminating the three-channel model would remove the type-level routing that makes the compile-time work graph possible. The zero-allocation pipelines, the full type visibility, and the deterministic execution documented in the sender/receiver design all depend on type-level dispatch through completion channels. The three channels are not a design flaw. They are the price of compile-time analysis. I/O cannot pay that price because I/O's completion semantics are inherently runtime: whether a read succeeded, partially succeeded, or failed is determined by the operating system, not by the type system.
 
 ---
 
