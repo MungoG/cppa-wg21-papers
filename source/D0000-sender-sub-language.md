@@ -151,7 +151,7 @@ That is a legitimate design conclusion. The committee should evaluate it on its 
 
 ## 5. The Sub-Language in Practice
 
-The following examples are drawn from the official [stdexec](https://github.com/NVIDIA/stdexec) repository and the [sender-examples](https://github.com/steve-downey/sender-examples) collection. Each illustrates a progressively more expressive pattern in the Sender Sub-Language, annotated with the functional programming concepts from Section 3. After each example, a coroutine equivalent is provided for readers more familiar with the direct style.
+The following examples are drawn from the official [stdexec](https://github.com/NVIDIA/stdexec) repository and the [sender-examples](https://github.com/steve-downey/sender-examples) collection. Each illustrates a progressively more expressive pattern in the Sender Sub-Language, annotated with the functional programming concepts from Section 3. After each example, the same program is shown in C++.
 
 ### 5.1 A Simple Pipeline
 
@@ -586,7 +586,21 @@ Eric Niebler acknowledges this directly in [P3826R3](https://wg21.link/p3826r3) 
 
 The Sender Sub-Language is extensible enough to accommodate an entirely separate implementation for specialized hardware.
 
-### 6.7 Who Benefits
+### 6.7 C++20 on the GPU
+
+The [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html) documentation (v13.1, December 2025) lists C++20 feature support for GPU device code. The following rows are representative:
+
+| C++20 Language Feature                | nvcc Device Code  |
+|---------------------------------------|:-----------------:|
+| Concepts                              | Yes               |
+| Consistent comparison (`operator<=>`) | Yes               |
+| `consteval` functions                 | Yes               |
+| Parenthesized initialization          | Yes               |
+| Coroutines                            | **NOT SUPPORTED** |
+
+Coroutine support for GPU device code may arrive in a future release.
+
+### 6.8 Who Benefits
 
 These properties - full type visibility, zero allocation, compile-time graph construction, deterministic latency, vendor extensibility - serve specific domains exceptionally well:
 
@@ -722,3 +736,4 @@ For readers who wish to explore the theoretical foundations of the Sender Sub-La
 50. [`nvcc`](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html). NVIDIA CUDA Compiler Driver.
 51. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022.
 52. [`connect`](https://eel.is/c++draft/exec.connect). C++26 draft standard, [exec.connect].
+53. [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html). NVIDIA CUDA Programming Guide v13.1, Section 5.3 (December 2025).
