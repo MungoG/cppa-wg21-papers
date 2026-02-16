@@ -238,7 +238,7 @@ auto result = co_await when_all(
     socket_b.async_read(buf_b));
 ```
 
-Correct behavior is thus impossible by design:
+The developer is presented with an impossible choice. Under `when_all`, no convention produces correct behavior:
 
 If the sender author chose `set_error` for EOF, `when_all` cancels `socket_b` and propagates the error. The 47 bytes already transferred are discarded. Data loss.
 
@@ -270,7 +270,7 @@ If `read_b` hits EOF first: `when_all` sees `set_error`, cancels `read_a`, propa
 
 If `read_a` hits EOF first: `when_all` sees `set_value`, keeps waiting for `read_b`. No cancellation. The failure goes undetected until `read_b` eventually completes.
 
-Same two EOF events. Same `when_all`. The program is correct on some runs and incorrect on others, determined by which socket completes first. This is a race condition over correctness, introduced by the absence of an ecosystem convention that the standard does not provide.
+Same two EOF events. Same `when_all`. The program is correct on some runs and incorrect on others, determined by which socket completes first.
 
 ### 2.4 The Problem Is Unfixable
 
@@ -294,15 +294,15 @@ One might argue that the channels are generic and I/O should simply adopt the `s
 
 Here is what that costs. Every error-handling sender algorithm - `upon_error`, `let_error`, any future `retry` - becomes dead code for I/O. And `when_all` still breaks: when every I/O sender delivers `(error_code, size_t)` through `set_value`, I/O failure is indistinguishable from I/O success. Sibling cancellation on failure is impossible. All current and future sender algorithms that depend on channel routing are unusable for a domain that `std::execution` claims to universally serve.
 
-The completion signature `void(error_code, size_t)` predates senders by 25 years. It is not a quirk of one library. It is the completion signature of every I/O operation in POSIX, Win32, Asio, and every networking library built on them. The three-channel model chose not to accommodate the dominant completion pattern in the domain it claims to serve.
+The completion signature `void(error_code, size_t)` predates senders by 25 years. It is not a quirk of one library. It is the completion signature of every I/O operation in POSIX, Win32, Asio, and every networking library built on them. The three-channel model is optimized for type-level routing in sender pipelines (Appendix A.4 examines the design rationale). The friction with I/O completion semantics is a consequence of that optimization.
 
 Note that `upon_error` cannot recover from an error; it transforms the error but stays in the error channel. Only `let_error` can switch from the error channel back to the value channel, because the callable returns a new sender that may complete with `set_value`. As of this writing, neither [P2300R10](https://wg21.link/p2300r10), [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html), nor the [stdexec](https://github.com/NVIDIA/stdexec) repository contains a published example of `let_error` being used to recover from an error.
 
-### 2.6 An Unforced Error
+### 2.6 An Unforced Error?
 
-Kohlhoff published [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) in August 2021, during the most intensive review period for P2300. He demonstrated that partial results must go through `set_value` and that the channel model does not accommodate I/O completion semantics. The paper was targeted at LEWG and SG1. It received no dedicated review, no minutes, no poll. The committee moved forward without addressing it. Every consequence documented in this section follows from that decision.
+Kohlhoff published [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) in August 2021, during the most intensive review period for P2300. He demonstrated that partial results must go through `set_value` and that the channel model does not accommodate I/O completion semantics. The paper was targeted at LEWG and SG1. The authors of this paper were unable to find minutes or polls addressing P2430R0 in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings.
 
-**Coroutine authors pay for a Senders feature.**
+**Are coroutines paying for a feature they did not ask for?**
 
 ---
 
@@ -377,7 +377,7 @@ The proposed fix - a language change to the `return_void`/`return_value` mutual 
 
 This is not mere unfamiliarity. Unfamiliar syntax is learnable - `co_await` was unfamiliar in 2020 and developers adapted. The problem with `co_yield with_error(e)` is that it actively misleads. A developer who has learned what `co_yield` means - produce a value and continue - will read `co_yield with_error(ec)` and conclude that the coroutine continues after the yield point. It does not. The keyword's established meaning predicts the wrong behavior. Every other coroutine library on GitHub uses `co_return` for both values and errors. `std::execution::task` is the only coroutine type in the C++ ecosystem that requires `co_yield` to signal an error - not because it is a better design, but because the three-channel sender/receiver model requires a path that the C++ coroutine language does not provide.
 
-**Coroutine authors pay for a Senders feature.**
+**Does `co_yield with_error` serve coroutines or senders?**
 
 ---
 
@@ -500,7 +500,7 @@ Propagation remains unsolved. When a coroutine calls a child coroutine, the chil
 
 Senders receive the allocator through the environment - automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg` - manually, at every call site, with silent fallback on any mistake. The same framework, the same resource, two completely different levels of support.
 
-**Coroutine authors pay for a Senders feature.**
+**Should coroutines inherit the cost of a protocol they do not use?**
 
 ### 4.4 Let the Domain Choose?
 
@@ -594,7 +594,7 @@ The parallel is direct: if `shared_ptr<widget>` does not belong in `f(widget&)` 
 
 The practical consequence is predictable. The parameter burden means that in practice, the recycling allocator will not get used consistently. Developers will forget to forward at one call site, or decline to pollute a clean interface, and silently fall back to `std::allocator`. Performance will suffer. Benchmarks will blame coroutines. The perception that coroutines are not fit for high-performance I/O will become self-fulfilling - not because coroutines are slow, but because the framework made the fast path too hard to use.
 
-**This is not how we treat the language.**
+**Is this how the committee intended coroutines to be used?**
 
 ---
 
@@ -624,7 +624,7 @@ The three-channel completion model is the foundation of `std::execution`'s compl
 
 The natural compromise - ship `task` with known limitations and fix via DR or C++29 addendum - assumes the fix is a minor adjustment. Sections 6.1 through 6.4 show it is not. The allocator sequencing gap requires changing the relationship between `operator new` and `connect()`. The channel routing gap requires changing the completion model. Both are structural, and both become ABI once shipped. A DR that changes ABI is not a DR - it is a new framework.
 
-**This is not how we ship the language.**
+**Should the committee ship an API with acknowledged gaps?**
 
 ---
 
@@ -776,7 +776,7 @@ This is not an argument that P4003R0 is the answer. It is an argument that answe
 
 Two independent lines of evidence support the conclusion that `std::execution`'s coroutine integration has not received the same level of design investment as its sender pipeline:
 
-**Three structural gaps.** The three-channel model forces an impossible choice about where the error code goes - and no choice produces correct behavior under `when_all`. The standard's own task type requires `co_yield with_error(e)` to signal an error - a repurposed keyword that no other coroutine library uses. The allocator arrives after the coroutine frame is allocated. Each gap is independently unfixable without model or language changes. None exists in a coroutine-native design.
+**Three structural gaps.** The three-channel model forces an impossible choice about where the error code goes - and no choice produces correct behavior under `when_all`. The standard's own task type requires `co_yield with_error(e)` to signal an error - a repurposed keyword that no other coroutine library uses. The allocator arrives after the coroutine frame is allocated. Each gap is independently unfixable without model or language changes. Each originates in the integration between sender/receiver and coroutines, not in coroutines themselves.
 
 **Empirical churn data.** Fifty modifications in 22 months at an accelerating rate, with all complexity flowing from sender/receiver machinery into the coroutine integration. Not a single item represents a coroutine-intrinsic problem. The sender pipeline is still under active development; the coroutine integration is being repeatedly reworked to chase it.
 
@@ -788,7 +788,7 @@ We ask the committee to choose a path forward. In order of descending preference
 
 3. **Defer `std::execution` to C++29.** Give [P4003R0](https://wg21.link/p4003r0) and other alternatives time to explore whether the gaps can be closed - or whether coroutine-based I/O is better served by a different execution model entirely.
 
-4. **Consider that coroutines and senders may need to part ways.** Each serves the use cases it was designed for. Coroutines serve developers who write asynchronous code. Senders serve architects who build execution frameworks. Forcing one to bear the other's costs has not worked. Perhaps the answer is not a better integration, but an honest separation.
+4. **Consider that coroutines and senders may need to part ways.** Each serves the use cases it was designed for. Coroutines serve developers who write asynchronous code. Senders serve architects who build execution frameworks. The current integration forces coroutines to bear costs that originate in sender/receiver design choices. Perhaps the answer is not a better integration, but an honest separation.
 
 ---
 
