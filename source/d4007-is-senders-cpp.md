@@ -86,7 +86,7 @@ The committee placed a CPS-based model alongside an imperative language. Program
 
 **Danvy, ["Back to Direct Style"](https://static.aminer.org/pdf/PDF/001/056/774/back_to_direct_style.pdf) (1992):** *"Not all lambda-terms are CPS terms, and not all CPS terms encode a left-to-right call-by-value evaluation."*
 
-The CPS transform is asymmetric. `when_all` dispatches on which channel fired at the type level, cancelling siblings on error without inspecting the payload. A coroutine has no way to express this. The transform goes one way. *Prediction: the three-channel completion model will force I/O sender authors into a choice where neither channel is correct.* Section 4 tests this.
+The CPS transform is asymmetric. The Sub-Language's three completion channels partition the completion space at the type level. I/O operations return a single tuple whose meaning is determined at runtime. The two shapes are incompatible. *Prediction: the three-channel completion model will force I/O sender authors into a choice where neither channel is correct.* Section 4 tests this.
 
 **Plotkin, ["Call-by-Name, Call-by-Value and the lambda-Calculus"](https://homepages.inf.ed.ac.uk/gdp/publications/cbn_cbv_lambda.pdf) (1975):** *"Operational equality is not preserved by either of the simulations."*
 
@@ -112,156 +112,120 @@ C++ is the only language strongly typed enough to host a genuine CPS sub-languag
 
 ---
 
-## 4. Where Does the Error Code Go?
+## 4. Where Do Errors Go?
 
-The Sub-Language the committee adopted has three completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are its type system. Type-level routing is a requirement of CPS reification (Appendix A.4). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html):
+How should an asynchronous operation report its outcome? The Sub-Language has an elegant answer.
+
+### 4.1 Senders Use Channels
+
+The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.4). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html):
 
 > *"A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes."*
 
-### 4.1 Senders
+The three channels enable compile-time routing: `upon_error` attaches to the error path at the type level, `let_value` chains successes, and algorithms like [`when_all`](https://eel.is/c++draft/exec.when.all) cancel siblings when a child completes through the error or stopped channel - all without runtime inspection of the payload.
 
-Every I/O operation in [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) completes with `void(error_code, size_t)`. Partial success is the normal case: a `read` may transfer 47 bytes before EOF. The error code and byte count are returned together. [P2762R2](https://wg21.link/p2762r2) ("Sender/Receiver Interface for Networking") preserves this pattern.
+Each channel has a fixed signature shape:
 
-A developer implementing an async read sender must choose. The natural instinct is to route the error code through `set_error`:
+- `set_value(receiver, Ts...)` carries the success payload.
+- `set_error(receiver, E)` carries a single, strongly-typed error.
+- `set_stopped(receiver)` is a stateless signal.
 
-```cpp
-if (!ec)
-    set_value(std::move(rcvr_), n);
-else
-    set_error(std::move(rcvr_), ec); // bytes lost
-```
+The compile-time work graph requires these shapes. Appendix A.4 explains why.
 
-But this loses the byte count on error. A `read` that transferred 47 bytes before EOF is now indistinguishable from a `read` that transferred zero.
+### 4.2 The OS Returns a Tuple
 
-The alternative is to put the error code into `set_value`, delivering both values together as [P2762R2](https://wg21.link/p2762r2) does:
+The operating system is not a sender.
 
-```cpp
-set_value(std::move(rcvr_), ec, n);
-```
+Every outcome is `(error_code, size_t)`.
 
-The `set_value` approach preserves the byte count. It matches twenty years of Asio practice. But now the developer is reporting an error through the success channel. The name says "value." They are sending an error code. Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) ("Partial success scenarios with P2300"):
+On POSIX, `read()` returns a byte count; errors arrive through `errno`. On Windows, `GetOverlappedResult` delivers a byte count and an error code. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) unified these into `void(error_code, size_t)` twenty-five years ago. The signature was correct then. [P2762R2](https://wg21.link/p2762r2) ("Sender/Receiver Interface for Networking") preserves it because it is correct now.
 
-> *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
+The tuple reflects what I/O operations physically produce. A `read` transfers 47 bytes, then the connection resets. The error code says what happened. The byte count says how far it got. Both values are always meaningful.
 
-For I/O, `set_error` is the natural choice and the wrong one. The developer who follows the API's naming convention produces code that silently misbehaves under composition.
+Cancellation is the same tuple. `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, `close()` on POSIX - the pending operation completes with `(error_code, bytes_transferred)`. The error code is `ERROR_OPERATION_ABORTED` or `ECANCELED`. The byte count is how far it got.
 
-### 4.2 Coroutines
+### 4.3 What Are Our Choices?
 
-The same forced choice reaches coroutine authors through `std::execution::task`. [P3552R3](https://wg21.link/p3552r3) ("Add a Coroutine Task Type") provides two mechanisms for completing a `task`:
-
-- `co_return value` routes to `set_value` on the receiver
-- `co_yield with_error(e)` suspends the coroutine and calls `set_error` on the receiver
-
-An I/O coroutine author must choose between three return types, each with consequences:
-
-**Option A: Return both values together.**
+Consider a composed read that accumulates a response body. This is the code every I/O sender author must write:
 
 ```cpp
-std::execution::task<std::pair<std::error_code, std::size_t>>
-do_read(tcp_socket& s, buffer& buf)
+template<class Rcvr>
+struct read_body_op
 {
-    auto [ec, n] = co_await s.async_read(buf);
-    co_return {ec, n};
-}
+    socket& sock_;
+    std::string body_;
+    char buf_[64];
+    Rcvr rcvr_;
+
+    void start() & noexcept { read_more(); }
+
+    void read_more()
+    {
+        sock_.async_read_some(buf_, [this](error_code ec, size_t n) {
+            body_.append(buf_, n);
+
+            if (ec == condition::eof)
+                return set_value(std::move(rcvr_), std::move(body_));
+            if (!ec)
+                return read_more();
+            if (ec == errc::operation_canceled)
+                set_stopped(std::move(rcvr_));          // string is lost
+            else
+                set_error(std::move(rcvr_), ec);        // string is lost
+        });
+    }
+};
 ```
 
-The error is invisible to `when_all`, `upon_error`, `let_error`, and every generic error-handling algorithm in `std::execution`.
+Three iterations completed. The string holds a partial HTML page. Then the client's timeout fires, or the connection resets. The operation state has the data. The channels cannot carry it. `set_error` takes one argument: the error code. `set_stopped` takes none. The string is destroyed when the operation state is destroyed.
 
-**Option B: Signal the error through the error channel.**
+The alternative is to deliver everything through `set_value`:
 
 ```cpp
-std::execution::task<std::size_t>
-do_read(tcp_socket& s, buffer& buf)
-{
-    auto [ec, n] = co_await s.async_read(buf);
-    if (ec)
-        co_yield with_error(ec);                      // bytes lost
-    co_return n;
-}
+set_value(std::move(rcvr_), ec, std::move(body_));    // body_ preserved, ec preserved
 ```
 
-The byte count is lost when `co_yield with_error(ec)` fires.
+The data survives. But the error code is now in the success channel. `upon_error`, `let_error`, and `upon_stopped` cannot reach it. Every algorithm that dispatches on channel sees success.
 
-**Option C: Return only the byte count.**
+In regular C++, this forced choice does not exist:
 
 ```cpp
-std::execution::task<std::size_t>
-do_read(tcp_socket& s, buffer& buf)
-{
-    auto [ec, n] = co_await s.async_read(buf);
-    co_return n;                                      // error silently discarded
-}
+auto [ec, body] = co_await read_body(sock);
+process(body);                                        // use what arrived
+if (ec) co_return;                                    // then check the status
 ```
 
-None of these options is correct. The developer chooses which kind of wrong they prefer.
+The caller has both values and decides. A TLS stream truncation (peer closed without `close_notify`) produces the same error code whether a Google crawler dropped the connection to save microseconds or an attacker truncated the response. Whether the body is intact depends on content-length, chunked framing, or application-level structure. The operation has the error. The caller has the context.
 
-### 4.3 Is `when_all` Problematic?
+The three-channel model asks the operation to classify the outcome before the caller is known.
 
-[`when_all`](https://eel.is/c++draft/exec.when.all) launches multiple child operations concurrently. If any child completes with `set_error` or `set_stopped`, `when_all` requests cancellation of the remaining children. The channel the sender author chose now determines the behavior of every algorithm that consumes it:
+### 4.4 No Choice Is Correct
 
-```cpp
-auto result = co_await when_all(
-    socket_a.async_read(buf_a),
-    socket_b.async_read(buf_b));
-```
+The mismatch is not a missing convention. It is a structural incompatibility between the Sub-Language's three-channel type system and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
 
-If the sender author chose `set_error` for EOF, `when_all` cancels `socket_b` and propagates the error. The 47 bytes already transferred are discarded.
+- **Converge on `set_value` for I/O.** Every generic error-handling algorithm in the Sub-Language becomes inaccessible to I/O senders. `upon_error`, `let_error`, `upon_stopped` are unreachable. Algorithms that dispatch on channel - such as `when_all` cancelling siblings on error - cannot distinguish I/O failure from I/O success. The error channel and stopped channel both exist, and I/O never uses either.
 
-If the sender author chose `set_value` for EOF, `when_all` treats the error as success. The sibling is not cancelled. A failure goes undetected.
+- **Converge on `set_error` for I/O.** Partial success is inexpressible. The byte count is lost. A `read` that transferred 47 bytes before EOF is indistinguishable from a `read` that transferred zero.
 
-When two libraries choose different conventions and are composed in the same `when_all`, the outcome depends on completion order. Same two EOF events. Same `when_all`. The program is correct on some runs and incorrect on others.
-
-#### 4.3.1 Mixed Conventions
-
-Suppose Library A follows the [P2762R2](https://wg21.link/p2762r2) convention (error in `set_value`) and Library B follows [P2300R10](https://wg21.link/p2300r10)'s own naming convention (error in `set_error`):
-
-```cpp
-// Library A (P2762R2 convention): EOF delivered through set_value
-auto read_a = lib_a::async_read(socket_a, buf_a);
-// completes: set_value(receiver, error_code::eof, 47)
-
-// Library B (P2300 naming convention): EOF delivered through set_error
-auto read_b = lib_b::async_read(socket_b, buf_b);
-// completes: set_error(receiver, error_code::eof)
-```
-
-```cpp
-auto result = co_await when_all(read_a, read_b);
-```
-
-If `read_b` hits EOF first: `when_all` sees `set_error`, cancels `read_a`. The 47 bytes already transferred are discarded. If `read_a` hits EOF first: `when_all` sees `set_value`, keeps waiting for `read_b`. Same two EOF events. Correctness determined by which socket completes first.
-
-### 4.4 The Problem Is Structural
-
-The mismatch is not a missing convention waiting to be supplied. It is a structural incompatibility between the Sub-Language's three-channel type system and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
-
-- **Converge on `set_value` for error codes.** Every generic error-handling algorithm in the Sub-Language is inaccessible to I/O senders. The error channel exists but I/O never uses it.
-
-- **Converge on `set_error` for error codes.** Partial success is inexpressible. The byte count is lost.
+- **Route cancellation through `set_stopped()`.** The error code and the byte count are both lost. `set_stopped` takes no arguments. The caller cannot distinguish a timeout from a user cancellation from a graceful shutdown - they all collapse to the same parameterless signal.
 
 - **Write an adaptor.** The adaptor must know which convention the inner sender follows. This reintroduces the forced choice one level up.
 
 - **Add a fourth channel.** This would be a breaking change to the completion signature model.
 
-The three-channel model assumes values and errors are distinct. In I/O they are not. EOF is information, not failure. The model and the domain are incompatible. Appendix A.4 explains why.
-
-### 4.5 Always Use `set_value`?
-
-One might argue that the channels are generic and I/O should simply adopt the `set_value` convention.
-
-But `when_all` still breaks: when every I/O sender delivers `(error_code, size_t)` through `set_value`, I/O failure is indistinguishable from I/O success. Sibling cancellation on failure is impossible.
-
-The completion signature `void(error_code, size_t)` predates senders by 25 years. Composed I/O operations like Asio's `async_read` accumulate bytes across multiple system calls; when a connection resets mid-transfer, the error code and the byte count are both meaningful.
-
-Kohlhoff identified the tension in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) (2021). We extend his analysis to composition (Sections 4.3 and 4.3.1).
+The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.4 explains why.
 
 As of this writing, neither [P2300R10](https://wg21.link/p2300r10), [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html), nor the [stdexec](https://github.com/NVIDIA/stdexec) repository contains a published example of `let_error` being used to recover from an error.
 
-### 4.6 P2430R0
-
-Kohlhoff published [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings.
-
 **Are coroutines paying for a feature they did not ask for?**
+
+### 4.5 The Paper Not Polled
+
+Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) ("Partial success scenarios with P2300"):
+
+> *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
+
+Kohlhoff published P2430R0 in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings.
 
 ---
 
@@ -550,15 +514,15 @@ The two-parameter form appears only in P3552R3. A default `Environment` resolves
 
 The committee standardized the Sender Sub-Language for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 4-6 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
 
-### 8.1 The Error Channel Tradeoff
+### 8.1 The Channel Tradeoff
 
-The three-channel model enables compile-time routing: `when_all` cancels siblings on error, `upon_error` attaches at the type level, `let_value` chains successes - all without runtime inspection. Section 4 showed the cost: I/O operations that return `(error_code, size_t)` together cannot be expressed in the model.
+The three-channel model enables compile-time routing: `upon_error` and `let_error` attach to the error path at the type level, `let_value` chains successes, and algorithms dispatch on which channel fired - all without runtime inspection. Section 4 showed the cost: I/O operations that return `(error_code, size_t)` together cannot be expressed in the model. Cancellation, which the OS returns as an error code alongside a byte count, cannot be expressed through the argument-free `set_stopped` channel.
 
 Choose one:
 
-| Compile-time error routing | I/O partial success |
+| Compile-time channel routing | I/O tuple completion |
 |---|---|
-| `when_all` cancels siblings at the type level; `upon_error` attaches without runtime inspection | `(error_code, size_t)` returned together; 47 bytes before EOF is distinguishable from zero |
+| `upon_error`, `let_error`, `upon_stopped` attach at the type level; algorithms dispatch on channel without runtime inspection | `(error_code, size_t)` returned together; error, cancellation, and byte count are all meaningful and inseparable |
 
 Removing the three-channel model eliminates the cost but also eliminates compile-time routing. The model and the gap are the same mechanism viewed from different sides.
 
@@ -859,9 +823,9 @@ using completion_signatures =
         set_stopped_t()>;                                 // stopped path
 ```
 
-`when_all` dispatches on which channel fired without inspecting payloads. `upon_error` attaches to the error path at the type level. `let_value` attaches to the value path at the type level. The routing is in the types, not in the values.
+Algorithms dispatch on which channel fired without inspecting payloads. `upon_error` attaches to the error path at the type level. `let_value` attaches to the value path at the type level. `upon_stopped` attaches to the stopped path. The routing is in the types, not in the values.
 
-If errors were delivered as values (for example, `expected<int, error_code>` through `set_value`), the compiler would see one path carrying one type. `when_all` could not cancel siblings on error without runtime inspection of the payload. Every algorithm would need runtime branching logic to inspect the expected and route accordingly.
+If errors were delivered as values (for example, `expected<int, error_code>` through `set_value`), the compiler would see one path carrying one type. Algorithms could not dispatch on error without runtime inspection of the payload. Every algorithm would need runtime branching logic to inspect the expected and route accordingly.
 
 The three channels exist because the Sender Sub-Language is a compile-time language.
 
