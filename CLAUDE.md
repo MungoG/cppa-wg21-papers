@@ -8,6 +8,8 @@ Rules for all work on WG21 papers in this repository.
 2. Single dashes (`-`) for all dashes - no em-dashes, no double dashes
 3. Human-written tone - not wordy, no AI-characteristic phrasing
 4. No git operations - user handles all git manually
+5. The `archive/` folder is restricted for human use only - do
+   not read, write, or modify any file in that folder
 6. Padded tables with aligned pipe characters in every table on every rewrite
 7. WG21-appropriate style
 8. `[P####R#](https://wg21.link/p####r#)` link convention for all paper references
@@ -95,6 +97,26 @@ Rules for all work on WG21 papers in this repository.
 30. Sections with subsections should have at least one introductory
     sentence between the section heading and the first subsection
     heading - do not leave an empty section heading
+33. Every paper must contain a `## Revision History` section,
+    placed immediately after the Abstract's trailing `---` and
+    before Section 1. Each revision is an H3 subheading in the
+    form `### R<n>: <Month> <Year> (<pre-Meeting mailing>)`
+    followed by a bullet list of changes
+34. Every paper must contain a `# Acknowledgements` section
+    near the end of the file (before References), preceded and
+    followed by a horizontal rule (`---`). The first paragraph
+    must be exactly:
+
+    > This document is written in Markdown and depends on the
+    > extensions in
+    > [`pandoc`](https://pandoc.org/MANUAL.html#pandocs-markdown)
+    > and
+    > [`mermaid`](https://github.com/mermaid-js/mermaid), and we
+    > would like to thank the authors of those extensions and
+    > associated libraries.
+
+    Additional paragraphs may follow for paper-specific
+    acknowledgements
 
 ## Tone
 
