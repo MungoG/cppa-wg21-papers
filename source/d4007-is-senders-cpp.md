@@ -1,6 +1,6 @@
 ---
 title: "Is the Sender Sub-Language C++?"
-document: D4007R1
+document: P4007R1
 date: 2026-02-16
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -10,7 +10,7 @@ audience: SG1, LEWG
 
 ## Abstract
 
-With `std::execution` ([P2300R10](https://wg21.link/p2300r10)), the committee has adopted the Sender Sub-Language, a programming model for asynchronous computation rooted in [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) (CPS), with its own control flow, variable binding, error handling, and type system ([D4014R0](https://wg21.link/d4014)). This is a significant architectural decision with real value for the domains it serves. Programming language theory establishes that CPS and direct-style are structurally incompatible models of computation. This paper maps the consequences of that decision for coroutines. It predicts friction wherever the Sender Sub-Language interfaces with regular C++, then demonstrates it with three structural gaps in the coroutine integration and a broader survey of eight friction points in the Sub-Language's own type system, semantics, and specification. The gaps are not design defects. They are structural consequences of the committee's decision to adopt a CPS-based model. Understanding them is a prerequisite for deciding how coroutines should relate to `std::execution` going forward.
+With `std::execution` ([P2300R10](https://wg21.link/p2300r10)), the committee has adopted the Sender Sub-Language, a programming model for asynchronous computation rooted in [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) (CPS), with its own control flow, variable binding, error handling, and type system ([P4014R0](https://wg21.link/p4014r0)). This is a significant architectural decision with real value for the domains it serves. Programming language theory establishes that CPS and direct-style are structurally incompatible models of computation. This paper maps the consequences of that decision for coroutines. It predicts friction wherever the Sender Sub-Language interfaces with regular C++, then demonstrates it with three structural gaps in the coroutine integration and a broader survey of eight friction points in the Sub-Language's own type system, semantics, and specification. The gaps are not design defects. They are structural consequences of the committee's decision to adopt a CPS-based model. Understanding them is a prerequisite for deciding how coroutines should relate to `std::execution` going forward.
 
 ---
 
@@ -54,15 +54,15 @@ Niebler [asked the question himself](https://ericniebler.com/2020/11/08/structur
 
 Herb Sutter, Technical Fellow at Citadel Securities, called `std::execution` *["the biggest usability improvement yet to use the coroutine support we already have."](https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa)*
 
-The annotations in the sender pipeline reveal what the committee brought into the standard. [`just`](https://hackage.haskell.org/package/base/docs/Data-Maybe.html) is Haskell's `return`/`pure`, lifting a value into a monadic context. [`let_value`](https://hackage.haskell.org/package/base/docs/Control-Monad.html#v:-62--62--61-) is [monadic bind](https://hackage.haskell.org/package/base/docs/Control-Monad.html#v:-62--62--61-) (`>>=`), threading a value into the next computation. `then` is [fmap](https://hackage.haskell.org/package/base/docs/Data-Functor.html), applying a function inside a context. The three completion channels are a fixed [algebraic effect system](https://en.wikipedia.org/wiki/Effect_system). `connect` reifies the continuation into a concrete operation state. This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) expressed as composable value types. [D4014R0](https://wg21.link/d4014) ("The Sender Sub-Language") provides the full treatment.
+The annotations in the sender pipeline reveal what the committee brought into the standard. [`just`](https://hackage.haskell.org/package/base/docs/Data-Maybe.html) is Haskell's `return`/`pure`, lifting a value into a monadic context. [`let_value`](https://hackage.haskell.org/package/base/docs/Control-Monad.html#v:-62--62--61-) is [monadic bind](https://hackage.haskell.org/package/base/docs/Control-Monad.html#v:-62--62--61-) (`>>=`), threading a value into the next computation. `then` is [fmap](https://hackage.haskell.org/package/base/docs/Data-Functor.html), applying a function inside a context. The three completion channels are a fixed [algebraic effect system](https://en.wikipedia.org/wiki/Effect_system). `connect` reifies the continuation into a concrete operation state. This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) expressed as composable value types. [P4014R0](https://wg21.link/p4014r0) ("The Sender Sub-Language") provides the full treatment.
 
 Coroutines inhabit direct-style C++, code where values return to callers, errors propagate through the call stack, and resources are scoped to lexical lifetimes. This paper will call that *regular C++* for the remainder.
 
 Niebler [described](https://ericniebler.com/2020/11/08/structured-concurrency/) what regular C++ means for async programming: *"We sprinkle `co_await` in our code and we get to continue using all our familiar idioms: exceptions for error handling, state in local variables, destructors for releasing resources, arguments passed by value or by reference, and all the other hallmarks of good, safe, and idiomatic Modern C++."*
 
-The Sender Sub-Language provides compile-time work graph construction, zero-allocation pipelines, and vendor extensibility. Coroutines provide the programming model that most developers already know. The committee chose to standardize a CPS-based framework alongside an existing direct-style language feature. This paper examines what follows from that choice.
+The Sender Sub-Language provides compile-time work graph construction, zero-allocation pipelines, and vendor extensibility. Coroutines provide the programming model that most developers already know. The committee chose to standardize a CPS-based framework alongside an existing regular C++ language feature. This paper examines what follows from that choice.
 
-Structured bindings, `if` with initializer, range-for, the direct-style features the committee has invested in over the last decade, have no purchase on a sender pipeline. Values flow forward into continuations as arguments, not backward to callers as returns. There is no aggregate to destructure at intermediate stages.
+Structured bindings, `if` with initializer, range-for, the regular C++ features the committee has invested in over the last decade, have no purchase on a sender pipeline. Values flow forward into continuations as arguments, not backward to callers as returns. There is no aggregate to destructure at intermediate stages.
 
 Niebler [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/) the trade-off: *"That style of programming makes a different tradeoff, however: it is far harder to write and read than the equivalent coroutine."*
 
@@ -70,7 +70,7 @@ Niebler [characterized](https://ericniebler.com/2020/11/08/structured-concurrenc
 
 ## 3. What the Theory Predicts
 
-By adopting the Sender Sub-Language, the committee placed a CPS-based model alongside an imperative language. Programming language theory can predict what follows. The incompatibility between CPS and direct-style is not a conjecture. It is a result with fifty years of literature behind it.
+By adopting the Sender Sub-Language, the committee placed a CPS-based model alongside an imperative language. Programming language theory can predict what follows. The incompatibility between CPS and regular C++ is not a conjecture. It is a result with fifty years of literature behind it.
 
 **Danvy, ["Back to Direct Style"](https://static.aminer.org/pdf/PDF/001/056/774/back_to_direct_style.pdf) (1992):** *"Not all lambda-terms are CPS terms, and not all CPS terms encode a left-to-right call-by-value evaluation."*
 
@@ -450,9 +450,9 @@ The escape hatch is to stop searching for a universal allocator model in one pro
 
 ## 7. Friction Beyond Coroutines
 
-The three gaps in Sections 4-6 demonstrate friction at the coroutine boundary. This section broadens the lens. The same CPS/regular-C++ mismatch generates friction within the Sub-Language's own machinery and at every boundary with regular C++, not only coroutines.
+The three gaps in Sections 4-6 demonstrate friction at the coroutine boundary. This section broadens the lens. The same Sub-Language/regular-C++ mismatch generates friction within the Sub-Language's own machinery and at every boundary with regular C++, not only coroutines.
 
-The following friction points were identified through a survey of active papers and LWG issues, but not analyzed to the depth of the three gaps above. The authors present them as data points, not conclusions. Each appears consistent with the thesis that CPS and regular C++ produce friction at their boundary, but the committee is better positioned to judge whether these reflect normal end-of-cycle specification polish or structural consequences of the adopted model. Large features generate proportionate review activity. The question is whether the classification pattern, every item clustering at the boundary between two models of computation, is better explained by scale or by structure.
+The following friction points were identified through a survey of active papers and LWG issues, but not analyzed to the depth of the three gaps above. The authors present them as data points, not conclusions. Each appears consistent with the thesis that the Sub-Language and regular C++ produce friction at their boundary, but the committee is better positioned to judge whether these reflect normal end-of-cycle specification polish or structural consequences of the adopted model. Large features generate proportionate review activity. The question is whether the classification pattern, every item clustering at the boundary between two models of computation, is better explained by scale or by structure.
 
 ### 7.1 Type-System Friction
 
@@ -476,7 +476,7 @@ The following friction points were identified through a survey of active papers 
 
 **Circular `completion-signatures-for` ([LWG 4190](https://cplusplus.github.io/LWG/issue4190), Priority 2).** The spec for `completion-signatures-for<Sndr, Env>` tests `sender_in<Sndr, Env>`, which requires `get_completion_signatures(sndr, env)` to be well-formed, the very thing being defined. Circular specifications are a symptom of the type-level machinery's self-referential complexity.
 
-If the committee determines that these items are routine specification work unrelated to the model of computation, that finding does not affect the three structural gaps documented in Sections 4-6. Those gaps stand on their own evidence. The question this section poses is narrower: does the pattern, eight items from three independent categories, each clustering at the boundary between CPS and regular C++, suggest a structural cause, or is it coincidence? The authors leave the classification to the committee.
+If the committee determines that these items are routine specification work unrelated to the model of computation, that finding does not affect the three structural gaps documented in Sections 4-6. Those gaps stand on their own evidence. The question this section poses is narrower: does the pattern, eight items from three independent categories, each clustering at the boundary between the Sub-Language and regular C++, suggest a structural cause, or is it coincidence? The authors leave the classification to the committee.
 
 ---
 
@@ -540,7 +540,7 @@ The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 
 
 ## 10. Working With the Grain
 
-Herb Sutter reported that Citadel Securities already uses `std::execution` in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)* This confirms `std::execution` works well in its own domain: high-frequency trading, compile-time work graphs. When Senders operate in their domain, the design is elegant. Working with the grain of CPS.
+Herb Sutter reported that Citadel Securities already uses `std::execution` in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)* This confirms `std::execution` works well in its own domain: high-frequency trading, compile-time work graphs. When Senders operate in their domain, the design is elegant. Working with the grain of the Sub-Language.
 
 [P4003R0](https://wg21.link/p4003r0) ("IoAwaitables: A Coroutines-Only Framework") is not proposed for standardization. The paper is not yet ready for that step. Yet a working library exists, compiles on three major toolchains, has benchmarks and unit tests, and serves as the foundation for a coroutine-only portable network library also in development. Here is what a coroutine-only networking design looks like when it is free to serve its own domain:
 
@@ -592,7 +592,7 @@ No `allocator_arg` in any signature. No forwarding. No `Environment` template pa
 
 P4003R0 achieves this by using `thread_local` propagation to deliver the allocator to `promise_type::operator new` before `connect()`. The timing gap is solvable when the promise cooperates with a non-receiver mechanism.
 
-P4003R0 does not provide compile-time work graph construction, zero-allocation pipelines, or vendor extensibility. It does not serve GPU dispatch or heterogeneous computing. That is the point. Different models of computation serve different domains. When each works with the grain of its own model, the design is elegant. When `task<T>` forces coroutines against the grain of CPS, three gaps appear. The gaps disappear not because P4003R0 is cleverer, but because it is not fighting the CPS/direct-style mismatch.
+P4003R0 does not provide compile-time work graph construction, zero-allocation pipelines, or vendor extensibility. It does not serve GPU dispatch or heterogeneous computing. That is the point. Different models of computation serve different domains. When each works with the grain of its own model, the design is elegant. When `task<T>` forces coroutines against the grain of CPS, three gaps appear. The gaps disappear not because P4003R0 is cleverer, but because it is not fighting the Sub-Language/regular-C++ mismatch.
 
 ---
 
@@ -630,7 +630,7 @@ The committee has adopted the Sender Sub-Language into C++26. This paper does no
 
 But the decision has consequences for coroutines, and this paper asks the committee to address those consequences explicitly.
 
-1. **Is the Sender Sub-Language still considered a universal model of asynchronous computation?** The evidence in this paper suggests it serves specific domains, GPU dispatch, high-frequency trading, heterogeneous computing, but not I/O. The three gaps are structural consequences of applying a CPS model to a domain whose completion semantics are inherently runtime.
+1. **Is the Sender Sub-Language still considered a universal model of asynchronous computation?** The evidence in this paper suggests it serves specific domains, GPU dispatch, high-frequency trading, heterogeneous computing, but not I/O. The three gaps are structural consequences of applying the Sub-Language to a domain whose completion semantics are inherently runtime.
 
 2. **Are coroutines the primary tool for writing asynchronous C++ that most developers will use?** If yes, the coroutine integration deserves the same level of design investment as the sender pipeline itself, not an adaptation layer absorbing every cost of a model it does not use.
 
@@ -878,7 +878,7 @@ Every one of the 50 items falls into one of two categories:
 23. [P3950R0](https://wg21.link/p3950r0) - "return_value & return_void Are Not Mutually Exclusive" (Robert Leahy, 2025)
 24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar Kuhl, 2026)
 25. [P4003R0](https://wg21.link/p4003r0) - "IoAwaitables: A Coroutines-Only Framework" (Vinnie Falco, 2026)
-26. [D4014R0](https://wg21.link/d4014) - "The Sender Sub-Language" (Vinnie Falco, 2026)
+26. [P4014R0](https://wg21.link/p4014r0) - "The Sender Sub-Language" (Vinnie Falco, 2026)
 27. [N5028](https://wg21.link/n5028) - "Result of voting on ISO/IEC CD 14882" (2025)
 
 ### LWG Issues

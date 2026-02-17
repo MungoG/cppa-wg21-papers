@@ -1,6 +1,6 @@
 ---
 title: "IoAwaitables: A Coroutines-Only Framework"
-document: D4003
+document: P4003
 date: 2026-02-11
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
