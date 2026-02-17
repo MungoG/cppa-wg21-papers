@@ -330,7 +330,7 @@ P3552R3 needed a different mechanism. The only other coroutine keyword that acce
 
 In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate." The keyword's established meaning predicts the wrong behavior.
 
-The committee is aware of this problem. Jonathan Wakely's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
+The committee is aware of this problem. Jonathan Muller's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
 
 > *"The reason `co_yield` is used, is that a coroutine promise can only specify `return_void` or `return_value`, but not both. If we want to allow `co_return;`, we cannot have `co_return with_error(error_code);`. This is unfortunate, but could be fixed by changing the language to drop that restriction."*
 
@@ -628,7 +628,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Wakely, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Muller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 
@@ -906,16 +906,16 @@ All data is gathered from the published [WG21 paper mailings](https://open-std.o
 7. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025)
 8. [P3164R4](https://wg21.link/p3164r4) - "Improving Diagnostics for Sender Expressions" (Eric Niebler, 2024)
 9. [P3175R3](https://wg21.link/p3175r3) - "Reconsidering the std::execution::on algorithm" (Eric Niebler, 2024)
-10. [P3187R1](https://wg21.link/p3187r1) - "Remove ensure_started and start_detached from P2300" (Lewis Baker, Eric Niebler, 2024)
+10. [P3187R1](https://wg21.link/p3187r1) - "Remove ensure_started and start_detached from P2300" (Kirk Shoop, Lewis Baker, 2024)
 11. [P3303R1](https://wg21.link/p3303r1) - "Fixing Lazy Sender Algorithm Customization" (Eric Niebler, 2024)
 12. [P3373R2](https://wg21.link/p3373r2) - "Of Operation States and Their Lifetimes" (Robert Leahy, 2025)
 13. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar Kuhl, Maikel Nadolski, 2025)
 14. [P3557R3](https://wg21.link/p3557r3) - "High-Quality Sender Diagnostics with Constexpr Exceptions" (Eric Niebler, 2025)
 15. [P3570R2](https://wg21.link/p3570r2) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025)
-16. [P3682R0](https://wg21.link/p3682r0) - "Remove std::execution::split" (Eric Niebler, 2025)
+16. [P3682R0](https://wg21.link/p3682r0) - "Remove std::execution::split" (Robert Leahy, 2025)
 17. [P3718R0](https://wg21.link/p3718r0) - "Fixing Lazy Sender Algorithm Customization, Again" (Eric Niebler, 2025)
 18. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar Kuhl, 2025)
-19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan Wakely, 2025)
+19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan Muller, 2025)
 20. [P3826R3](https://wg21.link/p3826r3) - "Fix Sender Algorithm Customization" (Eric Niebler, 2026)
 21. [P3927R0](https://wg21.link/p3927r0) - "task_scheduler Support for Parallel Bulk Execution" (Lee Howes, 2026)
 22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar Kuhl, 2026)
