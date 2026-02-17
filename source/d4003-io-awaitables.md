@@ -964,61 +964,15 @@ Our research produced `any_read_stream`, a type-erased wrapper for any type sati
 
 We are developing [Boost.Http](https://github.com/cppalliance/http) (not yet accepted into Boost), an HTTP library built on Capy rather than Corosio. It works entirely in terms of type-erased streams - reading requests, parsing headers, dispatching to route handlers, and sending responses without knowing whether the underlying transport is a TCP socket, a TLS connection, or a test harness. This demonstrates the viability of implementing protocol logic away from platform sockets: the HTTP library depends only on Capy's type-erased abstractions, not on any specific I/O backend. If the _IoAwaitable_ protocol were standardized, an HTTP layer like this could ship as a compiled library with stable ABI. Users could relink against different I/O backends without recompiling their application code.
 
-### 6.3 `task<T>` vs `task<T, Environment>`
+### 6.3 One Template Parameter
 
-[P3552R3](https://wg21.link/p3552) defines the C++26 coroutine task type with two template parameters:
-
-```cpp
-template <class T, class Environment>
-class task { ... };
-```
-
-The `Environment` parameter configures the execution context - scheduler affinity, allocator awareness, stop token type, error types. This is a deliberate design choice that gives compile-time control over the task's behavior.
-
-The cost is that the environment leaks into the type. A generic coroutine that should work with any environment must be written as a template:
+The _IoAwaitable_ protocol type-erases the environment through `executor_ref` and `std::pmr::memory_resource*`. The task type has one template parameter:
 
 ```cpp
-// P3552: generic coroutine must be templated on Environment
-template <class Env>
-task<int, Env> my_algorithm(socket& sock) {
-    auto [ec, n] = co_await sock.read_some(buf);
-    co_return n;
-}
-// Caller: co_await my_algorithm<my_env>(sock)
+template<class T> class task;
 ```
 
-In our model, the environment is type-erased through `executor_ref` and `std::pmr::memory_resource*`. The task has one parameter:
-
-```cpp
-// IoAwaitable: one parameter, environment is type-erased
-task<int> my_algorithm(socket& sock) {
-    auto [ec, n] = co_await sock.read_some(buf);
-    co_return n;
-}
-// Caller: co_await my_algorithm(sock)
-```
-
-This is not a minor syntactic difference. When the task type has two parameters, every library that provides coroutine-based APIs must either pick a concrete environment (limiting reuse) or template everything (preventing separate compilation and ABI stability).
-
-In practice, production coroutine libraries have converged on a single template parameter. The following table surveys open-source C++ coroutine task declarations:
-
-| Library       | Declaration                                       | Params |
-| ------------- | ------------------------------------------------- | ------ |
-| cppcoro       | `template<typename T> class task`                 | 1      |
-| libcoro       | `template<typename return_type> class task`       | 1      |
-| asyncpp       | `template<class T> class task`                    | 1      |
-| aiopp         | `template<typename Result> class Task`            | 1      |
-| Boost.Cobalt  | `template<class T> class task`                    | 1      |
-| Capy          | `template<class T> class task`                    | 1      |
-| P3552R3 (std) | `template<class T, class Environment> class task` | 2      |
-
-Sources: [cppcoro](https://github.com/lewissbaker/cppcoro/blob/master/include/cppcoro/task.hpp#L233),
-[libcoro](https://github.com/jbaldwin/libcoro/blob/main/include/coro/task.hpp#L200),
-[asyncpp](https://github.com/petiaccja/asyncpp/blob/master/include/asyncpp/task.hpp#L88),
-[aiopp](https://github.com/pfirsich/aiopp/blob/main/include/aiopp/task.hpp#L10),
-[P3552R3 ref. impl.](https://github.com/bemanproject/task/blob/main/include/beman/task/detail/task.hpp)
-
-Every production coroutine library surveyed - including cppcoro, authored by Lewis Baker, a [P2300](https://wg21.link/p2300) co-architect - uses a single template parameter. The two-parameter form appears only in the Beman project reference implementation of [P3552R3](https://wg21.link/p3552r3). The established practice is `task<T>`; the `Environment` parameter is an ergonomic regression that the ecosystem has already decided against.
+This enables separate compilation and ABI stability. A coroutine returning `task<int>` can be defined in a `.cpp` file and called from any translation unit without exposing the executor type, the allocator, or the stop token in the public interface. Libraries built on _IoAwaitable_ can ship as compiled binaries. [P4007R1](https://wg21.link/p4007r1) Section 7.4 examines why alternative designs require a second template parameter and what the ecosystem's response has been.
 
 ### 6.4 Ergonomic Impact
 
