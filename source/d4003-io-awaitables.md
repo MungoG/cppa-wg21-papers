@@ -64,7 +64,7 @@ Studying I/O-intensive applications reveals clear patterns. A network server com
 
 Networking has specific requirements that differ from heterogeneous computing. A socket read has **one implementation per platform** - there is no algorithm selection, no hardware heterogeneity to manage. What matters is the contract between the coroutine and the platform: the coroutine suspends, a platform-specific reactor (epoll, IOCP, io_uring) performs the asynchronous operation, and the coroutine resumes in a predictable way. "Predictable" means the application controls which thread resumes it, whether completions are serialized, and whether resumption is inline or deferred.
 
-The _IoAwaitable_ protocol handles this end to end. The executor solves the resumption part: given a suspended coroutine, resume it according to the application's policy. The stop token and the allocator handle the rest. Every executor is bound to an execution context - the object that owns the platform reactor and the I/O objects registered with it. A socket registered with epoll on one context cannot have completions delivered through another; [P2762](https://wg21.link/p2762) acknowledges this physical coupling in §3.1:
+The _IoAwaitable_ protocol handles this end to end. The executor solves the resumption part: given a suspended coroutine, resume it according to the application's policy. The stop token and the allocator handle the rest. Every executor is bound to an execution context - the object that owns the platform reactor and the I/O objects registered with it. A socket registered with epoll on one context cannot have completions delivered through another; [P2762](https://wg21.link/p2762) acknowledges this physical coupling in Section 3.1:
 
 > "It was pointed out networking objects like sockets are specific to a context: that is necessary when using I/O Completion Ports or a TLS library and yields advantages when using, e.g., io_uring(2)."
 
@@ -77,7 +77,7 @@ An executor is to functions what an allocator is to memory: while an allocator c
 The stop token propagates forward through the coroutine chain from the launch site to the I/O object at the end:
 
 ```
-http_client → http_request → write → write_some → socket
+http_client -> http_request -> write -> write_some -> socket
 ```
 
 At the end of the chain, the I/O object acts on the token by invoking the appropriate OS primitive - `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, or `close()` on POSIX. The pending operation completes with an error, and the coroutine chain unwinds normally. Cancellation is cooperative and predictable: no operation is forcibly terminated mid-flight.
@@ -111,7 +111,7 @@ flowchart LR
     IoAwaitable["IoAwaitable"] --> IoRunnable["IoRunnable"] --> task["io_task&lt;T&gt;"]
 ```
 
-> To help readers understand how these requirements fit together, this paper provides the `io_awaitable_promise_base` CRTP mixin (§8.1) as a non-normative reference implementation. It is not proposed for standardization - implementors may write their own machinery - but examining it clarifies how the protocol works in practice. The mixin also provides the `this_coro::environment` accessor, which allows coroutines to retrieve their bound context without suspending.
+> To help readers understand how these requirements fit together, this paper provides the `io_awaitable_promise_base` CRTP mixin (Section 8.1) as a non-normative reference implementation. It is not proposed for standardization - implementors may write their own machinery - but examining it clarifies how the protocol works in practice. The mixin also provides the `this_coro::environment` accessor, which allows coroutines to retrieve their bound context without suspending.
 
 [Capy](https://github.com/cppalliance/capy) is our implementation of the _IoAwaitable_ protocol. [Corosio](https://github.com/cppalliance/corosio), built on Capy, provides sockets, timers, TLS, and DNS resolution on multiple platforms. Both libraries are in active use. The code examples in this paper are drawn from them. 
 
@@ -232,12 +232,12 @@ concept IoRunnable =
       });
 ```
 
-**Why _IoRunnable_ exists.** Within a coroutine chain, _IoAwaitable_ alone is sufficient—a parent `co_await`s a child, and the compiler handles lifetime, result extraction, and exception propagation natively. But launch functions like `run_async` cannot `co_await` the task. The `run_async` trampoline must be allocated _before_ the task (C++17 evaluation order guarantees this for LIFO allocation ordering with the recycling allocator), so the trampoline exists before the task type is known. It cannot be templated on the task type. Instead, the trampoline type-erases the task, reaching into the promise after the fact to extract results. That requires a common API on every conforming task:
+**Why _IoRunnable_ exists.** Within a coroutine chain, _IoAwaitable_ alone is sufficient - a parent `co_await`s a child, and the compiler handles lifetime, result extraction, and exception propagation natively. But launch functions like `run_async` cannot `co_await` the task. The `run_async` trampoline must be allocated _before_ the task (C++17 evaluation order guarantees this for LIFO allocation ordering with the recycling allocator), so the trampoline exists before the task type is known. It cannot be templated on the task type. Instead, the trampoline type-erases the task, reaching into the promise after the fact to extract results. That requires a common API on every conforming task:
 
-- **`handle()`** — Returns the typed coroutine handle. The launch function needs it to start the coroutine and access the promise for type-erased result extraction.
-- **`release()`** — Transfers frame ownership. The task object normally destroys the coroutine frame in its destructor. The launch function takes over lifetime management; `release()` tells the task not to destroy the frame.
-- **`exception()`** — Returns any stored `std::exception_ptr` after the task completes. The trampoline calls this through a type-erased function pointer.
-- **`result()`** — Returns the stored value (non-void tasks only). Same type-erased access pattern.
+- **`handle()`** - Returns the typed coroutine handle. The launch function needs it to start the coroutine and access the promise for type-erased result extraction.
+- **`release()`** - Transfers frame ownership. The task object normally destroys the coroutine frame in its destructor. The launch function takes over lifetime management; `release()` tells the task not to destroy the frame.
+- **`exception()`** - Returns any stored `std::exception_ptr` after the task completes. The trampoline calls this through a type-erased function pointer.
+- **`result()`** - Returns the stored value (non-void tasks only). Same type-erased access pattern.
 
 Launch functions inject context into the promise via `set_continuation` and `set_environment`, both required by the _IoRunnable_ concept. The promise's `await_transform` then propagates context to child awaitables automatically.
 
@@ -266,11 +266,11 @@ Because launch functions are constrained on the concept rather than a concrete t
 
 template< Executor Ex, class... Args >
 unspecified run_async( Ex ex, Args&&... args );
-// run_async(ex)(my_task())  — wrapper::operator()(IoRunnable auto task)
+// run_async(ex)(my_task())   - wrapper::operator()(IoRunnable auto task)
 
 template< Executor Ex, class... Args >
 unspecified run( Ex ex, Args&&... args );
-// co_await run(ex)(my_task())  — wrapper::operator()(IoRunnable auto task)
+// co_await run(ex)(my_task())   - wrapper::operator()(IoRunnable auto task)
 ```
 
 This decoupling enables library authors to write launch utilities that work with any conforming task type, and users to define custom task types that integrate seamlessly with existing launchers.
@@ -321,7 +321,7 @@ struct task
 };
 ```
 
-The `handle()` method provides access to the typed coroutine handle, allowing launch functions to resume the coroutine and access the promise. The `release()` method transfers ownership—after calling it, the task wrapper no longer destroys the frame, leaving lifetime management to the launch function.
+The `handle()` method provides access to the typed coroutine handle, allowing launch functions to resume the coroutine and access the promise. The `release()` method transfers ownership - after calling it, the task wrapper no longer destroys the frame, leaving lifetime management to the launch function.
 
 For `task<void>`, the `result()` method is not required since there is no value to retrieve. The concept uses a disjunction to handle this:
 
@@ -330,7 +330,7 @@ For `task<void>`, the `result()` method is not required since there is no value 
   requires( typename T::promise_type& p ) { p.result(); } );
 ```
 
-> **Non-normative note.** The `io_awaitable_promise_base` CRTP mixin (§8.1) provides the promise-internal machinery (context storage, continuation management, awaitable transformation) as a convenience. It is not proposed for standardization—implementors may write their own. The `handle()` and `release()` methods are task-specific and not part of the mixin.
+> **Non-normative note.** The `io_awaitable_promise_base` CRTP mixin (Section 8.1) provides the promise-internal machinery (context storage, continuation management, awaitable transformation) as a convenience. It is not proposed for standardization - implementors may write their own. The `handle()` and `release()` methods are task-specific and not part of the mixin.
 
 ### 3.3 executor_ref
 
@@ -360,7 +360,7 @@ The `dispatch` member returns a `coroutine_handle<>` for symmetric transfer: if 
 
 At just two pointers, `executor_ref` copies cheaply and stores naturally inside `io_env`. Launch functions preserve a copy of the user's typed _Executor_ in their own coroutine frame. The `executor_ref` holds a pointer to that stored value. As the wrapper propagates through the call chain, the original executor remains valid - it cannot go out of scope until all coroutines in the chain are destroyed.
 
-Coroutines can access their context directly using `this_coro::environment`. This never suspends—it returns immediately with the stored environment:
+Coroutines can access their context directly using `this_coro::environment`. This never suspends - it returns immediately with the stored environment:
 
 ```cpp
 task<void> cancellable_work()
@@ -380,7 +380,7 @@ task<void> cancellable_work()
 
 Two basic functions are needed to launch coroutine chains, and authors can define their own custom launch functions to suit their needs.
 
-**`run_async`** — launch from callbacks, main(), event handlers, top level of a coroutine chain.
+**`run_async`** - launch from callbacks, main(), event handlers, top level of a coroutine chain.
 
 This uses a two-call syntax where the first call captures context and returns a wrapper. The executor parameter is required. The remaining parameters are optional:
 
@@ -405,11 +405,11 @@ run_async( ioc.get_executor(), source.get_token(),
 
 While the syntax is unfortunate, it is _the only way_ given the timing constraints of frame allocation. And hey, its better than callback hell. What makes this possible is a small but consequential change in C++17: guaranteed evaluation order for postfix expressions. The standard now specifies:
 
-> "The postfix-expression is sequenced before each expression in the expression-list and any default argument." — [expr.call]
+> "The postfix-expression is sequenced before each expression in the expression-list and any default argument."  - [expr.call]
 
-In `run_async(ex)(my_task())`, the outer postfix-expression `run_async(ex)` is fully evaluated—returning a wrapper that allocates the trampoline coroutine—before `my_task()` is invoked. This guarantees LIFO destruction order: the trampoline is allocated BEFORE the task and serves as the task's continuation.
+In `run_async(ex)(my_task())`, the outer postfix-expression `run_async(ex)` is fully evaluated - returning a wrapper that allocates the trampoline coroutine - before `my_task()` is invoked. This guarantees LIFO destruction order: the trampoline is allocated BEFORE the task and serves as the task's continuation.
 
-**`run`** — switching executors or customizing context within coroutines.
+**`run`** - switching executors or customizing context within coroutines.
 
 This binds a child task to a different executor while returning to the caller's executor on completion. Like `run_async`, it uses the two-call syntax to ensure proper allocation ordering:
 
@@ -471,7 +471,7 @@ void run_async( Ex ex, std::stop_token token, Task task )
 }
 ```
 
-> **Non-normative note.** This simplified example has the allocator ordering problem described in §5.1: the task's frame is allocated before `run_async` is called, so any thread-local allocator setup would arrive too late. A correct implementation uses the two-call syntax shown in §3.4—`run_async(ex)(my_task())`—where the first call returns a wrapper that sets up the allocator before the task expression is evaluated. A complete implementation is beyond the scope of this example.
+> **Non-normative note.** This simplified example has the allocator ordering problem described in Section 5.1: the task's frame is allocated before `run_async` is called, so any thread-local allocator setup would arrive too late. A correct implementation uses the two-call syntax shown in Section 3.4 - `run_async(ex)(my_task())` - where the first call returns a wrapper that sets up the allocator before the task expression is evaluated. A complete implementation is beyond the scope of this example.
 
 Because launch functions are constrained on the concept rather than a concrete type, they work with any conforming task implementation. This decoupling enables library authors to write launch utilities that interoperate with user-defined task types.
 
@@ -479,7 +479,7 @@ Because launch functions are constrained on the concept rather than a concrete t
 
 ## 4. Executor concept
 
-**Terminology note.** We use the term _Executor_ rather than *scheduler* intentionally. In `std::execution`, schedulers are designed for heterogeneous computing—selecting GPU vs CPU algorithms, managing completion domains, and dispatching to hardware accelerators. Networking has different needs: strand serialization, I/O completion contexts, and thread affinity. By using *executor*, we signal a distinct concept tailored to networking's requirements. This terminology also honors Christopher Kohlhoff's executor model in Boost.Asio, which established the foundation for modern C++ asynchronous I/O.
+**Terminology note.** We use the term _Executor_ rather than *scheduler* intentionally. In `std::execution`, schedulers are designed for heterogeneous computing - selecting GPU vs CPU algorithms, managing completion domains, and dispatching to hardware accelerators. Networking has different needs: strand serialization, I/O completion contexts, and thread affinity. By using *executor*, we signal a distinct concept tailored to networking's requirements. This terminology also honors Christopher Kohlhoff's executor model in Boost.Asio, which established the foundation for modern C++ asynchronous I/O.
 
 ```cpp
 template<class E>
@@ -502,9 +502,9 @@ concept Executor =
     };
 ```
 
-Executors are lightweight, copyable handles to execution contexts. Users often provide custom executor types tailored to application needs—priority scheduling, per-connection strand serialization, or specialized logging and instrumentation. An execution model must respect these customizations. It must also support executor composition: wrapping one executor with another. The `strand` we provide, for example, wraps an I/O context's executor to add serialization guarantees without changing the underlying dispatch mechanism.
+Executors are lightweight, copyable handles to execution contexts. Users often provide custom executor types tailored to application needs - priority scheduling, per-connection strand serialization, or specialized logging and instrumentation. An execution model must respect these customizations. It must also support executor composition: wrapping one executor with another. The `strand` we provide, for example, wraps an I/O context's executor to add serialization guarantees without changing the underlying dispatch mechanism.
 
-C++20 coroutines provide type erasure *by construction*—but not through the handle type. `std::coroutine_handle<void>` and `std::coroutine_handle<promise_type>` are both just pointers with identical overhead. The erasure that matters is *structural*:
+C++20 coroutines provide type erasure *by construction* - but not through the handle type. `std::coroutine_handle<void>` and `std::coroutine_handle<promise_type>` are both just pointers with identical overhead. The erasure that matters is *structural*:
 
 1. **The frame is opaque**: Callers see only a handle, not the promise's layout
 2. **The return type is uniform**: All coroutines returning `task` have the same type, regardless of body
@@ -516,26 +516,26 @@ This structural erasure is often lamented as overhead, but we recognize it as op
 
 Every coroutine resumption must go through either symmetric transfer or the scheduler queue -- never through an inline `resume()` or `dispatch()` that creates a frame below the resumed coroutine.
 
-`dispatch` returns a `std::coroutine_handle<>` for symmetric transfer. If the caller is already in the executor's context, `dispatch` returns the handle directly. Otherwise, the handle is posted to the scheduler queue and `std::noop_coroutine()` is returned. The caller never calls `resume()` on the handle inside `dispatch`—the returned handle is used by the caller for symmetric transfer from `await_suspend`, or called with `.resume()` at the event loop pump level.
+`dispatch` returns a `std::coroutine_handle<>` for symmetric transfer. If the caller is already in the executor's context, `dispatch` returns the handle directly. Otherwise, the handle is posted to the scheduler queue and `std::noop_coroutine()` is returned. The caller never calls `resume()` on the handle inside `dispatch` - the returned handle is used by the caller for symmetric transfer from `await_suspend`, or called with `.resume()` at the event loop pump level.
 
-Unlike general-purpose executors that accept templated callables, `dispatch` takes only `std::coroutine_handle<>`—this is a coroutine-only model. A coroutine handle is a simple pointer: no allocation, no type erasure overhead, no virtual dispatch.
+Unlike general-purpose executors that accept templated callables, `dispatch` takes only `std::coroutine_handle<>` - this is a coroutine-only model. A coroutine handle is a simple pointer: no allocation, no type erasure overhead, no virtual dispatch.
 
-Ordinary users writing coroutine tasks do not interact with `dispatch` and `post` directly. These operations are used by authors of coroutine machinery—`promise_type` implementations, awaitables, `await_transform`—to implement asynchronous algorithms such as `when_all`, `when_any`, `async_mutex`, channels, and similar primitives.
+Ordinary users writing coroutine tasks do not interact with `dispatch` and `post` directly. These operations are used by authors of coroutine machinery - `promise_type` implementations, awaitables, `await_transform` - to implement asynchronous algorithms such as `when_all`, `when_any`, `async_mutex`, channels, and similar primitives.
 
-Some contexts prohibit inline execution. A strand currently executing work cannot dispatch inline without breaking serialization—`dispatch` then behaves like `post`, queuing unconditionally and returning `std::noop_coroutine()`.
+Some contexts prohibit inline execution. A strand currently executing work cannot dispatch inline without breaking serialization - `dispatch` then behaves like `post`, queuing unconditionally and returning `std::noop_coroutine()`.
 
 ### 4.2 Post
 
-`post` queues work for later execution. Unlike `dispatch`, it never executes inline—the work item is always enqueued, and `post` returns immediately.
+`post` queues work for later execution. Unlike `dispatch`, it never executes inline - the work item is always enqueued, and `post` returns immediately.
 
 Use `post` for:
 - **New work** that is not a continuation of the current operation
 - **Breaking call chains** to bound stack depth
-- **Safety under locks**—posting while holding a mutex avoids deadlock risk from inline execution
+- **Safety under locks** - posting while holding a mutex avoids deadlock risk from inline execution
 
 ### 4.3 The `execution_context`
 
-An executor's `context()` function returns a reference to the `execution_context`, the proposed base class for any object that runs work (often containing the platform reactor or event loop). I/O objects coordinate global state here. Implementations install services—singletons with well-defined shutdown and destruction ordering for safe resource release. This design borrows heavily from Boost.Asio.
+An executor's `context()` function returns a reference to the `execution_context`, the proposed base class for any object that runs work (often containing the platform reactor or event loop). I/O objects coordinate global state here. Implementations install services - singletons with well-defined shutdown and destruction ordering for safe resource release. This design borrows heavily from Boost.Asio.
 
 ```cpp
 class execution_context
@@ -585,7 +585,7 @@ I/O objects hold a reference to their execution context, and do not have an asso
 
 #### Frame Allocator
 
-The `execution_context` provides `set_frame_allocator` and `get_frame_allocator` as customization points for launchers when no allocator is specified at the launch site. Since every launcher requires an _Executor_, the execution context naturally coordinates frame allocation policy. The default allocator can optimize for speed using recycling with thread-local pools, or for economy on constrained platforms. Using `std::pmr::memory_resource*` allows implementations to change the default without breaking ABI. Applications can set a policy once via `set_frame_allocator`, and all coroutines launched with the default will use it—including those in foreign libraries, without propagating allocator template parameters or recompiling.
+The `execution_context` provides `set_frame_allocator` and `get_frame_allocator` as customization points for launchers when no allocator is specified at the launch site. Since every launcher requires an _Executor_, the execution context naturally coordinates frame allocation policy. The default allocator can optimize for speed using recycling with thread-local pools, or for economy on constrained platforms. Using `std::pmr::memory_resource*` allows implementations to change the default without breaking ABI. Applications can set a policy once via `set_frame_allocator`, and all coroutines launched with the default will use it - including those in foreign libraries, without propagating allocator template parameters or recompiling.
 
 ### 4.4 ExecutionContext concept
 
@@ -602,7 +602,7 @@ concept ExecutionContext =
     };
 ```
 
-The concept formalizes the relationship between execution contexts and their executors. Types like `io_context` and `thread_pool` satisfy `ExecutionContext`—they derive from `execution_context` for service management, and they provide executors for dispatching coroutines:
+The concept formalizes the relationship between execution contexts and their executors. Types like `io_context` and `thread_pool` satisfy `ExecutionContext` - they derive from `execution_context` for service management, and they provide executors for dispatching coroutines:
 
 ```cpp
 io_context ioc;
@@ -610,7 +610,7 @@ auto ex = ioc.get_executor();  // io_context::executor_type
 run_async(ex)(my_task());      // Launch coroutine on this context
 ```
 
-The destructor semantics are also significant: when an `ExecutionContext` is destroyed, all unexecuted function objects that were submitted via an associated executor are also destroyed. This ensures orderly cleanup—work queued but not yet executed does not leak or outlive its context.
+The destructor semantics are also significant: when an `ExecutionContext` is destroyed, all unexecuted function objects that were submitted via an associated executor are also destroyed. This ensures orderly cleanup - work queued but not yet executed does not leak or outlive its context.
 
 ---
 
@@ -620,7 +620,7 @@ Achieving high performance levels with coroutines demands allocator customizatio
 
 ### 5.1 The Timing Constraint
 
-Coroutine frame allocation has a fundamental timing constraint: `operator new` executes before the coroutine body. When a coroutine is called, the compiler allocates the frame first, then begins execution. Any mechanism that injects context later—receiver connection, `await_transform`, explicit method calls—arrives too late.
+Coroutine frame allocation has a fundamental timing constraint: `operator new` executes before the coroutine body. When a coroutine is called, the compiler allocates the frame first, then begins execution. Any mechanism that injects context later - receiver connection, `await_transform`, explicit method calls - arrives too late.
 
 ```cpp
 auto t = my_coro(sock);  // operator new called HERE
@@ -735,7 +735,7 @@ Containers in the standard library accept allocators because they are written on
 
 ### 5.3 Our Solution: Thread-Local Propagation
 
-Thread-local propagation is the only approach that maintains clean interfaces while respecting the timing constraint. The premise is simple: **allocator customization happens at launch sites**, not within coroutine algorithms. Functions like `run_async` and `run` accept allocator parameters because they represent application policy decisions. Coroutine algorithms don't need to "allocator-hop"—they simply inherit whatever allocator the application has established.
+Thread-local propagation is the only approach that maintains clean interfaces while respecting the timing constraint. The premise is simple: **allocator customization happens at launch sites**, not within coroutine algorithms. Functions like `run_async` and `run` accept allocator parameters because they represent application policy decisions. Coroutine algorithms don't need to "allocator-hop" - they simply inherit whatever allocator the application has established.
 
 Our approach:
 
@@ -893,20 +893,15 @@ auto initial_suspend() noexcept {
 
 Every time the coroutine resumes (after any `co_await`), it sets TLS to its allocator. When `child()` is called, TLS is already pointing to `parent`'s allocator. The flow:
 
-```
-parent resumes → TLS = parent.alloc
-    ↓
-parent calls child()
-    ↓
-child operator new → reads TLS → uses parent.alloc
-    ↓
-child created, returns task
-    ↓
-parent's await_suspend → parent suspends
-    ↓
-child resumes → TLS = child.alloc (inherited value)
-    ↓
-child calls grandchild() → grandchild uses TLS
+```mermaid
+flowchart TD
+    A["parent resumes - TLS = parent.alloc"]
+    --> B["parent calls child()"]
+    --> C["child operator new - reads TLS - uses parent.alloc"]
+    --> D["child created, returns task"]
+    --> E["parent's await_suspend - parent suspends"]
+    --> F["child resumes - TLS = child.alloc (inherited value)"]
+    --> G["child calls grandchild() - grandchild uses TLS"]
 ```
 
 This is safe because:
@@ -1392,13 +1387,13 @@ concept io_awaitable =
 
 2 In Table 1, `a` denotes a value of type `A`, `h` denotes a value of type `coroutine_handle<>` representing the calling coroutine, and `env` denotes a value of type `io_env const*`.
 
-**Table 1 — io_awaitable requirements**
+**Table 1  - io_awaitable requirements**
 
 | expression | return type | assertion/note pre/post-conditions |
 |------------|-------------|-----------------------------------|
 | `a.await_suspend(h, env)` | `void`, `bool`, or `coroutine_handle<>` | *Effects:* Initiates the asynchronous operation represented by `a`. The environment `env` is propagated to the operation. If the return type is `coroutine_handle<>`, the returned handle is suitable for symmetric transfer. *Preconditions:* `h` is a suspended coroutine. `env->executor` refers to a valid executor. The pointed-to `io_env` object remains valid for the duration of the asynchronous operation; the caller is responsible for ensuring this lifetime guarantee. *Synchronization:* The call to `await_suspend` synchronizes with the resumption of `h` or any coroutine to which control is transferred. |
 
-3 [ *Note:* The two-argument `await_suspend` signature distinguishes `io_awaitable` types from standard awaitables. A compliant coroutine's `await_transform` calls this signature, enabling static detection of protocol mismatches at compile time. *— end note* ]
+3 [ *Note:* The two-argument `await_suspend` signature distinguishes `io_awaitable` types from standard awaitables. A compliant coroutine's `await_transform` calls this signature, enabling static detection of protocol mismatches at compile time. *- end note* ]
 
 #### 10.3.2 Concept `io_runnable` [ioawait.concepts.runnable]
 
@@ -1423,7 +1418,7 @@ concept io_runnable =
 
 2 In Table 2, `t` denotes an lvalue of type `T`, `ct` denotes a const lvalue of type `T`, `cp` denotes a const lvalue of type `typename T::promise_type`, `p` denotes an lvalue of type `typename T::promise_type`, and `h` denotes a value of type `coroutine_handle<>`.
 
-**Table 2 — io_runnable requirements**
+**Table 2  - io_runnable requirements**
 
 | expression | return type | assertion/note pre/post-conditions |
 |------------|-------------|-----------------------------------|
@@ -1434,7 +1429,7 @@ concept io_runnable =
 | `p.set_environment(env)` | `void` | *Effects:* Sets the `io_env` pointer that propagates executor, stop token, and allocator through the coroutine chain. Shall not exit via an exception. *Preconditions:* `env` points to an `io_env` whose lifetime exceeds that of the coroutine. |
 | `p.result()` | *unspecified* | *Returns:* The result value stored in the promise. *Preconditions:* The coroutine completed with a value (not an exception). *Remarks:* This expression is only required when `await_resume()` returns a non-void type. |
 
-3 [ *Note:* The `handle()` and `release()` methods enable launch functions to manage task lifetime directly. After `release()`, the launch function assumes responsibility for destroying the coroutine frame. *— end note* ]
+3 [ *Note:* The `handle()` and `release()` methods enable launch functions to manage task lifetime directly. After `release()`, the launch function assumes responsibility for destroying the coroutine frame. *- end note* ]
 
 #### 10.3.3 Concept `executor` [ioawait.concepts.executor]
 
@@ -1459,17 +1454,17 @@ concept executor =
 
 3 The executor copy constructor, comparison operators, and other member functions defined in these requirements shall not introduce data races as a result of concurrent calls to those functions from different threads. The member function `dispatch` does not resume `h` directly; the caller is responsible for using the returned handle for symmetric transfer.
 
-4 Let `ctx` be the execution context returned by the executor's `context()` member function. An executor becomes invalid when the first call to `ctx.shutdown()` returns. The effect of calling `on_work_started`, `on_work_finished`, `dispatch`, or `post` on an invalid executor is undefined. [ *Note:* The copy constructor, comparison operators, and `context()` member function continue to remain valid until `ctx` is destroyed. *— end note* ]
+4 Let `ctx` be the execution context returned by the executor's `context()` member function. An executor becomes invalid when the first call to `ctx.shutdown()` returns. The effect of calling `on_work_started`, `on_work_finished`, `dispatch`, or `post` on an invalid executor is undefined. [ *Note:* The copy constructor, comparison operators, and `context()` member function continue to remain valid until `ctx` is destroyed. *- end note* ]
 
 5 In Table 3, `x1` and `x2` denote (possibly const) values of type `E`, `mx1` denotes an xvalue of type `E`, `h` denotes a value of type `coroutine_handle<>`, and `u` denotes an identifier.
 
-**Table 3 — executor requirements**
+**Table 3  - executor requirements**
 
 | expression | return type | assertion/note pre/post-conditions |
 |------------|-------------|-----------------------------------|
 | `E u(x1);` | | Shall not exit via an exception. *Postconditions:* `u == x1` and `addressof(u.context()) == addressof(x1.context())`. |
 | `E u(mx1);` | | Shall not exit via an exception. *Postconditions:* `u` equals the prior value of `mx1` and `addressof(u.context())` equals the prior value of `addressof(mx1.context())`. |
-| `x1 == x2` | `bool` | *Returns:* `true` only if `x1` and `x2` can be interchanged with identical effects in any of the expressions defined in these type requirements. [ *Note:* Returning `false` does not necessarily imply that the effects are not identical. *— end note* ] `operator==` shall be reflexive, symmetric, and transitive, and shall not exit via an exception. |
+| `x1 == x2` | `bool` | *Returns:* `true` only if `x1` and `x2` can be interchanged with identical effects in any of the expressions defined in these type requirements. [ *Note:* Returning `false` does not necessarily imply that the effects are not identical. *- end note* ] `operator==` shall be reflexive, symmetric, and transitive, and shall not exit via an exception. |
 | `x1 != x2` | `bool` | Same as `!(x1 == x2)`. |
 | `x1.context()` | `execution_context&`, or `C&` where `C` is publicly derived from `execution_context` | Shall not exit via an exception. The comparison operators and member functions defined in these requirements shall not alter the reference returned by this function. |
 | `x1.on_work_started()` | `void` | Shall not exit via an exception. |
@@ -1477,7 +1472,7 @@ concept executor =
 | `x1.dispatch(h)` | `coroutine_handle<>` | *Returns:* A handle suitable for symmetric transfer. If the caller is already in the executor's context and inline execution is safe, returns `h` directly. Otherwise, queues `h` for later execution and returns `noop_coroutine()`. The caller must use the returned handle for symmetric transfer (e.g., return it from `await_suspend`). *Synchronization:* The invocation of `dispatch` synchronizes with the resumption of `h`. |
 | `x1.post(h)` | `void` | *Effects:* Queues `h` for later execution. The executor shall not block forward progress of the caller pending resumption of `h`. The executor shall not resume `h` before the call to `post` returns. *Synchronization:* The invocation of `post` synchronizes with the resumption of `h`. |
 
-6 [ *Note:* Unlike the Networking TS executor requirements, this concept operates on `coroutine_handle<>` rather than arbitrary function objects. This restriction enables zero-allocation dispatch in the common case and leverages the structural type erasure that coroutines already provide. The `dispatch` operation returns a `coroutine_handle<>` to enable symmetric transfer: the caller returns the handle from `await_suspend`, avoiding stack buildup. When the executor can run inline, it returns the handle directly; otherwise it posts to a queue and returns `noop_coroutine()`. *— end note* ]
+6 [ *Note:* Unlike the Networking TS executor requirements, this concept operates on `coroutine_handle<>` rather than arbitrary function objects. This restriction enables zero-allocation dispatch in the common case and leverages the structural type erasure that coroutines already provide. The `dispatch` operation returns a `coroutine_handle<>` to enable symmetric transfer: the caller returns the handle from `await_suspend`, avoiding stack buildup. When the executor can run inline, it returns the handle directly; otherwise it posts to a queue and returns `noop_coroutine()`. *- end note* ]
 
 #### 10.3.4 Concept `execution_context` [ioawait.concepts.execctx]
 
@@ -1496,7 +1491,7 @@ concept execution_context =
 
 2 In Table 4, `x` denotes a value of type `X`.
 
-**Table 4 — execution_context requirements**
+**Table 4  - execution_context requirements**
 
 | expression | return type | assertion/note pre/post-conditions |
 |------------|-------------|-----------------------------------|
@@ -1504,7 +1499,7 @@ concept execution_context =
 | `x.get_executor()` | `X::executor_type` | *Returns:* An executor object that is associated with the execution context. Shall not exit via an exception. |
 | `x.~X()` | | *Effects:* Destroys all unexecuted function objects that were submitted via an executor object that is associated with the execution context. |
 
-3 [ *Note:* The destructor requirement ensures orderly cleanup—work queued but not yet executed does not leak or outlive its context. Types such as `io_context` and `thread_pool` satisfy this concept. *— end note* ]
+3 [ *Note:* The destructor requirement ensures orderly cleanup - work queued but not yet executed does not leak or outlive its context. Types such as `io_context` and `thread_pool` satisfy this concept. *- end note* ]
 
 ### 10.4 Class `executor_ref` [ioawait.execref]
 
@@ -1541,7 +1536,7 @@ namespace std {
 
 2 The class `executor_ref` satisfies `copy_constructible` and `equality_comparable`. Copies of an `executor_ref` refer to the same underlying executor.
 
-3 [ *Note:* At two pointers in size, `executor_ref` is designed for efficient propagation through coroutine chains. The `dispatch` member returns a `coroutine_handle<>` for symmetric transfer, enabling zero-overhead resumption when executors match. *— end note* ]
+3 [ *Note:* At two pointers in size, `executor_ref` is designed for efficient propagation through coroutine chains. The `dispatch` member returns a `coroutine_handle<>` for symmetric transfer, enabling zero-overhead resumption when executors match. *- end note* ]
 
 #### 10.4.1 `executor_ref` constructors [ioawait.execref.cons]
 
@@ -1560,7 +1555,7 @@ template<executor E>
 
 3 *Postconditions:* `bool(*this) == true`. `addressof(context())` equals `addressof(e.context())`.
 
-4 *Remarks:* The behavior is undefined if `e` is destroyed or becomes invalid while `*this` or any copy of `*this` still exists. [ *Note:* In typical usage, the referenced executor is stored in a launch function's frame or a coroutine promise, which outlives all `executor_ref` copies propagated through the coroutine chain. *— end note* ]
+4 *Remarks:* The behavior is undefined if `e` is destroyed or becomes invalid while `*this` or any copy of `*this` still exists. [ *Note:* In typical usage, the referenced executor is stored in a launch function's frame or a coroutine promise, which outlives all `executor_ref` copies propagated through the coroutine chain. *- end note* ]
 
 #### 10.4.2 `executor_ref` observers [ioawait.execref.obs]
 
@@ -1694,7 +1689,7 @@ namespace std {
 execution_context();
 ```
 
-1 *Effects:* Creates an object of class `execution_context` which contains no services. [ *Note:* An implementation may preload services of internal service types for its own use. *— end note* ]
+1 *Effects:* Creates an object of class `execution_context` which contains no services. [ *Note:* An implementation may preload services of internal service types for its own use. *- end note* ]
 
 ```cpp
 ~execution_context();
@@ -1738,7 +1733,7 @@ template<class Service> Service& use_service();
 
 4 *Returns:* A reference to the service indexed under `Key`.
 
-5 *Remarks:* The reference returned remains valid until a call to `destroy()`. [ *Note:* The `key_type` mechanism allows a derived service to replace a base service in the lookup table. This enables service implementations to be swapped without changing the lookup key. *— end note* ]
+5 *Remarks:* The reference returned remains valid until a call to `destroy()`. [ *Note:* The `key_type` mechanism allows a derived service to replace a base service in the lookup table. This enables service implementations to be swapped without changing the lookup key. *- end note* ]
 
 ```cpp
 template<class Service, class... Args> Service& make_service(Args&&... args);
@@ -1782,7 +1777,7 @@ void set_frame_allocator(Allocator const& a);
 
 6 *Mandates:* `Allocator` satisfies the *Cpp17Allocator* requirements. `Allocator` is copy constructible.
 
-7 [ *Note:* The frame allocator is a quality of implementation concern. A conforming implementation may ignore the allocator parameter entirely, and programs should still behave correctly. The allocator mechanism is provided to enable performance optimizations such as thread-local recycling pools or bounded allocation strategies, but correct program behavior must not depend on a specific allocation strategy being used. *— end note* ]
+7 [ *Note:* The frame allocator is a quality of implementation concern. A conforming implementation may ignore the allocator parameter entirely, and programs should still behave correctly. The allocator mechanism is provided to enable performance optimizations such as thread-local recycling pools or bounded allocation strategies, but correct program behavior must not depend on a specific allocation strategy being used. *- end note* ]
 
 #### 10.5.5 `execution_context` target access [ioawait.execctx.target]
 
@@ -1844,7 +1839,7 @@ template<executor Ex, class... Args>
 
 4 *Synchronization:* The call to `run_async(ex, args...)(task)` synchronizes with the invocation of the completion handler (if any) and with the resumption of the task coroutine.
 
-5 [ *Note:* The two-call syntax `run_async(ex)(task())` is required because of coroutine allocation timing. The outer expression `run_async(ex)` must complete—returning the callable and establishing the thread-local allocator—before `task()` is evaluated. This ordering is guaranteed by [expr.call] in C++17 and later: "The postfix-expression is sequenced before each expression in the expression-list." *— end note* ]
+5 [ *Note:* The two-call syntax `run_async(ex)(task())` is required because of coroutine allocation timing. The outer expression `run_async(ex)` must complete - returning the callable and establishing the thread-local allocator - before `task()` is evaluated. This ordering is guaranteed by [expr.call] in C++17 and later: "The postfix-expression is sequenced before each expression in the expression-list." *- end note* ]
 
 6 [ *Example:*
 
@@ -1862,7 +1857,7 @@ run_async(ex,
 )(compute_value());
 ```
 
-*— end example* ]
+*- end example* ]
 
 #### 10.6.2 Function template `run` [ioawait.launch.run]
 
@@ -1901,7 +1896,7 @@ template<class... Args>
 
 7 *Synchronization:* The suspension of the caller synchronizes with the resumption of `task`. The completion of `task` synchronizes with the resumption of the caller.
 
-8 [ *Note:* Like `run_async`, `run` uses the two-call syntax `run(ex)(task())` to ensure proper frame allocation ordering. *— end note* ]
+8 [ *Note:* Like `run_async`, `run` uses the two-call syntax `run(ex)(task())` to ensure proper frame allocation ordering. *- end note* ]
 
 9 [ *Example:*
 
@@ -1919,7 +1914,7 @@ task<void> with_custom_token() {
 }
 ```
 
-*— end example* ]
+*- end example* ]
 
 ### 10.7 Namespace `this_coro` [ioawait.thiscoro]
 
@@ -1960,7 +1955,7 @@ task<void> cancellable_work() {
 }
 ```
 
-*— end example* ]
+*- end example* ]
 
 ### 10.8 Threading and synchronization [ioawait.sync]
 
@@ -1974,7 +1969,7 @@ task<void> cancellable_work() {
   - (3.2) The suspension of a coroutine at a `co_await` expression synchronizes with the resumption of that coroutine.
   - (3.3) The completion of a child coroutine (at final suspension) synchronizes with the resumption of the parent coroutine.
 
-4 [ *Note:* These synchronization guarantees ensure that modifications made by one coroutine before suspension are visible to the code that resumes it. *— end note* ]
+4 [ *Note:* These synchronization guarantees ensure that modifications made by one coroutine before suspension are visible to the code that resumes it. *- end note* ]
 
 ---
 
@@ -1982,11 +1977,11 @@ task<void> cancellable_work() {
 
 This paper builds on the foundational work of many contributors to C++ asynchronous programming:
 
-**Chris Kohlhoff** for Boost.Asio, which has served the C++ community for over two decades and established many of the patterns we build upon—and some we consciously depart from. The executor model in this paper honors his pioneering work.
+**Chris Kohlhoff** for Boost.Asio, which has served the C++ community for over two decades and established many of the patterns we build upon - and some we consciously depart from. The executor model in this paper honors his pioneering work.
 
 **Lewis Baker** for his work on C++ coroutines, the Asymmetric Transfer blog series, and his contributions to [P2300](https://wg21.link/p2300) and [P3826](https://wg21.link/p3826). His explanations of symmetric transfer and coroutine optimization techniques directly informed our design.
 
-**Dietmar Kühl** for [P2762](https://wg21.link/p2762) and [P3552](https://wg21.link/p3552), which explore sender/receiver networking and coroutine task types. His clear articulation of design tradeoffs—including the late-binding problem and cancellation overhead concerns—helped crystallize our understanding of where the sender model introduces friction for networking.
+**Dietmar K&uuml;hl** for [P2762](https://wg21.link/p2762) and [P3552](https://wg21.link/p3552), which explore sender/receiver networking and coroutine task types. His clear articulation of design tradeoffs - including the late-binding problem and cancellation overhead concerns - helped crystallize our understanding of where the sender model introduces friction for networking.
 
 The analysis in this paper is not a critique of these authors' contributions, but rather an exploration of whether networking's specific requirements are best served by adapting to general-purpose abstractions or by purpose-built designs.
 
@@ -2005,10 +2000,10 @@ Network I/O operates on a fundamentally different timescale than computation. A 
 | CPU instruction | 0.3 ns |
 | L1 cache access | 1 ns |
 | Main memory access | 100 ns |
-| Local network round-trip | 500 μs |
+| Local network round-trip | 500 &mu;s |
 | Internet round-trip | 50-200 ms |
 
-When code calls a blocking read on a socket, the thread waits—doing nothing—while the network delivers data. During a 100ms network round-trip, a modern CPU could have executed 300 billion instructions. Blocking I/O wastes this potential.
+When code calls a blocking read on a socket, the thread waits - doing nothing - while the network delivers data. During a 100ms network round-trip, a modern CPU could have executed 300 billion instructions. Blocking I/O wastes this potential.
 
 ```cpp
 // Blocking I/O: thread waits here
@@ -2038,17 +2033,17 @@ for (;;) {
 }
 ```
 
-This works—until it doesn't. Each thread consumes memory (typically 1MB for the stack) and creates scheduling overhead. Context switches between threads cost thousands of CPU cycles. At 10,000 connections, you have 10,000 threads consuming 10GB of stack space, and the scheduler spends more time switching between threads than running actual code.
+This works - until it doesn't. Each thread consumes memory (typically 1MB for the stack) and creates scheduling overhead. Context switches between threads cost thousands of CPU cycles. At 10,000 connections, you have 10,000 threads consuming 10GB of stack space, and the scheduler spends more time switching between threads than running actual code.
 
-The [C10K problem](http://www.kegel.com/c10k.html)—handling 10,000 concurrent connections—revealed that thread-per-connection doesn't scale. Modern servers handle millions of connections. Something else is needed.
+The [C10K problem](http://www.kegel.com/c10k.html) - handling 10,000 concurrent connections - revealed that thread-per-connection doesn't scale. Modern servers handle millions of connections. Something else is needed.
 
 ### A.3 Event-Driven I/O
 
 The solution is to invert the relationship between threads and I/O operations. Instead of one thread per connection, use a small number of threads that multiplex across many connections. The operating system provides mechanisms to wait for *any* of a set of file descriptors to become ready:
 
-- **Linux**: `epoll` — register interest in file descriptors, wait for events
-- **Windows**: I/O Completion Ports (IOCP) — queue-based completion notification
-- **BSD/macOS**: `kqueue` — unified event notification
+- **Linux**: `epoll`  - register interest in file descriptors, wait for events
+- **Windows**: I/O Completion Ports (IOCP)  - queue-based completion notification
+- **BSD/macOS**: `kqueue`  - unified event notification
 
 These mechanisms enable the **proactor pattern**: instead of blocking until an operation completes, you *initiate* an operation and receive notification when it finishes. The thread is free to do other work in the meantime.
 
@@ -2109,7 +2104,7 @@ The `co_await` keyword suspends the coroutine until the operation completes, the
 
 ### A.5 The Execution Context
 
-I/O objects must be associated with an execution context that manages their lifecycle and delivers completions. A `socket` created with an `io_context` is registered with that context's platform reactor (epoll, IOCP, etc.). This binding is physical—the socket's file descriptor is registered with specific kernel structures.
+I/O objects must be associated with an execution context that manages their lifecycle and delivers completions. A `socket` created with an `io_context` is registered with that context's platform reactor (epoll, IOCP, etc.). This binding is physical - the socket's file descriptor is registered with specific kernel structures.
 
 ```cpp
 io_context ioc;
@@ -2137,9 +2132,9 @@ auto ex = ioc.get_executor();
 
 The executor provides two fundamental operations:
 
-**`dispatch`** — Run work immediately if safe, otherwise queue it. When the I/O context thread detects a completion, it typically dispatches the waiting coroutine inline for minimal latency.
+**`dispatch`** - Run work immediately if safe, otherwise queue it. When the I/O context thread detects a completion, it typically dispatches the waiting coroutine inline for minimal latency.
 
-**`post`** — Always queue work for later execution. Use this when you need a guarantee that the work won't run until after the current function returns—for example, when holding a lock.
+**`post`** - Always queue work for later execution. Use this when you need a guarantee that the work won't run until after the current function returns - for example, when holding a lock.
 
 ```cpp
 // Dispatch: may run inline
@@ -2153,7 +2148,7 @@ The distinction matters for correctness. Dispatching while holding a mutex could
 
 ### A.7 Strands: Serialization Without Locks
 
-When multiple threads call `ioc.run()`, completions may execute concurrently. If two coroutines access shared state, you need synchronization. Mutexes work but introduce blocking—the very thing async I/O tries to avoid.
+When multiple threads call `ioc.run()`, completions may execute concurrently. If two coroutines access shared state, you need synchronization. Mutexes work but introduce blocking - the very thing async I/O tries to avoid.
 
 A **strand** provides an alternative: it guarantees that handlers submitted through it never execute concurrently, without using locks.
 
@@ -2185,13 +2180,13 @@ source.request_stop();
 
 The stop token propagates through the coroutine chain. At the lowest level, I/O objects observe the token and cancel pending operations with the appropriate OS primitive (`CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux). The operation completes with an error, and the coroutine can handle it normally.
 
-Cancellation is cooperative—no operation is forcibly terminated. The I/O layer requests cancellation, the OS acknowledges it, and the operation completes with an error code. This keeps resource cleanup predictable and avoids the hazards of abrupt termination.
+Cancellation is cooperative - no operation is forcibly terminated. The I/O layer requests cancellation, the OS acknowledges it, and the operation completes with an error code. This keeps resource cleanup predictable and avoids the hazards of abrupt termination.
 
 ### A.9 Moving Forward
 
-With these fundamentals in hand—event loops, executors, strands, and cancellation—you have the conceptual vocabulary to understand the design decisions in the sections that follow. These patterns form the bedrock of modern C++ networking: high-performance servers and responsive client applications build on some combination of non-blocking I/O, completion handlers, and execution contexts [[14]](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications).
+With these fundamentals in hand - event loops, executors, strands, and cancellation - you have the conceptual vocabulary to understand the design decisions in the sections that follow. These patterns form the bedrock of modern C++ networking: high-performance servers and responsive client applications build on some combination of non-blocking I/O, completion handlers, and execution contexts [[14]](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications).
 
-If you're eager to experiment, the [Corosio](https://github.com/cppalliance/corosio) library implements these concepts in production-ready code. It provides sockets, timers, TLS, and DNS resolution—all built on the coroutine-first model we'll explore in depth. The [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) documentation and its many community tutorials offer additional paths to hands-on learning. Building a simple echo server or chat application is one of the best ways to internalize how these pieces fit together.
+If you're eager to experiment, the [Corosio](https://github.com/cppalliance/corosio) library implements these concepts in production-ready code. It provides sockets, timers, TLS, and DNS resolution - all built on the coroutine-first model we'll explore in depth. The [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) documentation and its many community tutorials offer additional paths to hands-on learning. Building a simple echo server or chat application is one of the best ways to internalize how these pieces fit together.
 
 The rest of this paper examines what an execution model looks like when these networking requirements drive the design from the ground up.
 
@@ -2382,23 +2377,23 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar Khul for their valuable feedback in the development of this paper.
+and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
 
 ---
 
 ## References
 
-1. [N4242](https://wg21.link/n4242) — Executors and Asynchronous Operations, Revision 1 (2014)
-2. [N4482](https://wg21.link/n4482) — Some notes on executors and the Networking Library Proposal (2015)
-3. [P2300R10](https://wg21.link/p2300) — std::execution (Michał Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler)
-4. [P2762R2](https://wg21.link/p2762) — Sender/Receiver Interface for Networking (Dietmar Kühl)
-5. [P3552R3](https://wg21.link/p3552) — Add a Coroutine Task Type (Dietmar Kühl, Maikel Nadolski); approved for C++26 at Sofia plenary
-6. [P3826R2](https://wg21.link/p3826) — Fix or Remove Sender Algorithm Customization (Lewis Baker, Eric Niebler)
-7. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) — Asynchronous I/O library (Chris Kohlhoff)
-8. [The C10K problem](http://www.kegel.com/c10k.html) — Scalable network programming (Dan Kegel)
-9. [Capy](https://github.com/cppalliance/capy) — _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino)
-10. [Corosio](https://github.com/cppalliance/corosio) — Coroutine-first networking library (Vinnie Falco, Steve Gerbino)
-11. [cppcoro](https://github.com/lewissbaker/cppcoro) — A library of C++ coroutine abstractions (Lewis Baker)
-12. [libunifex](https://github.com/facebookexperimental/libunifex) — Unified Executors library for C++ (Facebook/Meta, Eric Niebler)
-13. [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw) — CppCon 2023 (Shachar Shemesh)
-14. [Boost.Asio low-latency guidance](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications) — Chris Kohlhoff, SG-14 mailing list (via Stack Overflow)
+1. [N4242](https://wg21.link/n4242)  - Executors and Asynchronous Operations, Revision 1 (2014)
+2. [N4482](https://wg21.link/n4482)  - Some notes on executors and the Networking Library Proposal (2015)
+3. [P2300R10](https://wg21.link/p2300)  - std::execution (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler)
+4. [P2762R2](https://wg21.link/p2762)  - Sender/Receiver Interface for Networking (Dietmar K&uuml;hl)
+5. [P3552R3](https://wg21.link/p3552)  - Add a Coroutine Task Type (Dietmar K&uuml;hl, Maikel Nadolski); approved for C++26 at Sofia plenary
+6. [P3826R2](https://wg21.link/p3826)  - Fix or Remove Sender Algorithm Customization (Lewis Baker, Eric Niebler)
+7. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)  - Asynchronous I/O library (Chris Kohlhoff)
+8. [The C10K problem](http://www.kegel.com/c10k.html)  - Scalable network programming (Dan Kegel)
+9. [Capy](https://github.com/cppalliance/capy)  - _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino)
+10. [Corosio](https://github.com/cppalliance/corosio)  - Coroutine-first networking library (Vinnie Falco, Steve Gerbino)
+11. [cppcoro](https://github.com/lewissbaker/cppcoro)  - A library of C++ coroutine abstractions (Lewis Baker)
+12. [libunifex](https://github.com/facebookexperimental/libunifex)  - Unified Executors library for C++ (Facebook/Meta, Eric Niebler)
+13. [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw)  - CppCon 2023 (Shachar Shemesh)
+14. [Boost.Asio low-latency guidance](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications)  - Chris Kohlhoff, SG-14 mailing list (via Stack Overflow)

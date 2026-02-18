@@ -631,7 +631,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar Kuhl for their valuable feedback in the development of this paper.
+and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
 
 ---
 
@@ -639,14 +639,14 @@ and Dietmar Kuhl for their valuable feedback in the development of this paper.
 
 ### WG21 Papers
 
-1. [P2300R10](https://wg21.link/p2300r10). Michal Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2024.
-2. [P2300R0](https://wg21.link/p2300r0). Michal Dominiak, Lewis Baker, Lee Howes, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2021.
-3. [P2300R2](https://wg21.link/p2300r2). Michal Dominiak, Lewis Baker, Lee Howes, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2021.
+1. [P2300R10](https://wg21.link/p2300r10). Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2024.
+2. [P2300R0](https://wg21.link/p2300r0). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2021.
+3. [P2300R2](https://wg21.link/p2300r2). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2021.
 4. [P3164R0](https://wg21.link/p3164r0). Eric Niebler. "Improving Diagnostics for Sender Expressions." 2024.
-5. [P3552R3](https://wg21.link/p3552r3). Dietmar Kuhl, Maikel Nadolski. "Add a Coroutine Task Type." 2025.
-6. [P3796R1](https://wg21.link/p3796r1). Dietmar Kuhl. "Coroutine Task Issues." 2025.
+5. [P3552R3](https://wg21.link/p3552r3). Dietmar K&uuml;hl, Maikel Nadolski. "Add a Coroutine Task Type." 2025.
+6. [P3796R1](https://wg21.link/p3796r1). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025.
 7. [P3826R3](https://wg21.link/p3826r3). Eric Niebler. "Fix Sender Algorithm Customization." 2026.
-8. [D3980R0](https://isocpp.org/files/papers/D3980R0.html). Dietmar Kuhl. "Task's Allocator Use." 2026.
+8. [D3980R0](https://isocpp.org/files/papers/D3980R0.html). Dietmar K&uuml;hl. "Task's Allocator Use." 2026.
 9. [P4007R0](https://wg21.link/p4007). Vinnie Falco, Mungo Gill. "Senders and C++." 2026.
 
 ### Blog Posts

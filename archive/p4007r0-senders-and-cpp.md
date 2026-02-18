@@ -1,5 +1,5 @@
 ---
-title: "Is the Sender Sub-Language C++?"
+title: "Senders and C++"
 document: P4007R0
 date: 2026-02-17
 reply-to:
@@ -116,7 +116,7 @@ How should an asynchronous operation report its outcome? The Sub-Language has an
 
 ### 3.1 Senders Use Channels
 
-The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.4). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html):
+The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.5). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html):
 
 > *"A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes."*
 
@@ -128,76 +128,83 @@ Each channel has a fixed signature shape:
 - `set_error(receiver, E)` carries a single, strongly-typed error.
 - `set_stopped(receiver)` is a stateless signal.
 
-The compile-time work graph requires these shapes. Appendix A.4 explains why.
-
-### 3.2 The OS Returns a Tuple
+### 3.2 What I/O Produces
 
 The operating system is not a sender.
 
-Every outcome is `(error_code, size_t)`.
-
 On POSIX, `read()` returns a byte count; errors arrive through `errno`. On Windows, `GetOverlappedResult` delivers a byte count and an error code. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) unified these into `void(error_code, size_t)` twenty-five years ago. The signature was correct then. [P2762R2](https://wg21.link/p2762r2) ("Sender/Receiver Interface for Networking") preserves it because it is correct now.
 
-The tuple reflects what I/O operations physically produce. A `read` transfers 47 bytes, then the connection resets. The error code says what happened. The byte count says how far it got. Both values are always meaningful.
+A tuple accurately reflects what composed I/O operations physically produce. A `read_until` accumulates bytes across several receives, transferring 47 bytes before the connection resets. The error code says what happened. The byte count says how far it got. Both values are always meaningful.
 
-Cancellation is the same tuple. `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, `close()` on POSIX - the pending operation completes with `(error_code, bytes_transferred)`. The error code is `ERROR_OPERATION_ABORTED` or `ECANCELED`. The byte count is how far it got.
+Cancellation is an error code.
 
-### 3.3 What Are Our Choices?
+`CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated 47 bytes across prior successful receives breaks the same way.
 
-Consider a composed read that accumulates a response body. Every I/O sender author faces this decision:
+### 3.3 Does P2300R10 Guide Us?
+
+[P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read) presents a composed read in its motivating examples. The operation reads a length-prefixed byte array: first the size, then the data.
 
 ```cpp
-template<class Rcvr>
-struct read_body_op
-{
-    socket& sock_;
-    std::string body_;
-    char buf_[64];
-    Rcvr rcvr_;
+using namespace std::execution;
 
-    void start() & noexcept { read_more(); }
+sender_of<std::size_t> auto async_read(
+    sender_of<std::span<std::byte>> auto buffer,
+    auto handle);
 
-    void read_more()
-    {
-        sock_.async_read_some(buf_, [this](error_code ec, size_t n) {
-            body_.append(buf_, n);
-
-            if (ec == condition::eof)
-                return set_value(std::move(rcvr_), std::move(body_));
-            if (!ec)
-                return read_more();
-            if (ec == errc::operation_canceled)
-                set_stopped(std::move(rcvr_));          // string is lost
-            else
-                set_error(std::move(rcvr_), ec);        // string is lost
-        });
-    }
+struct dynamic_buffer {
+  std::unique_ptr<std::byte[]> data;
+  std::size_t size;
 };
+
+sender_of<dynamic_buffer> auto async_read_array(auto handle) {
+  return just(dynamic_buffer{})
+       | let_value([handle] (dynamic_buffer& buf) {
+           return just(std::as_writeable_bytes(std::span(&buf.size, 1)))
+                | async_read(handle)
+                | then(
+                    [&buf] (std::size_t bytes_read) {
+                      assert(bytes_read == sizeof(buf.size));
+                      buf.data = std::make_unique<std::byte[]>(buf.size);
+                      return std::span(buf.data.get(), buf.size);
+                    })
+                | async_read(handle)
+                | then(
+                    [&buf] (std::size_t bytes_read) {
+                      assert(bytes_read == buf.size);
+                      return std::move(buf);
+                    });
+       });
+}
 ```
 
-Three iterations completed. The string holds a partial HTML page. Then the client's timeout fires, or the connection resets. The operation state has the data. The channels cannot carry it. `set_error` takes one argument: the error code. `set_stopped` takes none. The string is destroyed when the operation state is destroyed.
+`async_read` is `sender_of<std::size_t>`. It completes through `set_value` with the byte count, or through `set_error` with the error code.
 
-The alternative is to deliver everything through `set_value`:
+Consider the second `async_read` failing partway through. The first read succeeded. `buf.size` is valid. `buf.data` is allocated and correctly sized. The second read begins filling `buf.data`. Some bytes transfer. The connection resets.
 
-```cpp
-set_value(std::move(rcvr_), ec, std::move(body_));    // body_ preserved, ec preserved
-```
+`async_read` completes through `set_error`. The byte count - how far the second read got - has no channel to travel through. `set_error` accepts one argument: the error code.
 
-The data survives. But the error code is now in the success channel. `upon_error`, `let_error`, and `upon_stopped` cannot reach it. Every algorithm that dispatches on channel sees success.
+`then` handles only `set_value`. The error propagates past it. The error exits `let_value`. The `dynamic_buffer` that `let_value` owns - with its valid `size`, its allocated `data`, its partial contents - is destroyed.
 
-In regular C++, this forced choice does not exist:
+The caller receives the error code. The byte count from the failing read, the allocated buffer with its partial contents, and the successfully read size from the first operation are destroyed when the operation state is destroyed.
 
-```cpp
-auto [ec, body] = co_await read_body(sock);
-process(body);                                        // use what arrived
-if (ec) co_return;                                    // then check the status
-```
-
-The caller has both values and decides. Whether a partial body is usable depends on content-length, chunked framing, or application-level structure - context the operation does not have.
-
-The three-channel model asks the operation to classify the outcome before the caller is known.
+This is [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read)'s motivating example of sender composition.
 
 ### 3.4 No Choice Is Correct
+
+[P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) does not define `async_read`, but [Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv) presents `recv_sender` and `async_recv` - the primitive receive operation built on Windows IOCP. Any implementation of `async_read` loops the primitive until the buffer is full (Appendix A.1 shows the complete sender). The completion callback is where accumulated progress meets the channel model:
+
+```cpp
+void completed(std::error_code ec, std::size_t n) {
+    bytes_read_ += n;
+    if (bytes_read_ == len_)
+        return execution::set_value(std::move(rcvr_), bytes_read_);
+    if (!ec)
+        return start_recv();
+    execution::set_error(std::move(rcvr_), ec);   // bytes_read_ bytes are lost
+}
+```
+
+Each successful `async_recv` deposits bytes and advances `bytes_read_`. When a later receive fails, `set_error` carries the error code. `bytes_read_` - the accumulated progress from every prior successful receive - has no channel.
 
 The mismatch is not a missing convention. It is a structural incompatibility between the Sub-Language's three-channel type system and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
 
@@ -211,11 +218,11 @@ The mismatch is not a missing convention. It is a structural incompatibility bet
 
 - **Add a fourth channel.** This would be a breaking change to the completion signature model.
 
-The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.4 explains why.
+The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.5 explains why.
 
 As of this writing, neither [P2300R10](https://wg21.link/p2300r10), [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html), nor the [stdexec](https://github.com/NVIDIA/stdexec) repository contains a published example of `let_error` being used to recover from an error.
 
-**Are coroutines paying for a feature they did not ask for?**
+Are coroutines paying for a feature they did not ask for?
 
 ### 3.5 The Paper Not Polled
 
@@ -256,7 +263,7 @@ do_read(tcp_socket& s, buffer& buf)
 }
 ```
 
-Yet [P3552R3](https://wg21.link/p3552r3) innovates:
+[P3552R3](https://wg21.link/p3552r3) introduces a new mechanism:
 
 ```cpp
 std::execution::task<std::size_t>
@@ -284,13 +291,13 @@ There is no third path. `std::execution::task` introduces one.
 
 `co_return expr` calls `promise.return_value(expr)`, which P3552R3 routes to `set_value`. There is no way to make `co_return` call `set_error`. A coroutine promise can only define `return_void` or `return_value`, not both, and `task<void>` needs `return_void`.
 
-P3552R3 needed a different mechanism. The only other coroutine keyword that accepts an expression and passes it to the promise is `co_yield`. P3552R3 exploits `yield_value` with a special overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)):
+Dietmar K&uuml;hl needed a different mechanism. The `return_void`/`return_value` mutual exclusion and the Sub-Language's separate error channel leave exactly one path: `co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)) is the best solution the language permits:
 
 > *Returns: An awaitable object of unspecified type whose member functions arrange for the calling coroutine to be suspended and then completes the asynchronous operation associated with STATE(\*this) by invoking `set_error(std::move(RCVR(*this)), Cerr(std::move(err.error)))`.*
 
 In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate." The keyword's established meaning predicts the wrong behavior.
 
-The committee is aware of this problem. Jonathan Muller's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
+The committee is aware of this problem. M&uuml;ller's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
 
 > *"The reason `co_yield` is used, is that a coroutine promise can only specify `return_void` or `return_value`, but not both. If we want to allow `co_return;`, we cannot have `co_return with_error(error_code);`. This is unfortunate, but could be fixed by changing the language to drop that restriction."*
 
@@ -298,7 +305,7 @@ The proposed fix, a language change to the `return_void`/`return_value` mutual e
 
 The `return_void`/`return_value` mutual exclusion has existed since C++20 and has not prevented any other coroutine library from delivering errors through `co_return`. The constraint becomes a Sub-Language problem: errors must reach a separate channel.
 
-**Does `co_yield with_error` serve coroutines, or the Sub-Language?**
+Does `co_yield with_error` serve coroutines, or the Sub-Language?
 
 ---
 
@@ -346,7 +353,11 @@ auto op = connect(
 start(op);
 ```
 
-The allocator is set once at the launch site and reaches every operation automatically. Nothing here allocates. The operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
+The allocator is set once at the launch site and reaches every operation automatically.
+
+However...
+
+Nothing here allocates. The operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
 
 ### 5.2 Coroutines
 
@@ -606,7 +617,7 @@ LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1
 >
 > Attendance: 14. Outcome: strictly neutral.
 
-The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (Kuhl, 2026-01-25) subsequently reworked the allocator propagation model relative to [P3552R3](https://wg21.link/p3552r3), adopted only six months earlier at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
+The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Dietmar K&uuml;hl returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
 
 The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 
@@ -618,7 +629,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Muller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. Dietmar's [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," M&uuml;ller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 
@@ -694,29 +705,27 @@ P4003R0 does not provide compile-time work graph construction, zero-allocation p
 
 ## 11. Suggested Straw Polls
 
-We ask the committee to consider the following straw polls, which address the consequences documented in this paper.
-
 **Diagnosis:**
 
-> "The friction between `std::execution` and coroutines is a natural consequence of their being different models of computation."
+> "The friction between senders and coroutines comes from the design, not the implementation."
 
 **Task type:**
 
-> "The ergonomic cost of `co_yield with_error` is an acceptable trade-off for `std::execution::task` in C++26."
+> "Error signaling in coroutines should use `co_return`, not `co_yield`."
 
-> "`std::execution::task` should not ship in C++26. The coroutine integration should iterate independently for C++29."
+> "`std::execution::task` should continue iterating for C++29 rather than shipping in C++26."
 
 **Framework:**
 
-> "The behavior of `when_all` under mixed channel conventions is acceptable for I/O use cases."
+> "Completion channels should preserve partial results alongside errors."
 
-> "The allocator sequencing gap, where the receiver's environment is structurally unavailable at coroutine frame allocation time, is acceptable for C++26."
+> "Coroutines should receive the allocator as cleanly as senders do."
 
 **Broader question:**
 
-> "`std::execution` should be considered a domain-specific model for compile-time work graph construction, not a universal foundation for all asynchronous C++."
+> "`std::execution` does not have to extend to all asynchronous C++."
 
-> "There is room in the standard library for a coroutine-native I/O model alongside `std::execution`."
+> "There is room for a coroutine-native I/O model alongside `std::execution`."
 
 ---
 
@@ -738,7 +747,51 @@ The straw polls in Section 11 offer the committee a way to record its answers. T
 
 ## Appendix A - Code Examples
 
-### A.1 Why HALO Cannot Help
+### A.1 `async_read` as a Sender
+
+Section 3.4 shows the completion callback where accumulated read progress is lost. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)'s `recv_sender` and `async_recv`:
+
+```cpp
+template<class Rcvr>
+struct read_op
+{
+    struct recv_rcvr {
+        read_op* self_;
+        void set_value(std::size_t n) && noexcept { self_->completed({}, n); }
+        void set_error(std::error_code ec) && noexcept { self_->completed(ec, 0); }
+        void set_stopped() && noexcept { execution::set_stopped(std::move(self_->rcvr_)); }
+    };
+
+    Rcvr rcvr_;
+    SOCKET sock_;
+    std::byte* data_;
+    std::size_t len_;
+    std::size_t bytes_read_ = 0;
+    std::optional<connect_result_t<recv_sender, recv_rcvr>> child_;
+
+    void start() & noexcept { start_recv(); }
+
+    void start_recv() {
+        child_.emplace(execution::connect(
+            async_recv(sock_, data_ + bytes_read_, len_ - bytes_read_),
+            recv_rcvr{this}));
+        execution::start(*child_);
+    }
+
+    void completed(std::error_code ec, std::size_t n) {
+        bytes_read_ += n;
+        if (bytes_read_ == len_)
+            return execution::set_value(std::move(rcvr_), bytes_read_);
+        if (!ec)
+            return start_recv();
+        execution::set_error(std::move(rcvr_), ec);   // bytes_read_ bytes are lost
+    }
+};
+```
+
+Every name is from P2300R10: `recv_sender`, `async_recv`, `connect`, `start`, `set_value`, `set_error`, `set_stopped`, `connect_result_t`. The `recv_rcvr` is the standard pattern for wiring a child sender back to a parent operation state.
+
+### A.2 Why HALO Cannot Help
 
 HALO allows compilers to elide coroutine frame allocation when the frame's lifetime is provably bounded by its caller. When an I/O coroutine is launched onto an execution context, the frame must outlive the launching function:
 
@@ -760,7 +813,7 @@ void start_read(ex::counting_scope& scope, auto sch)
 
 The compiler cannot prove bounded lifetime, so HALO cannot apply and allocation is mandatory.
 
-### A.2 The Full Ceremony for Allocator-Aware Coroutines
+### A.3 The Full Ceremony for Allocator-Aware Coroutines
 
 The Sub-Language requires five layers of machinery to propagate a custom allocator through a coroutine call chain:
 
@@ -817,7 +870,7 @@ void launch(ex::io_context& ctx)
 
 Forgetting any one of the five steps silently falls back to the default allocator. The compiler provides no diagnostic.
 
-### A.3 P3826R3 and Algorithm Dispatch
+### A.4 P3826R3 and Algorithm Dispatch
 
 [P3826R3](https://wg21.link/p3826r3) addresses sender algorithm customization. P3826 offers five solutions. All target algorithm dispatch:
 
@@ -831,7 +884,7 @@ Forgetting any one of the five steps silently falls back to the default allocato
 
 **Solution 4.5: Fix algorithm customization now.** Restructures `transform_sender` to take the receiver's environment, changing information flow at `connect()` time. This enables correct algorithm dispatch but does not change when the allocator becomes available. This restructuring could enable future allocator solutions, but none has been proposed.
 
-### A.4 Why the Three-Channel Model Exists
+### A.5 Why the Three-Channel Model Exists
 
 The Sub-Language constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect) collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
 
@@ -887,7 +940,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar Khul for their valuable feedback in the development of this paper.
+and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
 
 ---
 
@@ -895,10 +948,10 @@ and Dietmar Khul for their valuable feedback in the development of this paper.
 
 ### WG21 Papers
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Michal Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024)
-2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Michal Dominiak, et al., 2022)
+1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024)
+2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Micha&lstrok; Dominiak, et al., 2022)
 3. [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021)
-4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar Kuhl, 2023)
+4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023)
 5. [P2855R1](https://wg21.link/p2855r1) - "Member customization points for Senders and Receivers" (Ville Voutilainen, 2024)
 6. [P2999R3](https://wg21.link/p2999r3) - "Sender Algorithm Customization" (Eric Niebler, 2024)
 7. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025)
@@ -907,18 +960,18 @@ and Dietmar Khul for their valuable feedback in the development of this paper.
 10. [P3187R1](https://wg21.link/p3187r1) - "Remove ensure_started and start_detached from P2300" (Kirk Shoop, Lewis Baker, 2024)
 11. [P3303R1](https://wg21.link/p3303r1) - "Fixing Lazy Sender Algorithm Customization" (Eric Niebler, 2024)
 12. [P3373R2](https://wg21.link/p3373r2) - "Of Operation States and Their Lifetimes" (Robert Leahy, 2025)
-13. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar Kuhl, Maikel Nadolski, 2025)
+13. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025)
 14. [P3557R3](https://wg21.link/p3557r3) - "High-Quality Sender Diagnostics with Constexpr Exceptions" (Eric Niebler, 2025)
 15. [P3570R2](https://wg21.link/p3570r2) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025)
 16. [P3682R0](https://wg21.link/p3682r0) - "Remove std::execution::split" (Robert Leahy, 2025)
 17. [P3718R0](https://wg21.link/p3718r0) - "Fixing Lazy Sender Algorithm Customization, Again" (Eric Niebler, 2025)
-18. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar Kuhl, 2025)
-19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan Muller, 2025)
+18. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025)
+19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan M&uuml;ller, 2025)
 20. [P3826R3](https://wg21.link/p3826r3) - "Fix Sender Algorithm Customization" (Eric Niebler, 2026)
 21. [P3927R0](https://wg21.link/p3927r0) - "task_scheduler Support for Parallel Bulk Execution" (Lee Howes, 2026)
-22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar Kuhl, 2026)
+22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026)
 23. [P3950R0](https://wg21.link/p3950r0) - "return_value & return_void Are Not Mutually Exclusive" (Robert Leahy, 2025)
-24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar Kuhl, 2026)
+24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026)
 25. [P4003R0](https://wg21.link/p4003r0) - "IoAwaitables: A Coroutines-Only Framework" (Vinnie Falco, 2026)
 26. [P4014R0](https://wg21.link/p4014r0) - "The Sender Sub-Language" (Vinnie Falco, 2026)
 27. [N5028](https://wg21.link/n5028) - "Result of voting on ISO/IEC CD 14882" (2025)
