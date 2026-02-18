@@ -412,7 +412,7 @@ Senders receive the allocator through the environment, automatically, at every l
 
 ### 5.4 Does Performance Matter?
 
-The parameter burden means the recycling allocator will not get used consistently. Forgetting to forward at one call site silently falls back to `std::allocator`.
+The recycling allocator eliminates coroutine frame allocation overhead. It requires `allocator_arg` at every call site. One missed site falls back to `std::allocator` with no diagnostic. In production code, sites will be missed. Users profile, see heap allocation cost, and conclude coroutines are slow. Coroutines are not slow. The fast path is too hard to use.
 
 ### 5.5 A Viral Signature?
 
