@@ -800,9 +800,9 @@ HALO allows compilers to elide coroutine frame allocation when the frame's lifet
 ```cpp
 namespace ex = std::execution;
 
-ex::task<size_t> read_data(socket& s, buffer& buf)
+ex::task<void> read_data(socket& s, buffer& buf)
 {
-    co_return co_await s.async_read(buf);
+    co_await s.async_read(buf);
 }
 
 void start_read(ex::counting_scope& scope, auto sch)

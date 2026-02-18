@@ -357,7 +357,7 @@ The following example is drawn from [retry.hpp](https://github.com/NVIDIA/stdexe
 ```cpp
 // Deferred construction helper - emplaces non-movable types
 // into std::optional via conversion operator
-template <class Fun>                                      // higher-order function wrapper
+template <std::invocable Fun>                              // higher-order function wrapper
     requires std::is_nothrow_move_constructible_v<Fun>
 struct _conv {
     Fun f_;                                               // stored callable
@@ -447,7 +447,7 @@ struct _retry_sender {
     explicit _retry_sender(S s)                           // construct from inner sender
         : s_(static_cast<S&&>(s)) {}
 
-    template <class... Args>                              // completion signature transform:
+    template <class>                                       // completion signature transform:
     using _error = stdexec::completion_signatures<>;      //   remove all error signatures
 
     template <class... Args>
@@ -455,10 +455,10 @@ struct _retry_sender {
         stdexec::completion_signatures<
             stdexec::set_value_t(Args...)>;
 
-    template <class Env>                                  // compute transformed signatures
+    template <class Self, class... Env>                    // compute transformed signatures
     static consteval auto get_completion_signatures()
         -> stdexec::transform_completion_signatures<      // signature transformation
-            stdexec::completion_signatures_of_t<S, Env>,  //   from inner sender's sigs
+            stdexec::completion_signatures_of_t<S&, Env...>, // from inner sender's sigs
             stdexec::completion_signatures<                //   add exception_ptr error
                 stdexec::set_error_t(std::exception_ptr)>,
             _value,                                       //   pass through values
@@ -478,7 +478,7 @@ struct _retry_sender {
     }
 };
 
-template <class S>                                        // the user-facing function
+template <stdexec::sender S>                              // the user-facing function
 auto retry(S s) -> stdexec::sender auto {
     return _retry_sender{static_cast<S&&>(s)};            // wrap in retry sender
 }
