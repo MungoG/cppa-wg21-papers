@@ -102,12 +102,12 @@ Rules for all work on WG21 papers in this repository.
 31. Sections with subsections should have at least one introductory
     sentence between the section heading and the first subsection
     heading - do not leave an empty section heading
-34. Every paper must contain a `## Revision History` section,
+32. Every paper must contain a `## Revision History` section,
     placed immediately after the Abstract's trailing `---` and
     before Section 1. Each revision is an H3 subheading in the
     form `### R<n>: <Month> <Year> (<pre-Meeting mailing>)`
     followed by a bullet list of changes
-35. Every paper must contain a `# Acknowledgements` section
+33. Every paper must contain a `# Acknowledgements` section
     near the end of the file (before References), preceded and
     followed by a horizontal rule (`---`). The first paragraph
     must be exactly:
@@ -122,13 +122,31 @@ Rules for all work on WG21 papers in this repository.
 
     Additional paragraphs may follow for paper-specific
     acknowledgements
+34. References and citations - for readers of printed copies:
+    - Every hyperlink in the document body must also appear
+      in the References section
+    - Every hyperlink in the document body must have a
+      superscripted citation marker giving the reference
+      number, e.g. `<sup>[7]</sup>`
+    - Every entry in the References section must include a
+      readable URL (not hidden behind markdown link text)
+    - Group related links under a single reference entry -
+      e.g. one "C++ Working Draft" entry for all
+      `eel.is/c++draft/` sections, one entry for the NB
+      ballot repository covering individual issue links
+    - Use `wg21.link` short URLs for WG21 papers - do not
+      use `open-std.org` long-form URLs (see rule 9)
+    - Superscripted citation numbers in the body must always
+      match the corresponding entry number in the References
+      section - update all citations when references are
+      added, removed, or renumbered
 
 ## Tone
 
-32. Do not present options as predetermined conclusions. When
+35. Do not present options as predetermined conclusions. When
     recommending alternatives to a committee, present them as options
     to contemplate, not dictated outcomes
-33. Avoid politically charged comparisons - do not invoke other
+36. Avoid politically charged comparisons - do not invoke other
     contentious features as analogies unless the comparison is
     structurally precise. If the structures being compared are
     fundamentally different, the analogy will be perceived as

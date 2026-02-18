@@ -26,7 +26,7 @@ C++26 introduces a rich sub-language for asynchronous programming through `std::
 
 `std::execution` ([P2300R10](https://wg21.link/p2300r10)) was formally adopted into the C++26 working paper at St. Louis in July 2024. C++ developers who write asynchronous code will likely encounter it.
 
-C++ has a tradition of sub-languages. Template metaprogramming is one: a Turing-complete compile-time language expressed through the type system. The preprocessor is another, operating before compilation begins with its own textual substitution rules. `constexpr` evaluation is a third, running a subset of C++ at compile time to produce values. Each operates within C++ but carries its own idioms, patterns, and mental model. *The Design and Evolution of C++* observes that C++ contains multiple programming paradigms; sub-languages are how those paradigms manifest in practice.
+C++ has a tradition of sub-languages. Template metaprogramming is one: a Turing-complete compile-time language expressed through the type system. The preprocessor is another, operating before compilation begins with its own textual substitution rules. `constexpr` evaluation is a third, running a subset of C++ at compile time to produce values. Each operates within C++ but carries its own idioms, patterns, and mental model. *The Design and Evolution of C++*<sup>[21]</sup> observes that C++ contains multiple programming paradigms; sub-languages are how those paradigms manifest in practice.
 
 C++26 adds another. The Sender Sub-Language is a continuation-passing-style programming model expressed through `std::execution`, with its own control flow primitives, variable binding model, error handling system, and iteration strategy. It is a complete programming model for asynchronous computation.
 
@@ -38,7 +38,7 @@ auto work = just(42) | then([](int v) { return v + 1; });
 
 One value lifted into the sender context, one transformation applied through the pipe operator. The Sender Sub-Language builds from this foundation into an expressive system for describing asynchronous work, and the depth of that system is worth understanding.
 
-This paper is a guide to the Sender Sub-Language. [P4007R0](https://wg21.link/p4007) ("Senders and C++") examines the coroutine integration; this paper focuses on what the Sub-Language is, where it came from, and what it looks like in practice.
+This paper is a guide to the Sender Sub-Language. [P4007R0](https://wg21.link/p4007r0) ("Senders and C++") examines the coroutine integration; this paper focuses on what the Sub-Language is, where it came from, and what it looks like in practice.
 
 ---
 
@@ -108,7 +108,7 @@ Senders were positioned as the optimization path for the remaining 10%:
 
 > *"The overwhelming benefit of coroutines in C++ is its ability to make your async scopes line up with lexical scopes."*
 
-The post ended with a promise: *"Next post, I'll introduce these library abstractions, which are the subject of the C++ standard proposal [P2300](http://wg21.link/P2300)."*
+The post ended with a promise: *"Next post, I'll introduce these library abstractions, which are the subject of the C++ standard proposal [P2300R10](https://wg21.link/p2300r10)."*
 
 **2024.** Eric Niebler published ["What are Senders Good For, Anyway?"](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/) one month before the Tokyo meeting where P2300 received design approval. The reference implementation, [stdexec](https://github.com/NVIDIA/stdexec), is maintained under NVIDIA's GitHub organization. The framing had changed:
 
@@ -592,7 +592,7 @@ The Sender Sub-Language serves specific domains exceptionally well:
 
 Direct-style coroutines serve other domains equally well: networking, file I/O, request handling - the domains where partial success is normal, allocator propagation matters, and the programming model documented in Section 5 is a cost without a corresponding benefit.
 
-C++ has always grown by adding models that serve specific domains. Templates serve generic programming. Coroutines serve async I/O. The Sender Sub-Language serves heterogeneous compute. The standard is stronger when each domain gets the model it needs, and neither is forced to use the other's tool. [P4007R0](https://wg21.link/p4007) ("Senders and C++") examines the boundary where these two models meet.
+C++ has always grown by adding models that serve specific domains. Templates serve generic programming. Coroutines serve async I/O. The Sender Sub-Language serves heterogeneous compute. The standard is stronger when each domain gets the model it needs, and neither is forced to use the other's tool. [P4007R0](https://wg21.link/p4007r0) ("Senders and C++") examines the boundary where these two models meet.
 
 Everyone can win.
 
@@ -647,7 +647,7 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 6. [P3796R1](https://wg21.link/p3796r1). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025.
 7. [P3826R3](https://wg21.link/p3826r3). Eric Niebler. "Fix Sender Algorithm Customization." 2026.
 8. [D3980R0](https://isocpp.org/files/papers/D3980R0.html). Dietmar K&uuml;hl. "Task's Allocator Use." 2026.
-9. [P4007R0](https://wg21.link/p4007). Vinnie Falco, Mungo Gill. "Senders and C++." 2026.
+9. [P4007R0](https://wg21.link/p4007r0). Vinnie Falco, Mungo Gill. "Senders and C++." 2026.
 
 ### Blog Posts
 
