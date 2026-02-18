@@ -655,58 +655,60 @@ and Dietmar Kuhl for their valuable feedback in the development of this paper.
 11. Eric Niebler. ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/). 2020.
 12. Eric Niebler. ["Asynchronous Stacks and Scopes"](https://ericniebler.com/2021/08/29/asynchronous-stacks-and-scopes/). 2021.
 13. Eric Niebler. ["What are Senders Good For, Anyway?"](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/). 2024.
+14. Herb Sutter. ["Living in the Future: Using C++26 at Work"](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work/). 2025.
 
 ### Functional Programming Theory
 
-14. Guy Steele and Gerald Sussman. [*The Lambda Papers*](https://en.wikisource.org/wiki/Lambda_Papers). MIT AI Memo series, 1975-1980.
-15. Eugenio Moggi. ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4). *Information and Computation*, 1991.
-16. Olivier Danvy and Andrzej Filinski. ["Abstracting Control"](https://doi.org/10.1145/91556.91622). *LFP*, 1990.
-17. Timothy Griffin. ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714). *POPL*, 1990.
-18. Simon Marlow (ed.). [*Haskell 2010 Language Report*](https://www.haskell.org/onlinereport/haskell2010/). 2010.
-19. Bartosz Milewski. [*Category Theory for Programmers*](https://github.com/hmemcpy/milewski-ctfp-pdf). 2019.
+15. Guy Steele and Gerald Sussman. [*The Lambda Papers*](https://en.wikisource.org/wiki/Lambda_Papers). MIT AI Memo series, 1975-1980.
+16. Eugenio Moggi. ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4). *Information and Computation*, 1991.
+17. Olivier Danvy and Andrzej Filinski. ["Abstracting Control"](https://doi.org/10.1145/91556.91622). *LFP*, 1990.
+18. Timothy Griffin. ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714). *POPL*, 1990.
+19. Simon Marlow (ed.). [*Haskell 2010 Language Report*](https://www.haskell.org/onlinereport/haskell2010/). 2010.
+20. Bartosz Milewski. [*Category Theory for Programmers*](https://github.com/hmemcpy/milewski-ctfp-pdf). 2019.
 
 ### Books
 
-20. Bjarne Stroustrup. *The Design and Evolution of C++*. Addison-Wesley, 1994.
-21. David Clark. ["The Design Philosophy of the DARPA Internet Protocols"](https://www.cs.princeton.edu/~jrex/teaching/spring2005/reading/clark88.pdf). *SIGCOMM*, 1988.
+21. Bjarne Stroustrup. *The Design and Evolution of C++*. Addison-Wesley, 1994.
+22. David Clark. ["The Design Philosophy of the DARPA Internet Protocols"](https://www.cs.princeton.edu/~jrex/teaching/spring2005/reading/clark88.pdf). *SIGCOMM*, 1988.
 
 ### Implementations and Examples
 
-22. [stdexec](https://github.com/NVIDIA/stdexec). NVIDIA's reference implementation of `std::execution`.
-23. [`any_sender_of.hpp`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp). Type-erased sender facility in stdexec (not part of C++26).
-24. [`repeat_effect_until.hpp`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp). Iteration algorithm in stdexec (not part of C++26).
-25. [`retry.hpp`](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp). Retry algorithm example in stdexec.
-26. [sender-examples](https://github.com/steve-downey/sender-examples). Example code for C++Now talk (Steve Downey).
-27. [`loop.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp). Iteration example in sender-examples.
-28. [`fold.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp). Fold example in sender-examples.
-29. [`backtrack.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp). Backtracking search example in sender-examples.
+23. [stdexec](https://github.com/NVIDIA/stdexec). NVIDIA's reference implementation of `std::execution`.
+24. [`any_sender_of.hpp`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp). Type-erased sender facility in stdexec (not part of C++26).
+25. [`variant_sender.hpp`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp). Variant sender facility in stdexec (not part of C++26).
+26. [`repeat_effect_until.hpp`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp). Iteration algorithm in stdexec (not part of C++26).
+27. [`retry.hpp`](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp). Retry algorithm example in stdexec.
+28. [sender-examples](https://github.com/steve-downey/sender-examples). Example code for C++Now talk (Steve Downey).
+29. [`loop.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/loop.cpp). Iteration example in sender-examples.
+30. [`fold.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/fold.cpp). Fold example in sender-examples.
+31. [`backtrack.cpp`](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp). Backtracking search example in sender-examples.
 
 ### Background
 
-30. [SML/NJ](https://www.smlnj.org/). Standard ML of New Jersey (uses CPS as internal representation).
-31. [GHC](https://www.haskell.org/ghc/). Glasgow Haskell Compiler.
-32. [Chicken Scheme](https://www.call-cc.org/). Scheme implementation using CPS compilation.
-33. Haskell [`Just`](https://hackage.haskell.org/package/base/docs/Data-Maybe.html). Data.Maybe module.
-34. Haskell [`Monad`](https://hackage.haskell.org/package/base/docs/Control-Monad.html). Control.Monad module.
-35. [Kleisli category](https://en.wikipedia.org/wiki/Kleisli_category). Wikipedia.
-36. [Delimited continuation](https://en.wikipedia.org/wiki/Delimited_continuation). Wikipedia.
-37. [Curry-Howard correspondence](https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence). Wikipedia.
-38. [Algebraic effect system](https://en.wikipedia.org/wiki/Effect_system). Wikipedia.
+32. [SML/NJ](https://www.smlnj.org/). Standard ML of New Jersey (uses CPS as internal representation).
+33. [GHC](https://www.haskell.org/ghc/). Glasgow Haskell Compiler.
+34. [Chicken Scheme](https://www.call-cc.org/). Scheme implementation using CPS compilation.
+35. Haskell [`Just`](https://hackage.haskell.org/package/base/docs/Data-Maybe.html). Data.Maybe module.
+36. Haskell [`Monad`](https://hackage.haskell.org/package/base/docs/Control-Monad.html). Control.Monad module.
+37. [Kleisli category](https://en.wikipedia.org/wiki/Kleisli_category). Wikipedia.
+38. [Delimited continuation](https://en.wikipedia.org/wiki/Delimited_continuation). Wikipedia.
+39. [Curry-Howard correspondence](https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence). Wikipedia.
+40. [Algebraic effect system](https://en.wikipedia.org/wiki/Effect_system). Wikipedia.
 
 ### NVIDIA CUDA and nvexec
 
-39. [nvexec](https://github.com/NVIDIA/stdexec/tree/main/include/nvexec). GPU-specific sender implementation in the stdexec repository.
-40. [`stream_context.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh). GPU stream scheduler and context.
-41. [`common.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/common.cuh). Shared GPU sender infrastructure.
-42. [`bulk.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/bulk.cuh). GPU-specific `bulk` algorithm.
-43. [`then.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/then.cuh). GPU-specific `then` algorithm.
-44. [`when_all.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/when_all.cuh). GPU-specific `when_all` algorithm.
-45. [`continues_on.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/continues_on.cuh). GPU-specific `continues_on` algorithm.
-46. [`let_xxx.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/let_xxx.cuh). GPU-specific `let_value`/`let_error`/`let_stopped` algorithms.
-47. [`split.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/split.cuh). GPU-specific `split` algorithm.
-48. [`reduce.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/reduce.cuh). GPU-specific `reduce` algorithm.
-49. [CUDA C/C++ Language Extensions](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html). NVIDIA CUDA Programming Guide.
-50. [`nvcc`](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html). NVIDIA CUDA Compiler Driver.
-51. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022.
-52. [`connect`](https://eel.is/c++draft/exec.connect). C++26 draft standard, [exec.connect].
-53. [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html). NVIDIA CUDA Programming Guide v13.1, Section 5.3 (December 2025).
+41. [nvexec](https://github.com/NVIDIA/stdexec/tree/main/include/nvexec). GPU-specific sender implementation in the stdexec repository.
+42. [`stream_context.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh). GPU stream scheduler and context.
+43. [`common.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/common.cuh). Shared GPU sender infrastructure.
+44. [`bulk.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/bulk.cuh). GPU-specific `bulk` algorithm.
+45. [`then.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/then.cuh). GPU-specific `then` algorithm.
+46. [`when_all.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/when_all.cuh). GPU-specific `when_all` algorithm.
+47. [`continues_on.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/continues_on.cuh). GPU-specific `continues_on` algorithm.
+48. [`let_xxx.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/let_xxx.cuh). GPU-specific `let_value`/`let_error`/`let_stopped` algorithms.
+49. [`split.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/split.cuh). GPU-specific `split` algorithm.
+50. [`reduce.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/reduce.cuh). GPU-specific `reduce` algorithm.
+51. [CUDA C/C++ Language Extensions](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-extensions.html). NVIDIA CUDA Programming Guide.
+52. [`nvcc`](https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html). NVIDIA CUDA Compiler Driver.
+53. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022.
+54. [`connect`](https://eel.is/c++draft/exec.connect). C++26 draft standard, [exec.connect].
+55. [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html). NVIDIA CUDA Programming Guide v13.1, Section 5.3 (December 2025).

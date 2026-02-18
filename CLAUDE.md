@@ -4,7 +4,7 @@ Rules for all work on WG21 papers in this repository.
 
 ## Formatting
 
-1. ASCII only - no Unicode characters
+1. ASCII only, no Unicode characters, except for the umlaut in Kühl
 2. Single dashes (`-`) for all dashes - no em-dashes, no double dashes
 3. Human-written tone - not wordy, no AI-characteristic phrasing
 4. No git operations - user handles all git manually

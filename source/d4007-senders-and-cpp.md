@@ -291,13 +291,13 @@ There is no third path. `std::execution::task` introduces one.
 
 `co_return expr` calls `promise.return_value(expr)`, which P3552R3 routes to `set_value`. There is no way to make `co_return` call `set_error`. A coroutine promise can only define `return_void` or `return_value`, not both, and `task<void>` needs `return_void`.
 
-Kuhl needed a different mechanism. The `return_void`/`return_value` mutual exclusion and the Sub-Language's separate error channel leave exactly one path: `co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Kuhl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)) is the best solution the language permits:
+Dietmar K&uuml;hl needed a different mechanism. The `return_void`/`return_value` mutual exclusion and the Sub-Language's separate error channel leave exactly one path: `co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)) is the best solution the language permits:
 
 > *Returns: An awaitable object of unspecified type whose member functions arrange for the calling coroutine to be suspended and then completes the asynchronous operation associated with STATE(\*this) by invoking `set_error(std::move(RCVR(*this)), Cerr(std::move(err.error)))`.*
 
 In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate." The keyword's established meaning predicts the wrong behavior.
 
-The committee is aware of this problem. Jonathan Muller's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
+The committee is aware of this problem. M&uuml;ller's [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," 2025) explains:
 
 > *"The reason `co_yield` is used, is that a coroutine promise can only specify `return_void` or `return_value`, but not both. If we want to allow `co_return;`, we cannot have `co_return with_error(error_code);`. This is unfortunate, but could be fixed by changing the language to drop that restriction."*
 
@@ -617,7 +617,7 @@ LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1
 >
 > Attendance: 14. Outcome: strictly neutral.
 
-The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Kuhl returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
+The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Dietmar K&uuml;hl returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
 
 The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 
@@ -629,7 +629,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. Dietmar's [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Muller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. Dietmar's [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," M&uuml;ller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 
@@ -705,29 +705,27 @@ P4003R0 does not provide compile-time work graph construction, zero-allocation p
 
 ## 11. Suggested Straw Polls
 
-We ask the committee to consider the following straw polls, which address the consequences documented in this paper.
-
 **Diagnosis:**
 
-> "The friction between `std::execution` and coroutines is a natural consequence of their being different models of computation."
+> "The friction between senders and coroutines comes from the design, not the implementation."
 
 **Task type:**
 
-> "The ergonomic cost of `co_yield with_error` is an acceptable trade-off for `std::execution::task` in C++26."
+> "Error signaling in coroutines should use `co_return`, not `co_yield`."
 
-> "`std::execution::task` should not ship in C++26. The coroutine integration should iterate independently for C++29."
+> "`std::execution::task` should continue iterating for C++29 rather than shipping in C++26."
 
 **Framework:**
 
-> "The behavior of `when_all` under mixed channel conventions is acceptable for I/O use cases."
+> "Completion channels should preserve partial results alongside errors."
 
-> "The allocator sequencing gap, where the receiver's environment is structurally unavailable at coroutine frame allocation time, is acceptable for C++26."
+> "Coroutines should receive the allocator as cleanly as senders do."
 
 **Broader question:**
 
-> "`std::execution` should be considered a domain-specific model for compile-time work graph construction, not a universal foundation for all asynchronous C++."
+> "`std::execution` does not have to extend to all asynchronous C++."
 
-> "There is room in the standard library for a coroutine-native I/O model alongside `std::execution`."
+> "There is room for a coroutine-native I/O model alongside `std::execution`."
 
 ---
 
@@ -942,7 +940,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar Khul for their valuable feedback in the development of this paper.
+and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
 
 ---
 
@@ -953,7 +951,7 @@ and Dietmar Khul for their valuable feedback in the development of this paper.
 1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Michal Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024)
 2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Michal Dominiak, et al., 2022)
 3. [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021)
-4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar Kuhl, 2023)
+4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023)
 5. [P2855R1](https://wg21.link/p2855r1) - "Member customization points for Senders and Receivers" (Ville Voutilainen, 2024)
 6. [P2999R3](https://wg21.link/p2999r3) - "Sender Algorithm Customization" (Eric Niebler, 2024)
 7. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025)
@@ -962,18 +960,18 @@ and Dietmar Khul for their valuable feedback in the development of this paper.
 10. [P3187R1](https://wg21.link/p3187r1) - "Remove ensure_started and start_detached from P2300" (Kirk Shoop, Lewis Baker, 2024)
 11. [P3303R1](https://wg21.link/p3303r1) - "Fixing Lazy Sender Algorithm Customization" (Eric Niebler, 2024)
 12. [P3373R2](https://wg21.link/p3373r2) - "Of Operation States and Their Lifetimes" (Robert Leahy, 2025)
-13. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar Kuhl, Maikel Nadolski, 2025)
+13. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025)
 14. [P3557R3](https://wg21.link/p3557r3) - "High-Quality Sender Diagnostics with Constexpr Exceptions" (Eric Niebler, 2025)
 15. [P3570R2](https://wg21.link/p3570r2) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025)
 16. [P3682R0](https://wg21.link/p3682r0) - "Remove std::execution::split" (Robert Leahy, 2025)
 17. [P3718R0](https://wg21.link/p3718r0) - "Fixing Lazy Sender Algorithm Customization, Again" (Eric Niebler, 2025)
-18. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar Kuhl, 2025)
-19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan Muller, 2025)
+18. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025)
+19. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan M&uuml;ller, 2025)
 20. [P3826R3](https://wg21.link/p3826r3) - "Fix Sender Algorithm Customization" (Eric Niebler, 2026)
 21. [P3927R0](https://wg21.link/p3927r0) - "task_scheduler Support for Parallel Bulk Execution" (Lee Howes, 2026)
-22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar Kuhl, 2026)
+22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026)
 23. [P3950R0](https://wg21.link/p3950r0) - "return_value & return_void Are Not Mutually Exclusive" (Robert Leahy, 2025)
-24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar Kuhl, 2026)
+24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026)
 25. [P4003R0](https://wg21.link/p4003r0) - "IoAwaitables: A Coroutines-Only Framework" (Vinnie Falco, 2026)
 26. [P4014R0](https://wg21.link/p4014r0) - "The Sender Sub-Language" (Vinnie Falco, 2026)
 27. [N5028](https://wg21.link/n5028) - "Result of voting on ISO/IEC CD 14882" (2025)
