@@ -177,6 +177,8 @@ sender_of<dynamic_buffer> auto async_read_array(auto handle) {
 }
 ```
 
+**Note:** P2300R10 writes `as_writeable_bytes`. The standard library function is `std::as_writable_bytes`.
+
 `async_read` is `sender_of<std::size_t>`. It completes through `set_value` with the byte count, or through `set_error` with the error code.
 
 Consider the second `async_read` failing partway through. The first read succeeded. `buf.size` is valid. `buf.data` is allocated and correctly sized. The second read begins filling `buf.data`. Some bytes transfer. The connection resets.
@@ -421,8 +423,8 @@ Here is what allocator propagation looks like in a coroutine call chain under [P
 ```cpp
 template<typename Allocator>
 task<void> level_three(
-    std::allocator_arg_t = {},
-    Allocator alloc = {})
+    std::allocator_arg_t,
+    Allocator alloc)
 {
     co_return;
 }
@@ -430,8 +432,8 @@ task<void> level_three(
 template<typename Allocator>
 task<void> level_two(
     int x,
-    std::allocator_arg_t = {},
-    Allocator alloc = {})
+    std::allocator_arg_t,
+    Allocator alloc)
 {
     co_await level_three(std::allocator_arg, alloc);
 }
@@ -439,8 +441,8 @@ task<void> level_two(
 template<typename Allocator>
 task<int> level_one(
     int v,
-    std::allocator_arg_t = {},
-    Allocator alloc = {})
+    std::allocator_arg_t,
+    Allocator alloc)
 {
     co_await level_two(42, std::allocator_arg, alloc);
     co_return v;
@@ -798,7 +800,7 @@ HALO allows compilers to elide coroutine frame allocation when the frame's lifet
 ```cpp
 namespace ex = std::execution;
 
-task<size_t> read_data(socket& s, buffer& buf)
+ex::task<size_t> read_data(socket& s, buffer& buf)
 {
     co_return co_await s.async_read(buf);
 }
@@ -820,29 +822,27 @@ The Sub-Language requires five layers of machinery to propagate a custom allocat
 ```cpp
 namespace ex = std::execution;
 
-// 1. Define a custom environment with the allocator
+// 1. Define a custom environment that answers get_allocator
 struct my_env
 {
     using allocator_type = recycling_allocator<>;
     allocator_type alloc;
 
-    friend auto tag_invoke(
-        ex::get_allocator_t, my_env const& e) noexcept
+    allocator_type query(ex::get_allocator_t) const noexcept
     {
-        return e.alloc;
+        return alloc;
     }
 };
 
-// 2. Alias the task type with the custom allocator
-using my_task = ex::basic_task<
-    ex::task_traits<my_env::allocator_type>>;
+// 2. Alias the task type with the custom environment
+using my_task = ex::task<void, my_env>;
 
 // 3. Every coroutine accepts and forwards the allocator
 template<typename Allocator>
 my_task level_two(
     int x,
-    std::allocator_arg_t = {},
-    Allocator alloc = {})
+    std::allocator_arg_t,
+    Allocator alloc)
 {
     co_return;
 }
@@ -850,21 +850,24 @@ my_task level_two(
 template<typename Allocator>
 my_task level_one(
     int v,
-    std::allocator_arg_t = {},
-    Allocator alloc = {})
+    std::allocator_arg_t,
+    Allocator alloc)
 {
     co_await level_two(42, std::allocator_arg, alloc);
     co_return;
 }
 
-// At the launch site: inject the allocator via write_env
-void launch(ex::io_context& ctx)
+// 4. Construct the environment at the launch site
+// 5. Inject it via write_env
+void launch(ex::counting_scope& scope, auto sch)
 {
-    my_env env{recycling_allocator<>{}};
+    recycling_allocator<> alloc;                            // step 4
+    my_env env{alloc};
     auto sndr =
-        ex::write_env(level_one(0), env)
-      | ex::continues_on(ctx.get_scheduler());
-    ex::spawn(std::move(sndr), ctx.get_token());
+        ex::write_env(
+            level_one(0, std::allocator_arg, alloc), env)   // step 5
+      | ex::continues_on(sch);
+    ex::spawn(std::move(sndr), scope.get_token());
 }
 ```
 
@@ -892,9 +895,9 @@ The three completion channels provide exactly this. [Completion signatures](http
 
 ```cpp
 using completion_signatures =
-    stdexec::completion_signatures<
+    std::execution::completion_signatures<
         set_value_t(int),                                 // value path
-        set_error_t(error_code),                          // error path
+        set_error_t(std::error_code),                     // error path
         set_stopped_t()>;                                 // stopped path
 ```
 
