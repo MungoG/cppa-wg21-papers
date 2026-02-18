@@ -116,7 +116,7 @@ How should an asynchronous operation report its outcome? The Sub-Language has an
 
 ### 3.1 Senders Use Channels
 
-The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.5). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup>:
+The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.1). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup>:
 
 > *"A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes."*
 
@@ -193,7 +193,7 @@ This is [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers
 
 ### 3.4 No Choice Is Correct
 
-[P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> does not define `async_read`, but [Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup> presents `recv_sender` and `async_recv` - the primitive receive operation built on Windows IOCP. Any implementation of `async_read` loops the primitive until the buffer is full (Appendix A.1 shows the complete sender). The completion callback is where accumulated progress meets the channel model:
+[P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> does not define `async_read`, but [Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup> presents `recv_sender` and `async_recv` - the primitive receive operation built on Windows IOCP. Any implementation of `async_read` loops the primitive until the buffer is full (Appendix A.2 shows the complete sender). The completion callback is where accumulated progress meets the channel model:
 
 ```cpp
 void completed(std::error_code ec, std::size_t n) {
@@ -232,7 +232,7 @@ Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2
 
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
-Kohlhoff published P2430R0 in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings.
+Kohlhoff published P2430R0 in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings. Appendix A.3 traces the full timeline.
 
 ---
 
@@ -531,7 +531,7 @@ Section 5 showed the cost of deferred execution. Choose one:
 |---|---|
 | Receiver environment available after `connect()`; zero-allocation sender pipelines | `promise_type::operator new` fires at the call site with the right allocator |
 
-`await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the allocator becomes available (Appendix A.3).
+`await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the allocator becomes available (Appendix B.3).
 
 ### 7.4 ABI Makes the Choice Permanent
 
@@ -739,9 +739,35 @@ The straw polls in Section 11 offer the committee a way to record its answers. T
 
 ---
 
-## Appendix A - Code Examples
+## Appendix A - The Three-Channel Model
 
-### A.1 `async_read` as a Sender
+### A.1 Why the Three-Channel Model Exists
+
+The Sub-Language constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect)<sup>[56]</sup> collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
+
+The three completion channels provide exactly this. [Completion signatures](https://eel.is/c++draft/exec.getcomplsigs)<sup>[56]</sup> declare three distinct type-level paths:
+
+```cpp
+using completion_signatures =
+    std::execution::completion_signatures<
+        set_value_t(int),                                 // value path
+        set_error_t(std::error_code),                     // error path
+        set_stopped_t()>;                                 // stopped path
+```
+
+Algorithms dispatch on which channel fired without inspecting payloads. `upon_error` attaches to the error path at the type level. `let_value` attaches to the value path at the type level. `upon_stopped` attaches to the stopped path. The routing is in the types, not in the values.
+
+If errors were delivered as values (for example, `expected<int, error_code>` through `set_value`), the compiler would see one path carrying one type. Algorithms could not dispatch on error without runtime inspection of the payload. Every algorithm would need runtime branching logic to inspect the expected and route accordingly.
+
+The three channels exist because the Sender Sub-Language is a compile-time language.
+
+Compile-time languages route on types. Runtime languages route on values. A coroutine returns `auto [ec, n] = co_await read(buf)` and branches with `if (ec)` at runtime. The Sub-Language encodes `set_value` and `set_error` as separate types in the completion signature and routes at compile time. The three-channel model is not an arbitrary design choice. It is a structural requirement of the compile-time work graph.
+
+A compile-time language cannot express partial success. I/O operations return `(error_code, size_t)` together because partial success is normal. The three-channel model demands that the sender author choose one channel. No choice is correct because the compile-time type system cannot represent "both at once."
+
+Eliminating the three-channel model would remove the type-level routing that makes the compile-time work graph possible. The three channels are not a design flaw. They are the price of compile-time analysis. I/O cannot pay that price because I/O's completion semantics are inherently runtime.
+
+### A.2 `async_read` as a Sender
 
 Section 3.4 shows the completion callback where accumulated read progress is lost. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup>'s `recv_sender` and `async_recv`:
 
@@ -785,7 +811,39 @@ struct read_op
 
 Every name is from P2300R10: `recv_sender`, `async_recv`, `connect`, `start`, `set_value`, `set_error`, `set_stopped`, `connect_result_t`. The `recv_rcvr` is the standard pattern for wiring a child sender back to a parent operation state.
 
-### A.2 Why HALO Cannot Help
+### A.3 Timeline of the Error Channel Question
+
+The partial success problem was not raised once and set aside. It was raised independently, across multiple groups, by participants with different domain backgrounds, over a span of five years. The question was never polled.
+
+- **2020 (Nov):** Niebler's ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> blog post establishes the three-channel model publicly. Acknowledges CPS is harder to write and read than coroutines.
+
+- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[62]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. The concern was not addressed. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial success.
+
+- **2021 (Feb, SG4 telecon):** During review of P0958R3, a participant stated that sender/receivers have a loss because they do not have success/partial-success. Another suggested adapting from success/error; the response was that the error does not carry information. No poll on the error channel design.
+
+- **2021 (Jul-Oct, LEWG telecon series):** The partial success question was debated across at least five LEWG telecons during the P2300 review. Multiple participants raised incompatible positions. One argued that partial success calling `set_value` does not work for generic retry algorithms. Others described `set_error` as effectively `set_exception` - an error channel that does not serve error conditions. The August 17, 2021 LEWG outcome document explicitly listed "Better explain how partial success works with senders/receivers" as open guidance to the P2300 authors - an acknowledgment that the question was unresolved. During the October 4, 2021 LEWG telecon, a participant indicated that partial success could be addressed through async streams once the initial sender/receiver facilities were in place, with the expectation that such streams could then be standardized. The async streams facility was never proposed, never standardized, and is not in the C++26 working draft.
+
+- **2021 (Aug):** Chris Kohlhoff published [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300") identifying that partial results must be communicated down the `set_value` channel due to limitations of `set_error` and `set_done`. Published during P2300's most intensive review period. No committee response found in the published record.
+
+- **2022-2024:** [P2300R4](https://wg21.link/p2300r4)<sup>[2]</sup> through [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> published. Three-channel model unchanged across all revisions. P2430R0 not addressed.
+
+- **2023:** [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> (Dietmar K&uuml;hl, "Sender/Receiver Interface for Networking") preserves the proven `(error_code, size_t)` convention from Asio - implicitly acknowledging I/O needs both values together.
+
+- **2023 (Nov, Kona):** SG4 polls that networking must use the sender model (SF:5/F:5/N:1/A:0/SA:1). Every future I/O operation must now navigate the channel mismatch.
+
+- **2024 (Nov, Wroclaw):** The same three-channel question resurfaced during design of P0260 ("C++ Concurrent Queues"). LEWG debated whether a closed queue should complete through `set_error`, `set_value`, or `set_stopped`. One participant asked how popping from a closed queue could be an error when it represents the ultimate success of processing all items. Another noted that POSIX does not model EOF this way - reading from a socket at EOF succeeds with zero bytes. The debate consumed portions of two face-to-face meetings.
+
+- **2025 (Feb, Hagenberg):** The concurrent queue channel question remained open. A poll to reopen the channel choice was withdrawn. A new problem was discovered: `try_push` cannot safely schedule an `async_pop` continuation because `std::execution` provides no way to express that a schedule operation is non-blocking - a concrete manifestation of the architectural mismatch in a producer-consumer API.
+
+- **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
+
+The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Section 3.4 enumerates five, all deficient). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the Sub-Language, not a bug. The unresolved timeline is what structural friction looks like from the inside.
+
+---
+
+## Appendix B - The Allocator Gap
+
+### B.1 Why HALO Cannot Help
 
 HALO allows compilers to elide coroutine frame allocation when the frame's lifetime is provably bounded by its caller. When an I/O coroutine is launched onto an execution context, the frame must outlive the launching function:
 
@@ -807,7 +865,7 @@ void start_read(ex::counting_scope& scope, auto sch)
 
 The compiler cannot prove bounded lifetime, so HALO cannot apply and allocation is mandatory.
 
-### A.3 The Full Ceremony for Allocator-Aware Coroutines
+### B.2 The Full Ceremony for Allocator-Aware Coroutines
 
 The Sub-Language requires five layers of machinery to propagate a custom allocator through a coroutine call chain:
 
@@ -865,7 +923,7 @@ void launch(ex::counting_scope& scope, auto sch)
 
 Forgetting any one of the five steps silently falls back to the default allocator. The compiler provides no diagnostic.
 
-### A.4 P3826R3 and Algorithm Dispatch
+### B.3 P3826R3 and Algorithm Dispatch
 
 [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> addresses sender algorithm customization. P3826 offers five solutions. All target algorithm dispatch:
 
@@ -879,35 +937,9 @@ Forgetting any one of the five steps silently falls back to the default allocato
 
 **Solution 4.5: Fix algorithm customization now.** Restructures `transform_sender` to take the receiver's environment, changing information flow at `connect()` time. This enables correct algorithm dispatch but does not change when the allocator becomes available. This restructuring could enable future allocator solutions, but none has been proposed.
 
-### A.5 Why the Three-Channel Model Exists
-
-The Sub-Language constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect)<sup>[56]</sup> collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
-
-The three completion channels provide exactly this. [Completion signatures](https://eel.is/c++draft/exec.getcomplsigs)<sup>[56]</sup> declare three distinct type-level paths:
-
-```cpp
-using completion_signatures =
-    std::execution::completion_signatures<
-        set_value_t(int),                                 // value path
-        set_error_t(std::error_code),                     // error path
-        set_stopped_t()>;                                 // stopped path
-```
-
-Algorithms dispatch on which channel fired without inspecting payloads. `upon_error` attaches to the error path at the type level. `let_value` attaches to the value path at the type level. `upon_stopped` attaches to the stopped path. The routing is in the types, not in the values.
-
-If errors were delivered as values (for example, `expected<int, error_code>` through `set_value`), the compiler would see one path carrying one type. Algorithms could not dispatch on error without runtime inspection of the payload. Every algorithm would need runtime branching logic to inspect the expected and route accordingly.
-
-The three channels exist because the Sender Sub-Language is a compile-time language.
-
-Compile-time languages route on types. Runtime languages route on values. A coroutine returns `auto [ec, n] = co_await read(buf)` and branches with `if (ec)` at runtime. The Sub-Language encodes `set_value` and `set_error` as separate types in the completion signature and routes at compile time. The three-channel model is not an arbitrary design choice. It is a structural requirement of the compile-time work graph.
-
-A compile-time language cannot express partial success. I/O operations return `(error_code, size_t)` together because partial success is normal. The three-channel model demands that the sender author choose one channel. No choice is correct because the compile-time type system cannot represent "both at once."
-
-Eliminating the three-channel model would remove the type-level routing that makes the compile-time work graph possible. The three channels are not a design flaw. They are the price of compile-time analysis. I/O cannot pay that price because I/O's completion semantics are inherently runtime.
-
 ---
 
-## Appendix B - Direction of Change
+## Appendix C - Direction of Change
 
 The claim is not that the volume of changes is abnormal; it is that the direction is uniform. Every paper, LWG issue, and NB comment modifying `std::execution` since Tokyo (March 2024) falls into one of two categories.
 
@@ -1019,3 +1051,4 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 59. [C++26 NB ballot comments](https://github.com/cplusplus/nbballot) - National body comments repository. https://github.com/cplusplus/nbballot
 60. [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/) - ISO C++ committee papers. https://open-std.org/jtc1/sc22/wg21/docs/papers/
 61. [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html) - Library Working Group active issues. https://cplusplus.github.io/LWG/lwg-toc.html
+62. [P1678R2](https://wg21.link/p1678r2) - "Callbacks and Composition" (Kirk Shoop, 2020). https://wg21.link/p1678r2
