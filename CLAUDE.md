@@ -136,6 +136,11 @@ Rules for all work on WG21 papers in this repository.
       ballot repository covering individual issue links
     - Use `wg21.link` short URLs for WG21 papers - do not
       use `open-std.org` long-form URLs (see rule 9)
+    - Links inside markdown tables are exempt from citation
+      markers (tables are dense reference lists where
+      superscripts would harm readability)
+    - Links inside the Acknowledgements section are exempt
+      from citation markers
     - Superscripted citation numbers in the body must always
       match the corresponding entry number in the References
       section - update all citations when references are
