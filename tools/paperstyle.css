@@ -236,7 +236,6 @@ h5, h6 {
 p {
   margin-top: 0;
   margin-bottom: var(--spacing-md);
-  text-align: justify;
   hyphens: auto;
 }
 
@@ -875,7 +874,7 @@ del .variable {
   margin: 20mm;
 
   @top-center {
-    content: "WG21 Proposal";
+    content: "";
     font-family: "Roboto Flex", sans-serif;
     font-size: 10pt;
     color: #666;
