@@ -705,33 +705,7 @@ P4003R0 does not provide compile-time work graph construction, zero-allocation p
 
 ---
 
-## 11. Suggested Straw Polls
-
-**Diagnosis:**
-
-> "The friction between senders and coroutines comes from the design, not the implementation."
-
-**Task type:**
-
-> "Error signaling in coroutines should use `co_return`, not `co_yield`."
-
-> "`std::execution::task` should continue iterating for C++29 rather than shipping in C++26."
-
-**Framework:**
-
-> "Completion channels should preserve partial results alongside errors."
-
-> "Coroutines should receive the allocator as cleanly as senders do."
-
-**Broader question:**
-
-> "`std::execution` does not have to extend to all asynchronous C++."
-
-> "There is room for a coroutine-native I/O model alongside `std::execution`."
-
----
-
-## 12. Conclusion
+## 11. Conclusion
 
 The decision to adopt `std::execution` has consequences for coroutines. This paper asks the committee to address them explicitly.
 
@@ -744,6 +718,24 @@ The decision to adopt `std::execution` has consequences for coroutines. This pap
 4. **Should `task<T>` ship in C++26 with these costs?** Ship `std::execution` for the domains it serves. Let the coroutine integration iterate independently.
 
 The straw polls in Section 11 offer the committee a way to record its answers. The deeper question is whether there is room in the standard for `std::io` alongside `std::execution`, each serving its own domain.
+
+---
+
+## 12. Suggested Straw Polls
+
+> 1. "Coroutine errors should be returned, not yielded."
+
+> 2. "Coroutine allocator propagation should be automatic."
+
+> 3. "Completion channels should preserve partial results alongside errors."
+
+> 4. "Sender and coroutine friction is inherent to the design."
+
+> 5. "`std::execution::task` should target C++29."
+
+> 6. ""Asynchronous C++ need not be limited to `std::execution`"
+
+> 7. "WG21 should explore coroutine-native I/O alongside senders."
 
 ---
 
