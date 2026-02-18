@@ -291,7 +291,7 @@ There is no third path. `std::execution::task` introduces one.
 
 `co_return expr` calls `promise.return_value(expr)`, which P3552R3 routes to `set_value`. There is no way to make `co_return` call `set_error`. A coroutine promise can only define `return_void` or `return_value`, not both, and `task<void>` needs `return_void`.
 
-P3552R3 needed a different mechanism. The only other coroutine keyword that accepts an expression and passes it to the promise is `co_yield`. P3552R3 exploits `yield_value` with a special overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)):
+Kuhl needed a different mechanism. The `return_void`/`return_value` mutual exclusion and the Sub-Language's separate error channel leave exactly one path: `co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Kuhl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)) is the best solution the language permits:
 
 > *Returns: An awaitable object of unspecified type whose member functions arrange for the calling coroutine to be suspended and then completes the asynchronous operation associated with STATE(\*this) by invoking `set_error(std::move(RCVR(*this)), Cerr(std::move(err.error)))`.*
 
@@ -617,7 +617,7 @@ LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1
 >
 > Attendance: 14. Outcome: strictly neutral.
 
-The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (Kuhl, 2026-01-25) subsequently reworked the allocator propagation model relative to [P3552R3](https://wg21.link/p3552r3), adopted only six months earlier at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
+The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Kuhl returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html) (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
 
 The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 
@@ -629,7 +629,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen distinct open concerns about `task`. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Muller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. Dietmar's [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0) ("Concerns about the design of `std::execution::task`," Jonathan Muller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 

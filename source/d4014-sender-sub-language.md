@@ -508,9 +508,20 @@ The question is whether Regular C++ developers should write asynchronous code th
 
 ## 6. What Complexity Buys
 
+The complexity documented in Section 5 is not accidental. It is the price of admission to a set of engineering properties that no other C++ async model provides.
+
 ### 6.1 The Trade-off
 
-In exchange, we get real engineering properties: full type visibility (the compiler sees the entire work graph as a concrete type), zero allocation in steady state (the operation state lives on the stack), compile-time work graph construction ([`connect`](https://eel.is/c++draft/exec.connect) collapses the pipeline into a single deeply-nested template instantiation), and deterministic nanosecond-level execution ([HPC Wire](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/) reports performance "on par with CUDA code"). The cost is equally real: implementations must be header-only, compile times are long, and the programming model documented in Section 5 is the price of entry. This is a trade-off, and for the domains that need these properties - GPU dispatch, high-frequency trading, embedded systems, scientific computing - it is the right one. Every party involved has opted in. The question is whether domains that do not need these properties - networking, file I/O, ordinary request handling - should be required to pay the same cost, or whether they deserve the same freedom to choose the model that serves them.
+| What you get                                                                                                                         | What it costs                        |
+|--------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------|
+| Full type visibility - the compiler sees the entire work graph as a concrete type                                                    | Header-only implementations          |
+| Zero allocation in steady state - the operation state lives on the stack                                                             | Long compile times                   |
+| Compile-time work graph construction - [`connect`](https://eel.is/c++draft/exec.connect) collapses the pipeline into a single type   | The programming model of Section 5   |
+| Deterministic nanosecond-level execution - [HPC Wire](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/) reports performance "on par with CUDA code" |                                      |
+
+For GPU dispatch, high-frequency trading, embedded systems, and scientific computing, every party involved has opted in. The question is whether domains that do not need these properties - networking, file I/O, ordinary request handling - should be required to pay the same cost, or whether they deserve the same freedom to choose the model that serves them.
+
+For some, this is a good trade-off.
 
 ### 6.2 The Precedent
 
@@ -550,7 +561,9 @@ Eric Niebler acknowledges this directly in [P3826R3](https://wg21.link/p3826r3) 
 
 > *"Some execution contexts place extra-standard requirements on the code that executes on them. For example, NVIDIA GPUs require device-accelerated code to be annotated with its proprietary `__device__` annotation. Standard libraries are unlikely to ship implementations of `std::execution` with such annotations. The consequence is that, rather than shipping just a GPU scheduler with some algorithm customizations, a vendor like NVIDIA is already committed to shipping its own complete implementation of `std::execution` (in a different namespace, of course)."*
 
-The committee accommodated a domain that needed its own model. GPU compute got a complete, domain-specific implementation of `std::execution` with non-standard extensions, a specialized compiler, and reimplementations of every standard algorithm. This is not a criticism. It is a precedent.
+The committee accommodated a domain that needed its own model. GPU compute got a complete, domain-specific implementation of `std::execution` with non-standard extensions, a specialized compiler, and reimplementations of every standard algorithm.
+
+This is a precedent.
 
 ### 6.3 The Principle
 
@@ -564,7 +577,9 @@ The [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-gu
 | Parenthesized initialization          | Yes               |
 | Coroutines                            | **NOT SUPPORTED** |
 
-Coroutine support for GPU device code may arrive in a future release. In the meantime, this is not a deficiency in either model. GPU compute has requirements that coroutines were not designed to meet, just as I/O has requirements that the Sender Sub-Language's compile-time work graph was not designed to meet. Not every C++ feature must serve every domain. The existence of a domain where coroutines do not apply is itself evidence that multiple async models can coexist, each serving its own strengths.
+Coroutine support for GPU device code may arrive in a future release. In the meantime, this is not a deficiency in either model. GPU compute has requirements that coroutines were not designed to meet, just as I/O has requirements that the Sender Sub-Language's compile-time work graph was not designed to meet. Not every C++ feature must serve every domain.
+
+Coexistence is principled.
 
 ### 6.4 Can Everyone Win?
 
@@ -579,13 +594,19 @@ Direct-style coroutines serve other domains equally well: networking, file I/O, 
 
 C++ has always grown by adding models that serve specific domains. Templates serve generic programming. Coroutines serve async I/O. The Sender Sub-Language serves heterogeneous compute. The standard is stronger when each domain gets the model it needs, and neither is forced to use the other's tool. [P4007R0](https://wg21.link/p4007) ("Senders and C++") examines the boundary where these two models meet.
 
+Everyone can win.
+
 ---
 
 ## 7. Conclusion
 
-C++26 introduces the Sender Sub-Language, a programming model for asynchronous computation rooted in continuation-passing style, monadic composition, and algebraic effect theory. The Sub-Language provides its own control flow (`let_value` for sequencing, recursive continuation for iteration), its own variable binding (lambda captures across continuation boundaries), its own error handling (three-channel completion dispatch), and its own type system (completion signatures). Appendix A maps the Sub-Language's vocabulary to its theoretical foundations.
+C++26 has a new programming model. It has its own control flow, its own variable binding, its own error handling, and its own type system. It is grounded in four decades of programming language research, and it is already shipping in production at NVIDIA and Citadel Securities. That is not nothing. That is an achievement.
 
-We hope this guide helps committee members and users understand the Sender Sub-Language's relationship to the C++ they already know.
+The Sender Sub-Language is here, and it is not going anywhere. The committee adopted it. The implementation exists. Real users depend on it. We should be proud of it - it solves problems that no other C++ async model can touch.
+
+Yet does it have to solve every problem? The domains it serves - GPU dispatch, HFT, embedded, scientific computing - opted in to the trade-offs documented in this paper. The domains it does not serve - networking, file I/O, the everyday async code that most C++ developers write - deserve their own model, built for their own needs, with the same care and the same respect.
+
+I think we can get there. The precedent exists. The principle is sound. And the committee has done harder things than giving two communities the tools they each need.
 
 ---
 
