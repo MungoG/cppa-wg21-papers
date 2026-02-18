@@ -995,7 +995,7 @@ that keeps allocator policy out of coroutine signatures. It delivers
 correctness through compile-time protocol checking, ergonomics through
 clean interfaces free of cross-cutting concerns, and performance through
 zero-allocation steady-state operation with recycling allocators. We
-compare our design against <code>std::execution</code> (<a href="https://wg21.link/p2300">P2300</a>) and its evolution (<a href="https://wg21.link/p3826">P3826</a>) to illuminate where the
+compare our design against <code>std::execution</code> (<a href="https://wg21.link/p2300r10">P2300R10</a>) and its evolution (<a href="https://wg21.link/p3826">P3826</a>) to illuminate where the
 designs diverge and why.</p>
 <hr />
 <h2 id="revision-history">Revision History</h2>
@@ -1497,7 +1497,7 @@ pointers:</p>
 tracking, and comparison. When <code>executor_ref</code> is constructed
 from a typed executor, the compiler generates a vtable for that executor
 type. Calls through <code>executor_ref</code> incur one pointer
-indirection - roughly 1-2 nanoseconds <a href="https://www.youtube.com/watch?v=i5MAXAxp_Tw">[13]</a> - which is
+indirection - roughly 1-2 nanoseconds <a href="https://www.youtube.com/watch?v=i5MAXAxp_Tw">[14]</a> - which is
 negligible for I/O operations that take 10,000+ nanoseconds.</p>
 <p>The <code>dispatch</code> member returns a
 <code>coroutine_handle&lt;&gt;</code> for symmetric transfer: if the
@@ -2289,8 +2289,8 @@ returning <code>task&lt;int&gt;</code> can be defined in a
 <code>.cpp</code> file and called from any translation unit without
 exposing the executor type, the allocator, or the stop token in the
 public interface. Libraries built on <em>IoAwaitable</em> can ship as
-compiled binaries. <a href="https://wg21.link/p4007r1">P4007R1</a>
-Section 7.4 examines why alternative designs require a second template
+compiled binaries. <a href="https://wg21.link/p4007r0">P4007R0</a>
+Section 6.4 examines why alternative designs require a second template
 parameter and what the ecosystem’s response has been.</p>
 <h3 id="ergonomic-impact">6.4 Ergonomic Impact</h3>
 <p>The ergonomic consequences compound in real applications. An HTTP
@@ -2330,15 +2330,15 @@ this paper addresses.</p>
 <h2 id="comparison-with-stdexecution">7. Comparison with
 <code>std::execution</code></h2>
 <p>The design choices in this paper diverge from
-<code>std::execution</code> (<a href="https://wg21.link/p2300">P2300</a>) in ways that reflect
+<code>std::execution</code> (<a href="https://wg21.link/p2300r10">P2300R10</a>) in ways that reflect
 fundamentally different use cases. This section examines the divergence
 technically, without claiming that either approach is universally
 superior. Each is optimized for its primary workload.</p>
 <h3 id="the-late-binding-problem">7.1 The Late Binding Problem</h3>
 <p>Coroutine frame allocation happens <em>before</em> the coroutine body
 executes. The allocator must be known at invocation, not discovered
-later through receiver queries. <a href="https://wg21.link/p2300">P2300</a> acknowledges this timing in its
-“Dependently-typed senders” section:</p>
+later through receiver queries. <a href="https://wg21.link/p2300r10">P2300R10</a> acknowledges this timing
+in its “Dependently-typed senders” section:</p>
 <blockquote>
 <p>“The implication of the above is that the sender alone does not have
 all the information about the async computation it will ultimately
@@ -2454,7 +2454,7 @@ only concrete task return types:</p>
 <p>Networking code that participates in the sender/receiver ecosystem
 must implement <code>get_env</code>, <code>get_domain</code>,
 <code>get_completion_scheduler</code>, and satisfy sender/receiver
-concepts - even when only returning defaults. <a href="https://wg21.link/p2300">P2300</a>/<a href="https://wg21.link/p3826">P3826</a> don’t break networking code -
+concepts - even when only returning defaults. <a href="https://wg21.link/p2300r10">P2300R10</a>/<a href="https://wg21.link/p3826">P3826</a> don’t break networking code -
 defaults work. The question is whether networking should pay for
 abstractions it does not use.</p>
 <table>
@@ -2696,7 +2696,7 @@ flows with control flow. The allocator is available before the frame is
 allocated. The environment is available from the first suspension
 point.</p></li>
 <li><p><strong>A conscious tradeoff.</strong> One pointer indirection
-per I/O operation (~1-2 nanoseconds <a href="https://www.youtube.com/watch?v=i5MAXAxp_Tw">[13]</a>) buys
+per I/O operation (~1-2 nanoseconds <a href="https://www.youtube.com/watch?v=i5MAXAxp_Tw">[14]</a>) buys
 encapsulation, ABI stability, and fast compilation. For I/O-bound
 workloads where operations take 10,000+ nanoseconds, this cost is
 negligible.</p></li>
@@ -2727,7 +2727,8 @@ the foundation for <a href="https://github.com/cppalliance/corosio">Corosio</a>,
 provides sockets, timers, signals, DNS resolution, and TLS on multiple
 platforms. An HTTP server, WebSocket support, and a URL parser are built
 on top. A self-contained demonstration of the protocol is available on
-<a href="https://godbolt.org/z/Wzrb7McrT">Compiler Explorer</a>.</p>
+<a href="https://godbolt.org/z/Wzrb7McrT">Compiler Explorer</a>
+(https://godbolt.org/z/Wzrb7McrT).</p>
 <p>These libraries arose from use-case-first development with a simple
 mandate: produce a networking library built only for coroutines. Every
 design decision emerged from solving real problems in production I/O
@@ -3664,7 +3665,7 @@ C++ community for over two decades and established many of the patterns
 we build upon - and some we consciously depart from. The executor model
 in this paper honors his pioneering work.</p>
 <p><strong>Lewis Baker</strong> for his work on C++ coroutines, the
-Asymmetric Transfer blog series, and his contributions to <a href="https://wg21.link/p2300">P2300</a> and <a href="https://wg21.link/p3826">P3826</a>. His explanations of symmetric
+Asymmetric Transfer blog series, and his contributions to <a href="https://wg21.link/p2300r10">P2300R10</a> and <a href="https://wg21.link/p3826">P3826</a>. His explanations of symmetric
 transfer and coroutine optimization techniques directly informed our
 design.</p>
 <p><strong>Dietmar Kühl</strong> for <a href="https://wg21.link/p2762">P2762</a> and <a href="https://wg21.link/p3552">P3552</a>, which explore sender/receiver
@@ -3915,7 +3916,7 @@ and cancellation - you have the conceptual vocabulary to understand the
 design decisions in the sections that follow. These patterns form the
 bedrock of modern C++ networking: high-performance servers and
 responsive client applications build on some combination of non-blocking
-I/O, completion handlers, and execution contexts <a href="https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications">[14]</a>.</p>
+I/O, completion handlers, and execution contexts <a href="https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications">[15]</a>.</p>
 <p>If you’re eager to experiment, the <a href="https://github.com/cppalliance/corosio">Corosio</a> library
 implements these concepts in production-ready code. It provides sockets,
 timers, TLS, and DNS resolution - all built on the coroutine-first model
@@ -4122,7 +4123,7 @@ of this paper.</p>
 Asynchronous Operations, Revision 1 (2014)</li>
 <li><a href="https://wg21.link/n4482">N4482</a> - Some notes on
 executors and the Networking Library Proposal (2015)</li>
-<li><a href="https://wg21.link/p2300">P2300R10</a> - std::execution
+<li><a href="https://wg21.link/p2300r10">P2300R10</a> - std::execution
 (Michał Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu
 Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler)</li>
 <li><a href="https://wg21.link/p2762">P2762R2</a> - Sender/Receiver
@@ -4132,6 +4133,8 @@ Type (Dietmar Kühl, Maikel Nadolski); approved for C++26 at Sofia
 plenary</li>
 <li><a href="https://wg21.link/p3826">P3826R2</a> - Fix or Remove Sender
 Algorithm Customization (Lewis Baker, Eric Niebler)</li>
+<li><a href="https://wg21.link/p4007r0">P4007R0</a> - Senders and C++
+(Vinnie Falco, Mungo Gill)</li>
 <li><a href="https://www.boost.org/doc/libs/release/doc/html/boost_asio.html">Boost.Asio</a>
 - Asynchronous I/O library (Chris Kohlhoff)</li>
 <li><a href="http://www.kegel.com/c10k.html">The C10K problem</a> -
@@ -4151,6 +4154,9 @@ Shemesh)</li>
 <li><a href="https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications">Boost.Asio
 low-latency guidance</a> - Chris Kohlhoff, SG-14 mailing list (via Stack
 Overflow)</li>
+<li><a href="https://github.com/cppalliance/http">Boost.Http</a> - HTTP
+library built on Capy (Vinnie Falco).
+https://github.com/cppalliance/http</li>
 </ol>
 
 </body>

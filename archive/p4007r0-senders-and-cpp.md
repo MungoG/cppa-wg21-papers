@@ -226,7 +226,7 @@ Are coroutines paying for a feature they did not ask for?
 
 ### 3.5 The Paper Not Polled
 
-Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) ("Partial success scenarios with P2300"):
+Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2430r0) ("Partial success scenarios with P2300"):
 
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
@@ -329,7 +329,7 @@ Each `task<T>` call invokes `promise_type::operator new`. At high request rates,
 
 ### 5.1 Senders
 
-The [P2300](https://wg21.link/p2300) authors solved the allocator propagation problem for senders with care and precision. The receiver's environment carries the allocator via `get_allocator(get_env(rcvr))`, and the sender algorithms propagate it automatically through every level of nesting:
+The [P2300R10](https://wg21.link/p2300r10) authors solved the allocator propagation problem for senders with care and precision. The receiver's environment carries the allocator via `get_allocator(get_env(rcvr))`, and the sender algorithms propagate it automatically through every level of nesting:
 
 ```cpp
 auto work =
@@ -412,7 +412,7 @@ Senders receive the allocator through the environment, automatically, at every l
 
 ### 5.4 Does Performance Matter?
 
-The parameter burden means the recycling allocator will not get used consistently. Forgetting to forward at one call site silently falls back to `std::allocator`.
+The recycling allocator eliminates coroutine frame allocation overhead. It requires `allocator_arg` at every call site. One missed site falls back to `std::allocator` with no diagnostic. In production code, sites will be missed. Users profile, see heap allocation cost, and conclude coroutines are slow. Coroutines are not slow. The fast path is too hard to use.
 
 ### 5.5 A Viral Signature?
 
@@ -461,7 +461,7 @@ The following friction points were identified through a survey of active papers 
 
 ### 6.1 Type-System Friction
 
-**Algorithm customization broken ([P3826R3](https://wg21.link/p3826r3), [P3718R0](https://wg21.link/p3718r0), [P2999R3](https://wg21.link/p2999r3), [P3303R1](https://wg21.link/p3303r1)).** A sender cannot know its completion domain until it knows where it will start. Early customization is, in Eric Niebler's words, "irreparably broken." `starts_on(gpu, just()) | then(fn)` silently uses the CPU implementation for GPU work. Four papers and counting. In regular C++, calling `f(x)` on a thread pool just works.
+**Algorithm customization broken ([P3826R3](https://wg21.link/p3826r3), [P3718R0](https://wg21.link/p3718r0), [P2999R3](https://wg21.link/p2999r3), [P3303R1](https://wg21.link/p3303r1)).** A sender cannot know its completion domain until it knows where it will start. Early customization is, in Eric Niebler's words, "irreparably broken."<sup>[20]</sup> `starts_on(gpu, just()) | then(fn)` silently uses the CPU implementation for GPU work. Four papers and counting. In regular C++, calling `f(x)` on a thread pool just works.
 
 **Incomprehensible diagnostics ([P3557R3](https://wg21.link/p3557r3), [P3164R4](https://wg21.link/p3164r4)).** Type checking deferred to `connect` time means `just(42) | then([](){})` (nullary lambda, wrong arity) produces dozens of lines of template backtrace far from the source. In regular C++, `g(f(42))` with a type mismatch produces a one-line error at the call site.
 **`connect_result_t` SFINAE breakage ([LWG 4206](https://cplusplus.github.io/LWG/issue4206), Priority 1).** Changing `connect`'s constraints to `Mandates` made `connect` unconstrained, but `let_value` uses `connect_result_t` in SFINAE contexts expecting substitution failure. It gets hard errors instead. The Sub-Language's layered constraint model violates normal template metaprogramming conventions.
@@ -950,7 +950,7 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 
 1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024)
 2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Micha&lstrok; Dominiak, et al., 2022)
-3. [P2430R0](https://open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021)
+3. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021)
 4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023)
 5. [P2855R1](https://wg21.link/p2855r1) - "Member customization points for Senders and Receivers" (Ville Voutilainen, 2024)
 6. [P2999R3](https://wg21.link/p2999r3) - "Sender Algorithm Customization" (Eric Niebler, 2024)
@@ -1004,3 +1004,10 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 
 43. [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html) - F.7, R.30 (Bjarne Stroustrup, Herb Sutter, eds.)
 44. Butler Lampson, "Hints for Computer System Design" (1983)
+45. [Continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) - Wikipedia. https://en.wikipedia.org/wiki/Continuation-passing_style
+46. [C++ Working Draft](https://eel.is/c++draft/) - (Richard Smith, ed.). https://eel.is/c++draft/
+47. [cppreference](https://en.cppreference.com/) - C++ reference documentation. https://en.cppreference.com/
+48. [stdexec](https://github.com/NVIDIA/stdexec) - NVIDIA reference implementation of std::execution. https://github.com/NVIDIA/stdexec
+49. [C++26 NB ballot comments](https://github.com/cplusplus/nbballot) - National body comments repository. https://github.com/cplusplus/nbballot
+50. [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/) - ISO C++ committee papers. https://open-std.org/jtc1/sc22/wg21/docs/papers/
+51. [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html) - Library Working Group active issues. https://cplusplus.github.io/LWG/lwg-toc.html
