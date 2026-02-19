@@ -476,6 +476,18 @@ The following friction points were identified through a survey of active papers 
 
 **Partial success in pure sender context ([P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup>).** This is the same error channel mismatch documented in Section 3, viewed from the sender side rather than the coroutine side. The forced choice between `set_value(ec, n)` and `set_error(ec)` exists for raw sender authors writing operation states, independent of coroutines. We include it here to show that the friction is not specific to the coroutine boundary.
 
+**Mandatory error model translation ([cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247)<sup>[63]</sup>, [P3388R2](https://wg21.link/p3388r2)<sup>[64]</sup>).** Every other major async framework propagates errors through one mechanism. `std::execution` requires algorithm authors to translate between two:
+
+| Framework            | Must algorithms translate between error models? |
+|----------------------|-------------------------------------------------|
+| Boost.Asio           | No - exceptions propagate; handler receives `error_code` |
+| Go                   | No - `error` return throughout                  |
+| Rust (Tokio)         | No - `Result<T, E>` throughout                  |
+| C++ coroutines       | No - exceptions propagate through `co_await`    |
+| `std::execution`     | **Yes** - catch at `connect`, convert to `set_error` |
+
+Algorithms that call `connect()` after `start()` - `let_value`, `let_error`, `let_stopped`, `when_all` - must catch exceptions from `connect()` and convert them to `set_error(rcvr, current_exception())`, injecting `exception_ptr` into the completion signatures even when the user's code is entirely `noexcept`. Lewis Baker filed this as a P0 design issue<sup>[63]</sup>; [P3388R2](https://wg21.link/p3388r2)<sup>[64]</sup> adds a trait to query `connect()` noexceptness but does not eliminate the translation.
+
 ### 6.3 Specification Friction
 
 **`transform_sender` dangling reference ([LWG 4368](https://cplusplus.github.io/LWG/issue4368)<sup>[28]</sup>, Priority 1).** The specification itself has a use-after-free. The layered transform architecture creates a lifetime hazard: `default_domain::transform_sender` forwards a temporary as an xvalue after the temporary is destroyed. The reference implementation (stdexec) works around it by non-conformantly returning prvalues. This hazard does not exist in direct function calls.
@@ -1052,3 +1064,5 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 60. [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/) - ISO C++ committee papers. https://open-std.org/jtc1/sc22/wg21/docs/papers/
 61. [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html) - Library Working Group active issues. https://cplusplus.github.io/LWG/lwg-toc.html
 62. [P1678R2](https://wg21.link/p1678r2) - "Callbacks and Composition" (Kirk Shoop, 2020). https://wg21.link/p1678r2
+63. [cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247) - "Add ability to know when computing completion-signatures whether the call to connect() will throw" (Lewis Baker, 2024). https://github.com/cplusplus/sender-receiver/issues/247
+64. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
