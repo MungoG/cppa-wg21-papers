@@ -58,11 +58,41 @@ The Sender Sub-Language provides equivalents for most of C++'s fundamental contr
 | `return`                | `set_value` into the receiver                           |
 | Local variables         | Lambda captures (with move semantics across boundaries) |
 | Function call + return  | `connect` + `start` + `set_value`                       |
+| Concurrent selection    | (absent)                                                |
 | Structured bindings     | (not needed)                                            |
 | Range-for               | (not needed)                                            |
 | `if` with initializer   | (not needed)                                            |
 
-The table is largely self-explanatory. Two details bear noting. First, the iteration and branching equivalents ([`repeat_effect_until`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp)<sup>[26]</sup>, [`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)<sup>[24]</sup>, [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp)<sup>[25]</sup>) are provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation but are not yet part of the C++26 working paper. Section 5 illustrates both patterns with working code. Second, the last three rows - structured bindings, range-for, and `if` with initializer - have no equivalent because the Sender Sub-Language does not produce intermediate return values. Values flow forward into continuations as arguments, not backward to callers as returns.
+The table is largely self-explanatory. Three details bear noting. First, the iteration and branching equivalents ([`repeat_effect_until`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp)<sup>[26]</sup>, [`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)<sup>[24]</sup>, [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp)<sup>[25]</sup>) are provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation but are not yet part of the C++26 working paper. Section 5 illustrates both patterns with working code. Second, the last three rows - structured bindings, range-for, and `if` with initializer - have no equivalent because the Sender Sub-Language does not produce intermediate return values. Values flow forward into continuations as arguments, not backward to callers as returns. Third, concurrent selection - the dual of `when_all` - is absent. Section 2.1 examines the gap.
+
+### 2.1 The Missing Row
+
+[P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> Section 1.3 motivates `std::execution` with this example:
+
+```cpp
+sender auto composed_cancellation_example(auto query) {
+  return stop_when(
+    timeout(
+      when_all(
+        first_successful(
+          query_server_a(query),
+          query_server_b(query)),
+        load_file("some_file.jpg")),
+      5s),
+    cancelButton.on_click());
+}
+```
+
+The example uses four algorithms:
+
+| Algorithm          | P2300R7 Section 1.3 | C++26   |
+|--------------------|:-------------------:|---------|
+| `when_all`         | used                | shipped |
+| `stop_when`        | used                | removed |
+| `timeout`          | used                | absent  |
+| `first_successful` | used                | absent  |
+
+`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed. [D0001R0](https://wg21.link/d0001r0)<sup>[58]</sup> ("When `when_any`?") examines the gap.
 
 ---
 
@@ -84,9 +114,11 @@ CPS makes control flow, variable binding, and resource lifetime explicit in the 
 
 ---
 
-## 4. Multiple Discoveries
+## 4. How the Emphasis Changed
 
-Eric Niebler's published writing provides the most complete public record of the design thinking behind `std::execution`. His blog posts document two independent discoveries: coroutines for direct-style async and senders for compile-time work graphs, with candor and intellectual honesty. Both discoveries were valid. The following timeline, drawn from that published record, shows how the relationship between them evolved as the problems being solved changed.
+Both models - coroutines for direct-style async and senders for compile-time work graphs - are real contributions to C++. Both were described as valuable by the same engineer, in his own published words. Eric Niebler's 2020 assessment, "90% of all async code in the future should be coroutines simply for maintainability," captures the coroutine model's strengths for I/O and general-purpose async programming. The Sender Sub-Language's strengths for heterogeneous compute and zero-allocation pipelines are equally real.
+
+His published writing provides the most complete public record of the design thinking behind `std::execution`, documented with candor and intellectual honesty. The following timeline, drawn from that record, shows how the emphasis naturally shifted as the target problems changed.
 
 **2017.** Eric Niebler published ["Ranges, Coroutines, and React: Early Musings on the Future of Async in C++"](https://ericniebler.com/2017/08/17/ranges-coroutines-and-react-early-musings-on-the-future-of-async-in-c/)<sup>[10]</sup>. The vision was pure coroutines and ranges: `for co_await`, async generators, range adaptors on async streams. No senders. No receivers. The original async vision for C++ was direct-style and coroutine-native:
 
@@ -124,11 +156,9 @@ Senders were now the foundation. Coroutines were one of several ways to consume 
 | 2020      | "Structured Concurrency"             | [P2300R0](https://wg21.link/p2300r0) ("std::execution") in development                                 | Coroutines 90%, senders for 10% hot paths   |
 | 2021      | "Asynchronous Stacks and Scopes"     | [P2300R2](https://wg21.link/p2300r2) revisions                                                         | Coroutines overwhelming, senders upcoming   |
 | 2024      | "What are Senders Good For, Anyway?" | [P2300R10](https://wg21.link/p2300r10); [P3164R0](https://wg21.link/p3164r0) ("Improving Diagnostics") | Senders are the foundation                   |
-| 2025-2026 | (no blog post)                       | [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization"): "irreparably broken"      | Design under active rework                   |
+| 2025-2026 | (no blog post)                       | [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization"): early customization described as "irreparably broken"      | Design under active rework                   |
 
 Between 2017 and 2024, the emphasis changed. In 2017, the vision was coroutines and ranges. By 2020, coroutines were the primary model and senders were the optimization path for hot code. By 2024, as the problems being solved turned toward heterogeneous computing and GPU dispatch, senders naturally received more attention and the Sender Sub-Language became the foundation of `std::execution`.
-
-Both models were discovered by the same engineer. Both were described, in his own published words, as valuable. His 2020 assessment - "90% of all async code in the future should be coroutines simply for maintainability" - remains a valid description of the coroutine model's strengths for I/O and general-purpose async programming. The Sender Sub-Language's strengths for compile-time work graphs and zero-allocation pipelines are equally real.
 
 The question is not which discovery was right. Both were. Coroutines are already standardized. The question is whether the committee should give asynchronous I/O the same domain-specific accommodation it gave heterogeneous compute.
 
@@ -357,7 +387,7 @@ The following example is drawn from [retry.hpp](https://github.com/NVIDIA/stdexe
 ```cpp
 // Deferred construction helper - emplaces non-movable types
 // into std::optional via conversion operator
-template <class Fun>                                      // higher-order function wrapper
+template <std::invocable Fun>                              // higher-order function wrapper
     requires std::is_nothrow_move_constructible_v<Fun>
 struct _conv {
     Fun f_;                                               // stored callable
@@ -447,7 +477,7 @@ struct _retry_sender {
     explicit _retry_sender(S s)                           // construct from inner sender
         : s_(static_cast<S&&>(s)) {}
 
-    template <class... Args>                              // completion signature transform:
+    template <class>                                       // completion signature transform:
     using _error = stdexec::completion_signatures<>;      //   remove all error signatures
 
     template <class... Args>
@@ -455,10 +485,10 @@ struct _retry_sender {
         stdexec::completion_signatures<
             stdexec::set_value_t(Args...)>;
 
-    template <class Env>                                  // compute transformed signatures
+    template <class Self, class... Env>                    // compute transformed signatures
     static consteval auto get_completion_signatures()
         -> stdexec::transform_completion_signatures<      // signature transformation
-            stdexec::completion_signatures_of_t<S, Env>,  //   from inner sender's sigs
+            stdexec::completion_signatures_of_t<S&, Env...>, // from inner sender's sigs
             stdexec::completion_signatures<                //   add exception_ptr error
                 stdexec::set_error_t(std::exception_ptr)>,
             _value,                                       //   pass through values
@@ -478,7 +508,7 @@ struct _retry_sender {
     }
 };
 
-template <class S>                                        // the user-facing function
+template <stdexec::sender S>                              // the user-facing function
 auto retry(S s) -> stdexec::sender auto {
     return _retry_sender{static_cast<S&&>(s)};            // wrap in retry sender
 }
@@ -610,6 +640,16 @@ I think we can get there. The precedent exists. The principle is sound. And the 
 
 ---
 
+## 8. Suggested Straw Polls
+
+> 1. "WG21 evaluated the programming model documented in this paper before adopting `std::execution`."
+
+> 2. "Different C++ domains have different asynchronous programming needs."
+
+> 3. "WG21 should give C++ async I/O the same accommodation it gave heterogeneous compute."
+
+---
+
 ## Further Reading
 
 For readers who wish to explore the theoretical foundations of the Sender Sub-Language in greater depth, the following works provide essential background:
@@ -712,3 +752,9 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 53. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022. https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/
 54. [`connect`](https://eel.is/c++draft/exec.connect). C++26 draft standard, [exec.connect]. https://eel.is/c++draft/exec.connect
 55. [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html). NVIDIA CUDA Programming Guide v13.1, Section 5.3 (December 2025). https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html
+
+### Concurrent Selection Gap
+
+56. [P2300R7](https://wg21.link/p2300r7). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2023. https://wg21.link/p2300r7
+57. [P2175R0](https://wg21.link/p2175r0). Lewis Baker. "Composable cancellation for sender-based async operations." 2020. https://wg21.link/p2175r0
+58. [D0001R0](https://wg21.link/d0001r0). Vinnie Falco, Mungo Gill. "When `when_any`?" 2026. https://wg21.link/d0001r0

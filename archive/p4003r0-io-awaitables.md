@@ -5,7 +5,6 @@ date: 2026-02-17
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
-  - "Amlal El Mahrouss <amlalelmahrouss@icloud.com>"
   - "Mungo Gill <mungo.gill@me.com>"
 audience: LEWG
 ---
@@ -806,31 +805,23 @@ set_current_frame_allocator(
 // child coroutines) so that downstream frames can use it.
 
 // In promise_type
-static std::size_t aligned_offset(std::size_t n) noexcept {
-    constexpr auto a = alignof(std::pmr::memory_resource*);
-    return (n + a - 1) & ~(a - 1);
-}
-
 static void* operator new( std::size_t size ) {
     auto* mr = get_current_frame_allocator();
     if(!mr)
         mr = std::pmr::new_delete_resource();
 
     // Store allocator pointer at end of frame for correct deallocation
-    std::size_t off = aligned_offset(size);
-    std::size_t total = off + sizeof(std::pmr::memory_resource*);
+    auto total = size + sizeof(std::pmr::memory_resource*);
     void* raw = mr->allocate(total, alignof(std::max_align_t));
-    *reinterpret_cast<std::pmr::memory_resource**>(
-        static_cast<char*>(raw) + off) = mr;
+    std::memcpy(static_cast<char*>(raw) + size, &mr, sizeof(mr));
     return raw;
 }
 
 static void operator delete( void* ptr, std::size_t size ) {
     // Read the allocator pointer from the end of the frame
-    std::size_t off = aligned_offset(size);
-    auto* mr = *reinterpret_cast<std::pmr::memory_resource**>(
-        static_cast<char*>(ptr) + off);
-    std::size_t total = off + sizeof(std::pmr::memory_resource*);
+    std::pmr::memory_resource* mr;
+    std::memcpy(&mr, static_cast<char*>(ptr) + size, sizeof(mr));
+    auto total = size + sizeof(std::pmr::memory_resource*);
     mr->deallocate(ptr, total, alignof(std::max_align_t));
 }
 ```
@@ -1063,8 +1054,6 @@ flowchart LR
     I3 --> I4["4. await_suspend"]
     I1 -.->|"Allocator ready"| I3
 ```
-
-The same timing constraint applies to stop tokens. In `std::execution`, the token is discovered via `get_stop_token(get_env(receiver))` - available only after `connect()`. In our model, the token propagates forward alongside the executor via `await_suspend`, available from the moment the coroutine begins.
 
 ### 7.2 Type Visibility and Erasure
 
@@ -2377,7 +2366,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
+Peter Dimov, and Mateusz Pusz for their valuable feedback in the development of this paper.
 
 ---
 
