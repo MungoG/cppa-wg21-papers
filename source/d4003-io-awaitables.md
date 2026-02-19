@@ -1056,8 +1056,6 @@ flowchart LR
     I1 -.->|"Allocator ready"| I3
 ```
 
-The same timing constraint applies to stop tokens. In `std::execution`, the token is discovered via `get_stop_token(get_env(receiver))` - available only after `connect()`. In our model, the token propagates forward alongside the executor via `await_suspend`, available from the moment the coroutine begins.
-
 ### 7.2 Type Visibility and Erasure
 
 In `std::execution`, sender types encode the entire operation chain:
