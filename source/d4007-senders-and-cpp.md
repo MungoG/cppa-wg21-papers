@@ -238,19 +238,19 @@ Kohlhoff published P2430R0 in August 2021, during the most intensive review peri
 
 ## 4. Where Is the `co_return`?
 
-The Sub-Language requires errors to reach a separate channel. Regular C++ coroutines have no native path to one. `co_yield with_error` is one model of computation being asked to express a concept that belongs to the other.
+The Sub-Language's three-channel completion model requires coroutines to deliver errors through a path that C++ coroutines do not provide. The workaround requires a language change.
 
-### 4.1 Senders
+### 4.1 The Mechanism
 
-In a sender's operation state, signaling an error is one line:
+In a sender's operation state, signaling an error is direct: `set_error(std::move(rcvr), ec)`.
 
-```cpp
-set_error(std::move(rcvr), ec);
-```
+In a coroutine, `co_return expr` calls `promise.return_value(expr)`, which [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> routes to `set_value`. There is no way to make `co_return` call `set_error`.
 
-The call is direct.
+A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.fct.def.coroutine]](https://eel.is/c++draft/dcl.fct.def.coroutine)<sup>[56]</sup>). `task<void>` needs `return_void`. The `return_void`/`return_value` mutual exclusion blocks any `return_value` overload that could route to `set_error`.
 
-### 4.2 Coroutines
+`co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Dietmar K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[56]</sup>) is the best solution the language permits. In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate."
+
+### 4.2 The Consequence
 
 In regular C++, `co_return` delivers errors:
 
@@ -265,7 +265,7 @@ do_read(tcp_socket& s, buffer& buf)
 }
 ```
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> introduces a new mechanism:
+[P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> introduces a different mechanism:
 
 ```cpp
 std::execution::task<std::size_t>
@@ -273,13 +273,12 @@ do_read(tcp_socket& s, buffer& buf)
 {
     auto [ec, n] = co_await s.async_read(buf);
     if (ec)
-        co_yield with_error(ec);           // not co_return
-        // never gets here?
+        co_yield with_error(ec);
     co_return n;
 }
 ```
 
-For six years, every C++ coroutine library has taught the same two conventions: `co_return` for final values, `co_yield` for intermediate values that the coroutine continues to produce. The second example above breaks both: `co_yield` does not produce a value, and the coroutine does not continue.
+For six years, every C++ coroutine library has taught the same two conventions: `co_return` for final values, `co_yield` for intermediate values that the coroutine continues to produce. The second example breaks both: `co_yield` does not produce a value, and the coroutine does not continue.
 
 ### 4.3 Established Practice
 
@@ -291,23 +290,17 @@ No production C++ coroutine library uses `co_yield` for error signaling:
 
 There is no third path. `std::execution::task` introduces one.
 
-`co_return expr` calls `promise.return_value(expr)`, which P3552R3 routes to `set_value`. There is no way to make `co_return` call `set_error`. A coroutine promise can only define `return_void` or `return_value`, not both, and `task<void>` needs `return_void`.
+### 4.4 The Language Change
 
-Dietmar K&uuml;hl needed a different mechanism. The `return_void`/`return_value` mutual exclusion and the Sub-Language's separate error channel leave exactly one path: `co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[56]</sup>) is the best solution the language permits:
+The `return_void`/`return_value` mutual exclusion has been part of the coroutine specification since N4499 (2015). In the decade since, cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp have shipped coroutine task types. None required the restriction to be lifted. All deliver errors through `co_return` or exceptions.
 
-> *Returns: An awaitable object of unspecified type whose member functions arrange for the calling coroutine to be suspended and then completes the asynchronous operation associated with STATE(\*this) by invoking `set_error(std::move(RCVR(*this)), Cerr(std::move(err.error)))`.*
+[P1713R0](https://wg21.link/p1713r0)<sup>[65]</sup> (Baker, 2019) proposed removing this restriction. It had no consensus in Cologne.
 
-In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate." The keyword's established meaning predicts the wrong behavior.
+[P3950R0](https://wg21.link/p3950r0)<sup>[23]</sup> (Leahy, 2025) proposes the same change. The motivation is `std::execution`. The paper states: *"Disallowing it either disadvantages coroutines vis-a-vis std::execution or necessitates library workarounds."* The paper targets EWG - a core language change - to serve a library adopted by LEWG.
 
-The committee is aware of this problem. M&uuml;ller's [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup> ("Concerns about the design of `std::execution::task`," 2025) explains:
+M&uuml;ller's [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup> ("Concerns about the design of `std::execution::task`," 2025) confirms the cause: *"The reason `co_yield` is used, is that a coroutine promise can only specify `return_void` or `return_value`, but not both. If we want to allow `co_return;`, we cannot have `co_return with_error(error_code);`. This is unfortunate, but could be fixed by changing the language to drop that restriction."*
 
-> *"The reason `co_yield` is used, is that a coroutine promise can only specify `return_void` or `return_value`, but not both. If we want to allow `co_return;`, we cannot have `co_return with_error(error_code);`. This is unfortunate, but could be fixed by changing the language to drop that restriction."*
-
-The proposed fix, a language change to the `return_void`/`return_value` mutual exclusion, is not part of C++26 and has no paper proposing it. The syntax ships as-is.
-
-The `return_void`/`return_value` mutual exclusion has existed since C++20 and has not prevented any other coroutine library from delivering errors through `co_return`. The constraint becomes a Sub-Language problem: errors must reach a separate channel.
-
-Does `co_yield with_error` serve coroutines, or the Sub-Language?
+A language rule that has served every coroutine library for a decade, and whose removal the committee previously declined, must now be reconsidered because one library requires it. The rule is not the problem.
 
 ---
 
@@ -400,7 +393,7 @@ P2300's elegant environment propagation is structurally unreachable for coroutin
 
 ### 5.3 Coroutines Work for What Senders Get Free
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation. Propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
+Dietmar K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation. Propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
 
 1. **Composability loss.** Generic Sub-Language algorithms like `let_value` and `when_all` launch child operations without knowledge of the caller's allocator. Manual forwarding cannot cross algorithm boundaries.
 
@@ -631,7 +624,7 @@ LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1
 >
 > Attendance: 14. Outcome: strictly neutral.
 
-The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Dietmar K&uuml;hl returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[24]</sup> (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
+The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. Dietmar returned to the problem in [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[24]</sup> (2026-01-25), reworking the allocator propagation model six months after [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
 
 The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 
@@ -643,7 +636,7 @@ The task type itself was contested. The forwarding poll (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. Dietmar's [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup> ("Concerns about the design of `std::execution::task`," M&uuml;ller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
+The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 / A:1 / SA:0, six neutral votes matching six favorable votes. C++29 forwarding was unanimous. C++26 was conditional and weak. K&uuml;hl's [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues") catalogues sixteen open concerns about `task` - a candid assessment from the task author himself. [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup> ("Concerns about the design of `std::execution::task`," M&uuml;ller, 2025) was filed in July 2025. P2300 was previously deferred from C++23 for maturity concerns; the same pattern of ongoing design changes is present again.
 
 ---
 
@@ -1066,3 +1059,4 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 62. [P1678R2](https://wg21.link/p1678r2) - "Callbacks and Composition" (Kirk Shoop, 2020). https://wg21.link/p1678r2
 63. [cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247) - "Add ability to know when computing completion-signatures whether the call to connect() will throw" (Lewis Baker, 2024). https://github.com/cplusplus/sender-receiver/issues/247
 64. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
+65. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0

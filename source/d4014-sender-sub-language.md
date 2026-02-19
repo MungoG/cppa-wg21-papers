@@ -84,9 +84,11 @@ CPS makes control flow, variable binding, and resource lifetime explicit in the 
 
 ---
 
-## 4. Multiple Discoveries
+## 4. How the Emphasis Changed
 
-Eric Niebler's published writing provides the most complete public record of the design thinking behind `std::execution`. His blog posts document two independent discoveries: coroutines for direct-style async and senders for compile-time work graphs, with candor and intellectual honesty. Both discoveries were valid. The following timeline, drawn from that published record, shows how the relationship between them evolved as the problems being solved changed.
+Both models - coroutines for direct-style async and senders for compile-time work graphs - are real contributions to C++. Both were described as valuable by the same engineer, in his own published words. Eric Niebler's 2020 assessment, "90% of all async code in the future should be coroutines simply for maintainability," captures the coroutine model's strengths for I/O and general-purpose async programming. The Sender Sub-Language's strengths for heterogeneous compute and zero-allocation pipelines are equally real.
+
+His published writing provides the most complete public record of the design thinking behind `std::execution`, documented with candor and intellectual honesty. The following timeline, drawn from that record, shows how the emphasis naturally shifted as the target problems changed.
 
 **2017.** Eric Niebler published ["Ranges, Coroutines, and React: Early Musings on the Future of Async in C++"](https://ericniebler.com/2017/08/17/ranges-coroutines-and-react-early-musings-on-the-future-of-async-in-c/)<sup>[10]</sup>. The vision was pure coroutines and ranges: `for co_await`, async generators, range adaptors on async streams. No senders. No receivers. The original async vision for C++ was direct-style and coroutine-native:
 
@@ -124,11 +126,9 @@ Senders were now the foundation. Coroutines were one of several ways to consume 
 | 2020      | "Structured Concurrency"             | [P2300R0](https://wg21.link/p2300r0) ("std::execution") in development                                 | Coroutines 90%, senders for 10% hot paths   |
 | 2021      | "Asynchronous Stacks and Scopes"     | [P2300R2](https://wg21.link/p2300r2) revisions                                                         | Coroutines overwhelming, senders upcoming   |
 | 2024      | "What are Senders Good For, Anyway?" | [P2300R10](https://wg21.link/p2300r10); [P3164R0](https://wg21.link/p3164r0) ("Improving Diagnostics") | Senders are the foundation                   |
-| 2025-2026 | (no blog post)                       | [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization"): "irreparably broken"      | Design under active rework                   |
+| 2025-2026 | (no blog post)                       | [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization"): early customization described as "irreparably broken"      | Design under active rework                   |
 
 Between 2017 and 2024, the emphasis changed. In 2017, the vision was coroutines and ranges. By 2020, coroutines were the primary model and senders were the optimization path for hot code. By 2024, as the problems being solved turned toward heterogeneous computing and GPU dispatch, senders naturally received more attention and the Sender Sub-Language became the foundation of `std::execution`.
-
-Both models were discovered by the same engineer. Both were described, in his own published words, as valuable. His 2020 assessment - "90% of all async code in the future should be coroutines simply for maintainability" - remains a valid description of the coroutine model's strengths for I/O and general-purpose async programming. The Sender Sub-Language's strengths for compile-time work graphs and zero-allocation pipelines are equally real.
 
 The question is not which discovery was right. Both were. Coroutines are already standardized. The question is whether the committee should give asynchronous I/O the same domain-specific accommodation it gave heterogeneous compute.
 
