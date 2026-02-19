@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-With `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>), the committee adopted the Sender Sub-Language, a [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[45]</sup> (CPS) programming model with its own control flow, variable binding, error handling, and type system ([D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). Programming language theory generates specific predictions about friction when CPS meets direct-style. This paper tests those predictions against the coroutine integration: three structural gaps in the integration and eight additional friction points in the Sub-Language's type system, semantics, and specification. The gaps are not design defects. They are the cost of the Sub-Language.
+With `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>), the committee adopted the Sender Sub-Language, a [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[39]</sup> (CPS) programming model with its own control flow, variable binding, error handling, and type system ([D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). This paper documents what happens when that model meets coroutines: three structural gaps in the integration and eight additional friction points in the Sub-Language's type system, semantics, and specification. The gaps share a shape. Each is the cost of a property the Sub-Language requires. They are not design defects. They are the cost of the Sub-Language.
 
 ---
 
@@ -43,28 +43,28 @@ Eric Niebler wrote in ["Structured Concurrency"](https://ericniebler.com/2020/11
 The Sender Sub-Language expresses the same logic differently:
 
 ```cpp
-auto sndr = just(std::move(socket))                       // pure/return
-          | let_value([](tcp_socket& s) {                 // monadic bind (>>=)
-                return async_read(s, buf)                 // Kleisli arrow
-                     | then([](auto data) {               // fmap/functor lift
-                           return parse(data);            // VALUE -> success path
+auto sndr = just(std::move(socket))
+          | let_value([](tcp_socket& s) {
+                return async_read(s, buf)
+                     | then([](auto data) {
+                           return parse(data);   // VALUE -> success path
                        });
             })
-          | upon_error([](auto e) {                       // ERROR -> error path
+          | upon_error([](auto e) {              // ERROR -> error path
                 log(e);
             })
-          | upon_stopped([] {                             // STOPPED -> cancellation path
+          | upon_stopped([] {                    // STOPPED -> cancellation path
                 log("cancelled");
             });
-auto op = connect(std::move(sndr), rcvr);                 // reify continuation
-start(op);                                                // begin execution
+auto op = connect(std::move(sndr), rcvr);
+start(op);
 ```
 
 Niebler [asked the question himself](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup>: *"Why would anybody write that when we have coroutines? You would certainly need a good reason."*
 
 Herb Sutter called `std::execution` *["the biggest usability improvement yet to use the coroutine support we already have."](https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa)*<sup>[35]</sup>
 
-This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[45]</sup> expressed as composable value types. [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup> ("The Sender Sub-Language") provides the full treatment.
+This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[39]</sup> expressed as composable value types. [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup> ("The Sender Sub-Language") provides the full treatment.
 
 Coroutines inhabit direct-style C++ - values return to callers, errors propagate through the call stack, resources scope to lexical lifetimes. This paper calls that *regular C++*.
 
@@ -86,41 +86,17 @@ The committee chose to standardize both. This paper examines what follows.
 
 ---
 
-## 2. Three Predictions
-
-The committee placed a CPS-based model alongside an imperative language. Programming language theory offers specific predictions about what happens at the boundary. Sections 3-5 test three of them.
-
-**Danvy, ["Back to Direct Style"](https://static.aminer.org/pdf/PDF/001/056/774/back_to_direct_style.pdf)<sup>[37]</sup> (1992):** *"Not all lambda-terms are CPS terms, and not all CPS terms encode a left-to-right call-by-value evaluation."*
-
-The CPS transform is asymmetric. The Sub-Language's three completion channels partition the completion space at the type level. I/O operations return a single tuple whose meaning is determined at runtime. The two shapes are incompatible. *Prediction: the three-channel completion model will force I/O sender authors into a choice where neither channel is correct.* Section 3 tests this.
-
-**Plotkin, ["Call-by-Name, Call-by-Value and the lambda-Calculus"](https://homepages.inf.ed.ac.uk/gdp/publications/cbn_cbv_lambda.pdf)<sup>[38]</sup> (1975):** *"Operational equality is not preserved by either of the simulations."*
-
-You can simulate one model in the other, but the simulation changes program behavior. `task<T>` is that simulation. A coroutine that returns `std::expected<size_t, error_code>` through `co_return` is operationally different from a sender that routes `error_code` through `set_error`. The first is invisible to `upon_error`. The second loses the byte count.
-
-The simulation works. It does not preserve what the original meant. *Prediction: the bridge between models will require coroutines to express CPS concepts they have no native syntax for.* Section 4 tests this.
-
-**Strachey & Wadsworth, ["Continuations: A Mathematical Semantics for Handling Full Jumps"](https://www.cs.ox.ac.uk/publications/publication3729-abstract.html)<sup>[39]</sup> (1974), as cited in later transformation work:** *"Transforming the representation of a direct-style semantics into continuation style usually does not yield the expected representation of a continuation-style semantics (i.e., one written by hand)."*
-
-A hand-written sender allocates inside `connect()`, after the receiver's environment is available. A coroutine's `promise_type::operator new` fires at the function call, before any sender machinery runs. *Prediction: resource propagation designed for the CPS model will not reach coroutine frames correctly.* Section 5 tests this.
-
-Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. The predictions above suggest otherwise.
-
-Wherever CPS and direct-style meet, we can expect friction. Coroutines are the first boundary, but not the last. [LWG 4368](https://cplusplus.github.io/LWG/issue4368)<sup>[28]</sup> (dangling reference from `transform_sender`) is already one consequence. Sections 3-5 test whether the predictions hold.
-
----
-
-## 3. Where Do Errors Go?
+## 2. Where Do Errors Go?
 
 How should an asynchronous operation report its outcome? The Sub-Language has an elegant answer.
 
-### 3.1 Senders Use Channels
+### 2.1 Senders Use Channels
 
 The committee adopted three Sender completion channels: `set_value`, `set_error`, and `set_stopped`. These channels are the Sub-Language's type system. Type-level routing is a requirement of CPS reification (Appendix A.1). From [P2300R10 Section 1.3.1](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup>:
 
 > *"A sender describes asynchronous work and sends a signal (value, error, or stopped) to some recipient(s) when that work completes."*
 
-The three channels enable compile-time routing: `upon_error` attaches to the error path at the type level, `let_value` chains successes, and algorithms like [`when_all`](https://eel.is/c++draft/exec.when.all)<sup>[56]</sup> cancel siblings when a child completes through the error or stopped channel - all without runtime inspection of the payload.
+The three channels enable compile-time routing: `upon_error` attaches to the error path at the type level, `let_value` chains successes, and algorithms like [`when_all`](https://eel.is/c++draft/exec.when.all)<sup>[50]</sup> cancel siblings when a child completes through the error or stopped channel - all without runtime inspection of the payload.
 
 Each channel has a fixed signature shape:
 
@@ -128,11 +104,11 @@ Each channel has a fixed signature shape:
 - `set_error(receiver, E)` carries a single, strongly-typed error.
 - `set_stopped(receiver)` is a stateless signal.
 
-### 3.2 What I/O Produces
+### 2.2 What I/O Produces
 
 The operating system is not a sender.
 
-On POSIX, `read()` returns a byte count; errors arrive through `errno`. On Windows, `GetOverlappedResult` delivers a byte count and an error code. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[46]</sup> unified these into `void(error_code, size_t)` twenty-five years ago. The signature was correct then. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it because it is correct now.
+On POSIX, `read()` returns a byte count; errors arrive through `errno`. On Windows, `GetOverlappedResult` delivers a byte count and an error code. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> unified these into `void(error_code, size_t)` twenty-five years ago. The signature was correct then. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it because it is correct now.
 
 A tuple accurately reflects what composed I/O operations physically produce. A `read_until` accumulates bytes across several receives, transferring 47 bytes before the connection resets. The error code says what happened. The byte count says how far it got. Both values are always meaningful.
 
@@ -140,7 +116,7 @@ Cancellation is an error code.
 
 `CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated 47 bytes across prior successful receives breaks the same way.
 
-### 3.3 Does P2300R10 Guide Us?
+### 2.3 Does P2300R10 Guide Us?
 
 [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read)<sup>[1]</sup> presents a composed read in its motivating examples. The operation reads a length-prefixed byte array: first the size, then the data.
 
@@ -191,7 +167,7 @@ The caller receives the error code. The byte count from the failing read, the al
 
 This is [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read)<sup>[1]</sup>'s motivating example of sender composition.
 
-### 3.4 No Choice Is Correct
+### 2.4 No Choice Is Correct
 
 [P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> does not define `async_read`, but [Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup> presents `recv_sender` and `async_recv` - the primitive receive operation built on Windows IOCP. Any implementation of `async_read` loops the primitive until the buffer is full (Appendix A.2 shows the complete sender). The completion callback is where accumulated progress meets the channel model:
 
@@ -222,11 +198,11 @@ The mismatch is not a missing convention. It is a structural incompatibility bet
 
 The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.5 explains why.
 
-As of this writing, neither [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html)<sup>[57]</sup>, nor the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[58]</sup> repository contains a published example of `let_error` being used to recover from an error.
+As of this writing, neither [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [cppreference](https://en.cppreference.com/w/cpp/execution/let_error.html)<sup>[51]</sup>, nor the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[52]</sup> repository contains a published example of `let_error` being used to recover from an error.
 
 Are coroutines paying for a feature they did not ask for?
 
-### 3.5 The Paper Not Polled
+### 2.5 The Paper Not Polled
 
 Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"):
 
@@ -236,21 +212,21 @@ Kohlhoff published P2430R0 in August 2021, during the most intensive review peri
 
 ---
 
-## 4. Where Is the `co_return`?
+## 3. Where Is the `co_return`?
 
 The Sub-Language's three-channel completion model requires coroutines to deliver errors through a path that C++ coroutines do not provide. The workaround requires a language change.
 
-### 4.1 The Mechanism
+### 3.1 The Mechanism
 
 In a sender's operation state, signaling an error is direct: `set_error(std::move(rcvr), ec)`.
 
 In a coroutine, `co_return expr` calls `promise.return_value(expr)`, which [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> routes to `set_value`. There is no way to make `co_return` call `set_error`.
 
-A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.fct.def.coroutine]](https://eel.is/c++draft/dcl.fct.def.coroutine)<sup>[56]</sup>). `task<void>` needs `return_void`. The `return_void`/`return_value` mutual exclusion blocks any `return_value` overload that could route to `set_error`.
+A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.fct.def.coroutine]](https://eel.is/c++draft/dcl.fct.def.coroutine)<sup>[50]</sup>). `task<void>` needs `return_void`. The `return_void`/`return_value` mutual exclusion blocks any `return_value` overload that could route to `set_error`.
 
-`co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Dietmar K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[56]</sup>) is the best solution the language permits - and that is the problem. The constraints the Sub-Language imposes are so narrow that even one of the most experienced C++ library engineers is left with a mechanism that reverses the established meaning of `co_yield` and requires a core language change to regularize. In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate."
+`co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Dietmar K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[50]</sup>) is the best solution the language permits - and that is the problem. The constraints the Sub-Language imposes are so narrow that even one of the most experienced C++ library engineers is left with a mechanism that reverses the established meaning of `co_yield` and requires a core language change to regularize. In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate."
 
-### 4.2 The Consequence
+### 3.2 The Consequence
 
 In regular C++, `co_return` delivers errors:
 
@@ -280,7 +256,7 @@ do_read(tcp_socket& s, buffer& buf)
 
 For six years, every C++ coroutine library has taught the same two conventions: `co_return` for final values, `co_yield` for intermediate values that the coroutine continues to produce. The second example breaks both: `co_yield` does not produce a value, and the coroutine does not continue.
 
-### 4.3 Established Practice
+### 3.3 Established Practice
 
 No production C++ coroutine library uses `co_yield` for error signaling:
 
@@ -290,11 +266,11 @@ No production C++ coroutine library uses `co_yield` for error signaling:
 
 There is no third path. `std::execution::task` introduces one.
 
-### 4.4 The Language Change
+### 3.4 The Language Change
 
 The `return_void`/`return_value` mutual exclusion has been part of the coroutine specification since N4499 (2015). In the decade since, cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp have shipped coroutine task types. None required the restriction to be lifted. All deliver errors through `co_return` or exceptions.
 
-[P1713R0](https://wg21.link/p1713r0)<sup>[65]</sup> (Baker, 2019) proposed removing this restriction. It had no consensus in Cologne.
+[P1713R0](https://wg21.link/p1713r0)<sup>[59]</sup> (Baker, 2019) proposed removing this restriction. It had no consensus in Cologne.
 
 [P3950R0](https://wg21.link/p3950r0)<sup>[23]</sup> (Leahy, 2025) proposes the same change. The motivation is `std::execution`. The paper states: *"Disallowing it either disadvantages coroutines vis-a-vis std::execution or necessitates library workarounds."* The paper targets EWG - a core language change - to serve a library adopted by LEWG.
 
@@ -304,7 +280,7 @@ A language rule that has served every coroutine library for a decade, and whose 
 
 ---
 
-## 5. Where Is the Allocator?
+## 4. Where Is the Allocator?
 
 In the committee's Sub-Language, `connect`/`start` binds the continuation after the coroutine frame is already allocated. The allocator arrives too late.
 
@@ -322,18 +298,18 @@ Each `task<T>` call invokes `promise_type::operator new`. At high request rates,
 | Apple clang | Recycling        |   2297.08 |           +55.2%  |
 | Apple clang | `std::allocator` |   3565.49 |                 - |
 
-### 5.1 Senders
+### 4.1 Senders
 
 The [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> authors solved the allocator propagation problem for senders with care and precision. The receiver's environment carries the allocator via `get_allocator(get_env(rcvr))`, and the sender algorithms propagate it automatically through every level of nesting:
 
 ```cpp
 auto work =
-    just(std::move(socket))                           // pure/return
-  | let_value([](tcp_socket& s) {                     // monadic bind
-        return async_read(s, buf)                     // Kleisli arrow
-             | let_value([&](auto data) {             // nested bind
+    just(std::move(socket))
+  | let_value([](tcp_socket& s) {
+        return async_read(s, buf)
+             | let_value([&](auto data) {
                    return parse(data)
-                        | let_value([&](auto doc) {   // third level bind
+                        | let_value([&](auto doc) {
                               return async_write(
                                   s, build_response(doc));
                           });
@@ -354,7 +330,7 @@ However...
 
 Nothing here allocates. The operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
 
-### 5.2 Coroutines
+### 4.2 Coroutines
 
 Consider the standard usage pattern for spawning a connection handler:
 
@@ -391,7 +367,7 @@ P2300's elegant environment propagation is structurally unreachable for coroutin
 
 **Senders get the allocator they do not need. Coroutines need the allocator they do not get.**
 
-### 5.3 Coroutines Work for What Senders Get Free
+### 4.3 Coroutines Work for What Senders Get Free
 
 Dietmar K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation. Propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
 
@@ -401,15 +377,15 @@ Dietmar K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides
 
 3. **Protocol asymmetry.** Schedulers and stop tokens propagate automatically through the receiver environment. Allocators are the only execution resource that the Sub-Language forces coroutine users to propagate by hand.
 
-[C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[43]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
+[C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[37]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
 
 Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake.
 
-### 5.4 Does Performance Matter?
+### 4.4 Does Performance Matter?
 
 The recycling allocator eliminates coroutine frame allocation overhead. It requires `allocator_arg` at every call site. One missed site falls back to `std::allocator` with no diagnostic. In production code, sites will be missed. Users profile, see heap allocation cost, and conclude coroutines are slow. Coroutines are not slow. The fast path is too hard to use.
 
-### 5.5 A Viral Signature?
+### 4.5 A Viral Signature?
 
 Here is what allocator propagation looks like in a coroutine call chain under [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>:
 
@@ -442,7 +418,7 @@ task<int> level_one(
 }
 ```
 
-### 5.6 Domain Freedom?
+### 4.6 Domain Freedom?
 
 No workaround, global PMR, thread-local registries, or otherwise, can bypass the promise. Every allocated coroutine frame must run through `promise_type::operator new`. If the promise does not cooperate, the allocator does not reach the frame.
 
@@ -450,26 +426,26 @@ The escape hatch is to stop searching for a universal allocator model in one pro
 
 ---
 
-## 6. Friction Beyond Coroutines
+## 5. Friction Beyond Coroutines
 
 The following friction points were identified through a survey of active papers and LWG issues, but not analyzed to the depth of the three gaps above. The question is whether the pattern is better explained by scale or by structure.
 
-### 6.1 Type-System Friction
+### 5.1 Type-System Friction
 
 **Algorithm customization broken ([P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup>, [P3718R0](https://wg21.link/p3718r0)<sup>[17]</sup>, [P2999R3](https://wg21.link/p2999r3)<sup>[6]</sup>, [P3303R1](https://wg21.link/p3303r1)<sup>[11]</sup>).** A sender cannot know its completion domain until it knows where it will start. Early customization is, in Eric Niebler's words, "irreparably broken."<sup>[20]</sup> `starts_on(gpu, just()) | then(fn)` silently uses the CPU implementation for GPU work. Four papers and counting. In regular C++, calling `f(x)` on a thread pool just works.
 
 **Incomprehensible diagnostics ([P3557R3](https://wg21.link/p3557r3)<sup>[14]</sup>, [P3164R4](https://wg21.link/p3164r4)<sup>[8]</sup>).** Type checking deferred to `connect` time means `just(42) | then([](){})` (nullary lambda, wrong arity) produces dozens of lines of template backtrace far from the source. In regular C++, `g(f(42))` with a type mismatch produces a one-line error at the call site.
 **`connect_result_t` SFINAE breakage ([LWG 4206](https://cplusplus.github.io/LWG/issue4206)<sup>[29]</sup>, Priority 1).** Changing `connect`'s constraints to `Mandates` made `connect` unconstrained, but `let_value` uses `connect_result_t` in SFINAE contexts expecting substitution failure. It gets hard errors instead. The Sub-Language's layered constraint model violates normal template metaprogramming conventions.
 
-### 6.2 Semantic Friction
+### 5.2 Semantic Friction
 
 **`split` and `ensure_started` removed ([P3682R0](https://wg21.link/p3682r0)<sup>[16]</sup>, [P3187R1](https://wg21.link/p3187r1)<sup>[10]</sup>).** The two most natural ways to share or reuse an async result violate structured concurrency. Both removed by plenary vote. In regular C++, `auto x = f(); use(x); use(x);` is trivial. The Sub-Language's structured concurrency guarantees make this pattern unsafe.
 
 **Optional vs. variant interface mismatch ([P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup>).** A concurrent queue's `async_pop` naturally returns `optional<T>` in regular C++ ("value or nothing"). The Sub-Language requires the same operation to complete through `set_value(T)` or `set_stopped()`, two channels dispatched at the type level. API designers must choose which world to serve.
 
-**Partial success in pure sender context ([P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup>).** This is the same error channel mismatch documented in Section 3, viewed from the sender side rather than the coroutine side. The forced choice between `set_value(ec, n)` and `set_error(ec)` exists for raw sender authors writing operation states, independent of coroutines. We include it here to show that the friction is not specific to the coroutine boundary.
+**Partial success in pure sender context ([P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup>).** This is the same error channel mismatch documented in Section 2, viewed from the sender side rather than the coroutine side. The forced choice between `set_value(ec, n)` and `set_error(ec)` exists for raw sender authors writing operation states, independent of coroutines. We include it here to show that the friction is not specific to the coroutine boundary.
 
-**Mandatory error model translation ([cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247)<sup>[63]</sup>, [P3388R2](https://wg21.link/p3388r2)<sup>[64]</sup>).** Every other major async framework propagates errors through one mechanism. `std::execution` requires algorithm authors to translate between two:
+**Mandatory error model translation ([cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247)<sup>[57]</sup>, [P3388R2](https://wg21.link/p3388r2)<sup>[58]</sup>).** Every other major async framework propagates errors through one mechanism. `std::execution` requires algorithm authors to translate between two:
 
 | Framework            | Must algorithms translate between error models? |
 |----------------------|-------------------------------------------------|
@@ -479,15 +455,15 @@ The following friction points were identified through a survey of active papers 
 | C++ coroutines       | No - exceptions propagate through `co_await`    |
 | `std::execution`     | **Yes** - catch at `connect`, convert to `set_error` |
 
-Algorithms that call `connect()` after `start()` - `let_value`, `let_error`, `let_stopped`, `when_all` - must catch exceptions from `connect()` and convert them to `set_error(rcvr, current_exception())`, injecting `exception_ptr` into the completion signatures even when the user's code is entirely `noexcept`. Lewis Baker filed this as a P0 design issue<sup>[63]</sup>; [P3388R2](https://wg21.link/p3388r2)<sup>[64]</sup> adds a trait to query `connect()` noexceptness but does not eliminate the translation.
+Algorithms that call `connect()` after `start()` - `let_value`, `let_error`, `let_stopped`, `when_all` - must catch exceptions from `connect()` and convert them to `set_error(rcvr, current_exception())`, injecting `exception_ptr` into the completion signatures even when the user's code is entirely `noexcept`. Lewis Baker filed this as a P0 design issue<sup>[57]</sup>; [P3388R2](https://wg21.link/p3388r2)<sup>[58]</sup> adds a trait to query `connect()` noexceptness but does not eliminate the translation.
 
-### 6.3 Specification Friction
+### 5.3 Specification Friction
 
 **`transform_sender` dangling reference ([LWG 4368](https://cplusplus.github.io/LWG/issue4368)<sup>[28]</sup>, Priority 1).** The specification itself has a use-after-free. The layered transform architecture creates a lifetime hazard: `default_domain::transform_sender` forwards a temporary as an xvalue after the temporary is destroyed. The reference implementation (stdexec) works around it by non-conformantly returning prvalues. This hazard does not exist in direct function calls.
 
 **Circular `completion-signatures-for` ([LWG 4190](https://cplusplus.github.io/LWG/issue4190)<sup>[30]</sup>, Priority 2).** The spec for `completion-signatures-for<Sndr, Env>` tests `sender_in<Sndr, Env>`, which requires `get_completion_signatures(sndr, env)` to be well-formed, the very thing being defined. Circular specifications are a symptom of the type-level machinery's self-referential complexity.
 
-### 6.4 Viral Friction
+### 5.4 Viral Friction
 
 **Environment leaks into `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>).** In a sender pipeline, the receiver's environment propagates through `connect` and never appears in a public type. When the Sub-Language meets coroutines, the environment has nowhere to hide: a coroutine's return type is its public interface. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters: `template<class T, class Environment>`. Every production coroutine library has independently converged on a single parameter:
 
@@ -500,37 +476,39 @@ Algorithms that call `connect()` after `start()` - `let_value`, `let_error`, `le
 | libcoro       | `template<typename return_type> class task`       | 1       |
 | P3552R3 (std) | `template<class T, class Environment> class task` | **2**   |
 
-Sources: [cppcoro](https://github.com/lewissbaker/cppcoro/blob/master/include/cppcoro/task.hpp#L233)<sup>[48]</sup>, [libcoro](https://github.com/jbaldwin/libcoro/blob/main/include/coro/task.hpp#L200)<sup>[53]</sup>, [asyncpp](https://github.com/petiaccja/asyncpp/blob/master/include/asyncpp/task.hpp#L88)<sup>[52]</sup>, [aiopp](https://github.com/pfirsich/aiopp/blob/main/include/aiopp/task.hpp#L10)<sup>[54]</sup>, [P3552R3 ref. impl.](https://github.com/bemanproject/task/blob/main/include/beman/task/detail/task.hpp)<sup>[55]</sup>
+Sources: [cppcoro](https://github.com/lewissbaker/cppcoro/blob/master/include/cppcoro/task.hpp#L233)<sup>[42]</sup>, [libcoro](https://github.com/jbaldwin/libcoro/blob/main/include/coro/task.hpp#L200)<sup>[47]</sup>, [asyncpp](https://github.com/petiaccja/asyncpp/blob/master/include/asyncpp/task.hpp#L88)<sup>[46]</sup>, [aiopp](https://github.com/pfirsich/aiopp/blob/main/include/aiopp/task.hpp#L10)<sup>[48]</sup>, [P3552R3 ref. impl.](https://github.com/bemanproject/task/blob/main/include/beman/task/detail/task.hpp)<sup>[49]</sup>
 
-The two-parameter form appears only in P3552R3. A default `Environment` resolves the spelling but not the composability: a library returning `task<T>` with the default environment cannot participate in sender pipelines that depend on it. The pattern is the same as Sections 3-5: a property internal to the Sub-Language becomes a cost at the boundary with regular C++.
+The two-parameter form appears only in P3552R3. A default `Environment` resolves the spelling but not the composability: a library returning `task<T>` with the default environment cannot participate in sender pipelines that depend on it. The pattern is the same as Sections 2-4: a property internal to the Sub-Language becomes a cost at the boundary with regular C++.
 
-**Is the pattern coincidental?** If the committee determines these items are routine specification work, that finding does not affect the three structural gaps in Sections 3-5. Those gaps stand on their own evidence.
+**Is the pattern coincidental?** If the committee determines these items are routine specification work, that finding does not affect the three structural gaps in Sections 2-4. Those gaps stand on their own evidence.
 
 ---
 
-## 7. The Gaps Are The Tradeoff
+## 6. The Gaps Are The Tradeoff
 
-The committee standardized the Sender Sub-Language for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 3-5 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
+Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. The previous three sections suggest otherwise.
 
-### 7.1 The Channel Tradeoff
+Each gap has the same shape. The Sub-Language requires a property for compile-time analysis. That property forces a cost on coroutines at the boundary. The committee standardized the Sender Sub-Language for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 2-4 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
 
-Section 3 showed the cost of compile-time channel routing. Choose one:
+### 6.1 The Channel Tradeoff
+
+Section 2 showed the cost of compile-time channel routing. Choose one:
 
 | Compile-time channel routing | I/O tuple completion |
 |---|---|
 | `upon_error`, `let_error`, `upon_stopped` attach at the type level; algorithms dispatch on channel without runtime inspection | `(error_code, size_t)` returned together; error, cancellation, and byte count are all meaningful and inseparable |
 
-### 7.2 The `co_yield` Tradeoff
+### 6.2 The `co_yield` Tradeoff
 
-Section 4 showed the cost of a separate error channel for coroutines. The alternative, lifting the `return_void`/`return_value` mutual exclusion, is not part of C++26. Choose one:
+Section 3 showed the cost of a separate error channel for coroutines. The alternative, lifting the `return_void`/`return_value` mutual exclusion, is not part of C++26. Choose one:
 
 | Separate error channel from coroutines | Established `co_return` semantics |
 |---|---|
 | `co_yield with_error(ec);` | `co_return std::unexpected(ec);` |
 
-### 7.3 The Allocator Tradeoff
+### 6.3 The Allocator Tradeoff
 
-Section 5 showed the cost of deferred execution. Choose one:
+Section 4 showed the cost of deferred execution. Choose one:
 
 | Deferred execution via `connect`/`start` | Allocator reaches coroutine frames |
 |---|---|
@@ -538,7 +516,7 @@ Section 5 showed the cost of deferred execution. Choose one:
 
 `await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the allocator becomes available (Appendix B.3).
 
-### 7.4 ABI Makes the Choice Permanent
+### 6.4 ABI Makes the Choice Permanent
 
 The first three tradeoffs are structural. This subsection is about timing.
 
@@ -550,17 +528,17 @@ Choose one:
 |---|---|
 | The three tradeoffs above become ABI | The three tradeoffs remain open |
 
-The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 7.1 through 7.3 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
+The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 6.1 through 6.3 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
 
 The narrowest remedy is to ship `std::execution` without `task`. The sender pipeline is valuable and ready. The three gaps exist only at the coroutine boundary. Remove `task` from C++26, and no production user is affected. The cost falls on no one.
 
 ---
 
-## 8. Why Wait To Ship?
+## 7. Why Wait To Ship?
 
 The cost of shipping is documented above. What is the cost of waiting?
 
-### 8.1 "C++ needs a standard task. Six years is long enough."
+### 7.1 "C++ needs a standard task. Six years is long enough."
 
 C++ needs a standard task. The question is whether this task unifies or fragments.
 
@@ -571,15 +549,15 @@ C++ needs a standard task. The question is whether this task unifies or fragment
 
 Convention divergence is the opposite of unification.
 
-### 8.2 "The gaps are manageable. Ship now, iterate later."
+### 7.2 "The gaps are manageable. Ship now, iterate later."
 
 "Fix later" assumes the fix is a minor adjustment.
 
-Each gap is the cost of a specific design property (Section 7). Closing the gap means removing the property. ABI lock-in makes the choice permanent (subsection 7.4). The committee deferred P2300 from C++23 for the same pattern of ongoing design changes.
+Each gap is the cost of a specific design property (Section 6). Closing the gap means removing the property. ABI lock-in makes the choice permanent (subsection 6.4). The committee deferred P2300 from C++23 for the same pattern of ongoing design changes.
 
 The committee has been here before.
 
-### 8.3 "A standard task enables library interop that no third-party type can."
+### 7.3 "A standard task enables library interop that no third-party type can."
 
 Coroutine interop requires the awaitable protocol, not type identity.
 
@@ -589,9 +567,9 @@ Coroutine interop requires the awaitable protocol, not type identity.
 - "it should be possible to `co_await` awaitables which includes both library provided and user provided ones."
 - `as_awaitable` converts any sender into this protocol. `affine_on` wraps any co_awaited sender to reschedule the coroutine onto its original scheduler. It exists because `task` co_awaits senders it does not own. If interop required type identity, `affine_on` would have nothing to operate on.
 
-Open task types ship in [cppcoro](https://github.com/lewissbaker/cppcoro)<sup>[48]</sup>, [Boost.Cobalt](https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html)<sup>[47]</sup>, [libunifex](https://github.com/facebookexperimental/libunifex)<sup>[49]</sup>, [folly::coro](https://github.com/facebook/folly/tree/main/folly/experimental/coro)<sup>[50]</sup>, [QCoro](https://qcoro.dev/)<sup>[51]</sup>, and [asyncpp](https://github.com/petiaccja/asyncpp)<sup>[52]</sup>. Each interoperates through the awaitable protocol.
+Open task types ship in [cppcoro](https://github.com/lewissbaker/cppcoro)<sup>[42]</sup>, [Boost.Cobalt](https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html)<sup>[41]</sup>, [libunifex](https://github.com/facebookexperimental/libunifex)<sup>[43]</sup>, [folly::coro](https://github.com/facebook/folly/tree/main/folly/experimental/coro)<sup>[44]</sup>, [QCoro](https://qcoro.dev/)<sup>[45]</sup>, and [asyncpp](https://github.com/petiaccja/asyncpp)<sup>[46]</sup>. Each interoperates through the awaitable protocol.
 
-### 8.4 "Without `task`, coroutine users cannot access standard networking."
+### 7.4 "Without `task`, coroutine users cannot access standard networking."
 
 No standard networking exists in C++26. Every networking library that supports coroutines already ships its own task type:
 
@@ -606,11 +584,11 @@ No standard networking exists in C++26. Every networking library that supports c
 
 Coroutine users are not locked out of networking today and will not be locked out tomorrow.
 
-Each argument assumes the costs documented in Sections 3-6 are temporary. They are structural.
+Each argument assumes the costs documented in Sections 2-5 are temporary. They are structural.
 
 ---
 
-## 9. The Committee's Own Record
+## 8. The Committee's Own Record
 
 The committee's own proceedings confirm the gaps are known and unresolved.
 
@@ -640,23 +618,23 @@ The earlier design approval poll for P3552R1 was notably soft: SF:5 / F:6 / N:6 
 
 ---
 
-## 10. Working With the Grain
+## 9. Working With the Grain
 
-The three tradeoffs in Section 7 are the cost of treating the Sender Sub-Language as the universal model of asynchronous computation. If that assumption is relaxed, the design space opens for coroutine I/O and for senders alike.
+The three tradeoffs in Section 6 are the cost of treating the Sender Sub-Language as the universal model of asynchronous computation. If that assumption is relaxed, the design space opens for coroutine I/O and for senders alike.
 
-### 10.1 Senders in Their Element
+### 9.1 Senders in Their Element
 
 Herb Sutter reported that Citadel Securities uses `std::execution` in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)*<sup>[36]</sup> This confirms senders work well in their own domain: compile-time work graph construction, GPU dispatch, high-frequency trading pipelines.
 
-### 10.2 Here Is How You Can Do It
+### 9.2 Here Is How You Can Do It
 
-Senders gain freedom too. Much of the specification friction documented in Section 6 - broken algorithm customization across four papers, removed primitives, the `transform_sender` dangling reference - exists at the boundary with domains the Sub-Language was not built to serve. Narrow the scope, and the boundary recedes.
+Senders gain freedom too. Much of the specification friction documented in Section 5 - broken algorithm customization across four papers, removed primitives, the `transform_sender` dangling reference - exists at the boundary with domains the Sub-Language was not built to serve. Narrow the scope, and the boundary recedes.
 
-Each of the three gaps documented in Sections 3-5 has a known solution in working code. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") is not proposed for standardization - the code is real, compiles on three toolchains, and comes with benchmarks and unit tests. We present the techniques below not as a competing design, but as evidence that each gap is solvable. Any coroutine task type, including `std::execution::task`, could adopt them.
+Each of the three gaps documented in Sections 2-4 has a known solution in working code. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") is not proposed for standardization - the code is real, compiles on three toolchains, and comes with benchmarks and unit tests. We present the techniques below not as a competing design, but as evidence that each gap is solvable. Any coroutine task type, including `std::execution::task`, could adopt them.
 
-### 10.3 Partial Success Without Channels
+### 9.3 Partial Success Without Channels
 
-Section 3 documented the forced choice: `set_value` or `set_error`, but never both. The byte count from a partial read has no channel when the error fires. A coroutine-native design avoids the choice entirely:
+Section 2 documented the forced choice: `set_value` or `set_error`, but never both. The byte count from a partial read has no channel when the error fires. A coroutine-native design avoids the choice entirely:
 
 ```cpp
 task<> handle_request(tcp::socket sock)
@@ -671,9 +649,9 @@ task<> handle_request(tcp::socket sock)
 
 Error and byte count travel together in a single tuple. The coroutine decides what to do with both. There is no channel choice and no information loss. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof` - not one or the other.
 
-### 10.4 Errors Through `co_return`
+### 9.4 Errors Through `co_return`
 
-Section 4 documented the `co_yield with_error` workaround. A coroutine-native design uses `co_return` for every completion path, matching the convention that every production coroutine library has independently adopted:
+Section 3 documented the `co_yield with_error` workaround. A coroutine-native design uses `co_return` for every completion path, matching the convention that every production coroutine library has independently adopted:
 
 ```cpp
 route_task https_redirect(route_params& rp)
@@ -692,9 +670,9 @@ route_task https_redirect(route_params& rp)
 
 No `co_yield`. No language change. No convention break. `co_return` handles success and failure the same way it does in cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp.
 
-### 10.5 Allocators Without Signature Pollution
+### 9.5 Allocators Without Signature Pollution
 
-Section 5 documented the timing problem: `promise_type::operator new` fires before any sender machinery runs, so the allocator from the receiver's environment arrives too late. The `allocator_arg_t` workaround makes the allocator viral through every signature in the call chain.
+Section 4 documented the timing problem: `promise_type::operator new` fires before any sender machinery runs, so the allocator from the receiver's environment arrives too late. The `allocator_arg_t` workaround makes the allocator viral through every signature in the call chain.
 
 A different approach is possible. The allocator can be delivered through a thread-local write-through cache, set at the launch site and read in `operator new`:
 
@@ -746,15 +724,15 @@ No `allocator_arg_t`. No template parameter for the allocator type. No silent fa
 
 We share this technique in the hope that it is useful. The thread-local write-through cache is not tied to any particular task type or framework. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether a similar approach could deliver automatic allocator propagation to `std::execution::task`.
 
-### 10.6 The Tradeoffs Are Avoidable
+### 9.6 The Tradeoffs Are Avoidable
 
 The code above compiles on three toolchains with benchmarks and unit tests. It does not provide compile-time work graph construction, zero-allocation pipelines, or vendor extensibility. It does not need to. Those properties belong to senders.
 
-The three tradeoffs documented in Section 7 are the cost of universality, not the cost of asynchronous C++. When coroutine I/O is free to serve its own domain, each tradeoff becomes avoidable - not necessarily through this particular framework, but through approaches like it.
+The three tradeoffs documented in Section 6 are the cost of universality, not the cost of asynchronous C++. When coroutine I/O is free to serve its own domain, each tradeoff becomes avoidable - not necessarily through this particular framework, but through approaches like it.
 
 ---
 
-## 11. Conclusion
+## 10. Conclusion
 
 The decision to adopt `std::execution` has consequences for coroutines. This paper asks the committee to address them explicitly.
 
@@ -766,11 +744,11 @@ The decision to adopt `std::execution` has consequences for coroutines. This pap
 
 4. **Should `task<T>` ship in C++26 with these costs?** Ship `std::execution` for the domains it serves. Let the coroutine integration iterate independently.
 
-The straw polls in Section 12 offer the committee a way to record its answers. The deeper question is whether there is room in the standard for `std::io` alongside `std::execution`, each serving its own domain.
+The straw polls in Section 11 offer the committee a way to record its answers. The deeper question is whether there is room in the standard for `std::io` alongside `std::execution`, each serving its own domain.
 
 ---
 
-## 12. Suggested Straw Polls
+## 11. Suggested Straw Polls
 
 > 1. "Coroutine errors should be returned, not yielded."
 
@@ -792,9 +770,9 @@ The straw polls in Section 12 offer the committee a way to record its answers. T
 
 ### A.1 Why the Three-Channel Model Exists
 
-The Sub-Language constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect)<sup>[56]</sup> collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
+The Sub-Language constructs the entire work graph at compile time as a deeply-nested template type. [`connect(sndr, rcvr)`](https://eel.is/c++draft/exec.connect)<sup>[50]</sup> collapses the pipeline into a single concrete type. For this to work, every control flow path must be distinguishable at the type level, not the value level.
 
-The three completion channels provide exactly this. [Completion signatures](https://eel.is/c++draft/exec.getcomplsigs)<sup>[56]</sup> declare three distinct type-level paths:
+The three completion channels provide exactly this. [Completion signatures](https://eel.is/c++draft/exec.getcomplsigs)<sup>[50]</sup> declare three distinct type-level paths:
 
 ```cpp
 using completion_signatures =
@@ -818,7 +796,7 @@ Eliminating the three-channel model would remove the type-level routing that mak
 
 ### A.2 `async_read` as a Sender
 
-Section 3.4 shows the completion callback where accumulated read progress is lost. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup>'s `recv_sender` and `async_recv`:
+Section 2.4 shows the completion callback where accumulated read progress is lost. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup>'s `recv_sender` and `async_recv`:
 
 ```cpp
 template<class Rcvr>
@@ -866,7 +844,7 @@ The partial success problem was not raised once and set aside. It was raised ind
 
 - **2020 (Nov):** Niebler's ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> blog post establishes the three-channel model publicly. Acknowledges CPS is harder to write and read than coroutines.
 
-- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[62]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. The concern was not addressed. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial success.
+- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[56]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. The concern was not addressed. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial success.
 
 - **2021 (Feb, SG4 telecon):** During review of P0958R3, a participant stated that sender/receivers have a loss because they do not have success/partial-success. Another suggested adapting from success/error; the response was that the error does not carry information. No poll on the error channel design.
 
@@ -886,7 +864,7 @@ The partial success problem was not raised once and set aside. It was raised ind
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Section 3.4 enumerates five, all deficient). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the Sub-Language, not a bug. The unresolved timeline is what structural friction looks like from the inside.
+The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Section 2.4 enumerates five, all deficient). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the Sub-Language, not a bug. The unresolved timeline is what structural friction looks like from the inside.
 
 ---
 
@@ -1004,7 +982,7 @@ The claim is not that the volume of changes is abnormal; it is that the directio
 | Sender Integration  | [P3927R0](https://wg21.link/p3927r0), [P3950R0](https://wg21.link/p3950r0), [D3980R0](https://isocpp.org/files/papers/D3980R0.html), [LWG 4356](https://cplusplus.github.io/LWG/issue4356), [US 255-384](https://github.com/cplusplus/nbballot/issues/959), <br> [US 253-386](https://github.com/cplusplus/nbballot/issues/961), [US 254-385](https://github.com/cplusplus/nbballot/issues/960), [US 261-391](https://github.com/cplusplus/nbballot/issues/966) |
 | Coroutine-Intrinsic | - |
 
-All data is gathered from the published [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/)<sup>[60]</sup>, the [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html)<sup>[61]</sup>, and the [C++26 national body ballot comments](https://github.com/cplusplus/nbballot)<sup>[59]</sup>.
+All data is gathered from the published [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/)<sup>[54]</sup>, the [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html)<sup>[55]</sup>, and the [C++26 national body ballot comments](https://github.com/cplusplus/nbballot)<sup>[53]</sup>.
 
 ---
 
@@ -1067,40 +1045,32 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 35. Herb Sutter, ["Trip report: Summer ISO C++ standards meeting (St Louis, MO, USA)"](https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa) (2024). https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa
 36. Herb Sutter, ["Living in the future: Using C++26 at work"](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work) (2025). https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work
 
-### Programming Language Theory
-
-37. Olivier Danvy, ["Back to Direct Style"](https://static.aminer.org/pdf/PDF/001/056/774/back_to_direct_style.pdf) (1992). https://static.aminer.org/pdf/PDF/001/056/774/back_to_direct_style.pdf
-38. Gordon Plotkin, ["Call-by-Name, Call-by-Value and the lambda-Calculus"](https://homepages.inf.ed.ac.uk/gdp/publications/cbn_cbv_lambda.pdf) (1975). https://homepages.inf.ed.ac.uk/gdp/publications/cbn_cbv_lambda.pdf
-39. Christopher Strachey & Christopher Wadsworth, ["Continuations: A Mathematical Semantics for Handling Full Jumps"](https://www.cs.ox.ac.uk/publications/publication3729-abstract.html) (1974). https://www.cs.ox.ac.uk/publications/publication3729-abstract.html
-40. Eugenio Moggi, ["Notions of Computation and Monads"](https://person.dibris.unige.it/moggi-eugenio/ftp/ic91.pdf) (1991). https://person.dibris.unige.it/moggi-eugenio/ftp/ic91.pdf
-41. John Reynolds, ["The Discoveries of Continuations"](https://homepages.inf.ed.ac.uk/wadler/papers/papers-we-love/reynolds-discoveries.pdf) (1993). https://homepages.inf.ed.ac.uk/wadler/papers/papers-we-love/reynolds-discoveries.pdf
-42. Guy Steele & Gerald Sussman, [The Lambda Papers](https://en.wikisource.org/wiki/Lambda_Papers) (1975-1980). https://en.wikisource.org/wiki/Lambda_Papers
-43. [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html) - F.7, R.30 (Bjarne Stroustrup, Herb Sutter, eds.). https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html
-44. Butler Lampson, ["Hints for Computer System Design"](https://bwlampson.site/33-Hints/Acrobat.pdf) (1983). https://bwlampson.site/33-Hints/Acrobat.pdf
-45. [Continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) - Wikipedia. https://en.wikipedia.org/wiki/Continuation-passing_style
+37. [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html) - F.7, R.30 (Bjarne Stroustrup, Herb Sutter, eds.). https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html
+38. Butler Lampson, ["Hints for Computer System Design"](https://bwlampson.site/33-Hints/Acrobat.pdf) (1983). https://bwlampson.site/33-Hints/Acrobat.pdf
+39. [Continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style) - Wikipedia. https://en.wikipedia.org/wiki/Continuation-passing_style
 
 ### Libraries
 
-46. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Chris Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
-47. [Boost.Cobalt](https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html) - Coroutine task types for Boost (Klemens Morgenstern). https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html
-48. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
-49. [libunifex](https://github.com/facebookexperimental/libunifex) - Unified Executors library for C++ (Facebook/Meta, Eric Niebler). https://github.com/facebookexperimental/libunifex
-50. [folly::coro](https://github.com/facebook/folly/tree/main/folly/experimental/coro) - Facebook's coroutine library. https://github.com/facebook/folly/tree/main/folly/experimental/coro
-51. [QCoro](https://qcoro.dev/) - Coroutine integration for Qt (Daniel Vr&aacute;til). https://qcoro.dev/
-52. [asyncpp](https://github.com/petiaccja/asyncpp) - Async coroutine library (P&eacute;ter Kardos). https://github.com/petiaccja/asyncpp
-53. [libcoro](https://github.com/jbaldwin/libcoro) - C++20 coroutine library (Josh Baldwin). https://github.com/jbaldwin/libcoro
-54. [aiopp](https://github.com/pfirsich/aiopp) - Async I/O library (Joel Schumacher). https://github.com/pfirsich/aiopp
-55. [beman::task](https://github.com/bemanproject/task) - P3552R3 reference implementation (Beman Project). https://github.com/bemanproject/task
+40. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Chris Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
+41. [Boost.Cobalt](https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html) - Coroutine task types for Boost (Klemens Morgenstern). https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html
+42. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
+43. [libunifex](https://github.com/facebookexperimental/libunifex) - Unified Executors library for C++ (Facebook/Meta, Eric Niebler). https://github.com/facebookexperimental/libunifex
+44. [folly::coro](https://github.com/facebook/folly/tree/main/folly/experimental/coro) - Facebook's coroutine library. https://github.com/facebook/folly/tree/main/folly/experimental/coro
+45. [QCoro](https://qcoro.dev/) - Coroutine integration for Qt (Daniel Vr&aacute;til). https://qcoro.dev/
+46. [asyncpp](https://github.com/petiaccja/asyncpp) - Async coroutine library (P&eacute;ter Kardos). https://github.com/petiaccja/asyncpp
+47. [libcoro](https://github.com/jbaldwin/libcoro) - C++20 coroutine library (Josh Baldwin). https://github.com/jbaldwin/libcoro
+48. [aiopp](https://github.com/pfirsich/aiopp) - Async I/O library (Joel Schumacher). https://github.com/pfirsich/aiopp
+49. [beman::task](https://github.com/bemanproject/task) - P3552R3 reference implementation (Beman Project). https://github.com/bemanproject/task
 
 ### Other
 
-56. [C++ Working Draft](https://eel.is/c++draft/) - (Richard Smith, ed.). https://eel.is/c++draft/
-57. [cppreference](https://en.cppreference.com/) - C++ reference documentation. https://en.cppreference.com/
-58. [stdexec](https://github.com/NVIDIA/stdexec) - NVIDIA reference implementation of std::execution. https://github.com/NVIDIA/stdexec
-59. [C++26 NB ballot comments](https://github.com/cplusplus/nbballot) - National body comments repository. https://github.com/cplusplus/nbballot
-60. [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/) - ISO C++ committee papers. https://open-std.org/jtc1/sc22/wg21/docs/papers/
-61. [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html) - Library Working Group active issues. https://cplusplus.github.io/LWG/lwg-toc.html
-62. [P1678R2](https://wg21.link/p1678r2) - "Callbacks and Composition" (Kirk Shoop, 2020). https://wg21.link/p1678r2
-63. [cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247) - "Add ability to know when computing completion-signatures whether the call to connect() will throw" (Lewis Baker, 2024). https://github.com/cplusplus/sender-receiver/issues/247
-64. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
-65. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0
+50. [C++ Working Draft](https://eel.is/c++draft/) - (Richard Smith, ed.). https://eel.is/c++draft/
+51. [cppreference](https://en.cppreference.com/) - C++ reference documentation. https://en.cppreference.com/
+52. [stdexec](https://github.com/NVIDIA/stdexec) - NVIDIA reference implementation of std::execution. https://github.com/NVIDIA/stdexec
+53. [C++26 NB ballot comments](https://github.com/cplusplus/nbballot) - National body comments repository. https://github.com/cplusplus/nbballot
+54. [WG21 paper mailings](https://open-std.org/jtc1/sc22/wg21/docs/papers/) - ISO C++ committee papers. https://open-std.org/jtc1/sc22/wg21/docs/papers/
+55. [LWG issues list](https://cplusplus.github.io/LWG/lwg-toc.html) - Library Working Group active issues. https://cplusplus.github.io/LWG/lwg-toc.html
+56. [P1678R2](https://wg21.link/p1678r2) - "Callbacks and Composition" (Kirk Shoop, 2020). https://wg21.link/p1678r2
+57. [cplusplus/sender-receiver #247](https://github.com/cplusplus/sender-receiver/issues/247) - "Add ability to know when computing completion-signatures whether the call to connect() will throw" (Lewis Baker, 2024). https://github.com/cplusplus/sender-receiver/issues/247
+58. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
+59. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0
