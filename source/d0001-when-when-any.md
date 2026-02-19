@@ -1,5 +1,5 @@
 ---
-title: "No Timeout For You"
+title: "When `when_any`?"
 document: D0001R0
 date: 2026-02-18
 reply-to:
@@ -132,13 +132,7 @@ Manual stop-token polling inside lambdas is the workaround. It is the manual orc
 
 ## 5. The Cancelled Read
 
-Suppose `when_any` were added tomorrow. A timeout cancels a read mid-flight. The read has transferred 47 bytes. The three completion channels offer no correct path for the result:
-
-- `set_stopped()` carries no arguments. The 47 bytes are lost.
-- `set_error(ec)` carries only the error code. The 47 bytes are lost.
-- `set_value(ec, n)` preserves both, but `upon_error` and `upon_stopped` become unreachable for I/O senders. Algorithms that dispatch on channel, such as `when_all` cancelling siblings on error, can no longer distinguish failure from success.
-
-[P4007R0](https://wg21.link/p4007r0)<sup>[13]</sup> ("Senders and C++") Section 3 documents the full analysis. The three-channel completion model and I/O completion semantics are structurally incompatible. Five choices exist; none is correct.
+Suppose `when_any` were added tomorrow. A timeout cancels a read mid-flight; the read has transferred 47 bytes. The three completion channels - `set_value`, `set_error`, `set_stopped` - offer no correct way to deliver both the error code and the byte count. [P4007R0](https://wg21.link/p4007r0)<sup>[13]</sup> ("Senders and C++") Section 3 documents the full analysis.
 
 The timeout gap and the channel gap are independent. Closing either one does not close the other.
 
@@ -146,9 +140,9 @@ The timeout gap and the channel gap are independent. Closing either one does not
 
 ## 6. Counterarguments
 
-**"`when_any` is coming."** `stop_when` was proposed in [P2175R0](https://wg21.link/p2175r0)<sup>[14]</sup> ("Composable cancellation for sender-based async operations," 2020) and still appeared in [P2300R7](https://wg21.link/p2300r7)<sup>[1]</sup> (2023). It was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[4]</sup> (2024). The motivating example still uses it. No replacement was proposed.
+**"We can ship that in C++29."** This was the trajectory for `stop_when`. Proposed in [P2175R0](https://wg21.link/p2175r0)<sup>[14]</sup> (2020). Present in the spec through [P2300R7](https://wg21.link/p2300r7)<sup>[1]</sup> (2023). Removed before [P2300R10](https://wg21.link/p2300r10)<sup>[4]</sup> (2024). No replacement proposed. The motivating example in P2300R7 Section 1.3 still uses `stop_when`, `timeout`, and `first_successful`. Of the four algorithms in that example, one shipped. The trajectory from proposed (2020) to specified (2023) to removed (2024) with no replacement is the available evidence for that prediction.
 
-**"Manual stop-token wiring works."** It does. This is what senders were supposed to replace.
+**"Manual stop-token wiring works."** It does. [P2300R7](https://wg21.link/p2300r7)<sup>[1]</sup> Section 1 motivates the entire design as eliminating exactly this kind of manual orchestration.
 
 **"Networking is not yet standardized."** SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2)<sup>[15]</sup> ("Sender/Receiver Interface For Networking"):
 
@@ -158,15 +152,17 @@ The timeout gap and the channel gap are independent. Closing either one does not
 > |----|---|---|---|----|
 > |  5 | 5 | 1 | 0 |  1 |
 
-The mandated model cannot express a timeout.
+The mandated model's algorithm set cannot express a timeout.
 
 ---
 
 ## 7. Suggested Straw Polls
 
-> 1. "Is `std::execution` without a selection algorithm (`when_any`, `stop_when`, or equivalent) suitable as the mandated model for C++ networking?"
+> 1. "A selection algorithm (`when_any`, `stop_when`, or equivalent) is a prerequisite for mandating senders for C++ networking."
 
-> 2. "WG21 should not mandate senders for networking until the sender algorithm set can express timeouts."
+> 2. "WG21 should standardize a selection algorithm before mandating senders for networking."
+
+> 3. "WG21 should prioritize a selection algorithm (`when_any`, `stop_when`, or equivalent) for C++29."
 
 ---
 
