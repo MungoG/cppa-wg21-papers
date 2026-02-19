@@ -1,6 +1,6 @@
 ---
 title: "The Sender Sub-Language"
-document: D4014R0
+document: P4014R0
 date: 2026-02-17
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
