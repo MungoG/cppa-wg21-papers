@@ -610,6 +610,16 @@ I think we can get there. The precedent exists. The principle is sound. And the 
 
 ---
 
+## 8. Suggested Straw Polls
+
+> 1. "WG21 evaluated the programming model documented in this paper before adopting `std::execution`."
+
+> 2. "Different C++ domains have different asynchronous programming needs."
+
+> 3. "WG21 should give C++ async I/O the same accommodation it gave heterogeneous compute."
+
+---
+
 ## Further Reading
 
 For readers who wish to explore the theoretical foundations of the Sender Sub-Language in greater depth, the following works provide essential background:
