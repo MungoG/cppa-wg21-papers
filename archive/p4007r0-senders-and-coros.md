@@ -194,42 +194,37 @@ Each channel has a fixed signature shape:
 - `set_error(receiver, E)` carries a single, strongly-typed error.
 - `set_stopped(receiver)` is a stateless signal.
 
-### 3.2 What I/O Produces
+### 3.2 Coroutines Return Tuples
 
-The operating system is not a sender.
-
-On POSIX, `read()` returns a byte count; errors arrive through `errno`. On Windows, `GetOverlappedResult` delivers a byte count and an error code. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> unified these into `void(error_code, size_t)` twenty-five years ago. The signature was correct then. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it because it is correct now.
-
-A tuple accurately reflects what composed I/O operations physically produce. A `read_until` accumulates bytes across several receives, transferring 47 bytes before the connection resets. The error code says what happened. The byte count says how far it got. Both values are always meaningful.
-
-Cancellation is an error code.
-
-`CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated bytes across prior successful receives breaks the same way.
-
-I/O completions are *complicated success*. EOF with partial data, cancellation with accumulated progress, a reset after bytes already transferred - these are not failures. They are outcomes the caller must inspect. The sender model offers three *simple channels*: one value, one error, one stop signal. Complicated success fits the value channel - but not the error channel or the stopped channel. For I/O, two of three channels go unused:
+A composed read accumulates bytes across multiple receives. In a coroutine, the result is natural:
 
 ```cpp
-std::execution::task<std::pair<error_code, std::size_t>>
-do_read(tcp_socket& s, buffer& buf)
+io_task<std::string>
+read_body(tcp_socket& sock)
 {
-    auto [ec, n] = co_await async_read_some(s, buf);
-    co_return {ec, n};
+    char buf[1024];
+    std::string body;
+    for(;;) {
+        auto [ec, n] = co_await sock.read_some(buf);
+        body.append(buf, n);
+        if (ec)
+            co_return {ec, std::move(body)};
+    }
+    co_return {{}, std::move(body)};
 }
-
-do_read(sock, buf)
-  | then([](std::pair<error_code, std::size_t> result) {
-        auto [ec, n] = result;
-        // caller classifies ec at runtime
-    })
-  | upon_error([](auto e) {
-        // NEVER CALLED - I/O errors travel in the pair
-    })
-  | upon_stopped([] {
-        // NEVER CALLED - cancellation is error_code in the pair
-    });
 ```
 
-### 3.3 Does P2300R10 Guide Us?
+The return type `io_task<std::string>` destructures to `(error_code, std::string)`. The caller always receives both the error and the accumulated data. Composed I/O operations produce tuples because partial progress is the norm. A `read` that fills 47 bytes before the connection resets returns both the error code and the byte count, with no loss. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> codified this as `void(error_code, size_t)` twenty-five years ago. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it.
+
+I/O completions are *complicated success*: EOF with complete data, connection reset with accumulated progress, a missing TLS shutdown; these are not failures, they are outcomes the caller must inspect. Even cancellation is an error code (`ERROR_OPERATION_ABORTED` on Windows, `ECANCELED` on POSIX): code that handles errors already handles cancellation for free.
+
+The sender model offers three *simple channels*: one value, one error, one stop signal.
+
+**Complicated success does not fit in a simple channel.**
+
+### 3.3 Published Sender Code Loses Data
+
+Every published sender implementation of I/O that the authors could find loses partial results on the error path.
 
 [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read)<sup>[1]</sup> presents a composed read in its motivating examples. The operation reads a length-prefixed byte array: first the size, then the data.
 
@@ -248,17 +243,19 @@ struct dynamic_buffer {
 sender_of<dynamic_buffer> auto async_read_array(auto handle) {
   return just(dynamic_buffer{})
        | let_value([handle] (dynamic_buffer& buf) {
+           // P2300R10 writes as_writeable_bytes.
+           // The standard library function is std::as_writable_bytes
            return just(std::as_writeable_bytes(std::span(&buf.size, 1)))
                 | async_read(handle)
                 | then(
-                    [&buf] (std::size_t bytes_read) {
+                    [&buf] (std::size_t bytes_read) {           // from set_value
                       assert(bytes_read == sizeof(buf.size));
                       buf.data = std::make_unique<std::byte[]>(buf.size);
                       return std::span(buf.data.get(), buf.size);
                     })
                 | async_read(handle)
                 | then(
-                    [&buf] (std::size_t bytes_read) {
+                    [&buf] (std::size_t bytes_read) {           // from set_value
                       assert(bytes_read == buf.size);
                       return std::move(buf);
                     });
@@ -266,62 +263,121 @@ sender_of<dynamic_buffer> auto async_read_array(auto handle) {
 }
 ```
 
-**Note:** P2300R10 writes `as_writeable_bytes`. The standard library function is `std::as_writable_bytes`.
-
-`async_read` is `sender_of<std::size_t>`. It completes through `set_value` with the byte count, or through `set_error` with the error code.
-
-Consider the second `async_read` failing partway through. The first read succeeded. `buf.size` is valid. `buf.data` is allocated and correctly sized. The second read begins filling `buf.data`. Some bytes transfer. The connection resets.
-
-`async_read` completes through `set_error`. The byte count - how far the second read got - has no channel to travel through. `set_error` accepts one argument: the error code.
-
-`then` handles only `set_value`. The error propagates past it. The error exits `let_value`. The `dynamic_buffer` that `let_value` owns - with its valid `size`, its allocated `data`, its partial contents - is destroyed.
-
-The caller receives the error code. The byte count from the failing read, the allocated buffer with its partial contents, and the successfully read size from the first operation are destroyed when the operation state is destroyed.
+`async_read` completes through `set_value` with the byte count, or through `set_error` with the error code. Consider the second `async_read` failing partway through. Some bytes transfer. The connection resets. `set_error` fires. The byte count - how far the second read got - has no channel. `then` handles only `set_value`. The error propagates past it, exits `let_value`, and the `dynamic_buffer` with its valid `size`, allocated `data`, and partial contents is destroyed.
 
 This is [P2300R10 Section 1.3.3](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-dynamically-sized-read)<sup>[1]</sup>'s motivating example of sender composition.
 
-### 3.4 No Choice Is Correct
+The [stdexec](https://github.com/NVIDIA/stdexec)<sup>[52]</sup> repository contains a production adaptor for this problem. Robert Leahy's [`use_sender`](https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp)<sup>[60]</sup> (February 2026) bridges Asio's `(error_code, Args&&...)` completions into the three-channel model. Leahy is the author of [P3373R2](https://wg21.link/p3373r2)<sup>[12]</sup> and [P3950R0](https://wg21.link/p3950r0)<sup>[23]</sup>, a contributor to the stdexec reference implementation, and an experienced sender/receiver practitioner. The adaptor receives the error code and byte count together from Asio. In its `set_error` path, the error code is transmitted and the remaining arguments - including the byte count - are discarded.
 
-[P2300R10](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> does not define `async_read`, but [Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup> presents `recv_sender` and `async_recv` - the primitive receive operation built on Windows IOCP. Any implementation of `async_read` loops the primitive until the buffer is full (Appendix A.2 shows the complete sender). The completion callback is where accumulated progress meets the channel model:
+To our knowledge, no published sender code - [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [stdexec](https://github.com/NVIDIA/stdexec)<sup>[52]</sup>, Leahy's adaptor - discriminates the channel based on bytes transferred.
+
+### 3.4 Everything Through `set_value`
+
+The natural response to the data loss in Section 3.3 is to route every I/O completion through `set_value(rcvr, ec, n)`. No data is lost. Both values travel together. The coroutine receives them as a pair:
 
 ```cpp
-void completed(std::error_code ec, std::size_t n) {
-    bytes_read_ += n;
-    if (bytes_read_ == len_)
-        return execution::set_value(std::move(rcvr_), bytes_read_);
-    if (!ec)
-        return start_recv();
-    execution::set_error(std::move(rcvr_), ec);   // bytes_read_ bytes are lost
+do_read(sock, buf)
+  | then([](std::error_code ec, std::size_t n) {
+        // ec and n both available - no loss
+    })
+  | upon_error([](auto e) {
+        // never called - I/O errors travel in the pair
+    })
+  | upon_stopped([] {
+        // never called - cancellation is in the pair
+    });
+```
+
+The cost is not data loss. It is that `let_error`, `upon_error`, `let_stopped`, `upon_stopped`, `stopped_as_optional`, and `stopped_as_error` become inaccessible to I/O senders and thus cannot participate in the rich composition promised by the Sender Sub-Language.
+
+#### A Note on `when_all` and `when_any`
+
+The combinators `when_all` and `when_any` present a different challenge: they must decide whether a partial result constitutes success or failure, and that decision is domain-specific. I/O is the domain where partial success is pervasive, and no combinator can make that classification without domain knowledge. This paper does not claim those combinators should work differently for I/O. The cost documented here is narrower: six standard algorithms that are unconditionally unreachable.
+
+The generic composition that justifies having three channels cannot serve I/O under this mapping.
+
+### 3.5 Dimov's Mapping
+
+Peter Dimov proposes a refined convention that avoids data loss on partial success by discriminating the channel based on the byte count and error code category:
+
+| Completion                      | Channel              |
+|---------------------------------|----------------------|
+| `(eof, n)` for any n           | `set_value(eof, n)`  |
+| `(canceled, n)` for any n      | `set_stopped()`      |
+| `(ec, 0)` where ec is not eof  | `set_error(ec)`      |
+| `(ec, n)` where n > 0          | `set_value(ec, n)`   |
+
+This is the only mapping the authors are aware of that preserves partial results on the error path. Dimov argues that cancellation means the result is no longer needed, so discarding bytes on the stopped path is correct by design. This paper accepts that characterization. EOF is routed through `set_value` regardless of n, consistent with I/O's treatment of EOF as a normal outcome rather than a failure.
+
+The mapping requires semantic knowledge of specific error conditions: EOF is distinguished from cancellation, which is distinguished from all other errors. It is not a generic transformation, it is domain-specific I/O logic embedded in the channel routing. Dimov characterized the convention as "ad hoc."
+
+### 3.6 Routine Errors Become Exceptions
+
+Under Dimov's mapping, any I/O error with zero bytes transferred goes through `set_error`. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s `task` delivers `set_error` to the coroutine as a thrown exception. Three design decisions chain together:
+
+1. **SG4 mandate (Kona 2023):** Networking operations must be senders. `s.async_read_some(buf)` returns a sender.
+2. **Dimov's mapping:** `(ec, 0)` where ec is not EOF completes through `set_error(ec)`.
+3. **P3552R3's `task`:** When a coroutine `co_await`s a sender, `await_transform` calls `as_awaitable`, which creates a receiver. The receiver's `set_error` handler stores the error as `exception_ptr`. On resume, `await_resume` rethrows. There is no other delivery mechanism - `co_await` can only return a value or throw.
+
+Common transient I/O errors that routinely arrive with zero bytes on a given call:
+
+- `ECONNRESET` - client disconnected
+- `ECONNABORTED` - connection aborted
+- `ETIMEDOUT` - connection timed out
+- `EPIPE` - broken pipe on write
+- `ECONNREFUSED` - connection refused
+- `ENETUNREACH` - network unreachable
+
+A server handling thousands of connections sees `ECONNRESET` constantly - clients disconnect, networks flap, load balancers probe, mobile users lose signal. Under this model, every routine disconnection that transfers zero bytes on the final call becomes an exception with stack unwinding.
+
+This contradicts twenty-five years of established I/O practice. Kohlhoff designed [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> with error codes precisely because I/O errors are not exceptional - they are the normal texture of network programming. The C++ I/O ecosystem is built on `if (ec)`. The combination of the SG4 mandate, Dimov's mapping, and P3552R3's `task` reverses this for every error that arrives with zero bytes transferred.
+
+In a coroutine-native design, these same errors arrive as error codes:
+
+```cpp
+auto [ec, n] = co_await s.read_some(buf);  // ec == ECONNRESET, n == 0
+if (ec) co_return {ec, std::move(body)};    // no exception, no stack unwinding
+```
+
+### 3.7 Coroutines Always Pay
+
+Three solutions have been presented. Each improves on the last. None is free:
+
+| Solution              | Cost                                                                                                                         |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `set_error` on error  | Partial results destroyed                                                                                                    |
+| `set_value` always    | Impoverished composition                                                                                                     |
+| Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.6) <br> Same error bifurcates on n           |
+
+Under Dimov's mapping - the best known convention - consider the same `read_body` from Section 3.2, written with `std::execution::task`. Preserving accumulated data on the n==0 error path requires try/catch in a normal I/O loop for errors that are not exceptional:
+
+```cpp
+std::execution::task<std::string>
+read_body(tcp_socket& s, buffer& buf)
+{
+    std::string body;
+    while (true) {
+        try {
+            auto [ec, n] = co_await s.async_read_some(buf);
+            body.append(buf.data(), n);
+            if (ec == eof)
+                co_return body;
+            if (ec)
+                co_yield with_error(ec);
+        } catch (...) {
+            co_return body;
+        }
+    }
 }
 ```
 
-Each successful `async_recv` deposits bytes and advances `bytes_read_`. When a later receive fails, `set_error` carries the error code. `bytes_read_` - the accumulated progress from every prior successful receive - has no channel.
+**The coroutine-native version** (Section 3.2): one path, no try/catch, no `co_yield`, no bifurcation.
 
-The mismatch is not a missing convention. It is a structural incompatibility between the three-channel type system and I/O completion semantics. No convention, no adaptor, and no additional algorithm can resolve it without changing the model:
+In a sender pipeline, these costs do not exist. The channels route completions at the type level, and the pipeline pays nothing. At the coroutine boundary, the same channels impose `co_yield with_error`, exception handling for routine I/O errors, and bifurcation of the same error depending on bytes transferred.
 
-- **Converge on `set_value` for I/O.** Every generic error-handling algorithm in the sender model becomes inaccessible to I/O senders. `upon_error`, `let_error`, `upon_stopped` are unreachable. Algorithms that dispatch on channel - such as `when_all` cancelling siblings on error - cannot distinguish I/O failure from I/O success. The error channel and stopped channel both exist, and I/O never uses either.
+*For senders, no cost. For coroutines, everything.*
 
-- **Converge on `set_error` for I/O.** Partial success is inexpressible. The byte count is lost. A `read` that transferred 47 bytes before EOF is indistinguishable from a `read` that transferred zero.
-
-- **Route cancellation through `set_stopped()`.** The error code and the byte count are both lost. `set_stopped` takes no arguments. The caller cannot distinguish a timeout from a user cancellation from a graceful shutdown - they all collapse to the same parameterless signal.
-
-- **Write an adaptor.** The adaptor must know which convention the inner sender follows. This reintroduces the forced choice one level up.
-
-The [stdexec](https://github.com/NVIDIA/stdexec)<sup>[52]</sup> repository contains exactly this adaptor. Robert Leahy's [`use_sender`](https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp)<sup>[60]</sup> (February 2026) bridges Asio's `(error_code, Args&&...)` completions into the three-channel model. Leahy is the author of [P3373R2](https://wg21.link/p3373r2)<sup>[12]</sup> and [P3950R0](https://wg21.link/p3950r0)<sup>[23]</sup>, a contributor to the stdexec reference implementation, and an experienced practitioner in sender/receiver design. The adaptor receives the error code and byte count together from Asio. On cancellation, it dispatches:
-
-```cpp
-::STDEXEC::set_stopped(static_cast<Receiver&&>(r_));
-```
-
-The byte count is gone. On error, the byte count is likewise discarded. Two of three paths lose the partial result. If an experienced sender/receiver practitioner cannot bridge these models without information loss, the limitation is in the model.
-
-A committee member who has deployed sender/receiver in a production codebase (and who gave the authors permission to quote anonymously) independently confirmed the forced choice: *"you can get partial results into S&R world with `asioexec::completion_token` but then you lose the error channel mapping that `asioexec::use_sender` does."*
-
-The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.1 explains why.
-
-Are coroutines paying for a feature they did not ask for?
-
-### 3.5 The Paper Not Polled
+### 3.8 The Paper Not Polled
 
 Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"):
 
@@ -773,7 +829,7 @@ Eliminating the three-channel model would remove the type-level routing that mak
 
 ### A.2 `async_read` as a Sender
 
-Section 2.4 shows the completion callback where accumulated read progress is lost. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup>'s `recv_sender` and `async_recv`:
+Section 3.3 shows that published sender code loses partial results. Here is the complete sender implementation using [P2300R10 Section 1.4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv)<sup>[1]</sup>'s `recv_sender` and `async_recv`:
 
 ```cpp
 template<class Rcvr>
@@ -841,7 +897,7 @@ The partial success problem was not raised once and set aside. It was raised ind
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Section 3.4 enumerates five, all deficient). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the sender model, not a bug. The unresolved timeline is what structural friction looks like from the inside.
+The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the sender model, not a bug. The unresolved timeline is what structural friction looks like from the inside.
 
 ---
 
@@ -934,7 +990,8 @@ This document is written in Markdown and depends on the extensions in
 [`mermaid`](https://github.com/mermaid-js/mermaid), and we would like to
 thank the authors of those extensions and associated libraries.
 
-The authors would also like to thank Peter Dimov, Klemens Morgenstern,
+The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
+Peter Dimov, Andrzej Krzemie&#324;ski, Dietmar K&uuml;hl, Klemens Morgenstern,
 Mohammad Nejati, and Michael Vandeberg for their valuable feedback in the
 development of this paper.
 
