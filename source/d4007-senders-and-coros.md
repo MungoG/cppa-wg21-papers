@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -38,24 +38,13 @@ What happens when I/O is designed from the ground up for coroutines? [P4003R0](h
 
 ### 2.1 Partial Results Are Natural
 
-An I/O completion returns an error code and a result together. A composed `read` built from `read_some` shows this directly:
+A composed I/O completion returns an error code and a result together:
 
 ```cpp
-io_task<std::string> read(tcp::socket& sock)
-{
-    std::string result;
-    char buf[1024];
-    for (;;)
-    {
-        auto [ec, n] = co_await sock.read_some(buf);
-        result.append(buf, n);              // n bytes arrived regardless of ec
-        if (ec)
-            co_return {ec, std::move(result)};
-    }
-}
+auto [ec, n] = co_await read(sock, buf);
 ```
 
-The return type `io_task<std::string>` means the awaitable yields `(error_code, std::string)`. A caller writes `auto [ec, body] = co_await read(sock)`. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof`. Error and data travel together in a single tuple. The coroutine decides what to do with both.
+As Peter Dimov observes, `(error_code, size_t)` is semantically equivalent to two consecutive calls: the first returning `({}, n)`, the second returning `(ec, 0)`. The tuple carries the full history of the operation. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof`. Error and byte count travel together. The coroutine decides what to do with both.
 
 ### 2.2 Errors Return Naturally
 
@@ -80,7 +69,7 @@ route_task https_redirect(route_params& rp)
 
 On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count.
 
-Code that already checks `ec` handles cancellation for free. No additional code path, no separate signal, no `set_stopped` handler. The `if (ec)` that handles `connection_reset` also handles `operation_aborted`. Cancellation is not a separate concept in I/O - it is another error code.
+Code that already checks `ec` handles cancellation for free. The `if (ec)` that handles `connection_reset` handles `operation_aborted` the same way. Cancellation in I/O is just another error code.
 
 ### 2.4 Allocators Propagate Transparently
 
@@ -196,25 +185,25 @@ Each channel has a fixed signature shape:
 
 ### 3.2 Coroutines Return Tuples
 
-A composed read accumulates bytes across multiple receives. In a coroutine, the result is natural:
+A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
 ```cpp
-io_task<std::string>
-read_body(tcp_socket& sock)
+task<pair<error_code, string>>
+read(tcp::socket& sock)
 {
+    std::string result;
     char buf[1024];
-    std::string body;
-    for(;;) {
-        auto [ec, n] = co_await sock.read_some(buf);
-        body.append(buf, n);
+    for (;;)
+    {
+        auto [ec, n] = co_await sock.read_some(buf);    // also a tuple
+        result.append(buf, n);                          // n bytes arrived regardless of ec
         if (ec)
-            co_return {ec, std::move(body)};
+            co_return {ec, std::move(result)};
     }
-    co_return {{}, std::move(body)};
 }
 ```
 
-The return type `io_task<std::string>` destructures to `(error_code, std::string)`. The caller always receives both the error and the accumulated data. Composed I/O operations produce tuples because partial progress is the norm. A `read` that fills 47 bytes before the connection resets returns both the error code and the byte count, with no loss. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> codified this as `void(error_code, size_t)` twenty-five years ago. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it.
+The caller always receives both the error and the accumulated data. Composed I/O operations produce tuples because partial progress is the norm. A `read` that fills 47 bytes before the connection resets returns both the error code and the partial data, with no loss. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> codified this as `void(error_code, size_t)` twenty-five years ago. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it.
 
 I/O completions are *complicated success*: EOF with complete data, connection reset with accumulated progress, a missing TLS shutdown; these are not failures, they are outcomes the caller must inspect. Even cancellation is an error code (`ERROR_OPERATION_ABORTED` on Windows, `ECANCELED` on POSIX): code that handles errors already handles cancellation for free.
 
@@ -335,7 +324,7 @@ This contradicts twenty-five years of established I/O practice. Kohlhoff designe
 In a coroutine-native design, these same errors arrive as error codes:
 
 ```cpp
-auto [ec, n] = co_await s.read_some(buf);  // ec == ECONNRESET, n == 0
+auto [ec, n] = co_await s.read_some(buf);   // ec == ECONNRESET, n == 0
 if (ec) co_return {ec, std::move(body)};    // no exception, no stack unwinding
 ```
 
@@ -363,7 +352,7 @@ read_body(tcp_socket& s, buffer& buf)
             if (ec == eof)
                 co_return body;
             if (ec)
-                co_yield with_error(ec);
+                /* signal error to sender pipeline (Section 4) */;
         } catch (...) {
             co_return body;
         }
@@ -371,7 +360,11 @@ read_body(tcp_socket& s, buffer& buf)
 }
 ```
 
-**The coroutine-native version** (Section 3.2): one path, no try/catch, no `co_yield`, no bifurcation.
+**The coroutine-native invocation:**
+
+```cpp
+auto [ec, body] = co_await read_body(sock);  // no exceptions, no data loss
+```
 
 In a sender pipeline, these costs do not exist. The channels route completions at the type level, and the pipeline pays nothing. At the coroutine boundary, the same channels impose `co_yield with_error`, exception handling for routine I/O errors, and bifurcation of the same error depending on bytes transferred.
 
@@ -544,7 +537,7 @@ P2300's elegant environment propagation is structurally unreachable for coroutin
 
 ### 5.3 Coroutines Work for What Senders Get Free
 
-K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation. Propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
+While K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation, propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
 
 1. **Composability loss.** Generic sender algorithms like `let_value` and `when_all` launch child operations without knowledge of the caller's allocator. Manual forwarding cannot cross algorithm boundaries.
 
@@ -554,7 +547,7 @@ K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::a
 
 [C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[37]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
 
-Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake.
+Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. Section 1.4 demonstrates a working mechanism.
 
 ### 5.4 Does Performance Matter?
 
