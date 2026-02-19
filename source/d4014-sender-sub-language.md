@@ -58,11 +58,41 @@ The Sender Sub-Language provides equivalents for most of C++'s fundamental contr
 | `return`                | `set_value` into the receiver                           |
 | Local variables         | Lambda captures (with move semantics across boundaries) |
 | Function call + return  | `connect` + `start` + `set_value`                       |
+| Concurrent selection    | (absent)                                                |
 | Structured bindings     | (not needed)                                            |
 | Range-for               | (not needed)                                            |
 | `if` with initializer   | (not needed)                                            |
 
-The table is largely self-explanatory. Two details bear noting. First, the iteration and branching equivalents ([`repeat_effect_until`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp)<sup>[26]</sup>, [`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)<sup>[24]</sup>, [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp)<sup>[25]</sup>) are provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation but are not yet part of the C++26 working paper. Section 5 illustrates both patterns with working code. Second, the last three rows - structured bindings, range-for, and `if` with initializer - have no equivalent because the Sender Sub-Language does not produce intermediate return values. Values flow forward into continuations as arguments, not backward to callers as returns.
+The table is largely self-explanatory. Three details bear noting. First, the iteration and branching equivalents ([`repeat_effect_until`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/repeat_effect_until.hpp)<sup>[26]</sup>, [`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)<sup>[24]</sup>, [`variant_sender`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/variant_sender.hpp)<sup>[25]</sup>) are provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation but are not yet part of the C++26 working paper. Section 5 illustrates both patterns with working code. Second, the last three rows - structured bindings, range-for, and `if` with initializer - have no equivalent because the Sender Sub-Language does not produce intermediate return values. Values flow forward into continuations as arguments, not backward to callers as returns. Third, concurrent selection - the dual of `when_all` - is absent. Section 2.1 examines the gap.
+
+### 2.1 The Missing Row
+
+[P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> Section 1.3 motivates `std::execution` with this example:
+
+```cpp
+sender auto composed_cancellation_example(auto query) {
+  return stop_when(
+    timeout(
+      when_all(
+        first_successful(
+          query_server_a(query),
+          query_server_b(query)),
+        load_file("some_file.jpg")),
+      5s),
+    cancelButton.on_click());
+}
+```
+
+The example uses four algorithms:
+
+| Algorithm          | P2300R7 Section 1.3 | C++26   |
+|--------------------|:-------------------:|---------|
+| `when_all`         | used                | shipped |
+| `stop_when`        | used                | removed |
+| `timeout`          | used                | absent  |
+| `first_successful` | used                | absent  |
+
+`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed. [D0001R0](https://wg21.link/d0001r0)<sup>[58]</sup> ("When `when_any`?") examines the gap.
 
 ---
 
@@ -722,3 +752,9 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 53. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022. https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/
 54. [`connect`](https://eel.is/c++draft/exec.connect). C++26 draft standard, [exec.connect]. https://eel.is/c++draft/exec.connect
 55. [CUDA C++ Language Support](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html). NVIDIA CUDA Programming Guide v13.1, Section 5.3 (December 2025). https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/cpp-language-support.html
+
+### Concurrent Selection Gap
+
+56. [P2300R7](https://wg21.link/p2300r7). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2023. https://wg21.link/p2300r7
+57. [P2175R0](https://wg21.link/p2175r0). Lewis Baker. "Composable cancellation for sender-based async operations." 2020. https://wg21.link/p2175r0
+58. [D0001R0](https://wg21.link/d0001r0). Vinnie Falco, Mungo Gill. "When `when_any`?" 2026. https://wg21.link/d0001r0
