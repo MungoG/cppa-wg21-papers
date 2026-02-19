@@ -34,9 +34,9 @@ The point is not that coroutine-native I/O is universally superior. The point is
 
 Eric Niebler wrote in ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> (2020): *"I think that 90% of all async code in the future should be coroutines simply for maintainability."*
 
-What happens when I/O is designed from the ground up for coroutines? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") explored this question. The code compiles on three toolchains with benchmarks and unit tests. Four properties emerged naturally.
+If coroutines are the primary tool, what does I/O look like when designed for them? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") explored this with a working implementation compiled on three toolchains, with benchmarks and unit tests. The exploration identified four properties of the coroutine-native approach.
 
-### 2.1 Partial Results Are Natural
+### 2.1 Partial Results
 
 A composed I/O completion returns an error code and a result together:
 
@@ -46,9 +46,9 @@ auto [ec, n] = co_await read(sock, buf);
 
 As Peter Dimov observes, `(error_code, size_t)` is semantically equivalent to two consecutive calls: the first returning `({}, n)`, the second returning `(ec, 0)`. The tuple carries the full history of the operation. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof`. Error and byte count travel together. The coroutine decides what to do with both.
 
-### 2.2 Errors Return Naturally
+### 2.2 Error Returns
 
-`co_return` handles success and failure the same way every production coroutine library has independently adopted:
+`co_return` handles success and failure uniformly:
 
 ```cpp
 route_task https_redirect(route_params& rp)
@@ -63,15 +63,13 @@ route_task https_redirect(route_params& rp)
 }
 ```
 
-`co_return` handles both paths the same way it does in cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp.
+cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp use the same convention.
 
-### 2.3 Handle Errors, and Cancel is Free
+### 2.3 Cancellation
 
-On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count.
+On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. Code that checks `ec` handles cancellation without additional logic.
 
-Code that already checks `ec` handles cancellation for free. The `if (ec)` that handles `connection_reset` handles `operation_aborted` the same way. Cancellation in I/O is just another error code.
-
-### 2.4 Allocators Propagate Transparently
+### 2.4 Allocator Propagation
 
 Coroutine frame allocation overhead is measurable at high request rates. A recycling allocator eliminates it (Section 5 benchmarks a 3.1x speedup on MSVC). The allocator is set once at the launch site:
 
@@ -79,7 +77,7 @@ Coroutine frame allocation overhead is measurable at high request rates. A recyc
 run_async( &pool )( do_connection(sock) );
 ```
 
-The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a wrapper that stores the allocator in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe.
+The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a trampoline whose lifetime encloses the entire coroutine chain. The trampoline stores the allocator and publishes a pointer to it in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe.
 
 A promise opts in by reading the thread-local in `operator new`:
 
@@ -104,9 +102,9 @@ void await_resume() const noexcept {
 }
 ```
 
-The window is narrow and deterministic: the thread-local is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
+The thread-local carries only a pointer; the allocator itself lives in the trampoline. The window is narrow and deterministic: the pointer is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
 
-The result is that coroutine signatures express only their purpose:
+Coroutine signatures do not mention the allocator:
 
 ```cpp
 route_task serve_api(route_params& rp)
@@ -146,8 +144,6 @@ start(op);
 Niebler [asked the question himself](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup>: *"Why would anybody write that when we have coroutines? You would certainly need a good reason."*
 
 This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[39]</sup> expressed as composable value types. [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup> ("The Sender Sub-Language") provides the full treatment. Coroutines inhabit direct-style C++ - values return to callers, errors propagate through the call stack, resources scope to lexical lifetimes. This paper calls that *regular C++*.
-
-Niebler [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> the trade-off: *"That style of programming makes a different tradeoff, however: it is far harder to write and read than the equivalent coroutine."*
 
 SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface For Networking"):
 
@@ -417,7 +413,7 @@ do_read(tcp_socket& s, buffer& buf)
 {
     auto [ec, n] = co_await s.async_read(buf);
     if (ec)
-        co_yield with_error(ec);
+        co_yield with_error(ec);        // destroys the coroutine? (answer: yes)
     co_return n;
 }
 ```
@@ -618,7 +614,7 @@ The escape hatch is to stop searching for a universal allocator model in one pro
 
 ## 6. The Gaps Are The Tradeoff
 
-Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. The previous three sections suggest otherwise.
+Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. Niebler himself [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> the sender style as *"far harder to write and read than the equivalent coroutine."* The previous three sections suggest the cost is structural.
 
 Each gap has the same shape. The sender model requires a property for compile-time analysis. That property forces a cost on coroutines at the boundary. The committee standardized the sender model for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 3-5 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
 
