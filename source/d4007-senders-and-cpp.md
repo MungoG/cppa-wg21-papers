@@ -248,7 +248,7 @@ In a coroutine, `co_return expr` calls `promise.return_value(expr)`, which [P355
 
 A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.fct.def.coroutine]](https://eel.is/c++draft/dcl.fct.def.coroutine)<sup>[56]</sup>). `task<void>` needs `return_void`. The `return_void`/`return_value` mutual exclusion blocks any `return_value` overload that could route to `set_error`.
 
-`co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Dietmar K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[56]</sup>) is the best solution the language permits. In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate."
+`co_yield` is the only coroutine keyword that accepts an expression and passes it to the promise. Dietmar K&uuml;hl's `yield_value` overload for `with_error<E>` ([[task.promise]/7](https://eel.is/c++draft/task.promise#7)<sup>[56]</sup>) is the best solution the language permits - and that is the problem. One of the most experienced C++ library engineers, working within the constraints the Sub-Language imposes, could produce nothing better than a mechanism that reverses the established meaning of `co_yield` and requires a core language change to regularize. In every other coroutine context, `co_yield` means "produce a value and continue." Here it means "fail and terminate."
 
 ### 4.2 The Consequence
 
@@ -648,65 +648,109 @@ The three tradeoffs in Section 7 are the cost of treating the Sender Sub-Languag
 
 Herb Sutter reported that Citadel Securities uses `std::execution` in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)*<sup>[36]</sup> This confirms senders work well in their own domain: compile-time work graph construction, GPU dispatch, high-frequency trading pipelines.
 
-### 10.2 What If The Design Space Opens?
+### 10.2 Here Is How You Can Do It
 
-Section 10.3 shows what coroutine I/O gains. But senders gain freedom too. Much of the specification friction documented in Section 6 - broken algorithm customization across four papers, removed primitives, the `transform_sender` dangling reference - exists at the boundary with domains the Sub-Language was not built to serve. Narrow the scope, and the boundary recedes. Its authors would be free to optimize for what senders do well, without carrying the weight of what they do not.
+Senders gain freedom too. Much of the specification friction documented in Section 6 - broken algorithm customization across four papers, removed primitives, the `transform_sender` dangling reference - exists at the boundary with domains the Sub-Language was not built to serve. Narrow the scope, and the boundary recedes.
 
-[P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") is not proposed for standardization. The code is real, compiles on three toolchains, and comes with benchmarks and unit tests. We show it as evidence that when the universality constraint relaxes, the three tradeoffs become avoidable - not necessarily through this particular framework, but through approaches like it.
+Each of the three gaps documented in Sections 3-5 has a known solution in working code. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") is not proposed for standardization - the code is real, compiles on three toolchains, and comes with benchmarks and unit tests. We present the techniques below not as a competing design, but as evidence that each gap is solvable. Any coroutine task type, including `std::execution::task`, could adopt them.
 
-### 10.3 All Problems Become Solvable
+### 10.3 Partial Success Without Channels
 
-Here is what a coroutine I/O design looks like when it is free to serve its own domain:
+Section 3 documented the forced choice: `set_value` or `set_error`, but never both. The byte count from a partial read has no channel when the error fires. A coroutine-native design avoids the choice entirely:
 
 ```cpp
-// main.cpp - the launch site decides allocation policy
-int main()
-{
-    io_context ioc;
-    pmr::monotonic_buffer_resource pool;
-
-    // allocator set once at launch site
-    run_async(ioc.get_executor(), &pool)(accept_connections(ioc));
-
-    ioc.run();
-}
-
-// server.cpp - coroutines just do their job
-task<> accept_connections(io_context& ioc)
-{
-    auto stop_token = co_await this_coro::stop_token;
-    tcp::acceptor acc(ioc, {tcp::v4(), 8080});
-    while (! stop_token.stop_requested())
-    {
-        auto [ec, sock] = co_await acc.accept();
-        if (ec) co_return;
-        run_async(ioc.get_executor())(
-            handle_request(std::move(sock)));
-    }
-}
-
 task<> handle_request(tcp::socket sock)
 {
+    char buf[1024];
     auto [ec, n] = co_await sock.read(buf);
-    buf.commit(n);                          // partial success: use what arrived
-    if (ec) co_return;                      // then check the status
-
-    auto doc = co_await parse_json(buf);
-    auto resp = co_await build_response(doc);
-
-    pmr::unsynchronized_pool_resource bg_pool;
-    auto [ec2] = co_await run(bg_executor, &bg_pool)(
-        write_audit_log(resp));
-
-    co_await sock.write(resp);
+    buf.commit(n);                          // n bytes arrived regardless of ec
+    if (ec) co_return;                      // then check the error
+    co_await process(buf, n);
 }
 ```
 
-Every tradeoff from Section 7 resolves - not by choosing one column over the other, but by getting both. Errors and byte counts return together, and the coroutine branches on the error at runtime (7.1: both columns). `co_return` handles all completions, matching established practice across every production coroutine library (7.2: both columns). The allocator is set once at the launch site and reaches every frame automatically - function signatures express only their purpose (7.3: both columns). The task type is `template<class T> class task`, one parameter.
+Error and byte count travel together in a single tuple. The coroutine decides what to do with both. There is no channel choice and no information loss. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof` - not one or the other.
 
-P4003R0 achieves this by using `thread_local` propagation to deliver the allocator to `promise_type::operator new` before `connect()`.
+### 10.4 Errors Through `co_return`
 
-P4003R0 does not provide compile-time work graph construction, zero-allocation pipelines, or vendor extensibility. It does not need to. Those properties belong to senders. The three tradeoffs are the cost of universality, not the cost of asynchronous C++.
+Section 4 documented the `co_yield with_error` workaround. A coroutine-native design uses `co_return` for every completion path, matching the convention that every production coroutine library has independently adopted:
+
+```cpp
+route_task https_redirect(route_params& rp)
+{
+    std::string url = "https://";
+    url += rp.req.at(field::host);
+    url += rp.url.encoded_path();
+    rp.status(status::found);
+    rp.res.set(field::location, url);
+    auto [ec] = co_await rp.send("redirect");
+    if (ec)
+        co_return route_error(ec);
+    co_return route_done;
+}
+```
+
+No `co_yield`. No language change. No convention break. `co_return` handles success and failure the same way it does in cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp.
+
+### 10.5 Allocators Without Signature Pollution
+
+Section 5 documented the timing problem: `promise_type::operator new` fires before any sender machinery runs, so the allocator from the receiver's environment arrives too late. The `allocator_arg_t` workaround makes the allocator viral through every signature in the call chain.
+
+A different approach is possible. The allocator can be delivered through a thread-local write-through cache, set at the launch site and read in `operator new`:
+
+```cpp
+co_await run( &pool )( other_task() );
+```
+
+The two-call syntax exists because of `operator new` timing. `run(&pool)` returns a wrapper that stores the allocator in thread-local storage *before* `other_task()` is invoked. By the time `other_task()`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe: the postfix-expression `run(&pool)` is fully evaluated before `other_task()` in the argument list.
+
+The mechanism is small. In `operator new`, the promise reads the thread-local:
+
+```cpp
+static void* operator new(std::size_t size) {
+    auto* mr = get_current_frame_allocator();
+    if (!mr)
+        mr = std::pmr::new_delete_resource();
+    auto total = size + sizeof(std::pmr::memory_resource*);
+    void* raw = mr->allocate(total, alignof(std::max_align_t));
+    std::memcpy(static_cast<char*>(raw) + size, &mr, sizeof(mr));
+    return raw;
+}
+```
+
+On every resume - `initial_suspend` and every subsequent `co_await` - the coroutine restores the thread-local from its heap-stable environment before the coroutine body continues:
+
+```cpp
+void await_resume() const noexcept {
+    if (p_->frame_allocator())
+        set_current_frame_allocator(p_->frame_allocator());
+}
+```
+
+The window is narrow and deterministic: the thread-local is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. When the coroutine suspends, the value is irrelevant. When it resumes - possibly on a different thread - `await_resume` restores it from the canonical copy in the frame. No stale reads. No cross-thread hazard. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
+
+The result is that coroutine signatures express only their purpose:
+
+```cpp
+route_task serve_api(route_params& rp)
+{
+    auto result = co_await db.query("SELECT ...");
+    auto json = serialize(result);
+    auto [ec] = co_await rp.send(json);
+    if (ec) co_return route_error(ec);
+    co_return route_done;
+}
+```
+
+No `allocator_arg_t`. No template parameter for the allocator type. No silent fallback when one call site forgets to forward. The allocator is set once at the launch site and reaches every frame automatically.
+
+We share this technique in the hope that it is useful. The thread-local write-through cache is not tied to any particular task type or framework. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether a similar approach could deliver automatic allocator propagation to `std::execution::task`.
+
+### 10.6 The Tradeoffs Are Avoidable
+
+The code above compiles on three toolchains with benchmarks and unit tests. It does not provide compile-time work graph construction, zero-allocation pipelines, or vendor extensibility. It does not need to. Those properties belong to senders.
+
+The three tradeoffs documented in Section 7 are the cost of universality, not the cost of asynchronous C++. When coroutine I/O is free to serve its own domain, each tradeoff becomes avoidable - not necessarily through this particular framework, but through approaches like it.
 
 ---
 
@@ -722,7 +766,7 @@ The decision to adopt `std::execution` has consequences for coroutines. This pap
 
 4. **Should `task<T>` ship in C++26 with these costs?** Ship `std::execution` for the domains it serves. Let the coroutine integration iterate independently.
 
-The straw polls in Section 11 offer the committee a way to record its answers. The deeper question is whether there is room in the standard for `std::io` alongside `std::execution`, each serving its own domain.
+The straw polls in Section 12 offer the committee a way to record its answers. The deeper question is whether there is room in the standard for `std::io` alongside `std::execution`, each serving its own domain.
 
 ---
 
