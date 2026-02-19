@@ -2366,7 +2366,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
+Peter Dimov, and Mateusz Pusz for their valuable feedback in the development of this paper.
 
 ---
 
