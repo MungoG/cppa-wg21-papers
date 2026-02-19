@@ -206,9 +206,28 @@ Cancellation is an error code.
 
 `CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated bytes across prior successful receives breaks the same way.
 
-I/O completions are *complicated success*. EOF with partial data, cancellation with accumulated progress, a reset after bytes already transferred - these are not failures. They are outcomes the caller must inspect. The sender model offers three *simple channels*: one value, one error, one stop signal.
+I/O completions are *complicated success*. EOF with partial data, cancellation with accumulated progress, a reset after bytes already transferred - these are not failures. They are outcomes the caller must inspect. The sender model offers three *simple channels*: one value, one error, one stop signal. Complicated success fits the value channel - but not the error channel or the stopped channel. For I/O, two of three channels go unused:
 
-Complicated success does not fit in a simple channel.
+```cpp
+std::execution::task<std::pair<error_code, std::size_t>>
+do_read(tcp_socket& s, buffer& buf)
+{
+    auto [ec, n] = co_await async_read_some(s, buf);
+    co_return {ec, n};
+}
+
+do_read(sock, buf)
+  | then([](std::pair<error_code, std::size_t> result) {
+        auto [ec, n] = result;
+        // caller classifies ec at runtime
+    })
+  | upon_error([](auto e) {
+        // NEVER CALLED - I/O errors travel in the pair
+    })
+  | upon_stopped([] {
+        // NEVER CALLED - cancellation is error_code in the pair
+    });
+```
 
 ### 3.3 Does P2300R10 Guide Us?
 
@@ -295,6 +314,8 @@ The [stdexec](https://github.com/NVIDIA/stdexec)<sup>[52]</sup> repository conta
 ```
 
 The byte count is gone. On error, the byte count is likewise discarded. Two of three paths lose the partial result. If an experienced sender/receiver practitioner cannot bridge these models without information loss, the limitation is in the model.
+
+A committee member who has deployed sender/receiver in a production codebase (and who gave the authors permission to quote anonymously) independently confirmed the forced choice: *"you can get partial results into S&R world with `asioexec::completion_token` but then you lose the error channel mapping that `asioexec::use_sender` does."*
 
 The three-channel model assumes values, errors, and cancellation are distinct categories that can be separated at the type level. In I/O, they are not. EOF is information, not failure. Cancellation is an error code, not a separate signal. Partial success is the normal case, not an edge case. The model and the domain are incompatible. Appendix A.1 explains why.
 
