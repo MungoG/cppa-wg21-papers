@@ -1,5 +1,5 @@
 ---
-title: "Senders and C++"
+title: "Senders and Coroutines"
 document: P4007R0
 date: 2026-02-17
 reply-to:
@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines - in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects. They are tradeoffs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -204,7 +204,11 @@ A tuple accurately reflects what composed I/O operations physically produce. A `
 
 Cancellation is an error code.
 
-`CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated 47 bytes across prior successful receives breaks the same way.
+`CancelIoEx` on Windows completes the pending receive with `ERROR_OPERATION_ABORTED`. `close()` on POSIX produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. A composed `read_until` that has accumulated bytes across prior successful receives breaks the same way.
+
+I/O completions are *complicated success*. EOF with partial data, cancellation with accumulated progress, a reset after bytes already transferred - these are not failures. They are outcomes the caller must inspect. The sender model offers three *simple channels*: one value, one error, one stop signal.
+
+Complicated success does not fit in a simple channel.
 
 ### 3.3 Does P2300R10 Guide Us?
 
@@ -910,7 +914,7 @@ This document is written in Markdown and depends on the extensions in
 thank the authors of those extensions and associated libraries.
 
 The authors would also like to thank John Lakos, Joshua Berne, Pablo Halpern,
-Andrzej Krzemie&nacute;ski, and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
+Andrzej Krzemie&#324;ski, and Dietmar K&uuml;hl for their valuable feedback in the development of this paper.
 
 ---
 
