@@ -5,7 +5,6 @@ date: 2026-02-17
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
-  - "Amlal El Mahrouss <amlalelmahrouss@icloud.com>"
   - "Mungo Gill <mungo.gill@me.com>"
 audience: LEWG
 ---
