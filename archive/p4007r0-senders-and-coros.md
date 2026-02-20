@@ -1,7 +1,7 @@
 ---
 title: "Senders and Coroutines"
 document: P4007R0
-date: 2026-02-17
+date: 2026-02-20
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"
@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -34,32 +34,21 @@ The point is not that coroutine-native I/O is universally superior. The point is
 
 Eric Niebler wrote in ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> (2020): *"I think that 90% of all async code in the future should be coroutines simply for maintainability."*
 
-What happens when I/O is designed from the ground up for coroutines? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") explored this question. The code compiles on three toolchains with benchmarks and unit tests. Four properties emerged naturally.
+If coroutines are the primary tool, what does I/O look like when designed for them? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") explored this with a working implementation compiled on three toolchains, with benchmarks and unit tests. The exploration identified four properties of the coroutine-native approach.
 
-### 2.1 Partial Results Are Natural
+### 2.1 Partial Results
 
-An I/O completion returns an error code and a result together. A composed `read` built from `read_some` shows this directly:
+A composed I/O completion returns an error code and a result together:
 
 ```cpp
-io_task<std::string> read(tcp::socket& sock)
-{
-    std::string result;
-    char buf[1024];
-    for (;;)
-    {
-        auto [ec, n] = co_await sock.read_some(buf);
-        result.append(buf, n);              // n bytes arrived regardless of ec
-        if (ec)
-            co_return {ec, std::move(result)};
-    }
-}
+auto [ec, n] = co_await read(sock, buf);
 ```
 
-The return type `io_task<std::string>` means the awaitable yields `(error_code, std::string)`. A caller writes `auto [ec, body] = co_await read(sock)`. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof`. Error and data travel together in a single tuple. The coroutine decides what to do with both.
+As Peter Dimov observes, `(error_code, size_t)` is semantically equivalent to two consecutive calls: the first returning `({}, n)`, the second returning `(ec, 0)`. The tuple carries the full history of the operation. A `read` that transferred 47 bytes before EOF gives the caller 47 bytes and `eof`. Error and byte count travel together. The coroutine decides what to do with both.
 
-### 2.2 Errors Return Naturally
+### 2.2 Error Returns
 
-`co_return` handles success and failure the same way every production coroutine library has independently adopted:
+`co_return` handles success and failure uniformly:
 
 ```cpp
 route_task https_redirect(route_params& rp)
@@ -74,15 +63,13 @@ route_task https_redirect(route_params& rp)
 }
 ```
 
-`co_return` handles both paths the same way it does in cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp.
+cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp use the same convention.
 
-### 2.3 Handle Errors, and Cancel is Free
+### 2.3 Cancellation
 
-On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count.
+On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. Code that checks `ec` handles cancellation without additional logic.
 
-Code that already checks `ec` handles cancellation for free. No additional code path, no separate signal, no `set_stopped` handler. The `if (ec)` that handles `connection_reset` also handles `operation_aborted`. Cancellation is not a separate concept in I/O - it is another error code.
-
-### 2.4 Allocators Propagate Transparently
+### 2.4 Allocator Propagation
 
 Coroutine frame allocation overhead is measurable at high request rates. A recycling allocator eliminates it (Section 5 benchmarks a 3.1x speedup on MSVC). The allocator is set once at the launch site:
 
@@ -90,7 +77,7 @@ Coroutine frame allocation overhead is measurable at high request rates. A recyc
 run_async( &pool )( do_connection(sock) );
 ```
 
-The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a wrapper that stores the allocator in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe.
+The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a trampoline whose lifetime encloses the entire coroutine chain. The trampoline stores the allocator and publishes a pointer to it in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe.
 
 A promise opts in by reading the thread-local in `operator new`:
 
@@ -115,9 +102,9 @@ void await_resume() const noexcept {
 }
 ```
 
-The window is narrow and deterministic: the thread-local is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
+The thread-local carries only a pointer; the allocator itself lives in the trampoline. The window is narrow and deterministic: the pointer is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
 
-The result is that coroutine signatures express only their purpose:
+Coroutine signatures do not mention the allocator:
 
 ```cpp
 route_task serve_api(route_params& rp)
@@ -158,8 +145,6 @@ Niebler [asked the question himself](https://ericniebler.com/2020/11/08/structur
 
 This is [continuation-passing style](https://en.wikipedia.org/wiki/Continuation-passing_style)<sup>[39]</sup> expressed as composable value types. [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup> ("The Sender Sub-Language") provides the full treatment. Coroutines inhabit direct-style C++ - values return to callers, errors propagate through the call stack, resources scope to lexical lifetimes. This paper calls that *regular C++*.
 
-Niebler [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> the trade-off: *"That style of programming makes a different tradeoff, however: it is far harder to write and read than the equivalent coroutine."*
-
 SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface For Networking"):
 
 > *"Networking should support only a sender/receiver model for asynchronous operations; the Networking TS's executor model should be removed"*
@@ -196,25 +181,25 @@ Each channel has a fixed signature shape:
 
 ### 3.2 Coroutines Return Tuples
 
-A composed read accumulates bytes across multiple receives. In a coroutine, the result is natural:
+A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
 ```cpp
-io_task<std::string>
-read_body(tcp_socket& sock)
+task<pair<error_code, string>>
+read(tcp::socket& sock)
 {
+    std::string result;
     char buf[1024];
-    std::string body;
-    for(;;) {
-        auto [ec, n] = co_await sock.read_some(buf);
-        body.append(buf, n);
+    for (;;)
+    {
+        auto [ec, n] = co_await sock.read_some(buf);    // also a tuple
+        result.append(buf, n);                          // n bytes arrived regardless of ec
         if (ec)
-            co_return {ec, std::move(body)};
+            co_return {ec, std::move(result)};
     }
-    co_return {{}, std::move(body)};
 }
 ```
 
-The return type `io_task<std::string>` destructures to `(error_code, std::string)`. The caller always receives both the error and the accumulated data. Composed I/O operations produce tuples because partial progress is the norm. A `read` that fills 47 bytes before the connection resets returns both the error code and the byte count, with no loss. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> codified this as `void(error_code, size_t)` twenty-five years ago. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it.
+The caller always receives both the error and the accumulated data. Composed I/O operations produce tuples because partial progress is the norm. A `read` that fills 47 bytes before the connection resets returns both the error code and the partial data, with no loss. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[40]</sup> codified this as `void(error_code, size_t)` twenty-five years ago. [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> ("Sender/Receiver Interface for Networking") preserves it.
 
 I/O completions are *complicated success*: EOF with complete data, connection reset with accumulated progress, a missing TLS shutdown; these are not failures, they are outcomes the caller must inspect. Even cancellation is an error code (`ERROR_OPERATION_ABORTED` on Windows, `ECANCELED` on POSIX): code that handles errors already handles cancellation for free.
 
@@ -335,7 +320,7 @@ This contradicts twenty-five years of established I/O practice. Kohlhoff designe
 In a coroutine-native design, these same errors arrive as error codes:
 
 ```cpp
-auto [ec, n] = co_await s.read_some(buf);  // ec == ECONNRESET, n == 0
+auto [ec, n] = co_await s.read_some(buf);   // ec == ECONNRESET, n == 0
 if (ec) co_return {ec, std::move(body)};    // no exception, no stack unwinding
 ```
 
@@ -363,7 +348,7 @@ read_body(tcp_socket& s, buffer& buf)
             if (ec == eof)
                 co_return body;
             if (ec)
-                co_yield with_error(ec);
+                /* signal error to sender pipeline (Section 4) */;
         } catch (...) {
             co_return body;
         }
@@ -371,7 +356,11 @@ read_body(tcp_socket& s, buffer& buf)
 }
 ```
 
-**The coroutine-native version** (Section 3.2): one path, no try/catch, no `co_yield`, no bifurcation.
+**The coroutine-native invocation:**
+
+```cpp
+auto [ec, body] = co_await read_body(sock);  // no exceptions, no data loss
+```
 
 In a sender pipeline, these costs do not exist. The channels route completions at the type level, and the pipeline pays nothing. At the coroutine boundary, the same channels impose `co_yield with_error`, exception handling for routine I/O errors, and bifurcation of the same error depending on bytes transferred.
 
@@ -383,7 +372,7 @@ Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2
 
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
-Kohlhoff published P2430R0 in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings. Appendix A.3 traces the full timeline.
+Kohlhoff presented these observations during the P2300 review and published the slides as P2430R0. It was not a standalone proposal, and there were no polls to find. But the observation was right. Five years and ten revisions later, the tension Kohlhoff identified remains unresolved. Appendix A.3 traces why.
 
 ---
 
@@ -424,7 +413,7 @@ do_read(tcp_socket& s, buffer& buf)
 {
     auto [ec, n] = co_await s.async_read(buf);
     if (ec)
-        co_yield with_error(ec);
+        co_yield with_error(ec);        // destroys the coroutine? (answer: yes)
     co_return n;
 }
 ```
@@ -503,7 +492,7 @@ The allocator is set once at the launch site and reaches every operation automat
 
 However...
 
-Nothing here allocates. The operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
+Nothing here allocates. Used as intended, the operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
 
 ### 5.2 Coroutines
 
@@ -544,7 +533,7 @@ P2300's elegant environment propagation is structurally unreachable for coroutin
 
 ### 5.3 Coroutines Work for What Senders Get Free
 
-K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation. Propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
+While K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation, propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
 
 1. **Composability loss.** Generic sender algorithms like `let_value` and `when_all` launch child operations without knowledge of the caller's allocator. Manual forwarding cannot cross algorithm boundaries.
 
@@ -554,7 +543,7 @@ K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::a
 
 [C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[37]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
 
-Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake.
+Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. Section 1.4 demonstrates a working mechanism.
 
 ### 5.4 Does Performance Matter?
 
@@ -625,7 +614,7 @@ The escape hatch is to stop searching for a universal allocator model in one pro
 
 ## 6. The Gaps Are The Tradeoff
 
-Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. The previous three sections suggest otherwise.
+Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. Niebler himself [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> the sender style as *"far harder to write and read than the equivalent coroutine."* The previous three sections suggest the cost is structural.
 
 Each gap has the same shape. The sender model requires a property for compile-time analysis. That property forces a cost on coroutines at the boundary. The committee standardized the sender model for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 3-5 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
 
@@ -873,19 +862,19 @@ Every name is from P2300R10: `recv_sender`, `async_recv`, `connect`, `start`, `s
 
 ### A.3 Timeline of the Error Channel Question
 
-The partial success problem was not raised once and set aside. It was raised independently, across multiple groups, by participants with different domain backgrounds, over a span of five years. The question was never polled.
+The partial success problem was raised independently, across multiple groups, by participants with different domain backgrounds, over a span of five years. Every proposed resolution carried real costs. The question was never resolved - not for lack of attention, but because the three-channel model may not admit a solution that preserves both compile-time routing and I/O's tuple semantics.
 
 - **2020 (Nov):** Niebler's ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> blog post establishes the three-channel model publicly. Acknowledges CPS is harder to write and read than coroutines.
 
-- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[56]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. The concern was not addressed. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial success.
+- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[56]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No resolution on partial success emerged.
 
 - **2021 (Feb, SG4 telecon):** During review of P0958R3, a participant stated that sender/receivers have a loss because they do not have success/partial-success. Another suggested adapting from success/error; the response was that the error does not carry information. No poll on the error channel design.
 
 - **2021 (Jul-Oct, LEWG telecon series):** The partial success question was debated across at least five LEWG telecons during the P2300 review. Multiple participants raised incompatible positions. One argued that partial success calling `set_value` does not work for generic retry algorithms. Others described `set_error` as effectively `set_exception` - an error channel that does not serve error conditions. The August 17, 2021 LEWG outcome document explicitly listed "Better explain how partial success works with senders/receivers" as open guidance to the P2300 authors - an acknowledgment that the question was unresolved. During the October 4, 2021 LEWG telecon, a participant (who gave the authors permission to anonymously quote what they said) indicated that partial success could be addressed through async streams once the initial sender/receiver facilities were in place, with the expectation that such streams could then be standardized. The async streams facility was never proposed, never standardized, and is not in the C++26 working draft.
 
-- **2021 (Aug):** Chris Kohlhoff published [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300") identifying that partial results must be communicated down the `set_value` channel due to limitations of `set_error` and `set_done`. Published during P2300's most intensive review period. No committee response found in the published record.
+- **2021 (Aug):** Kohlhoff published [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"), slides from a presentation during the P2300 review, identifying that partial results must be communicated down the `set_value` channel due to limitations of `set_error` and `set_done`. Independent confirmation of the same tension the preceding telecons debated, from the author of Asio.
 
-- **2022-2024:** [P2300R4](https://wg21.link/p2300r4)<sup>[2]</sup> through [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> published. Three-channel model unchanged across all revisions. P2430R0 not addressed.
+- **2022-2024:** [P2300R4](https://wg21.link/p2300r4)<sup>[2]</sup> through [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> published. Three-channel model unchanged across all revisions.
 
 - **2023:** [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> (Dietmar K&uuml;hl, "Sender/Receiver Interface for Networking") preserves the proven `(error_code, size_t)` convention from Asio - implicitly acknowledging I/O needs both values together.
 
@@ -897,7 +886,7 @@ The partial success problem was not raised once and set aside. It was raised ind
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the sender model, not a bug. The unresolved timeline is what structural friction looks like from the inside.
+The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
 
 ---
 

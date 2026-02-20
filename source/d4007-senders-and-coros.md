@@ -1,7 +1,7 @@
 ---
 title: "Senders and Coroutines"
 document: P4007R0
-date: 2026-02-17
+date: 2026-02-20
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"

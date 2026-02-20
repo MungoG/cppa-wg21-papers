@@ -824,7 +824,7 @@ outline: none;
 <!-- Document Metadata -->
 <div class="document-info">
   <p><strong>Document Number:</strong> P4007R0</p>
-  <p><strong>Date:</strong> 2026-02-17</p>
+  <p><strong>Date:</strong> 2026-02-20</p>
   <p><strong>Audience:</strong> LEWG</p>
   <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Mungo Gill
 <a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
@@ -845,13 +845,13 @@ outline: none;
   <li><a href="#coroutine-native-io" id="toc-coroutine-native-io">2.
   Coroutine-Native I/O</a>
   <ul>
-  <li><a href="#partial-results-are-natural" id="toc-partial-results-are-natural">2.1 Partial Results Are
-  Natural</a></li>
-  <li><a href="#errors-return-naturally" id="toc-errors-return-naturally">2.2 Errors Return Naturally</a></li>
-  <li><a href="#handle-errors-and-cancel-is-free" id="toc-handle-errors-and-cancel-is-free">2.3 Handle Errors, and
-  Cancel is Free</a></li>
-  <li><a href="#allocators-propagate-transparently" id="toc-allocators-propagate-transparently">2.4 Allocators Propagate
-  Transparently</a></li>
+  <li><a href="#partial-results" id="toc-partial-results">2.1 Partial
+  Results</a></li>
+  <li><a href="#error-returns" id="toc-error-returns">2.2 Error
+  Returns</a></li>
+  <li><a href="#cancellation" id="toc-cancellation">2.3
+  Cancellation</a></li>
+  <li><a href="#allocator-propagation" id="toc-allocator-propagation">2.4 Allocator Propagation</a></li>
   <li><a href="#two-models-of-computation" id="toc-two-models-of-computation">2.5 Two Models of
   Computation</a></li>
   </ul></li>
@@ -975,9 +975,9 @@ gaps visible by showing that partial results, error returns,
 cancellation, and allocator propagation emerge naturally when I/O is
 designed for coroutines. The findings hold regardless of that
 exploration’s specific design. This paper recommends: ship
-<code>std::execution</code> for C++26, defer <code>task</code> to C++29,
-and explore coroutine-native I/O designs alongside sender-based
-designs.</p>
+<code>std::execution</code> for C++26, defer <code>task</code> (<a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup>, “Add a
+Coroutine Task Type”) to C++29, and explore coroutine-native I/O designs
+alongside sender-based designs.</p>
 <hr />
 <h2 id="revision-history">Revision History</h2>
 <h3 id="r0-march-2026-pre-croydon-mailing">R0: March 2026 (pre-Croydon
@@ -1009,37 +1009,25 @@ looks like - not to propose it as the only way forward.</p>
 Concurrency”</a><sup>[33]</sup> (2020): <em>“I think that 90% of all
 async code in the future should be coroutines simply for
 maintainability.”</em></p>
-<p>What happens when I/O is designed from the ground up for coroutines?
-<a href="https://wg21.link/p4003r0">P4003R0</a><sup>[25]</sup>
-(“IoAwaitables: A Coroutines-Only Framework”) explored this question.
-The code compiles on three toolchains with benchmarks and unit tests.
-Four properties emerged naturally.</p>
-<h3 id="partial-results-are-natural">2.1 Partial Results Are
-Natural</h3>
-<p>An I/O completion returns an error code and a result together. A
-composed <code>read</code> built from <code>read_some</code> shows this
-directly:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>io_task<span class="op">&lt;</span><span class="bu">std::</span>string<span class="op">&gt;</span> read<span class="op">(</span>tcp<span class="op">::</span>socket<span class="op">&amp;</span> sock<span class="op">)</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>string result<span class="op">;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> buf<span class="op">[</span><span class="dv">1024</span><span class="op">];</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(;;)</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> sock<span class="op">.</span>read_some<span class="op">(</span>buf<span class="op">);</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        result<span class="op">.</span>append<span class="op">(</span>buf<span class="op">,</span> n<span class="op">);</span>              <span class="co">// n bytes arrived regardless of ec</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">co_return</span> <span class="op">{</span>ec<span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>result<span class="op">)};</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>The return type <code>io_task&lt;std::string&gt;</code> means the
-awaitable yields <code>(error_code, std::string)</code>. A caller writes
-<code>auto [ec, body] = co_await read(sock)</code>. A <code>read</code>
+<p>If coroutines are the primary tool, what does I/O look like when
+designed for them? <a href="https://wg21.link/p4003r0">P4003R0</a><sup>[25]</sup>
+(“IoAwaitables: A Coroutines-Only Framework”) explored this with a
+working implementation compiled on three toolchains, with benchmarks and
+unit tests. The exploration identified four properties of the
+coroutine-native approach.</p>
+<h3 id="partial-results">2.1 Partial Results</h3>
+<p>A composed I/O completion returns an error code and a result
+together:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> read<span class="op">(</span>sock<span class="op">,</span> buf<span class="op">);</span></span></code></pre></div>
+<p>As Peter Dimov observes, <code>(error_code, size_t)</code> is
+semantically equivalent to two consecutive calls: the first returning
+<code>({}, n)</code>, the second returning <code>(ec, 0)</code>. The
+tuple carries the full history of the operation. A <code>read</code>
 that transferred 47 bytes before EOF gives the caller 47 bytes and
-<code>eof</code>. Error and data travel together in a single tuple. The
-coroutine decides what to do with both.</p>
-<h3 id="errors-return-naturally">2.2 Errors Return Naturally</h3>
-<p><code>co_return</code> handles success and failure the same way every
-production coroutine library has independently adopted:</p>
+<code>eof</code>. Error and byte count travel together. The coroutine
+decides what to do with both.</p>
+<h3 id="error-returns">2.2 Error Returns</h3>
+<p><code>co_return</code> handles success and failure uniformly:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>route_task https_redirect<span class="op">(</span>route_params<span class="op">&amp;</span> rp<span class="op">)</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>string url <span class="op">=</span> <span class="st">&quot;https://&quot;</span><span class="op">;</span></span>
@@ -1050,31 +1038,25 @@ production coroutine library has independently adopted:</p>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_return</span> route_error<span class="op">(</span>ec<span class="op">);</span></span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> route_done<span class="op">;</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p><code>co_return</code> handles both paths the same way it does in
-cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and
-asyncpp.</p>
-<h3 id="handle-errors-and-cancel-is-free">2.3 Handle Errors, and Cancel
-is Free</h3>
+<p>cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp
+use the same convention.</p>
+<h3 id="cancellation">2.3 Cancellation</h3>
 <p>On Windows, <code>CancelIoEx</code> completes the pending operation
 with <code>ERROR_OPERATION_ABORTED</code>. On POSIX, cancellation
 produces <code>ECANCELED</code>. The error code arrives through the same
-field as every other error, accompanied by the same byte count.</p>
-<p>Code that already checks <code>ec</code> handles cancellation for
-free. No additional code path, no separate signal, no
-<code>set_stopped</code> handler. The <code>if (ec)</code> that handles
-<code>connection_reset</code> also handles
-<code>operation_aborted</code>. Cancellation is not a separate concept
-in I/O - it is another error code.</p>
-<h3 id="allocators-propagate-transparently">2.4 Allocators Propagate
-Transparently</h3>
+field as every other error, accompanied by the same byte count. Code
+that checks <code>ec</code> handles cancellation without additional
+logic.</p>
+<h3 id="allocator-propagation">2.4 Allocator Propagation</h3>
 <p>Coroutine frame allocation overhead is measurable at high request
 rates. A recycling allocator eliminates it (Section 5 benchmarks a 3.1x
 speedup on MSVC). The allocator is set once at the launch site:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span> <span class="op">&amp;</span>pool <span class="op">)(</span> do_connection<span class="op">(</span>sock<span class="op">)</span> <span class="op">);</span></span></code></pre></div>
 <p>The two-call syntax exists because of <code>operator new</code>
-timing. <code>run_async(&amp;pool)</code> returns a wrapper that stores
-the allocator in thread-local storage <em>before</em>
-<code>do_connection(sock)</code> is invoked. By the time
+timing. <code>run_async(&amp;pool)</code> returns a trampoline whose
+lifetime encloses the entire coroutine chain. The trampoline stores the
+allocator and publishes a pointer to it in thread-local storage
+<em>before</em> <code>do_connection(sock)</code> is invoked. By the time
 <code>do_connection</code>’s <code>promise_type::operator new</code>
 fires, the allocator is already available. C++17 guaranteed evaluation
 order makes this safe.</p>
@@ -1095,13 +1077,14 @@ heap-stable environment:</p>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span><span class="va">p_</span><span class="op">-&gt;</span>frame_allocator<span class="op">())</span></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        set_current_frame_allocator<span class="op">(</span><span class="va">p_</span><span class="op">-&gt;</span>frame_allocator<span class="op">());</span></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>The window is narrow and deterministic: the thread-local is written
-when the coroutine resumes and read only in <code>operator new</code> of
-a child coroutine called during that execution. The technique is the
-same principle as <code>std::pmr::get_default_resource()</code>, scoped
-per-chain instead of per-process.</p>
-<p>The result is that coroutine signatures express only their
-purpose:</p>
+<p>The thread-local carries only a pointer; the allocator itself lives
+in the trampoline. The window is narrow and deterministic: the pointer
+is written when the coroutine resumes and read only in
+<code>operator new</code> of a child coroutine called during that
+execution. The technique is the same principle as
+<code>std::pmr::get_default_resource()</code>, scoped per-chain instead
+of per-process.</p>
+<p>Coroutine signatures do not mention the allocator:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>route_task serve_api<span class="op">(</span>route_params<span class="op">&amp;</span> rp<span class="op">)</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> result <span class="op">=</span> <span class="cf">co_await</span> db<span class="op">.</span>query<span class="op">(</span><span class="st">&quot;SELECT ...&quot;</span><span class="op">);</span>  <span class="co">// coroutine frame uses allocator here</span></span>
@@ -1141,10 +1124,6 @@ Sub-Language”) provides the full treatment. Coroutines inhabit
 direct-style C++ - values return to callers, errors propagate through
 the call stack, resources scope to lexical lifetimes. This paper calls
 that <em>regular C++</em>.</p>
-<p>Niebler <a href="https://ericniebler.com/2020/11/08/structured-concurrency/">characterized</a><sup>[33]</sup>
-the trade-off: <em>“That style of programming makes a different
-tradeoff, however: it is far harder to write and read than the
-equivalent coroutine.”</em></p>
 <p>SG4 polled at Kona (November 2023) on <a href="https://wg21.link/p2762r2">P2762R2</a><sup>[4]</sup>
 (“Sender/Receiver Interface For Networking”):</p>
 <blockquote>
@@ -1211,26 +1190,26 @@ error.</li>
 </ul>
 <h3 id="coroutines-return-tuples">3.2 Coroutines Return Tuples</h3>
 <p>A composed read accumulates bytes across multiple receives. In a
-coroutine, the result is natural:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>io_task<span class="op">&lt;</span><span class="bu">std::</span>string<span class="op">&gt;</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>read_body<span class="op">(</span>tcp_socket<span class="op">&amp;</span> sock<span class="op">)</span></span>
+coroutine, this is expressed naturally as a tuple (here,
+<code>pair</code>):</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span>pair<span class="op">&lt;</span>error_code<span class="op">,</span> string<span class="op">&gt;&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>read<span class="op">(</span>tcp<span class="op">::</span>socket<span class="op">&amp;</span> sock<span class="op">)</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> buf<span class="op">[</span><span class="dv">1024</span><span class="op">];</span></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>string body<span class="op">;</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span><span class="op">(;;)</span> <span class="op">{</span></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> sock<span class="op">.</span>read_some<span class="op">(</span>buf<span class="op">);</span></span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        body<span class="op">.</span>append<span class="op">(</span>buf<span class="op">,</span> n<span class="op">);</span></span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">co_return</span> <span class="op">{</span>ec<span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>body<span class="op">)};</span></span>
-<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> <span class="op">{{},</span> <span class="bu">std::</span>move<span class="op">(</span>body<span class="op">)};</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>string result<span class="op">;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> buf<span class="op">[</span><span class="dv">1024</span><span class="op">];</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(;;)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> sock<span class="op">.</span>read_some<span class="op">(</span>buf<span class="op">);</span>    <span class="co">// also a tuple</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        result<span class="op">.</span>append<span class="op">(</span>buf<span class="op">,</span> n<span class="op">);</span>                          <span class="co">// n bytes arrived regardless of ec</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">co_return</span> <span class="op">{</span>ec<span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>result<span class="op">)};</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
 <span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>The return type <code>io_task&lt;std::string&gt;</code> destructures
-to <code>(error_code, std::string)</code>. The caller always receives
-both the error and the accumulated data. Composed I/O operations produce
-tuples because partial progress is the norm. A <code>read</code> that
-fills 47 bytes before the connection resets returns both the error code
-and the byte count, with no loss. <a href="https://www.boost.org/doc/libs/release/doc/html/boost_asio.html">Boost.Asio</a><sup>[40]</sup>
+<p>The caller always receives both the error and the accumulated data.
+Composed I/O operations produce tuples because partial progress is the
+norm. A <code>read</code> that fills 47 bytes before the connection
+resets returns both the error code and the partial data, with no loss.
+<a href="https://www.boost.org/doc/libs/release/doc/html/boost_asio.html">Boost.Asio</a><sup>[40]</sup>
 codified this as <code>void(error_code, size_t)</code> twenty-five years
 ago. <a href="https://wg21.link/p2762r2">P2762R2</a><sup>[4]</sup>
 (“Sender/Receiver Interface for Networking”) preserves it.</p>
@@ -1429,7 +1408,7 @@ Dimov’s mapping, and P3552R3’s <code>task</code> reverses this for every
 error that arrives with zero bytes transferred.</p>
 <p>In a coroutine-native design, these same errors arrive as error
 codes:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> s<span class="op">.</span>read_some<span class="op">(</span>buf<span class="op">);</span>  <span class="co">// ec == ECONNRESET, n == 0</span></span>
+<div class="sourceCode" id="cb11"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> s<span class="op">.</span>read_some<span class="op">(</span>buf<span class="op">);</span>   <span class="co">// ec == ECONNRESET, n == 0</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span> <span class="cf">co_return</span> <span class="op">{</span>ec<span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>body<span class="op">)};</span>    <span class="co">// no exception, no stack unwinding</span></span></code></pre></div>
 <h3 id="coroutines-always-pay">3.7 Coroutines Always Pay</h3>
 <p>Three solutions have been presented. Each improves on the last. None
@@ -1477,14 +1456,14 @@ are not exceptional:</p>
 <span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>ec <span class="op">==</span> eof<span class="op">)</span></span>
 <span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>                <span class="cf">co_return</span> body<span class="op">;</span></span>
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">co_yield</span> with_error<span class="op">(</span>ec<span class="op">);</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>                <span class="co">/* signal error to sender pipeline (Section 4) */</span><span class="op">;</span></span>
 <span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">catch</span> <span class="op">(...)</span> <span class="op">{</span></span>
 <span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">co_return</span> body<span class="op">;</span></span>
 <span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
 <span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
 <span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p><strong>The coroutine-native version</strong> (Section 3.2): one
-path, no try/catch, no <code>co_yield</code>, no bifurcation.</p>
+<p><strong>The coroutine-native invocation:</strong></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> body<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> read_body<span class="op">(</span>sock<span class="op">);</span>  <span class="co">// no exceptions, no data loss</span></span></code></pre></div>
 <p>In a sender pipeline, these costs do not exist. The channels route
 completions at the type level, and the pipeline pays nothing. At the
 coroutine boundary, the same channels impose
@@ -1501,11 +1480,11 @@ single ‘error’ argument) and set_done channel (which takes no
 arguments), partial results must be communicated down the set_value
 channel.”</em></p>
 </blockquote>
-<p>Kohlhoff published P2430R0 in August 2021, during the most intensive
-review period for P2300. The authors were unable to find minutes or
-polls addressing it in the published committee record. If the paper was
-reviewed, we would welcome a reference to the proceedings. Appendix A.3
-traces the full timeline.</p>
+<p>Kohlhoff presented these observations during the P2300 review and
+published the slides as P2430R0. It was not a standalone proposal, and
+there were no polls to find. But the observation was right. Five years
+and ten revisions later, the tension Kohlhoff identified remains
+unresolved. Appendix A.3 traces why.</p>
 <hr />
 <h2 id="where-is-the-co_return">4. Where Is the
 <code>co_return</code>?</h2>
@@ -1538,24 +1517,24 @@ core language change to regularize. In every other coroutine context,
 means “fail and terminate.”</p>
 <h3 id="the-consequence">4.2 The Consequence</h3>
 <p>In regular C++, <code>co_return</code> delivers errors:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>my_task<span class="op">&lt;</span><span class="bu">std::</span>expected<span class="op">&lt;</span><span class="bu">std::</span>size_t<span class="op">,</span> <span class="bu">std::</span>error_code<span class="op">&gt;&gt;</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>do_read<span class="op">(</span>tcp_socket<span class="op">&amp;</span> s<span class="op">,</span> buffer<span class="op">&amp;</span> buf<span class="op">)</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> s<span class="op">.</span>async_read<span class="op">(</span>buf<span class="op">);</span></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_return</span> <span class="bu">std::</span>unexpected<span class="op">(</span>ec<span class="op">);</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> n<span class="op">;</span></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p><a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup>
-introduces a different mechanism:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;</span><span class="bu">std::</span>size_t<span class="op">&gt;</span></span>
+<div class="sourceCode" id="cb14"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>my_task<span class="op">&lt;</span><span class="bu">std::</span>expected<span class="op">&lt;</span><span class="bu">std::</span>size_t<span class="op">,</span> <span class="bu">std::</span>error_code<span class="op">&gt;&gt;</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>do_read<span class="op">(</span>tcp_socket<span class="op">&amp;</span> s<span class="op">,</span> buffer<span class="op">&amp;</span> buf<span class="op">)</span></span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> s<span class="op">.</span>async_read<span class="op">(</span>buf<span class="op">);</span></span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_yield</span> with_error<span class="op">(</span>ec<span class="op">);</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_return</span> <span class="bu">std::</span>unexpected<span class="op">(</span>ec<span class="op">);</span></span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> n<span class="op">;</span></span>
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup>
+introduces a different mechanism:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;</span><span class="bu">std::</span>size_t<span class="op">&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>do_read<span class="op">(</span>tcp_socket<span class="op">&amp;</span> s<span class="op">,</span> buffer<span class="op">&amp;</span> buf<span class="op">)</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> n<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> s<span class="op">.</span>async_read<span class="op">(</span>buf<span class="op">);</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_yield</span> with_error<span class="op">(</span>ec<span class="op">);</span>        <span class="co">// destroys the coroutine? (answer: yes)</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> n<span class="op">;</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>For six years, every C++ coroutine library has taught the same two
 conventions: <code>co_return</code> for final values,
 <code>co_yield</code> for intermediate values that the coroutine
@@ -1674,41 +1653,41 @@ authors solved the allocator propagation problem for senders with care
 and precision. The receiver’s environment carries the allocator via
 <code>get_allocator(get_env(rcvr))</code>, and the sender algorithms
 propagate it automatically through every level of nesting:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> work <span class="op">=</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    just<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>socket<span class="op">))</span></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> let_value<span class="op">([](</span>tcp_socket<span class="op">&amp;</span> s<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> async_read<span class="op">(</span>s<span class="op">,</span> buf<span class="op">)</span></span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>             <span class="op">|</span> let_value<span class="op">([&amp;](</span><span class="kw">auto</span> data<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>                   <span class="cf">return</span> parse<span class="op">(</span>data<span class="op">)</span></span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>                        <span class="op">|</span> let_value<span class="op">([&amp;](</span><span class="kw">auto</span> doc<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>                              <span class="cf">return</span> async_write<span class="op">(</span></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                                  s<span class="op">,</span> build_response<span class="op">(</span>doc<span class="op">));</span></span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>                          <span class="op">});</span></span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>               <span class="op">});</span></span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">});</span></span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>recycling_allocator<span class="op">&lt;&gt;</span> alloc<span class="op">;</span>                          <span class="co">// set once here</span></span>
-<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> op <span class="op">=</span> <span class="fu">connect</span><span class="op">(</span></span>
-<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>    write_env<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>work<span class="op">),</span></span>
-<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>        prop<span class="op">(</span>get_allocator<span class="op">,</span> alloc<span class="op">)),</span></span>
-<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    rcvr<span class="op">);</span></span>
-<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>start<span class="op">(</span>op<span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> work <span class="op">=</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    just<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>socket<span class="op">))</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> let_value<span class="op">([](</span>tcp_socket<span class="op">&amp;</span> s<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> async_read<span class="op">(</span>s<span class="op">,</span> buf<span class="op">)</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>             <span class="op">|</span> let_value<span class="op">([&amp;](</span><span class="kw">auto</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>                   <span class="cf">return</span> parse<span class="op">(</span>data<span class="op">)</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>                        <span class="op">|</span> let_value<span class="op">([&amp;](</span><span class="kw">auto</span> doc<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>                              <span class="cf">return</span> async_write<span class="op">(</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>                                  s<span class="op">,</span> build_response<span class="op">(</span>doc<span class="op">));</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>                          <span class="op">});</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>               <span class="op">});</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">});</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>recycling_allocator<span class="op">&lt;&gt;</span> alloc<span class="op">;</span>                          <span class="co">// set once here</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> op <span class="op">=</span> <span class="fu">connect</span><span class="op">(</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>    write_env<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>work<span class="op">),</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        prop<span class="op">(</span>get_allocator<span class="op">,</span> alloc<span class="op">)),</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>    rcvr<span class="op">);</span></span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>start<span class="op">(</span>op<span class="op">);</span></span></code></pre></div>
 <p>The allocator is set once at the launch site and reaches every
 operation automatically.</p>
 <p>However…</p>
-<p>Nothing here allocates. The operation state is a single concrete type
-with no heap allocation. The allocator propagates through a pipeline
-that does not need it.</p>
+<p>Nothing here allocates. Used as intended, the operation state is a
+single concrete type with no heap allocation. The allocator propagates
+through a pipeline that does not need it.</p>
 <h3 id="coroutines">5.2 Coroutines</h3>
 <p>Consider the standard usage pattern for spawning a connection
 handler:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>counting_scope scope<span class="op">;</span></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>spawn<span class="op">(</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>on<span class="op">(</span>sch<span class="op">,</span> handle_connection<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>conn<span class="op">))),</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    scope<span class="op">.</span>get_token<span class="op">());</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>counting_scope scope<span class="op">;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>spawn<span class="op">(</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>on<span class="op">(</span>sch<span class="op">,</span> handle_connection<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>conn<span class="op">))),</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    scope<span class="op">.</span>get_token<span class="op">());</span></span></code></pre></div>
 <p>Two independent problems prevent the allocator from reaching the
 coroutine frame:</p>
 <p><strong>First, there is no API.</strong> Neither <code>spawn</code>
@@ -1723,23 +1702,23 @@ call. The compiler evaluates it, including
 sender algorithm runs.</p>
 <p>The only way to get an allocator into the coroutine frame is through
 the coroutine’s own parameter list:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co">// What users expect to write:</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;&gt;</span></span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>handle_connection<span class="op">(</span> tcp_socket conn <span class="op">);</span></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co">// What they must actually write:</span></span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;&gt;</span></span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>handle_connection<span class="op">(</span> <span class="bu">std::</span>allocator_arg_t<span class="op">,</span> Allocator alloc<span class="op">,</span> tcp_socket conn <span class="op">);</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">// What users expect to write:</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;&gt;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>handle_connection<span class="op">(</span> tcp_socket conn <span class="op">);</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="co">// What they must actually write:</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="bu">std::</span>execution::task<span class="op">&lt;&gt;</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>handle_connection<span class="op">(</span> <span class="bu">std::</span>allocator_arg_t<span class="op">,</span> Allocator alloc<span class="op">,</span> tcp_socket conn <span class="op">);</span></span></code></pre></div>
 <p>P2300’s elegant environment propagation is structurally unreachable
 for coroutine frames.</p>
 <p><strong>Senders get the allocator they do not need. Coroutines need
 the allocator they do not get.</strong></p>
 <h3 id="coroutines-work-for-what-senders-get-free">5.3 Coroutines Work
 for What Senders Get Free</h3>
-<p>Kühl’s <a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup>
-provides <code>std::allocator_arg_t</code> for the initial allocation.
-Propagation remains unsolved. The child’s <code>operator new</code>
+<p>While Kühl’s <a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup> provides
+<code>std::allocator_arg_t</code> for the initial allocation,
+propagation remains unsolved. The child’s <code>operator new</code>
 fires before the parent can intervene. The only workaround is manual
 forwarding. Three properties distinguish this from a minor
 inconvenience:</p>
@@ -1764,7 +1743,9 @@ should capture the minimum essentials of an abstraction.”</em></p>
 <p>Senders receive the allocator through the environment, automatically,
 at every level of nesting, with no signature pollution. Coroutines
 receive it through <code>allocator_arg</code>, manually, at every call
-site, with silent fallback on any mistake.</p>
+site, with silent fallback on any mistake. <a href="https://wg21.link/p3796r1">P3796R1</a><sup>[18]</sup> Section
+3.5.11 identifies the absence of a TLS capture/restore hook in
+<code>task</code>. Section 1.4 demonstrates a working mechanism.</p>
 <h3 id="does-performance-matter">5.4 Does Performance Matter?</h3>
 <p>The recycling allocator eliminates coroutine frame allocation
 overhead. It requires <code>allocator_arg</code> at every call site. One
@@ -1777,50 +1758,50 @@ not slow. The fast path is too hard to use.</p>
 frame’s lifetime is provably bounded by its caller. When an I/O
 coroutine is launched onto an execution context, the frame must outlive
 the launching function:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> read_data<span class="op">(</span>socket<span class="op">&amp;</span> s<span class="op">,</span> buffer<span class="op">&amp;</span> buf<span class="op">)</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> s<span class="op">.</span>async_read<span class="op">(</span>buf<span class="op">);</span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> start_read<span class="op">(</span>ex<span class="op">::</span>counting_scope<span class="op">&amp;</span> scope<span class="op">,</span> <span class="kw">auto</span> sch<span class="op">)</span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>spawn<span class="op">(</span></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>        ex<span class="op">::</span>on<span class="op">(</span>sch<span class="op">,</span> read_data<span class="op">(</span>sock<span class="op">,</span> buf<span class="op">)),</span></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        scope<span class="op">.</span>get_token<span class="op">());</span></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> read_data<span class="op">(</span>socket<span class="op">&amp;</span> s<span class="op">,</span> buffer<span class="op">&amp;</span> buf<span class="op">)</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> s<span class="op">.</span>async_read<span class="op">(</span>buf<span class="op">);</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> start_read<span class="op">(</span>ex<span class="op">::</span>counting_scope<span class="op">&amp;</span> scope<span class="op">,</span> <span class="kw">auto</span> sch<span class="op">)</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>spawn<span class="op">(</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>        ex<span class="op">::</span>on<span class="op">(</span>sch<span class="op">,</span> read_data<span class="op">(</span>sock<span class="op">,</span> buf<span class="op">)),</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>        scope<span class="op">.</span>get_token<span class="op">());</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The compiler cannot prove bounded lifetime, so HALO cannot apply and
 allocation is mandatory.</p>
 <h3 id="a-viral-signature">5.6 A Viral Signature?</h3>
 <p>Here is what allocator propagation looks like in a coroutine call
 chain under <a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup>:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> level_three<span class="op">(</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> level_two<span class="op">(</span></span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">,</span></span>
-<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
-<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
-<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_three<span class="op">(</span><span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
-<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> level_one<span class="op">(</span></span>
-<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> v<span class="op">,</span></span>
-<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
-<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
-<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_two<span class="op">(</span><span class="dv">42</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
-<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> v<span class="op">;</span></span>
-<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> level_three<span class="op">(</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> level_two<span class="op">(</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">,</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_three<span class="op">(</span><span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> level_one<span class="op">(</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> v<span class="op">,</span></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_two<span class="op">(</span><span class="dv">42</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> v<span class="op">;</span></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <h3 id="domain-freedom">5.7 Domain Freedom?</h3>
 <p>No workaround, global PMR, thread-local registries, or otherwise, can
 bypass the promise. Every allocated coroutine frame must run through
@@ -1838,7 +1819,10 @@ a model it does not participate in.</p>
 your library exposes asynchrony, then returning a sender is a great
 choice: your users can await the sender in a coroutine if they
 like.”</a></em><sup>[34]</sup> The phrase “if they like” implies this is
-straightforward. The previous three sections suggest otherwise.</p>
+straightforward. Niebler himself <a href="https://ericniebler.com/2020/11/08/structured-concurrency/">characterized</a><sup>[33]</sup>
+the sender style as <em>“far harder to write and read than the
+equivalent coroutine.”</em> The previous three sections suggest the cost
+is structural.</p>
 <p>Each gap has the same shape. The sender model requires a property for
 compile-time analysis. That property forces a cost on coroutines at the
 boundary. The committee standardized the sender model for specific
@@ -2252,11 +2236,11 @@ the value level.</p>
 <p>The three completion channels provide exactly this. <a href="https://eel.is/c++draft/exec.getcomplsigs">Completion
 signatures</a><sup>[50]</sup> declare three distinct type-level
 paths:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> completion_signatures <span class="op">=</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>execution::completion_signatures<span class="op">&lt;</span></span>
-<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_value_t</span><span class="op">(</span><span class="dt">int</span><span class="op">),</span>                                 <span class="co">// value path</span></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_error_t</span><span class="op">(</span><span class="bu">std::</span>error_code<span class="op">),</span>                     <span class="co">// error path</span></span>
-<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_stopped_t</span><span class="op">()&gt;;</span>                                 <span class="co">// stopped path</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> completion_signatures <span class="op">=</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>execution::completion_signatures<span class="op">&lt;</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_value_t</span><span class="op">(</span><span class="dt">int</span><span class="op">),</span>                                 <span class="co">// value path</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_error_t</span><span class="op">(</span><span class="bu">std::</span>error_code<span class="op">),</span>                     <span class="co">// error path</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">set_stopped_t</span><span class="op">()&gt;;</span>                                 <span class="co">// stopped path</span></span></code></pre></div>
 <p>Algorithms dispatch on which channel fired without inspecting
 payloads. <code>upon_error</code> attaches to the error path at the type
 level. <code>let_value</code> attaches to the value path at the type
@@ -2294,41 +2278,41 @@ Sender</h3>
 Here is the complete sender implementation using <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-windows-socket-recv">P2300R10
 Section 1.4</a><sup>[1]</sup>’s <code>recv_sender</code> and
 <code>async_recv</code>:</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Rcvr<span class="op">&gt;</span></span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> read_op</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">struct</span> recv_rcvr <span class="op">{</span></span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>        read_op<span class="op">*</span> <span class="va">self_</span><span class="op">;</span></span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_value<span class="op">(</span><span class="bu">std::</span>size_t n<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="va">self_</span><span class="op">-&gt;</span>completed<span class="op">({},</span> n<span class="op">);</span> <span class="op">}</span></span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_error<span class="op">(</span><span class="bu">std::</span>error_code ec<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="va">self_</span><span class="op">-&gt;</span>completed<span class="op">(</span>ec<span class="op">,</span> <span class="dv">0</span><span class="op">);</span> <span class="op">}</span></span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_stopped<span class="op">()</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> execution<span class="op">::</span>set_stopped<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">self_</span><span class="op">-&gt;</span><span class="va">rcvr_</span><span class="op">));</span> <span class="op">}</span></span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>    Rcvr <span class="va">rcvr_</span><span class="op">;</span></span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>    SOCKET <span class="va">sock_</span><span class="op">;</span></span>
-<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>byte<span class="op">*</span> <span class="va">data_</span><span class="op">;</span></span>
-<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>size_t <span class="va">len_</span><span class="op">;</span></span>
-<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>size_t <span class="va">bytes_read_</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
-<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>optional<span class="op">&lt;</span><span class="dt">connect_result_t</span><span class="op">&lt;</span>recv_sender<span class="op">,</span> recv_rcvr<span class="op">&gt;&gt;</span> <span class="va">child_</span><span class="op">;</span></span>
-<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> start<span class="op">()</span> <span class="op">&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> start_recv<span class="op">();</span> <span class="op">}</span></span>
-<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> start_recv<span class="op">()</span> <span class="op">{</span></span>
-<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>        <span class="va">child_</span><span class="op">.</span>emplace<span class="op">(</span>execution<span class="op">::</span><span class="fu">connect</span><span class="op">(</span></span>
-<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>            async_recv<span class="op">(</span><span class="va">sock_</span><span class="op">,</span> <span class="va">data_</span> <span class="op">+</span> <span class="va">bytes_read_</span><span class="op">,</span> <span class="va">len_</span> <span class="op">-</span> <span class="va">bytes_read_</span><span class="op">),</span></span>
-<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>            recv_rcvr<span class="op">{</span><span class="kw">this</span><span class="op">}));</span></span>
-<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>        execution<span class="op">::</span>start<span class="op">(*</span><span class="va">child_</span><span class="op">);</span></span>
-<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> completed<span class="op">(</span><span class="bu">std::</span>error_code ec<span class="op">,</span> <span class="bu">std::</span>size_t n<span class="op">)</span> <span class="op">{</span></span>
-<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a>        <span class="va">bytes_read_</span> <span class="op">+=</span> n<span class="op">;</span></span>
-<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span><span class="va">bytes_read_</span> <span class="op">==</span> <span class="va">len_</span><span class="op">)</span></span>
-<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> execution<span class="op">::</span>set_value<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">rcvr_</span><span class="op">),</span> <span class="va">bytes_read_</span><span class="op">);</span></span>
-<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>ec<span class="op">)</span></span>
-<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> start_recv<span class="op">();</span></span>
-<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>        execution<span class="op">::</span>set_error<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">rcvr_</span><span class="op">),</span> ec<span class="op">);</span>   <span class="co">// bytes_read_ bytes are lost</span></span>
-<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Rcvr<span class="op">&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> read_op</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">struct</span> recv_rcvr <span class="op">{</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>        read_op<span class="op">*</span> <span class="va">self_</span><span class="op">;</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_value<span class="op">(</span><span class="bu">std::</span>size_t n<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="va">self_</span><span class="op">-&gt;</span>completed<span class="op">({},</span> n<span class="op">);</span> <span class="op">}</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_error<span class="op">(</span><span class="bu">std::</span>error_code ec<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="va">self_</span><span class="op">-&gt;</span>completed<span class="op">(</span>ec<span class="op">,</span> <span class="dv">0</span><span class="op">);</span> <span class="op">}</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> set_stopped<span class="op">()</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> execution<span class="op">::</span>set_stopped<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">self_</span><span class="op">-&gt;</span><span class="va">rcvr_</span><span class="op">));</span> <span class="op">}</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    Rcvr <span class="va">rcvr_</span><span class="op">;</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    SOCKET <span class="va">sock_</span><span class="op">;</span></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>byte<span class="op">*</span> <span class="va">data_</span><span class="op">;</span></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>size_t <span class="va">len_</span><span class="op">;</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>size_t <span class="va">bytes_read_</span> <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>optional<span class="op">&lt;</span><span class="dt">connect_result_t</span><span class="op">&lt;</span>recv_sender<span class="op">,</span> recv_rcvr<span class="op">&gt;&gt;</span> <span class="va">child_</span><span class="op">;</span></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> start<span class="op">()</span> <span class="op">&amp;</span> <span class="kw">noexcept</span> <span class="op">{</span> start_recv<span class="op">();</span> <span class="op">}</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> start_recv<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>        <span class="va">child_</span><span class="op">.</span>emplace<span class="op">(</span>execution<span class="op">::</span><span class="fu">connect</span><span class="op">(</span></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>            async_recv<span class="op">(</span><span class="va">sock_</span><span class="op">,</span> <span class="va">data_</span> <span class="op">+</span> <span class="va">bytes_read_</span><span class="op">,</span> <span class="va">len_</span> <span class="op">-</span> <span class="va">bytes_read_</span><span class="op">),</span></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>            recv_rcvr<span class="op">{</span><span class="kw">this</span><span class="op">}));</span></span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>        execution<span class="op">::</span>start<span class="op">(*</span><span class="va">child_</span><span class="op">);</span></span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> completed<span class="op">(</span><span class="bu">std::</span>error_code ec<span class="op">,</span> <span class="bu">std::</span>size_t n<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a>        <span class="va">bytes_read_</span> <span class="op">+=</span> n<span class="op">;</span></span>
+<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span><span class="va">bytes_read_</span> <span class="op">==</span> <span class="va">len_</span><span class="op">)</span></span>
+<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> execution<span class="op">::</span>set_value<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">rcvr_</span><span class="op">),</span> <span class="va">bytes_read_</span><span class="op">);</span></span>
+<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>ec<span class="op">)</span></span>
+<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> start_recv<span class="op">();</span></span>
+<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a>        execution<span class="op">::</span>set_error<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span><span class="va">rcvr_</span><span class="op">),</span> ec<span class="op">);</span>   <span class="co">// bytes_read_ bytes are lost</span></span>
+<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Every name is from P2300R10: <code>recv_sender</code>,
 <code>async_recv</code>, <code>connect</code>, <code>start</code>,
 <code>set_value</code>, <code>set_error</code>,
@@ -2337,10 +2321,12 @@ Section 1.4</a><sup>[1]</sup>’s <code>recv_sender</code> and
 back to a parent operation state.</p>
 <h3 id="a.3-timeline-of-the-error-channel-question">A.3 Timeline of the
 Error Channel Question</h3>
-<p>The partial success problem was not raised once and set aside. It was
-raised independently, across multiple groups, by participants with
-different domain backgrounds, over a span of five years. The question
-was never polled.</p>
+<p>The partial success problem was raised independently, across multiple
+groups, by participants with different domain backgrounds, over a span
+of five years. Every proposed resolution carried real costs. The
+question was never resolved - not for lack of attention, but because the
+three-channel model may not admit a solution that preserves both
+compile-time routing and I/O’s tuple semantics.</p>
 <ul>
 <li><p><strong>2020 (Nov):</strong> Niebler’s <a href="https://ericniebler.com/2020/11/08/structured-concurrency/">“Structured
 Concurrency”</a><sup>[33]</sup> blog post establishes the three-channel
@@ -2350,9 +2336,9 @@ coroutines.</p></li>
 and Composition”), a participant raised that asynchronous operations
 need not fail completely or succeed completely, and that no pattern in
 the proposal supports partial success. The response was that nothing
-would be different. The concern was not addressed. LEWG polled to
-encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial
-success.</p></li>
+would be different. LEWG polled to encourage more work
+(SF:7/F:14/N:9/A:3/SA:0). No resolution on partial success
+emerged.</p></li>
 <li><p><strong>2021 (Feb, SG4 telecon):</strong> During review of
 P0958R3, a participant stated that sender/receivers have a loss because
 they do not have success/partial-success. Another suggested adapting
@@ -2375,15 +2361,15 @@ sender/receiver facilities were in place, with the expectation that such
 streams could then be standardized. The async streams facility was never
 proposed, never standardized, and is not in the C++26 working
 draft.</p></li>
-<li><p><strong>2021 (Aug):</strong> Chris Kohlhoff published <a href="https://wg21.link/p2430r0">P2430R0</a><sup>[3]</sup> (“Partial
-success scenarios with P2300”) identifying that partial results must be
-communicated down the <code>set_value</code> channel due to limitations
-of <code>set_error</code> and <code>set_done</code>. Published during
-P2300’s most intensive review period. No committee response found in the
-published record.</p></li>
+<li><p><strong>2021 (Aug):</strong> Kohlhoff published <a href="https://wg21.link/p2430r0">P2430R0</a><sup>[3]</sup> (“Partial
+success scenarios with P2300”), slides from a presentation during the
+P2300 review, identifying that partial results must be communicated down
+the <code>set_value</code> channel due to limitations of
+<code>set_error</code> and <code>set_done</code>. Independent
+confirmation of the same tension the preceding telecons debated, from
+the author of Asio.</p></li>
 <li><p><strong>2022-2024:</strong> <a href="https://wg21.link/p2300r4">P2300R4</a><sup>[2]</sup> through <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[1]</sup> published.
-Three-channel model unchanged across all revisions. P2430R0 not
-addressed.</p></li>
+Three-channel model unchanged across all revisions.</p></li>
 <li><p><strong>2023:</strong> <a href="https://wg21.link/p2762r2">P2762R2</a><sup>[4]</sup> (Dietmar
 Kühl, “Sender/Receiver Interface for Networking”) preserves the proven
 <code>(error_code, size_t)</code> convention from Asio - implicitly
@@ -2416,12 +2402,14 @@ open. No paper in the published record proposes a resolution that
 preserves compile-time channel routing.</p></li>
 </ul>
 <p>The question has been open for five years. This duration is not due
-to neglect. Every proposed fix involves a tradeoff with real downsides
-(Sections 3.3 through 3.7 document the costs). Five years of active
-iteration on P2300 - R0 through R10, plus dozens of follow-on papers -
-have not produced a resolution. The three-channel model is a property of
-the sender model, not a bug. The unresolved timeline is what structural
-friction looks like from the inside.</p>
+to neglect - some of the most capable engineers in the C++ community
+have worked on P2300 across ten revisions and dozens of follow-on
+papers. Every proposed fix involves a tradeoff with real downsides
+(Sections 3.3 through 3.7 document the costs). The three-channel model
+is a property of the sender model, not a bug. When the best people in
+the field iterate for five years on a well-understood problem and every
+solution trades one cost for another, the evidence points toward a
+structural constraint rather than a missing insight.</p>
 <hr />
 <h2 id="appendix-b---the-allocator-gap">Appendix B - The Allocator
 Gap</h2>
@@ -2429,55 +2417,55 @@ Gap</h2>
 Full Ceremony for Allocator-Aware Coroutines</h3>
 <p>The sender model requires five layers of machinery to propagate a
 custom allocator through a coroutine call chain:</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="co">// 1. Define a custom environment that answers get_allocator</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> my_env</span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> <span class="dt">allocator_type</span> <span class="op">=</span> recycling_allocator<span class="op">&lt;&gt;;</span></span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">allocator_type</span> alloc<span class="op">;</span></span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">allocator_type</span> query<span class="op">(</span>ex<span class="op">::</span><span class="dt">get_allocator_t</span><span class="op">)</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> alloc<span class="op">;</span></span>
-<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
-<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a><span class="co">// 2. Alias the task type with the custom environment</span></span>
-<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> my_task <span class="op">=</span> ex<span class="op">::</span>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">,</span> my_env<span class="op">&gt;;</span></span>
-<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a><span class="co">// 3. Every coroutine accepts and forwards the allocator</span></span>
-<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>my_task level_two<span class="op">(</span></span>
-<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">,</span></span>
-<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
-<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
-<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
-<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb22-27"><a href="#cb22-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-28"><a href="#cb22-28" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
-<span id="cb22-29"><a href="#cb22-29" aria-hidden="true" tabindex="-1"></a>my_task level_one<span class="op">(</span></span>
-<span id="cb22-30"><a href="#cb22-30" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> v<span class="op">,</span></span>
-<span id="cb22-31"><a href="#cb22-31" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
-<span id="cb22-32"><a href="#cb22-32" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
-<span id="cb22-33"><a href="#cb22-33" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb22-34"><a href="#cb22-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_two<span class="op">(</span><span class="dv">42</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
-<span id="cb22-35"><a href="#cb22-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
-<span id="cb22-36"><a href="#cb22-36" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb22-37"><a href="#cb22-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-38"><a href="#cb22-38" aria-hidden="true" tabindex="-1"></a><span class="co">// 4. Construct the environment at the launch site</span></span>
-<span id="cb22-39"><a href="#cb22-39" aria-hidden="true" tabindex="-1"></a><span class="co">// 5. Inject it via write_env</span></span>
-<span id="cb22-40"><a href="#cb22-40" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> launch<span class="op">(</span>ex<span class="op">::</span>counting_scope<span class="op">&amp;</span> scope<span class="op">,</span> <span class="kw">auto</span> sch<span class="op">)</span></span>
-<span id="cb22-41"><a href="#cb22-41" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
-<span id="cb22-42"><a href="#cb22-42" aria-hidden="true" tabindex="-1"></a>    recycling_allocator<span class="op">&lt;&gt;</span> alloc<span class="op">;</span>                            <span class="co">// step 4</span></span>
-<span id="cb22-43"><a href="#cb22-43" aria-hidden="true" tabindex="-1"></a>    my_env env<span class="op">{</span>alloc<span class="op">};</span></span>
-<span id="cb22-44"><a href="#cb22-44" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> sndr <span class="op">=</span></span>
-<span id="cb22-45"><a href="#cb22-45" aria-hidden="true" tabindex="-1"></a>        ex<span class="op">::</span>write_env<span class="op">(</span></span>
-<span id="cb22-46"><a href="#cb22-46" aria-hidden="true" tabindex="-1"></a>            level_one<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">),</span> env<span class="op">)</span>   <span class="co">// step 5</span></span>
-<span id="cb22-47"><a href="#cb22-47" aria-hidden="true" tabindex="-1"></a>      <span class="op">|</span> ex<span class="op">::</span>continues_on<span class="op">(</span>sch<span class="op">);</span></span>
-<span id="cb22-48"><a href="#cb22-48" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>spawn<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>sndr<span class="op">),</span> scope<span class="op">.</span>get_token<span class="op">());</span></span>
-<span id="cb22-49"><a href="#cb22-49" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> ex <span class="op">=</span> <span class="bu">std::</span>execution<span class="op">;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co">// 1. Define a custom environment that answers get_allocator</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> my_env</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> <span class="dt">allocator_type</span> <span class="op">=</span> recycling_allocator<span class="op">&lt;&gt;;</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">allocator_type</span> alloc<span class="op">;</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">allocator_type</span> query<span class="op">(</span>ex<span class="op">::</span><span class="dt">get_allocator_t</span><span class="op">)</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> alloc<span class="op">;</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="co">// 2. Alias the task type with the custom environment</span></span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> my_task <span class="op">=</span> ex<span class="op">::</span>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">,</span> my_env<span class="op">&gt;;</span></span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a><span class="co">// 3. Every coroutine accepts and forwards the allocator</span></span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>my_task level_two<span class="op">(</span></span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> x<span class="op">,</span></span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> Allocator<span class="op">&gt;</span></span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>my_task level_one<span class="op">(</span></span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> v<span class="op">,</span></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>allocator_arg_t<span class="op">,</span></span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>    Allocator alloc<span class="op">)</span></span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_await</span> level_two<span class="op">(</span><span class="dv">42</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">);</span></span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span><span class="op">;</span></span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a><span class="co">// 4. Construct the environment at the launch site</span></span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a><span class="co">// 5. Inject it via write_env</span></span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> launch<span class="op">(</span>ex<span class="op">::</span>counting_scope<span class="op">&amp;</span> scope<span class="op">,</span> <span class="kw">auto</span> sch<span class="op">)</span></span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a>    recycling_allocator<span class="op">&lt;&gt;</span> alloc<span class="op">;</span>                            <span class="co">// step 4</span></span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a>    my_env env<span class="op">{</span>alloc<span class="op">};</span></span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> sndr <span class="op">=</span></span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a>        ex<span class="op">::</span>write_env<span class="op">(</span></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a>            level_one<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="bu">std::</span>allocator_arg<span class="op">,</span> alloc<span class="op">),</span> env<span class="op">)</span>   <span class="co">// step 5</span></span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a>      <span class="op">|</span> ex<span class="op">::</span>continues_on<span class="op">(</span>sch<span class="op">);</span></span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a>    ex<span class="op">::</span>spawn<span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>sndr<span class="op">),</span> scope<span class="op">.</span>get_token<span class="op">());</span></span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Forgetting any one of the five steps silently falls back to the
 default allocator. The compiler provides no diagnostic.</p>
 <hr />

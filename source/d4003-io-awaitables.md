@@ -1,7 +1,7 @@
 ---
 title: "IoAwaitables: A Coroutines-Only Framework"
 document: P4003R0
-date: 2026-02-17
+date: 2026-02-20
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"

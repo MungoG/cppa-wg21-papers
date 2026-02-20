@@ -824,7 +824,7 @@ outline: none;
 <!-- Document Metadata -->
 <div class="document-info">
   <p><strong>Document Number:</strong> P4003R0</p>
-  <p><strong>Date:</strong> 2026-02-17</p>
+  <p><strong>Date:</strong> 2026-02-20</p>
   <p><strong>Audience:</strong> LEWG</p>
   <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Steve
 Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a><br><strong></strong> Mungo Gill <a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
@@ -854,8 +854,8 @@ Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a><br>
   Executor</a></li>
   <li><a href="#the-stop_token" id="toc-the-stop_token">2.2 The
   <code>stop_token</code></a></li>
-  <li><a href="#the-allocator" id="toc-the-allocator">2.3 The
-  Allocator</a></li>
+  <li><a href="#the-frame-allocator" id="toc-the-frame-allocator">2.3
+  The Frame Allocator</a></li>
   <li><a href="#ergonomics" id="toc-ergonomics">2.4 Ergonomics</a></li>
   </ul></li>
   <li><a href="#our-solution-the-ioawaitable-protocol" id="toc-our-solution-the-ioawaitable-protocol">3. Our Solution: The
@@ -880,8 +880,8 @@ Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a><br>
   <li><a href="#executioncontext-concept" id="toc-executioncontext-concept">4.4 ExecutionContext
   concept</a></li>
   </ul></li>
-  <li><a href="#the-allocator-1" id="toc-the-allocator-1">5. The
-  Allocator</a>
+  <li><a href="#the-frame-allocator-1" id="toc-the-frame-allocator-1">5.
+  The Frame Allocator</a>
   <ul>
   <li><a href="#the-timing-constraint" id="toc-the-timing-constraint">5.1 The Timing Constraint</a></li>
   <li><a href="#the-awkward-approach" id="toc-the-awkward-approach">5.2
@@ -980,22 +980,22 @@ Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a><br>
 designed from the ground up for coroutine-only asynchronous
 I/O?</em></p>
 <p>We built one and found out. A group of practitioners implemented a
-complete networking library using only coroutines - no callbacks, no
-sender/receiver chains, no completion tokens. The fundamental
+complete networking library using only coroutines. The fundamental
 abstraction which emerged is the <em>IoAwaitable</em> protocol: a system
-for associating a coroutine with an executor, stop token, and allocator,
-and propagating this context forward through a coroutine chain to the
-operating system API boundary where asynchronous operations are
-performed.</p>
+for associating a coroutine with an executor, stop token, and frame
+allocator, and propagating this context forward through a coroutine
+chain to the operating system API boundary where asynchronous operations
+are performed.</p>
 <p>This paper presents our findings. The protocol is small: two
 concepts, a type-erased executor, and a thread-local write-through cache
-that keeps allocator policy out of coroutine signatures. It delivers
-correctness through compile-time protocol checking, ergonomics through
-clean interfaces free of cross-cutting concerns, and performance through
-zero-allocation steady-state operation with recycling allocators. We
-compare our design against <code>std::execution</code> (<a href="https://wg21.link/p2300r10">P2300R10</a>)<sup>[3]</sup> and its
-evolution (<a href="https://wg21.link/p3826">P3826</a>)<sup>[6]</sup> to
-illuminate where the designs diverge and why.</p>
+that keeps frame allocator policy out of coroutine signatures. It
+delivers correctness through compile-time protocol checking, ergonomics
+through clean interfaces free of cross-cutting concerns, and performance
+through zero-allocation steady-state operation with recycling
+allocators. We compare our design against <code>std::execution</code>
+(<a href="https://wg21.link/p2300r10">P2300R10</a>)<sup>[3]</sup> and
+its evolution (<a href="https://wg21.link/p3826">P3826</a>)<sup>[6]</sup> to illuminate
+where the designs diverge and why.</p>
 <hr />
 <h2 id="revision-history">Revision History</h2>
 <h3 id="r0-march-2026-pre-croydon-mailing">R0: March 2026 (pre-Croydon
@@ -1008,12 +1008,12 @@ mailing)</h3>
 <p>This paper is a research report. We set out to answer a practical
 question: if you design a networking library from the ground up for C++
 coroutines, what execution model emerges? Not as a thought experiment,
-but as working code - a complete library with sockets, timers, TLS, DNS
+but as working code: a complete library with sockets, timers, TLS, DNS
 resolution, HTTP, and WebSocket support, all built on a coroutine-only
 foundation.</p>
 <p>The answer surprised us in its simplicity. The protocol that emerged
 is small: two concepts, a type-erased executor, and a thread-local
-write-through cache that keeps allocator policy out of coroutine
+write-through cache that keeps frame allocator policy out of coroutine
 signatures - yet it is the foundation from which a complete
 coroutine-only networking stack can be built. We could not find anything
 to remove from it without losing function. Like the narrow abstractions
@@ -1058,12 +1058,12 @@ behavior: a simple pipeline passes the stop token through, while
 to an internal stop source with fanout. A good API builds on
 <code>std::stop_token</code> since that is what the standard
 provides.</p></li>
-<li><p><strong>The application decides allocation policy.</strong>
-Memory strategies: recycling pools, bounded allocation, per-tenant
-budgets, these are a property of the coroutine chain. A good API makes
-stateful allocators a first-class user-facing customization point when
-it matters, and gets out of the way when sensible defaults
-suffice.</p></li>
+<li><p><strong>The application decides frame allocation policy.</strong>
+Memory strategies for coroutine frames: recycling pools, bounded
+allocation, per-tenant budgets, these are a property of the coroutine
+chain. A good API makes the frame allocator a first-class user-facing
+customization point when it matters, and gets out of the way when
+sensible defaults suffice.</p></li>
 <li><p><strong>The execution context owns its I/O objects.</strong> A
 socket registered with epoll on thread A cannot have completions
 delivered to thread B’s epoll. The physical coupling is inherent. The
@@ -1083,7 +1083,7 @@ application controls which thread resumes it, whether completions are
 serialized, and whether resumption is inline or deferred.</p>
 <p>The <em>IoAwaitable</em> protocol handles this end to end. The
 executor solves the resumption part: given a suspended coroutine, resume
-it according to the application’s policy. The stop token and the
+it according to the application’s policy. The stop token and the frame
 allocator handle the rest. Every executor is bound to an execution
 context - the object that owns the platform reactor and the I/O objects
 registered with it. A socket registered with epoll on one context cannot
@@ -1115,16 +1115,20 @@ the appropriate OS primitive - <code>CancelIoEx</code> on Windows,
 POSIX. The pending operation completes with an error, and the coroutine
 chain unwinds normally. Cancellation is cooperative and predictable: no
 operation is forcibly terminated mid-flight.</p>
-<h3 id="the-allocator">2.3 The Allocator</h3>
-<p>Coroutine frames are allocated continuously - every
-<code>co_await</code> may spawn new frames. Without allocation control,
-heap overhead dominates. Recycling allocators eliminate this by caching
-recently freed frames for immediate reuse:</p>
+<h3 id="the-frame-allocator">2.3 The Frame Allocator</h3>
+<p>A <em>frame allocator</em> is a <code>memory_resource</code> used
+exclusively for coroutine frame allocation. It is not a general-purpose
+allocator. Coroutine frames follow a narrow pattern: sizes repeat,
+lifetimes nest, and deallocation order mirrors allocation order. A frame
+allocator exploits this pattern. A general-purpose allocator cannot.</p>
+<p>Every <code>co_await</code> may spawn new frames. Without allocation
+control, heap overhead dominates. Recycling frame allocators eliminate
+this by caching recently freed frames for immediate reuse:</p>
 <table>
 <thead>
 <tr>
 <th>Platform</th>
-<th>Allocator</th>
+<th>Frame Allocator</th>
 <th style="text-align: right;">Time (ms)</th>
 <th style="text-align: right;">vs std::allocator</th>
 </tr>
@@ -1164,19 +1168,20 @@ recently freed frames for immediate reuse:</p>
 </table>
 <p>The mimalloc result is the critical comparison: a state-of-the-art
 general-purpose allocator with per-thread caches, yet the recycling
-allocator is 28% faster. Different deployments need different strategies
-- bounded pools, per-tenant budgets, allocation tracking - so the
-execution model must make allocation a first-class customization point.
-The allocator must also be present at invocation time:
-<code>operator new</code> executes before the coroutine body, so any
-mechanism that delivers the allocator later arrives too late. Section 5
-examines the timing constraint and our solution in detail.</p>
+frame allocator is 28% faster. Different deployments need different
+strategies - bounded pools, per-tenant budgets, allocation tracking - so
+the execution model must make frame allocation a first-class
+customization point. The frame allocator must also be present at
+invocation time: <code>operator new</code> executes before the coroutine
+body, so any mechanism that delivers the frame allocator later arrives
+too late. Section 5 examines the timing constraint and our solution in
+detail.</p>
 <h3 id="ergonomics">2.4 Ergonomics</h3>
-<p>The executor, stop token, and allocator are infrastructure. They
-should be invisible to every coroutine in the chain except the launch
-site where the chain begins. A developer writing a route handler, a
-parser, or a protocol state machine should see none of this machinery -
-just their business logic expressed as coroutines. But when the
+<p>The executor, stop token, and frame allocator are infrastructure.
+They should be invisible to every coroutine in the chain except the
+launch site where the chain begins. A developer writing a route handler,
+a parser, or a protocol state machine should see none of this machinery
+- just their business logic expressed as coroutines. But when the
 developer needs to care - choosing a different executor, wiring up
 cancellation, selecting an allocation strategy - the API for doing so
 should be natural, easy to discover, and structured to prevent
@@ -1207,13 +1212,13 @@ in this paper are drawn from them.</p>
 <p>The <em>IoAwaitable</em> concept propagates execution context
 <strong>forward</strong> from caller to callee at every suspension
 point. The context is three things a coroutine needs for I/O: the
-executor, the stop token, and the allocator. The entire protocol is
-captured in one struct and one concept:</p>
+executor, the stop token, and the frame allocator. The entire protocol
+is captured in one struct and one concept:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> io_env</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    executor_ref executor<span class="op">;</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>stop_token stop_token<span class="op">;</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>pmr::memory_resource<span class="op">*</span> allocator <span class="op">=</span> <span class="kw">nullptr</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>pmr::memory_resource<span class="op">*</span> frame_allocator <span class="op">=</span> <span class="kw">nullptr</span><span class="op">;</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span> <span class="kw">typename</span> A <span class="op">&gt;</span></span>
@@ -1233,10 +1238,10 @@ function that starts the coroutine chain - owns the <code>io_env</code>
 and every coroutine in the chain borrows it, so pointer semantics make
 the ownership model explicit; and copying an <code>io_env</code> is
 never the right choice, so the API makes it difficult to do
-accidentally. The allocator is part of the environment and propagates to
-coroutine frame allocation via a thread-local write-through cache,
-ensuring it is available before the frame is created (Section 5 covers
-the mechanism).</p>
+accidentally. The frame allocator is part of the environment and
+propagates to coroutine frame allocation via a thread-local
+write-through cache, ensuring it is available before the frame is
+created (Section 5 covers the mechanism).</p>
 <h4 id="satisfying-ioawaitable">Satisfying <em>IoAwaitable</em></h4>
 <p>Any type that can be <code>co_await</code>ed within the protocol
 must:</p>
@@ -1354,7 +1359,7 @@ result extraction, and exception propagation natively. But launch
 functions like <code>run_async</code> cannot <code>co_await</code> the
 task. The <code>run_async</code> trampoline must be allocated
 <em>before</em> the task (C++17 evaluation order guarantees this for
-LIFO allocation ordering with the recycling allocator), so the
+LIFO allocation ordering with the recycling frame allocator), so the
 trampoline exists before the task type is known. It cannot be templated
 on the task type. Instead, the trampoline type-erases the task, reaching
 into the promise after the fact to extract results. That requires a
@@ -1417,7 +1422,7 @@ stored <code>std::exception_ptr</code> (must be
 returning the stored value</li>
 <li>The promise’s <code>await_transform</code> must intercept child
 awaitables and inject context</li>
-<li>Support <code>operator new</code> overloads for allocator
+<li>Support <code>operator new</code> overloads for frame allocator
 propagation (read TLS)</li>
 </ol>
 <p><strong>Example implementation:</strong></p>
@@ -1537,8 +1542,8 @@ returns a wrapper. The executor parameter is required. The remaining
 parameters are optional:</p>
 <ul>
 <li><code>std::stop_token</code> to propagate cancelation signals</li>
-<li><code>alloc</code> used to allocate <strong>all</strong> frames in
-the coroutine chain</li>
+<li><code>alloc</code> frame allocator used to allocate
+<strong>all</strong> frames in the coroutine chain</li>
 <li><code>h1</code>, invoked with the task’s value at final suspend</li>
 <li><code>h2</code>, invoked with <code>std::exception_ptr</code> on
 exception</li>
@@ -1546,7 +1551,7 @@ exception</li>
 <div class="sourceCode" id="cb12"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Basic: executor only</span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span> ex <span class="op">)(</span> my_task<span class="op">()</span> <span class="op">);</span></span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Full: executor, stop_token, allocator, success handler, error handler</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Full: executor, stop_token, frame allocator, success handler, error handler</span></span>
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span> ex<span class="op">,</span> st<span class="op">,</span> alloc<span class="op">,</span> h1<span class="op">,</span> h2 <span class="op">)(</span> my_task<span class="op">()</span> <span class="op">);</span></span>
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Example with handlers</span></span>
@@ -1582,7 +1587,7 @@ uses the two-call syntax to ensure proper allocation ordering:</p>
 <p>The executor is stored by value in the awaitable’s frame, keeping it
 alive for the operation’s duration. Additionally, <code>run</code>
 provides overloads without an executor parameter that inherit the
-caller’s executor while customizing stop_token or allocator:</p>
+caller’s executor while customizing stop_token or frame allocator:</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">void</span><span class="op">&gt;</span> cancellable<span class="op">()</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>stop_source source<span class="op">;</span></span>
@@ -1603,7 +1608,8 @@ hopping within a coroutine chain. Launch functions are constrained on
 <ol type="1">
 <li>Accept or provide an executor</li>
 <li>Accept or default a stop token</li>
-<li>Set thread-local allocator before invoking the child coroutine</li>
+<li>Set thread-local frame allocator before invoking the child
+coroutine</li>
 <li>Bootstrap context via <code>set_environment</code> on the
 promise</li>
 <li>Manage the task lifetime via <code>handle()</code> and
@@ -1627,12 +1633,12 @@ promise</li>
 <span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <blockquote>
 <p><strong>Non-normative note.</strong> This simplified example has the
-allocator ordering problem described in Section 5.1: the task’s frame is
-allocated before <code>run_async</code> is called, so any thread-local
-allocator setup would arrive too late. A correct implementation uses the
-two-call syntax shown in Section 3.4 -
+frame allocator ordering problem described in Section 5.1: the task’s
+frame is allocated before <code>run_async</code> is called, so any
+thread-local frame allocator setup would arrive too late. A correct
+implementation uses the two-call syntax shown in Section 3.4 -
 <code>run_async(ex)(my_task())</code> - where the first call returns a
-wrapper that sets up the allocator before the task expression is
+wrapper that sets up the frame allocator before the task expression is
 evaluated. A complete implementation is beyond the scope of this
 example.</p>
 </blockquote>
@@ -1794,10 +1800,10 @@ the reactor; the executor alone cannot provide this.</p>
 <h4 id="frame-allocator">Frame Allocator</h4>
 <p>The <code>execution_context</code> provides
 <code>set_frame_allocator</code> and <code>get_frame_allocator</code> as
-customization points for launchers when no allocator is specified at the
-launch site. Since every launcher requires an <em>Executor</em>, the
-execution context naturally coordinates frame allocation policy. The
-default allocator can optimize for speed using recycling with
+customization points for launchers when no frame allocator is specified
+at the launch site. Since every launcher requires an <em>Executor</em>,
+the execution context naturally coordinates frame allocation policy. The
+default frame allocator can optimize for speed using recycling with
 thread-local pools, or for economy on constrained platforms. Using
 <code>std::pmr::memory_resource*</code> allows implementations to change
 the default without breaking ABI. Applications can set a policy once via
@@ -1835,13 +1841,14 @@ objects that were submitted via an associated executor are also
 destroyed. This ensures orderly cleanup - work queued but not yet
 executed does not leak or outlive its context.</p>
 <hr />
-<h2 id="the-allocator-1">5. The Allocator</h2>
-<p>Achieving high performance levels with coroutines demands allocator
-customization, yet allocator propagation presents a unique challenge.
-Unlike executors and stop tokens, which can be injected at suspension
-points via <code>await_transform</code>, the allocator must be available
-<em>before</em> the coroutine frame exists. This section examines why
-standard approaches fail and presents our solution.</p>
+<h2 id="the-frame-allocator-1">5. The Frame Allocator</h2>
+<p>Achieving high performance levels with coroutines demands frame
+allocator customization, yet frame allocator propagation presents a
+unique challenge. Unlike executors and stop tokens, which can be
+injected at suspension points via <code>await_transform</code>, the
+frame allocator must be available <em>before</em> the coroutine frame
+exists. This section examines why standard approaches fail and presents
+our solution.</p>
 <h3 id="the-timing-constraint">5.1 The Timing Constraint</h3>
 <p>Coroutine frame allocation has a fundamental timing constraint:
 <code>operator new</code> executes before the coroutine body. When a
@@ -1857,10 +1864,10 @@ arrives too late.</p>
 <p>C++ provides exactly one hook at the right time:
 <strong><code>promise_type::operator new</code></strong>. The compiler
 passes coroutine arguments directly to this overload, allowing the
-promise to inspect parameters and select an allocator. The standard
+promise to inspect parameters and select a frame allocator. The standard
 pattern uses <code>std::allocator_arg_t</code> as a tag to mark the
 allocator parameter:</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Free function: allocator intrudes on the parameter list</span></span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Free function: frame allocator intrudes on the parameter list</span></span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> fetch_data<span class="op">(</span> <span class="bu">std::</span>allocator_arg_t<span class="op">,</span> MyAllocator alloc<span class="op">,</span></span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>                      socket<span class="op">&amp;</span> sock<span class="op">,</span> buffer<span class="op">&amp;</span> buf <span class="op">)</span> <span class="op">{</span> <span class="op">...</span> <span class="op">}</span></span>
 <span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
@@ -1886,12 +1893,12 @@ overloads to handle both cases:</p>
 <span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>This approach works, but it violates encapsulation. The coroutine’s
 parameter list - which should describe the algorithm’s interface - is
-polluted with allocation machinery unrelated to its purpose. A function
-that fetches data from a socket should not need to know or care about
-memory policy. Worse, every coroutine in a call chain must thread the
-allocator through its signature, even if it never uses it directly. The
-allocator becomes viral, infecting interfaces throughout the
-codebase.</p>
+polluted with frame allocation machinery unrelated to its purpose. A
+function that fetches data from a socket should not need to know or care
+about memory policy. Worse, every coroutine in a call chain must thread
+the frame allocator through its signature, even if it never uses it
+directly. The frame allocator becomes viral, infecting interfaces
+throughout the codebase.</p>
 <p>To make this concrete, consider a real HTTP route handler as written
 with <em>IoAwaitable</em>:</p>
 <div class="sourceCode" id="cb24"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">// IoAwaitable: clean interface describes only the algorithm</span></span>
@@ -1908,8 +1915,8 @@ with <em>IoAwaitable</em>:</p>
 <span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> route_done<span class="op">;</span></span>
 <span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Now consider the same handler under the <code>allocator_arg_t</code>
-approach. The allocator must appear in the parameter list, and every
-coroutine the handler calls must also accept it:</p>
+approach. The frame allocator must appear in the parameter list, and
+every coroutine the handler calls must also accept it:</p>
 <div class="sourceCode" id="cb25"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co">// allocator_arg_t: allocation machinery intrudes on every signature</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>route_task https_redirect<span class="op">(</span><span class="bu">std::</span>allocator_arg_t<span class="op">,</span> Alloc alloc<span class="op">,</span></span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>                          route_params<span class="op">&amp;</span> rp<span class="op">)</span></span>
@@ -1924,7 +1931,7 @@ coroutine the handler calls must also accept it:</p>
 <span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">co_return</span> route_error<span class="op">(</span>ec<span class="op">);</span></span>
 <span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> route_done<span class="op">;</span></span>
 <span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>The handler’s <em>purpose</em> is identical. The allocator adds
+<p>The handler’s <em>purpose</em> is identical. The frame allocator adds
 nothing to its logic - it is a cross-cutting concern being threaded
 through the interface. The pollution compounds through a call chain.
 Consider a handler that calls two sub-coroutines:</p>
@@ -1937,7 +1944,7 @@ Consider a handler that calls two sub-coroutines:</p>
 <span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span> <span class="cf">co_return</span> route_error<span class="op">(</span>ec<span class="op">);</span></span>
 <span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> route_done<span class="op">;</span></span>
 <span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb27"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co">// allocator_arg_t: every level in the chain carries the allocator</span></span>
+<div class="sourceCode" id="cb27"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co">// allocator_arg_t: every level in the chain carries the frame allocator</span></span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>route_task handle_upload<span class="op">(</span><span class="bu">std::</span>allocator_arg_t<span class="op">,</span> Alloc alloc<span class="op">,</span></span>
 <span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>                         route_params<span class="op">&amp;</span> rp<span class="op">)</span></span>
 <span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
@@ -1947,48 +1954,48 @@ Consider a handler that calls two sub-coroutines:</p>
 <span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ec<span class="op">)</span> <span class="cf">co_return</span> route_error<span class="op">(</span>ec<span class="op">);</span></span>
 <span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> route_done<span class="op">;</span></span>
 <span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>Every <code>co_await</code> in the chain must forward the allocator.
-Every function in the chain must accept it. <code>parse_metadata</code>
-and <code>store_file</code> must thread it through to their own
-sub-coroutines, and so on down. In a real server with dozens of route
-handlers, each calling several sub-coroutines, every author of every
-handler must remember to pass the allocator at every call site. This is
-the opposite of ergonomic.</p>
+<p>Every <code>co_await</code> in the chain must forward the frame
+allocator. Every function in the chain must accept it.
+<code>parse_metadata</code> and <code>store_file</code> must thread it
+through to their own sub-coroutines, and so on down. In a real server
+with dozens of route handlers, each calling several sub-coroutines,
+every author of every handler must remember to pass the frame allocator
+at every call site. This is the opposite of ergonomic.</p>
 <p>Containers in the standard library accept allocators because they are
 written once by experts and used many times. Coroutine handlers are the
 reverse: they are written by application developers, often in large
-numbers, for specific business logic. Burdening every handler with
+numbers, for specific business logic. Burdening every handler with frame
 allocation plumbing is a significant ergonomic cost.</p>
 <h3 id="our-solution-thread-local-propagation">5.3 Our Solution:
 Thread-Local Propagation</h3>
 <p>Thread-local propagation is the only approach that maintains clean
 interfaces while respecting the timing constraint. The premise is
-simple: <strong>allocator customization happens at launch
+simple: <strong>frame allocator customization happens at launch
 sites</strong>, not within coroutine algorithms. Functions like
-<code>run_async</code> and <code>run</code> accept allocator parameters
-because they represent application policy decisions. Coroutine
-algorithms don’t need to “allocator-hop” - they simply inherit whatever
-allocator the application has established.</p>
+<code>run_async</code> and <code>run</code> accept frame allocator
+parameters because they represent application policy decisions.
+Coroutine algorithms don’t need to “allocator-hop” - they simply inherit
+whatever frame allocator the application has established.</p>
 <p>Our approach:</p>
 <ol type="1">
-<li><p><strong>Receive the allocator at launch time.</strong> The launch
-site (<code>run_async</code>, <code>run</code>) accepts a fully-typed
-<em>Allocator</em> parameter, or a
+<li><p><strong>Receive the frame allocator at launch time.</strong> The
+launch site (<code>run_async</code>, <code>run</code>) accepts a
+fully-typed <em>Allocator</em> parameter, or a
 <code>std::pmr::memory_resource*</code> at the caller’s
 discretion.</p></li>
 <li><p><strong>Type-erase it.</strong> Typed allocators are stored as
 <code>std::pmr::memory_resource*</code>, providing a uniform interface
 for all downstream coroutines.</p></li>
-<li><p><strong>Maintain lifetime via frame extension.</strong> The
+<li><p><strong>Maintain lifetime via frame extension.</strong> The frame
 allocator lives in the launch coroutine’s frame. Because coroutine
-parameter lifetimes extend until final suspension, the allocator remains
-valid for the entire operation chain.</p></li>
+parameter lifetimes extend until final suspension, the frame allocator
+remains valid for the entire operation chain.</p></li>
 <li><p><strong>Propagate through thread-locals.</strong> Before any
-child coroutine is invoked, the current allocator is set in TLS. The
-child’s <code>promise_type::operator new</code> reads it. TLS serves as
-a delivery mechanism, not the source of truth. The canonical allocator
-resides in <code>io_env</code>, a heap-stable structure owned by the
-launch coroutine’s frame. Every resume point restores TLS from
+child coroutine is invoked, the current frame allocator is set in TLS.
+The child’s <code>promise_type::operator new</code> reads it. TLS serves
+as a delivery mechanism, not the source of truth. The canonical frame
+allocator resides in <code>io_env</code>, a heap-stable structure owned
+by the launch coroutine’s frame. Every resume point restores TLS from
 <code>io_env</code>, making TLS a write-through cache that is always
 repopulated before it is read. This is an example implementation
 (non-normative):</p></li>
@@ -2036,40 +2043,42 @@ repopulated before it is read. This is an example implementation
 <span id="cb28-41"><a href="#cb28-41" aria-hidden="true" tabindex="-1"></a><span class="co">// the execution window (Section 5.4): between a coroutine&#39;s</span></span>
 <span id="cb28-42"><a href="#cb28-42" aria-hidden="true" tabindex="-1"></a><span class="co">// resumption and its next suspension point.</span></span>
 <span id="cb28-43"><a href="#cb28-43" aria-hidden="true" tabindex="-1"></a><span class="co">//</span></span>
-<span id="cb28-44"><a href="#cb28-44" aria-hidden="true" tabindex="-1"></a><span class="co">// A null return from get means &quot;not specified&quot; - no allocator</span></span>
-<span id="cb28-45"><a href="#cb28-45" aria-hidden="true" tabindex="-1"></a><span class="co">// has been established for this chain. The caller is free to</span></span>
-<span id="cb28-46"><a href="#cb28-46" aria-hidden="true" tabindex="-1"></a><span class="co">// use whatever allocation strategy makes best sense for its</span></span>
-<span id="cb28-47"><a href="#cb28-47" aria-hidden="true" tabindex="-1"></a><span class="co">// situation. Null handling is the caller&#39;s responsibility;</span></span>
-<span id="cb28-48"><a href="#cb28-48" aria-hidden="true" tabindex="-1"></a><span class="co">// the accessor must not substitute a default, because there</span></span>
-<span id="cb28-49"><a href="#cb28-49" aria-hidden="true" tabindex="-1"></a><span class="co">// are multiple valid choices (new_delete_resource, the default</span></span>
-<span id="cb28-50"><a href="#cb28-50" aria-hidden="true" tabindex="-1"></a><span class="co">// pmr resource, or something else entirely).</span></span>
-<span id="cb28-51"><a href="#cb28-51" aria-hidden="true" tabindex="-1"></a><span class="co">//</span></span>
-<span id="cb28-52"><a href="#cb28-52" aria-hidden="true" tabindex="-1"></a><span class="co">// Use of the frame allocator is optional. An awaitable that</span></span>
-<span id="cb28-53"><a href="#cb28-53" aria-hidden="true" tabindex="-1"></a><span class="co">// ignores this value and allocates its frame by other means</span></span>
-<span id="cb28-54"><a href="#cb28-54" aria-hidden="true" tabindex="-1"></a><span class="co">// is never wrong. However, a conforming awaitable must still</span></span>
-<span id="cb28-55"><a href="#cb28-55" aria-hidden="true" tabindex="-1"></a><span class="co">// propagate the allocator faithfully (via set before invoking</span></span>
-<span id="cb28-56"><a href="#cb28-56" aria-hidden="true" tabindex="-1"></a><span class="co">// child coroutines) so that downstream frames can use it.</span></span>
-<span id="cb28-57"><a href="#cb28-57" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-58"><a href="#cb28-58" aria-hidden="true" tabindex="-1"></a><span class="co">// In promise_type</span></span>
-<span id="cb28-59"><a href="#cb28-59" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="dt">void</span><span class="op">*</span> <span class="kw">operator</span> <span class="kw">new</span><span class="op">(</span> <span class="bu">std::</span>size_t size <span class="op">)</span> <span class="op">{</span></span>
-<span id="cb28-60"><a href="#cb28-60" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span><span class="op">*</span> mr <span class="op">=</span> get_current_frame_allocator<span class="op">();</span></span>
-<span id="cb28-61"><a href="#cb28-61" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span><span class="op">(!</span>mr<span class="op">)</span></span>
-<span id="cb28-62"><a href="#cb28-62" aria-hidden="true" tabindex="-1"></a>        mr <span class="op">=</span> <span class="bu">std::</span>pmr::new_delete_resource<span class="op">();</span></span>
-<span id="cb28-63"><a href="#cb28-63" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-64"><a href="#cb28-64" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Store allocator pointer at end of frame for correct deallocation</span></span>
-<span id="cb28-65"><a href="#cb28-65" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> total <span class="op">=</span> size <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span><span class="bu">std::</span>pmr::memory_resource<span class="op">*);</span></span>
-<span id="cb28-66"><a href="#cb28-66" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span><span class="op">*</span> raw <span class="op">=</span> mr<span class="op">-&gt;</span>allocate<span class="op">(</span>total<span class="op">,</span> <span class="kw">alignof</span><span class="op">(</span><span class="bu">std::</span>max_align_t<span class="op">));</span></span>
-<span id="cb28-67"><a href="#cb28-67" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>memcpy<span class="op">(</span><span class="kw">static_cast</span><span class="op">&lt;</span><span class="dt">char</span><span class="op">*&gt;(</span>raw<span class="op">)</span> <span class="op">+</span> size<span class="op">,</span> <span class="op">&amp;</span>mr<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>mr<span class="op">));</span></span>
-<span id="cb28-68"><a href="#cb28-68" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> raw<span class="op">;</span></span>
-<span id="cb28-69"><a href="#cb28-69" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb28-70"><a href="#cb28-70" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-71"><a href="#cb28-71" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="dt">void</span> <span class="kw">operator</span> <span class="kw">delete</span><span class="op">(</span> <span class="dt">void</span><span class="op">*</span> ptr<span class="op">,</span> <span class="bu">std::</span>size_t size <span class="op">)</span> <span class="op">{</span></span>
-<span id="cb28-72"><a href="#cb28-72" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Read the allocator pointer from the end of the frame</span></span>
-<span id="cb28-73"><a href="#cb28-73" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>pmr::memory_resource<span class="op">*</span> mr<span class="op">;</span></span>
-<span id="cb28-74"><a href="#cb28-74" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>memcpy<span class="op">(&amp;</span>mr<span class="op">,</span> <span class="kw">static_cast</span><span class="op">&lt;</span><span class="dt">char</span><span class="op">*&gt;(</span>ptr<span class="op">)</span> <span class="op">+</span> size<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>mr<span class="op">));</span></span>
-<span id="cb28-75"><a href="#cb28-75" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> total <span class="op">=</span> size <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span><span class="bu">std::</span>pmr::memory_resource<span class="op">*);</span></span>
-<span id="cb28-76"><a href="#cb28-76" aria-hidden="true" tabindex="-1"></a>    mr<span class="op">-&gt;</span>deallocate<span class="op">(</span>ptr<span class="op">,</span> total<span class="op">,</span> <span class="kw">alignof</span><span class="op">(</span><span class="bu">std::</span>max_align_t<span class="op">));</span></span>
-<span id="cb28-77"><a href="#cb28-77" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<span id="cb28-44"><a href="#cb28-44" aria-hidden="true" tabindex="-1"></a><span class="co">// A null return from get means &quot;not specified&quot; - no frame</span></span>
+<span id="cb28-45"><a href="#cb28-45" aria-hidden="true" tabindex="-1"></a><span class="co">// allocator has been established for this chain. The caller</span></span>
+<span id="cb28-46"><a href="#cb28-46" aria-hidden="true" tabindex="-1"></a><span class="co">// is free to use whatever allocation strategy makes best</span></span>
+<span id="cb28-47"><a href="#cb28-47" aria-hidden="true" tabindex="-1"></a><span class="co">// sense for its situation. Null handling is the caller&#39;s</span></span>
+<span id="cb28-48"><a href="#cb28-48" aria-hidden="true" tabindex="-1"></a><span class="co">// responsibility; the accessor must not substitute a default,</span></span>
+<span id="cb28-49"><a href="#cb28-49" aria-hidden="true" tabindex="-1"></a><span class="co">// because there are multiple valid choices</span></span>
+<span id="cb28-50"><a href="#cb28-50" aria-hidden="true" tabindex="-1"></a><span class="co">// (new_delete_resource, the default pmr resource, or</span></span>
+<span id="cb28-51"><a href="#cb28-51" aria-hidden="true" tabindex="-1"></a><span class="co">// something else entirely).</span></span>
+<span id="cb28-52"><a href="#cb28-52" aria-hidden="true" tabindex="-1"></a><span class="co">//</span></span>
+<span id="cb28-53"><a href="#cb28-53" aria-hidden="true" tabindex="-1"></a><span class="co">// Use of the frame allocator is optional. An awaitable that</span></span>
+<span id="cb28-54"><a href="#cb28-54" aria-hidden="true" tabindex="-1"></a><span class="co">// ignores this value and allocates its frame by other means</span></span>
+<span id="cb28-55"><a href="#cb28-55" aria-hidden="true" tabindex="-1"></a><span class="co">// is never wrong. However, a conforming awaitable must still</span></span>
+<span id="cb28-56"><a href="#cb28-56" aria-hidden="true" tabindex="-1"></a><span class="co">// propagate the frame allocator faithfully (via set before</span></span>
+<span id="cb28-57"><a href="#cb28-57" aria-hidden="true" tabindex="-1"></a><span class="co">// invoking child coroutines) so that downstream frames can</span></span>
+<span id="cb28-58"><a href="#cb28-58" aria-hidden="true" tabindex="-1"></a><span class="co">// use it.</span></span>
+<span id="cb28-59"><a href="#cb28-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-60"><a href="#cb28-60" aria-hidden="true" tabindex="-1"></a><span class="co">// In promise_type</span></span>
+<span id="cb28-61"><a href="#cb28-61" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="dt">void</span><span class="op">*</span> <span class="kw">operator</span> <span class="kw">new</span><span class="op">(</span> <span class="bu">std::</span>size_t size <span class="op">)</span> <span class="op">{</span></span>
+<span id="cb28-62"><a href="#cb28-62" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span><span class="op">*</span> mr <span class="op">=</span> get_current_frame_allocator<span class="op">();</span></span>
+<span id="cb28-63"><a href="#cb28-63" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span><span class="op">(!</span>mr<span class="op">)</span></span>
+<span id="cb28-64"><a href="#cb28-64" aria-hidden="true" tabindex="-1"></a>        mr <span class="op">=</span> <span class="bu">std::</span>pmr::new_delete_resource<span class="op">();</span></span>
+<span id="cb28-65"><a href="#cb28-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-66"><a href="#cb28-66" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Store frame allocator pointer at end of frame for correct deallocation</span></span>
+<span id="cb28-67"><a href="#cb28-67" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> total <span class="op">=</span> size <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span><span class="bu">std::</span>pmr::memory_resource<span class="op">*);</span></span>
+<span id="cb28-68"><a href="#cb28-68" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span><span class="op">*</span> raw <span class="op">=</span> mr<span class="op">-&gt;</span>allocate<span class="op">(</span>total<span class="op">,</span> <span class="kw">alignof</span><span class="op">(</span><span class="bu">std::</span>max_align_t<span class="op">));</span></span>
+<span id="cb28-69"><a href="#cb28-69" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>memcpy<span class="op">(</span><span class="kw">static_cast</span><span class="op">&lt;</span><span class="dt">char</span><span class="op">*&gt;(</span>raw<span class="op">)</span> <span class="op">+</span> size<span class="op">,</span> <span class="op">&amp;</span>mr<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>mr<span class="op">));</span></span>
+<span id="cb28-70"><a href="#cb28-70" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> raw<span class="op">;</span></span>
+<span id="cb28-71"><a href="#cb28-71" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb28-72"><a href="#cb28-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-73"><a href="#cb28-73" aria-hidden="true" tabindex="-1"></a><span class="at">static</span> <span class="dt">void</span> <span class="kw">operator</span> <span class="kw">delete</span><span class="op">(</span> <span class="dt">void</span><span class="op">*</span> ptr<span class="op">,</span> <span class="bu">std::</span>size_t size <span class="op">)</span> <span class="op">{</span></span>
+<span id="cb28-74"><a href="#cb28-74" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Read the frame allocator pointer from the end of the frame</span></span>
+<span id="cb28-75"><a href="#cb28-75" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>pmr::memory_resource<span class="op">*</span> mr<span class="op">;</span></span>
+<span id="cb28-76"><a href="#cb28-76" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>memcpy<span class="op">(&amp;</span>mr<span class="op">,</span> <span class="kw">static_cast</span><span class="op">&lt;</span><span class="dt">char</span><span class="op">*&gt;(</span>ptr<span class="op">)</span> <span class="op">+</span> size<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>mr<span class="op">));</span></span>
+<span id="cb28-77"><a href="#cb28-77" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> total <span class="op">=</span> size <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span><span class="bu">std::</span>pmr::memory_resource<span class="op">*);</span></span>
+<span id="cb28-78"><a href="#cb28-78" aria-hidden="true" tabindex="-1"></a>    mr<span class="op">-&gt;</span>deallocate<span class="op">(</span>ptr<span class="op">,</span> total<span class="op">,</span> <span class="kw">alignof</span><span class="op">(</span><span class="bu">std::</span>max_align_t<span class="op">));</span></span>
+<span id="cb28-79"><a href="#cb28-79" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p><code>get_current_frame_allocator</code> can return null when a
 coroutine frame is created without going through a launch function:</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> co <span class="op">=</span> my_coro<span class="op">();</span>        <span class="co">// frame allocated here - no launcher set TLS</span></span>
@@ -2090,7 +2099,7 @@ loader. A dynamic initializer - even a trivial function call - moves the
 variable into a costlier TLS implementation bucket on some platforms.
 Keeping the default as null and handling it at the call site avoids that
 cost entirely.</p>
-<p>This design keeps allocator policy where it belongs - at the
+<p>This design keeps frame allocator policy where it belongs - at the
 application layer - while coroutine algorithms remain blissfully unaware
 of memory strategy. The propagation happens during what we call “the
 window”: a narrow interval of execution where the correct state is
@@ -2098,27 +2107,27 @@ guaranteed in thread-locals.</p>
 <p><strong>Use of the frame allocator is optional.</strong> An awaitable
 whose <code>promise_type::operator new</code> ignores the thread-local
 value and allocates its frame by other means is never wrong - the
-program remains correct. The allocator controls <em>where</em> a frame’s
-memory comes from, not what the coroutine does. However, a conforming
-awaitable must still propagate the allocator faithfully: before invoking
-any child coroutine, the currently running coroutine restores the
-thread-local from its <code>io_env</code> so that the child’s
-<code>operator new</code> sees the intended value. An awaitable that
-consumes the allocator for its own frame without restoring it would
-silently break allocation policy for every downstream coroutine in the
-chain. Correct propagation is a protocol obligation even when the
-awaitable itself does not use the allocator.</p>
+program remains correct. The frame allocator controls <em>where</em> a
+frame’s memory comes from, not what the coroutine does. However, a
+conforming awaitable must still propagate the frame allocator
+faithfully: before invoking any child coroutine, the currently running
+coroutine restores the thread-local from its <code>io_env</code> so that
+the child’s <code>operator new</code> sees the intended value. An
+awaitable that consumes the frame allocator for its own frame without
+restoring it would silently break allocation policy for every downstream
+coroutine in the chain. Correct propagation is a protocol obligation
+even when the awaitable itself does not use the frame allocator.</p>
 <p>An important distinction: other coroutine libraries that use
-thread-local storage for allocation set it once globally, so all
-coroutine chains share the same allocator for the lifetime of the
+thread-local storage for frame allocation set it once globally, so all
+coroutine chains share the same frame allocator for the lifetime of the
 program. Our approach is per-chain. Each launch site can choose a
-different allocator, and that allocator is scoped to the specific chain
-it launches. When a chain suspends for I/O, another chain with a
-different allocator can run without interference. When the first chain
-resumes, the window mechanism restores its allocator before any child
-coroutines are created. This is how allocators should work in practice -
-stateful and scoped to the work they serve, not a global policy that
-every coroutine chain must share.</p>
+different frame allocator, and that frame allocator is scoped to the
+specific chain it launches. When a chain suspends for I/O, another chain
+with a different frame allocator can run without interference. When the
+first chain resumes, the window mechanism restores its frame allocator
+before any child coroutines are created. This is how frame allocators
+should work in practice - stateful and scoped to the work they serve,
+not a global policy that every coroutine chain must share.</p>
 <h3 id="the-window">5.4 The Window</h3>
 <p>Thread-local propagation relies on a narrow, deterministic execution
 window. Consider:</p>
@@ -2141,7 +2150,7 @@ called during that execution, <code>child</code>’s
 <span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">promise_type</span><span class="op">*</span> <span class="va">p_</span><span class="op">;</span></span>
 <span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">bool</span> await_ready<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span> <span class="op">}</span></span>
 <span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> await_suspend<span class="op">(</span><span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;)</span> <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
-<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Capture TLS allocator while it&#39;s still valid</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Capture TLS frame allocator while it&#39;s still valid</span></span>
 <span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>            <span class="va">p_</span><span class="op">-&gt;</span>set_frame_allocator<span class="op">(</span> get_current_frame_allocator<span class="op">()</span> <span class="op">);</span></span>
 <span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
 <span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">void</span> await_resume<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
@@ -2153,23 +2162,24 @@ called during that execution, <code>child</code>’s
 <span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> awaiter<span class="op">{</span><span class="kw">this</span><span class="op">};</span></span>
 <span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Every time the coroutine resumes (after any <code>co_await</code>),
-it sets TLS to its allocator. When <code>child()</code> is called, TLS
-is already pointing to <code>parent</code>’s allocator. The flow:</p>
-<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggMzQwLjQ2ODc1IDUzMyIgaGVpZ2h0PSI1MzMiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNDAuNDY4NzUiIGlkPSJteS1zdmciIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiB3aGl0ZTsiPjxzdHlsZT4jbXktc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7ZmlsbDojMzMzO30jbXktc3ZnIC5lcnJvci1pY29ue2ZpbGw6IzU1MjIyMjt9I215LXN2ZyAuZXJyb3ItdGV4dHtmaWxsOiM1NTIyMjI7c3Ryb2tlOiM1NTIyMjI7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLW5vcm1hbHtzdHJva2Utd2lkdGg6MnB4O30jbXktc3ZnIC5lZGdlLXRoaWNrbmVzcy10aGlja3tzdHJva2Utd2lkdGg6My41cHg7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1zb2xpZHtzdHJva2UtZGFzaGFycmF5OjA7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kYXNoZWR7c3Ryb2tlLWRhc2hhcnJheTozO30jbXktc3ZnIC5lZGdlLXBhdHRlcm4tZG90dGVke3N0cm9rZS1kYXNoYXJyYXk6Mjt9I215LXN2ZyAubWFya2Vye2ZpbGw6IzMzMzMzMztzdHJva2U6IzMzMzMzMzt9I215LXN2ZyAubWFya2VyLmNyb3Nze3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIHN2Z3tmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O30jbXktc3ZnIC5sYWJlbHtmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2NvbG9yOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyAubGFiZWwgdGV4dCwjbXktc3ZnIHNwYW4sI215LXN2ZyBwe2ZpbGw6IzMzMztjb2xvcjojMzMzO30jbXktc3ZnIC5ub2RlIHJlY3QsI215LXN2ZyAubm9kZSBjaXJjbGUsI215LXN2ZyAubm9kZSBlbGxpcHNlLCNteS1zdmcgLm5vZGUgcG9seWdvbiwjbXktc3ZnIC5ub2RlIHBhdGh7ZmlsbDojRUNFQ0ZGO3N0cm9rZTojOTM3MERCO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmZsb3djaGFydC1sYWJlbCB0ZXh0e3RleHQtYW5jaG9yOm1pZGRsZTt9I215LXN2ZyAubm9kZSAua2F0ZXggcGF0aHtmaWxsOiMwMDA7c3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAubm9kZSAubGFiZWx7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLm5vZGUuY2xpY2thYmxle2N1cnNvcjpwb2ludGVyO30jbXktc3ZnIC5hcnJvd2hlYWRQYXRoe2ZpbGw6IzMzMzMzMzt9I215LXN2ZyAuZWRnZVBhdGggLnBhdGh7c3Ryb2tlOiMzMzMzMzM7c3Ryb2tlLXdpZHRoOjIuMHB4O30jbXktc3ZnIC5mbG93Y2hhcnQtbGlua3tzdHJva2U6IzMzMzMzMztmaWxsOm5vbmU7fSNteS1zdmcgLmVkZ2VMYWJlbHtiYWNrZ3JvdW5kLWNvbG9yOiNlOGU4ZTg7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLmVkZ2VMYWJlbCByZWN0e29wYWNpdHk6MC41O2JhY2tncm91bmQtY29sb3I6I2U4ZThlODtmaWxsOiNlOGU4ZTg7fSNteS1zdmcgLmxhYmVsQmtne2JhY2tncm91bmQtY29sb3I6cmdiYSgyMzIsIDIzMiwgMjMyLCAwLjUpO30jbXktc3ZnIC5jbHVzdGVyIHJlY3R7ZmlsbDojZmZmZmRlO3N0cm9rZTojYWFhYTMzO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmNsdXN0ZXIgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXIgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyBkaXYubWVybWFpZFRvb2x0aXB7cG9zaXRpb246YWJzb2x1dGU7dGV4dC1hbGlnbjpjZW50ZXI7bWF4LXdpZHRoOjIwMHB4O3BhZGRpbmc6MnB4O2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjEycHg7YmFja2dyb3VuZDpoc2woODAsIDEwMCUsIDk2LjI3NDUwOTgwMzklKTtib3JkZXI6MXB4IHNvbGlkICNhYWFhMzM7Ym9yZGVyLXJhZGl1czoycHg7cG9pbnRlci1ldmVudHM6bm9uZTt6LWluZGV4OjEwMDt9I215LXN2ZyAuZmxvd2NoYXJ0VGl0bGVUZXh0e3RleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MThweDtmaWxsOiMzMzM7fSNteS1zdmcgOnJvb3R7LS1tZXJtYWlkLWZvbnQtZmFtaWx5OiJ0cmVidWNoZXQgbXMiLHZlcmRhbmEsYXJpYWwsc2Fucy1zZXJpZjt9PC9zdHlsZT48Zz48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjYiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAwIDAgTCAxMCA1IEwgMCAxMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTIiIG1hcmtlcldpZHRoPSIxMiIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSI0LjUiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50U3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgNSBMIDEwIDEwIEwgMTAgMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSIxMSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY2lyY2xlRW5kIj48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9Ii0xIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVTdGFydCI+PGNpcmNsZSBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgcj0iNSIgY3k9IjUiIGN4PSI1Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1LjIiIHJlZlg9IjEyIiB2aWV3Qm94PSIwIDAgMTEgMTEiIGNsYXNzPSJtYXJrZXIgY3Jvc3MgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jcm9zc0VuZCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzU3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDI7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDEsMSBsIDksOSBNIDEwLDEgbCAtOSw5Ii8+PC9tYXJrZXI+PGcgY2xhc3M9InJvb3QiPjxnIGNsYXNzPSJjbHVzdGVycyIvPjxnIGNsYXNzPSJlZGdlUGF0aHMiPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1BIExFLUIiIGlkPSJMLUEtQi0wIiBkPSJNMTYyLjIzNCwzMUwxNjIuMjM0LDM1LjE2N0MxNjIuMjM0LDM5LjMzMywxNjIuMjM0LDQ3LjY2NywxNjIuMjM0LDU1LjExN0MxNjIuMjM0LDYyLjU2NywxNjIuMjM0LDY5LjEzMywxNjIuMjM0LDcyLjQxN0wxNjIuMjM0LDc1LjciLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtQiBMRS1DIiBpZD0iTC1CLUMtMCIgZD0iTTE2Mi4yMzQsMTEyTDE2Mi4yMzQsMTE2LjE2N0MxNjIuMjM0LDEyMC4zMzMsMTYyLjIzNCwxMjguNjY3LDE2Mi4yMzQsMTM2LjExN0MxNjIuMjM0LDE0My41NjcsMTYyLjIzNCwxNTAuMTMzLDE2Mi4yMzQsMTUzLjQxN0wxNjIuMjM0LDE1Ni43Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUMgTEUtRCIgaWQ9IkwtQy1ELTAiIGQ9Ik0xNjIuMjM0LDE5M0wxNjIuMjM0LDE5Ny4xNjdDMTYyLjIzNCwyMDEuMzMzLDE2Mi4yMzQsMjA5LjY2NywxNjIuMjM0LDIxNy4xMTdDMTYyLjIzNCwyMjQuNTY3LDE2Mi4yMzQsMjMxLjEzMywxNjIuMjM0LDIzNC40MTdMMTYyLjIzNCwyMzcuNyIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1EIExFLUUiIGlkPSJMLUQtRS0wIiBkPSJNMTYyLjIzNCwyNzRMMTYyLjIzNCwyNzguMTY3QzE2Mi4yMzQsMjgyLjMzMywxNjIuMjM0LDI5MC42NjcsMTYyLjIzNCwyOTguMTE3QzE2Mi4yMzQsMzA1LjU2NywxNjIuMjM0LDMxMi4xMzMsMTYyLjIzNCwzMTUuNDE3TDE2Mi4yMzQsMzE4LjciLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtRSBMRS1GIiBpZD0iTC1FLUYtMCIgZD0iTTE2Mi4yMzQsMzU1TDE2Mi4yMzQsMzU5LjE2N0MxNjIuMjM0LDM2My4zMzMsMTYyLjIzNCwzNzEuNjY3LDE2Mi4yMzQsMzc5LjExN0MxNjIuMjM0LDM4Ni41NjcsMTYyLjIzNCwzOTMuMTMzLDE2Mi4yMzQsMzk2LjQxN0wxNjIuMjM0LDM5OS43Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUYgTEUtRyIgaWQ9IkwtRi1HLTAiIGQ9Ik0xNjIuMjM0LDQzNkwxNjIuMjM0LDQ0MC4xNjdDMTYyLjIzNCw0NDQuMzMzLDE2Mi4yMzQsNDUyLjY2NywxNjIuMjM0LDQ2MC4xMTdDMTYyLjIzNCw0NjcuNTY3LDE2Mi4yMzQsNDc0LjEzMywxNjIuMjM0LDQ3Ny40MTdMMTYyLjIzNCw0ODAuNyIvPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVscyI+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjxnIGNsYXNzPSJub2RlcyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTYyLjIzNDM3NSwgMTUuNSkiIGRhdGEtaWQ9IkEiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1BLTAiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIyMzguNDY4NzUiIHk9Ii0xNS41IiB4PSItMTE5LjIzNDM3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTExMS43MzQzNzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjIyMy40Njg3NSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPnBhcmVudCByZXN1bWVzIC0gVExTID0gcGFyZW50LmFsbG9jPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE2Mi4yMzQzNzUsIDk2LjUpIiBkYXRhLWlkPSJCIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtQi0xIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTI4LjYwOTM3NSIgeT0iLTE1LjUiIHg9Ii02NC4zMDQ2ODc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTYuODA0Njg3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTEzLjYwOTM3NSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPnBhcmVudCBjYWxscyBjaGlsZCgpPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE2Mi4yMzQzNzUsIDE3Ny41KSIgZGF0YS1pZD0iQyIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUMtMiIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjMyNC40Njg3NSIgeT0iLTE1LjUiIHg9Ii0xNjIuMjM0Mzc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTU0LjczNDM3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMzA5LjQ2ODc1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+Y2hpbGQgb3BlcmF0b3IgbmV3IC0gcmVhZHMgVExTIC0gdXNlcyBwYXJlbnQuYWxsb2M8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTYyLjIzNDM3NSwgMjU4LjUpIiBkYXRhLWlkPSJEIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtRC0zIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTc1LjI5Njg3NSIgeT0iLTE1LjUiIHg9Ii04Ny42NDg0Mzc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtODAuMTQ4NDM3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTYwLjI5Njg3NSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPmNoaWxkIGNyZWF0ZWQsIHJldHVybnMgdGFzazwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNjIuMjM0Mzc1LCAzMzkuNSkiIGRhdGEtaWQ9IkUiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1FLTQiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIyNzcuNjI1IiB5PSItMTUuNSIgeD0iLTEzOC44MTI1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTMxLjMxMjUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjI2Mi42MjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5wYXJlbnQncyBhd2FpdF9zdXNwZW5kIC0gcGFyZW50IHN1c3BlbmRzPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE2Mi4yMzQzNzUsIDQyMC41KSIgZGF0YS1pZD0iRiIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUYtNSIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjMyMC45Mzc1IiB5PSItMTUuNSIgeD0iLTE2MC40Njg3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE1Mi45Njg3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMzA1LjkzNzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5jaGlsZCByZXN1bWVzIC0gVExTID0gY2hpbGQuYWxsb2MgKGluaGVyaXRlZCB2YWx1ZSk8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTYyLjIzNDM3NSwgNTAxLjUpIiBkYXRhLWlkPSJHIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtRy02IiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMjkzLjMyODEyNSIgeT0iLTE1LjUiIHg9Ii0xNDYuNjY0MDYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzOS4xNjQwNjI1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIyNzguMzI4MTI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+Y2hpbGQgY2FsbHMgZ3JhbmRjaGlsZCgpIC0gZ3JhbmRjaGlsZCB1c2VzIFRMUzwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48L2c+PC9nPjwvZz48L3N2Zz4=" alt /></p>
+it sets TLS to its frame allocator. When <code>child()</code> is called,
+TLS is already pointing to <code>parent</code>’s frame allocator. The
+flow:</p>
+<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggMzg0LjAzMTI1IDUzMyIgaGVpZ2h0PSI1MzMiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzODQuMDMxMjUiIGlkPSJteS1zdmciIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiB3aGl0ZTsiPjxzdHlsZT4jbXktc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7ZmlsbDojMzMzO30jbXktc3ZnIC5lcnJvci1pY29ue2ZpbGw6IzU1MjIyMjt9I215LXN2ZyAuZXJyb3ItdGV4dHtmaWxsOiM1NTIyMjI7c3Ryb2tlOiM1NTIyMjI7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLW5vcm1hbHtzdHJva2Utd2lkdGg6MnB4O30jbXktc3ZnIC5lZGdlLXRoaWNrbmVzcy10aGlja3tzdHJva2Utd2lkdGg6My41cHg7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1zb2xpZHtzdHJva2UtZGFzaGFycmF5OjA7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kYXNoZWR7c3Ryb2tlLWRhc2hhcnJheTozO30jbXktc3ZnIC5lZGdlLXBhdHRlcm4tZG90dGVke3N0cm9rZS1kYXNoYXJyYXk6Mjt9I215LXN2ZyAubWFya2Vye2ZpbGw6IzMzMzMzMztzdHJva2U6IzMzMzMzMzt9I215LXN2ZyAubWFya2VyLmNyb3Nze3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIHN2Z3tmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O30jbXktc3ZnIC5sYWJlbHtmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2NvbG9yOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyAubGFiZWwgdGV4dCwjbXktc3ZnIHNwYW4sI215LXN2ZyBwe2ZpbGw6IzMzMztjb2xvcjojMzMzO30jbXktc3ZnIC5ub2RlIHJlY3QsI215LXN2ZyAubm9kZSBjaXJjbGUsI215LXN2ZyAubm9kZSBlbGxpcHNlLCNteS1zdmcgLm5vZGUgcG9seWdvbiwjbXktc3ZnIC5ub2RlIHBhdGh7ZmlsbDojRUNFQ0ZGO3N0cm9rZTojOTM3MERCO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmZsb3djaGFydC1sYWJlbCB0ZXh0e3RleHQtYW5jaG9yOm1pZGRsZTt9I215LXN2ZyAubm9kZSAua2F0ZXggcGF0aHtmaWxsOiMwMDA7c3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAubm9kZSAubGFiZWx7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLm5vZGUuY2xpY2thYmxle2N1cnNvcjpwb2ludGVyO30jbXktc3ZnIC5hcnJvd2hlYWRQYXRoe2ZpbGw6IzMzMzMzMzt9I215LXN2ZyAuZWRnZVBhdGggLnBhdGh7c3Ryb2tlOiMzMzMzMzM7c3Ryb2tlLXdpZHRoOjIuMHB4O30jbXktc3ZnIC5mbG93Y2hhcnQtbGlua3tzdHJva2U6IzMzMzMzMztmaWxsOm5vbmU7fSNteS1zdmcgLmVkZ2VMYWJlbHtiYWNrZ3JvdW5kLWNvbG9yOiNlOGU4ZTg7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLmVkZ2VMYWJlbCByZWN0e29wYWNpdHk6MC41O2JhY2tncm91bmQtY29sb3I6I2U4ZThlODtmaWxsOiNlOGU4ZTg7fSNteS1zdmcgLmxhYmVsQmtne2JhY2tncm91bmQtY29sb3I6cmdiYSgyMzIsIDIzMiwgMjMyLCAwLjUpO30jbXktc3ZnIC5jbHVzdGVyIHJlY3R7ZmlsbDojZmZmZmRlO3N0cm9rZTojYWFhYTMzO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmNsdXN0ZXIgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXIgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyBkaXYubWVybWFpZFRvb2x0aXB7cG9zaXRpb246YWJzb2x1dGU7dGV4dC1hbGlnbjpjZW50ZXI7bWF4LXdpZHRoOjIwMHB4O3BhZGRpbmc6MnB4O2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjEycHg7YmFja2dyb3VuZDpoc2woODAsIDEwMCUsIDk2LjI3NDUwOTgwMzklKTtib3JkZXI6MXB4IHNvbGlkICNhYWFhMzM7Ym9yZGVyLXJhZGl1czoycHg7cG9pbnRlci1ldmVudHM6bm9uZTt6LWluZGV4OjEwMDt9I215LXN2ZyAuZmxvd2NoYXJ0VGl0bGVUZXh0e3RleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MThweDtmaWxsOiMzMzM7fSNteS1zdmcgOnJvb3R7LS1tZXJtYWlkLWZvbnQtZmFtaWx5OiJ0cmVidWNoZXQgbXMiLHZlcmRhbmEsYXJpYWwsc2Fucy1zZXJpZjt9PC9zdHlsZT48Zz48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjYiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAwIDAgTCAxMCA1IEwgMCAxMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTIiIG1hcmtlcldpZHRoPSIxMiIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSI0LjUiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50U3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgNSBMIDEwIDEwIEwgMTAgMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSIxMSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY2lyY2xlRW5kIj48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9Ii0xIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVTdGFydCI+PGNpcmNsZSBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgcj0iNSIgY3k9IjUiIGN4PSI1Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1LjIiIHJlZlg9IjEyIiB2aWV3Qm94PSIwIDAgMTEgMTEiIGNsYXNzPSJtYXJrZXIgY3Jvc3MgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jcm9zc0VuZCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzU3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDI7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDEsMSBsIDksOSBNIDEwLDEgbCAtOSw5Ii8+PC9tYXJrZXI+PGcgY2xhc3M9InJvb3QiPjxnIGNsYXNzPSJjbHVzdGVycyIvPjxnIGNsYXNzPSJlZGdlUGF0aHMiPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1BIExFLUIiIGlkPSJMLUEtQi0wIiBkPSJNMTg0LjAxNiwzMUwxODQuMDE2LDM1LjE2N0MxODQuMDE2LDM5LjMzMywxODQuMDE2LDQ3LjY2NywxODQuMDE2LDU1LjExN0MxODQuMDE2LDYyLjU2NywxODQuMDE2LDY5LjEzMywxODQuMDE2LDcyLjQxN0wxODQuMDE2LDc1LjciLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtQiBMRS1DIiBpZD0iTC1CLUMtMCIgZD0iTTE4NC4wMTYsMTEyTDE4NC4wMTYsMTE2LjE2N0MxODQuMDE2LDEyMC4zMzMsMTg0LjAxNiwxMjguNjY3LDE4NC4wMTYsMTM2LjExN0MxODQuMDE2LDE0My41NjcsMTg0LjAxNiwxNTAuMTMzLDE4NC4wMTYsMTUzLjQxN0wxODQuMDE2LDE1Ni43Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUMgTEUtRCIgaWQ9IkwtQy1ELTAiIGQ9Ik0xODQuMDE2LDE5M0wxODQuMDE2LDE5Ny4xNjdDMTg0LjAxNiwyMDEuMzMzLDE4NC4wMTYsMjA5LjY2NywxODQuMDE2LDIxNy4xMTdDMTg0LjAxNiwyMjQuNTY3LDE4NC4wMTYsMjMxLjEzMywxODQuMDE2LDIzNC40MTdMMTg0LjAxNiwyMzcuNyIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1EIExFLUUiIGlkPSJMLUQtRS0wIiBkPSJNMTg0LjAxNiwyNzRMMTg0LjAxNiwyNzguMTY3QzE4NC4wMTYsMjgyLjMzMywxODQuMDE2LDI5MC42NjcsMTg0LjAxNiwyOTguMTE3QzE4NC4wMTYsMzA1LjU2NywxODQuMDE2LDMxMi4xMzMsMTg0LjAxNiwzMTUuNDE3TDE4NC4wMTYsMzE4LjciLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtRSBMRS1GIiBpZD0iTC1FLUYtMCIgZD0iTTE4NC4wMTYsMzU1TDE4NC4wMTYsMzU5LjE2N0MxODQuMDE2LDM2My4zMzMsMTg0LjAxNiwzNzEuNjY3LDE4NC4wMTYsMzc5LjExN0MxODQuMDE2LDM4Ni41NjcsMTg0LjAxNiwzOTMuMTMzLDE4NC4wMTYsMzk2LjQxN0wxODQuMDE2LDM5OS43Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUYgTEUtRyIgaWQ9IkwtRi1HLTAiIGQ9Ik0xODQuMDE2LDQzNkwxODQuMDE2LDQ0MC4xNjdDMTg0LjAxNiw0NDQuMzMzLDE4NC4wMTYsNDUyLjY2NywxODQuMDE2LDQ2MC4xMTdDMTg0LjAxNiw0NjcuNTY3LDE4NC4wMTYsNDc0LjEzMywxODQuMDE2LDQ3Ny40MTdMMTg0LjAxNiw0ODAuNyIvPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVscyI+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjxnIGNsYXNzPSJub2RlcyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTg0LjAxNTYyNSwgMTUuNSkiIGRhdGEtaWQ9IkEiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1BLTAiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIyODIuMDQ2ODc1IiB5PSItMTUuNSIgeD0iLTE0MS4wMjM0Mzc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTMzLjUyMzQzNzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjI2Ny4wNDY4NzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5wYXJlbnQgcmVzdW1lcyAtIFRMUyA9IHBhcmVudC5mcmFtZV9hbGxvYzwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxODQuMDE1NjI1LCA5Ni41KSIgZGF0YS1pZD0iQiIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUItMSIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjEyOC42MDkzNzUiIHk9Ii0xNS41IiB4PSItNjQuMzA0Njg3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTU2LjgwNDY4NzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjExMy42MDkzNzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5wYXJlbnQgY2FsbHMgY2hpbGQoKTwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxODQuMDE1NjI1LCAxNzcuNSkiIGRhdGEtaWQ9IkMiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1DLTIiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIzNjguMDMxMjUiIHk9Ii0xNS41IiB4PSItMTg0LjAxNTYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTE3Ni41MTU2MjUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjM1My4wMzEyNSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPmNoaWxkIG9wZXJhdG9yIG5ldyAtIHJlYWRzIFRMUyAtIHVzZXMgcGFyZW50LmZyYW1lX2FsbG9jPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE4NC4wMTU2MjUsIDI1OC41KSIgZGF0YS1pZD0iRCIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUQtMyIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjE3NS4yOTY4NzUiIHk9Ii0xNS41IiB4PSItODcuNjQ4NDM3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTgwLjE0ODQzNzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjE2MC4yOTY4NzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5jaGlsZCBjcmVhdGVkLCByZXR1cm5zIHRhc2s8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTg0LjAxNTYyNSwgMzM5LjUpIiBkYXRhLWlkPSJFIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtRS00IiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMjc3LjYyNSIgeT0iLTE1LjUiIHg9Ii0xMzguODEyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzMS4zMTI1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIyNjIuNjI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+cGFyZW50J3MgYXdhaXRfc3VzcGVuZCAtIHBhcmVudCBzdXNwZW5kczwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxODQuMDE1NjI1LCA0MjAuNSkiIGRhdGEtaWQ9IkYiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1GLTUiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIzNjQuNTE1NjI1IiB5PSItMTUuNSIgeD0iLTE4Mi4yNTc4MTI1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMTc0Ljc1NzgxMjUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjM0OS41MTU2MjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj5jaGlsZCByZXN1bWVzIC0gVExTID0gY2hpbGQuZnJhbWVfYWxsb2MgKGluaGVyaXRlZCB2YWx1ZSk8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTg0LjAxNTYyNSwgNTAxLjUpIiBkYXRhLWlkPSJHIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtRy02IiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMjkzLjMyODEyNSIgeT0iLTE1LjUiIHg9Ii0xNDYuNjY0MDYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzOS4xNjQwNjI1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIyNzguMzI4MTI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+Y2hpbGQgY2FsbHMgZ3JhbmRjaGlsZCgpIC0gZ3JhbmRjaGlsZCB1c2VzIFRMUzwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48L2c+PC9nPjwvZz48L3N2Zz4=" alt /></p>
 <p>This is safe because: - TLS is only read in <code>operator new</code>
-- no other code path inspects the thread-local allocator - TLS is
+- no other code path inspects the thread-local frame allocator - TLS is
 written by the currently-running coroutine before any child is created,
 and restored from the heap-stable <code>io_env</code> on every resume
 via <code>await_resume</code> - Thread migration is handled: when a
 coroutine suspends on thread A and resumes on thread B, the
-<code>await_resume</code> path writes the correct allocator into thread
-B’s TLS before the coroutine body continues. TLS is never <em>read</em>
-on a thread unless the coroutine that wrote it is actively executing on
-that thread - No dangling: the coroutine that set TLS is still on the
-call stack when <code>operator new</code> reads it - Deallocation is
-thread-independent: <code>operator delete</code> reads the allocator
-from a pointer embedded in the frame footer, not from TLS. A frame can
-be destroyed on any thread</p>
+<code>await_resume</code> path writes the correct frame allocator into
+thread B’s TLS before the coroutine body continues. TLS is never
+<em>read</em> on a thread unless the coroutine that wrote it is actively
+executing on that thread - No dangling: the coroutine that set TLS is
+still on the call stack when <code>operator new</code> reads it -
+Deallocation is thread-independent: <code>operator delete</code> reads
+the frame allocator from a pointer embedded in the frame footer, not
+from TLS. A frame can be destroyed on any thread</p>
 <h3 id="addressing-tls-concerns">5.5 Addressing TLS Concerns</h3>
 <p>Thread-local storage has a well-deserved reputation for creating
 hidden coupling and brittle behavior. The concerns are familiar and
@@ -2187,12 +2197,12 @@ by the launch function, repopulated on every resume. No algorithm
 inspects it. No behavior changes based on its contents. It controls
 where memory comes from, not what the program does.</p>
 <p>The reason TLS is involved at all is <code>operator new</code>’s
-fixed signature. The allocator cannot arrive as a parameter without
-polluting every coroutine signature with <code>allocator_arg_t</code>
-(Section 5.2). The standard library already accepted this tradeoff:
-<code>std::pmr::get_default_resource()</code> is a process-wide
-thread-local allocator channel, adopted in C++17. Ours is the same
-principle, scoped per-chain instead of per-process.</p>
+fixed signature. The frame allocator cannot arrive as a parameter
+without polluting every coroutine signature with
+<code>allocator_arg_t</code> (Section 5.2). The standard library already
+accepted this tradeoff: <code>std::pmr::get_default_resource()</code> is
+a process-wide thread-local allocator channel, adopted in C++17. Ours is
+the same principle, scoped per-chain instead of per-process.</p>
 <h4 id="concern-thread-migration">Concern: Thread Migration</h4>
 <p>Thread migration is the obvious objection: suspend on thread A,
 resume on thread B, read stale TLS. The invariant that prevents this is
@@ -2200,12 +2210,12 @@ simple: <strong>TLS is never read on a thread unless the coroutine that
 wrote it is actively executing on that same thread.</strong></p>
 <p>Every resume path - <code>initial_suspend</code>, every subsequent
 <code>co_await</code> via <code>await_transform</code> - unconditionally
-writes the allocator from <code>io_env</code> into TLS <em>before</em>
-the coroutine body continues:</p>
+writes the frame allocator from <code>io_env</code> into TLS
+<em>before</em> the coroutine body continues:</p>
 <div class="sourceCode" id="cb32"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> await_resume<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
 <span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Restore TLS from heap-stable io_env</span></span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    set_current_frame_allocator<span class="op">(</span><span class="va">p_</span><span class="op">-&gt;</span><span class="va">io_env_</span><span class="op">-&gt;</span>allocator<span class="op">);</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    set_current_frame_allocator<span class="op">(</span><span class="va">p_</span><span class="op">-&gt;</span><span class="va">io_env_</span><span class="op">-&gt;</span>frame_allocator<span class="op">);</span></span>
 <span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>The write always precedes the read on the new thread. No suspended
 coroutine depends on TLS retaining a value across a suspension
@@ -2218,8 +2228,8 @@ be destroyed on thread C.</p>
 Propagation and Lifetime</h4>
 <p>Coroutine chains differ structurally from containers. A container can
 outlive its creator. A coroutine chain cannot outlive its launch site.
-The allocator outlives every frame that uses it - not by convention, but
-by the structural nesting of coroutine lifetimes.</p>
+The frame allocator outlives every frame that uses it - not by
+convention, but by the structural nesting of coroutine lifetimes.</p>
 <p><code>std::execution</code>’s
 <code>get_allocator(get_env(receiver))</code> is also an implicit
 lookup. The mechanism is structurally similar: an ambient environment
@@ -2278,9 +2288,9 @@ The task type has one template parameter:</p>
 <p>This enables separate compilation and ABI stability. A coroutine
 returning <code>task&lt;int&gt;</code> can be defined in a
 <code>.cpp</code> file and called from any translation unit without
-exposing the executor type, the allocator, or the stop token in the
-public interface. Libraries built on <em>IoAwaitable</em> can ship as
-compiled binaries. <a href="https://wg21.link/p4007r0">P4007R0</a><sup>[7]</sup> Section 6.4
+exposing the executor type, the frame allocator, or the stop token in
+the public interface. Libraries built on <em>IoAwaitable</em> can ship
+as compiled binaries. <a href="https://wg21.link/p4007r0">P4007R0</a><sup>[7]</sup> Section 6.4
 examines why alternative designs require a second template parameter and
 what the ecosystem’s response has been.</p>
 <h3 id="ergonomic-impact">6.4 Ergonomic Impact</h3>
@@ -2289,9 +2299,9 @@ server has dozens of route handlers, each a coroutine. A database access
 layer has query functions. A WebSocket handler has message processors.
 All of these are written by application developers, not framework
 experts.</p>
-<p>With <em>IoAwaitable</em>, the executor, allocator, and stop token
-are invisible. They propagate automatically through the coroutine chain.
-The developer focuses on business logic:</p>
+<p>With <em>IoAwaitable</em>, the executor, frame allocator, and stop
+token are invisible. They propagate automatically through the coroutine
+chain. The developer focuses on business logic:</p>
 <div class="sourceCode" id="cb34"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>route_task serve_api<span class="op">(</span> route_params<span class="op">&amp;</span> rp <span class="op">)</span></span>
 <span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
 <span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> result <span class="op">=</span> <span class="cf">co_await</span> db<span class="op">.</span>query<span class="op">(</span><span class="st">&quot;SELECT ...&quot;</span><span class="op">);</span></span>
@@ -2327,8 +2337,8 @@ the divergence technically, without claiming that either approach is
 universally superior. Each is optimized for its primary workload.</p>
 <h3 id="the-late-binding-problem">7.1 The Late Binding Problem</h3>
 <p>Coroutine frame allocation happens <em>before</em> the coroutine body
-executes. The allocator must be known at invocation, not discovered
-later through receiver queries. <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[3]</sup>
+executes. The frame allocator must be known at invocation, not
+discovered later through receiver queries. <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[3]</sup>
 acknowledges this timing in its “Dependently-typed senders” section:</p>
 <blockquote>
 <p>“The implication of the above is that the sender alone does not have
@@ -2336,9 +2346,9 @@ all the information about the async computation it will ultimately
 initiate; some of that information is provided late via the
 receiver.”</p>
 </blockquote>
-<p>This “late” information includes the allocator. Consider what happens
-with a coroutine-based sender:</p>
-<div class="sourceCode" id="cb36"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co">// P2300 query model: allocator discovered AFTER connect</span></span>
+<p>This “late” information includes the frame allocator. Consider what
+happens with a coroutine-based sender:</p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co">// P2300 query model: frame allocator discovered AFTER connect</span></span>
 <span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span>receiver Rcvr<span class="op">&gt;</span></span>
 <span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> my_operation_state <span class="op">{</span></span>
 <span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>    Rcvr <span class="va">rcvr_</span><span class="op">;</span></span>
@@ -2350,13 +2360,13 @@ with a coroutine-based sender:</p>
 <span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> async_work<span class="op">();</span>              <span class="co">// Frame allocated NOW</span></span>
 <span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> sndr <span class="op">=</span> async_work<span class="op">();</span>            </span>
-<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> op <span class="op">=</span> <span class="fu">connect</span><span class="op">(</span>sndr<span class="op">,</span> receiver<span class="op">);</span>   <span class="co">// Allocator available NOW - too late</span></span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> op <span class="op">=</span> <span class="fu">connect</span><span class="op">(</span>sndr<span class="op">,</span> receiver<span class="op">);</span>   <span class="co">// Frame allocator available NOW - too late</span></span>
 <span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>start<span class="op">(</span>op<span class="op">);</span></span></code></pre></div>
 <p>The timing mismatch is fundamental:</p>
-<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggNjc2LjU3ODEyNSAxMzQiIGhlaWdodD0iMTM0IiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iNjc2LjU3ODEyNSIgaWQ9Im15LXN2ZyIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6IHdoaXRlOyI+PHN0eWxlPiNteS1zdmd7Zm9udC1mYW1pbHk6YXJpYWwsc2Fucy1zZXJpZjtmb250LXNpemU6MTRweDtmaWxsOiMzMzM7fSNteS1zdmcgLmVycm9yLWljb257ZmlsbDojNTUyMjIyO30jbXktc3ZnIC5lcnJvci10ZXh0e2ZpbGw6IzU1MjIyMjtzdHJva2U6IzU1MjIyMjt9I215LXN2ZyAuZWRnZS10aGlja25lc3Mtbm9ybWFse3N0cm9rZS13aWR0aDoycHg7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLXRoaWNre3N0cm9rZS13aWR0aDozLjVweDt9I215LXN2ZyAuZWRnZS1wYXR0ZXJuLXNvbGlke3N0cm9rZS1kYXNoYXJyYXk6MDt9I215LXN2ZyAuZWRnZS1wYXR0ZXJuLWRhc2hlZHtzdHJva2UtZGFzaGFycmF5OjM7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kb3R0ZWR7c3Ryb2tlLWRhc2hhcnJheToyO30jbXktc3ZnIC5tYXJrZXJ7ZmlsbDojMzMzMzMzO3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIC5tYXJrZXIuY3Jvc3N7c3Ryb2tlOiMzMzMzMzM7fSNteS1zdmcgc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7fSNteS1zdmcgLmxhYmVse2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Y29sb3I6IzMzMzt9I215LXN2ZyAuY2x1c3Rlci1sYWJlbCB0ZXh0e2ZpbGw6IzMzMzt9I215LXN2ZyAuY2x1c3Rlci1sYWJlbCBzcGFuLCNteS1zdmcgcHtjb2xvcjojMzMzO30jbXktc3ZnIC5sYWJlbCB0ZXh0LCNteS1zdmcgc3BhbiwjbXktc3ZnIHB7ZmlsbDojMzMzO2NvbG9yOiMzMzM7fSNteS1zdmcgLm5vZGUgcmVjdCwjbXktc3ZnIC5ub2RlIGNpcmNsZSwjbXktc3ZnIC5ub2RlIGVsbGlwc2UsI215LXN2ZyAubm9kZSBwb2x5Z29uLCNteS1zdmcgLm5vZGUgcGF0aHtmaWxsOiNFQ0VDRkY7c3Ryb2tlOiM5MzcwREI7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAuZmxvd2NoYXJ0LWxhYmVsIHRleHR7dGV4dC1hbmNob3I6bWlkZGxlO30jbXktc3ZnIC5ub2RlIC5rYXRleCBwYXRoe2ZpbGw6IzAwMDtzdHJva2U6IzAwMDtzdHJva2Utd2lkdGg6MXB4O30jbXktc3ZnIC5ub2RlIC5sYWJlbHt0ZXh0LWFsaWduOmNlbnRlcjt9I215LXN2ZyAubm9kZS5jbGlja2FibGV7Y3Vyc29yOnBvaW50ZXI7fSNteS1zdmcgLmFycm93aGVhZFBhdGh7ZmlsbDojMzMzMzMzO30jbXktc3ZnIC5lZGdlUGF0aCAucGF0aHtzdHJva2U6IzMzMzMzMztzdHJva2Utd2lkdGg6Mi4wcHg7fSNteS1zdmcgLmZsb3djaGFydC1saW5re3N0cm9rZTojMzMzMzMzO2ZpbGw6bm9uZTt9I215LXN2ZyAuZWRnZUxhYmVse2JhY2tncm91bmQtY29sb3I6I2U4ZThlODt0ZXh0LWFsaWduOmNlbnRlcjt9I215LXN2ZyAuZWRnZUxhYmVsIHJlY3R7b3BhY2l0eTowLjU7YmFja2dyb3VuZC1jb2xvcjojZThlOGU4O2ZpbGw6I2U4ZThlODt9I215LXN2ZyAubGFiZWxCa2d7YmFja2dyb3VuZC1jb2xvcjpyZ2JhKDIzMiwgMjMyLCAyMzIsIDAuNSk7fSNteS1zdmcgLmNsdXN0ZXIgcmVjdHtmaWxsOiNmZmZmZGU7c3Ryb2tlOiNhYWFhMzM7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAuY2x1c3RlciB0ZXh0e2ZpbGw6IzMzMzt9I215LXN2ZyAuY2x1c3RlciBzcGFuLCNteS1zdmcgcHtjb2xvcjojMzMzO30jbXktc3ZnIGRpdi5tZXJtYWlkVG9vbHRpcHtwb3NpdGlvbjphYnNvbHV0ZTt0ZXh0LWFsaWduOmNlbnRlcjttYXgtd2lkdGg6MjAwcHg7cGFkZGluZzoycHg7Zm9udC1mYW1pbHk6YXJpYWwsc2Fucy1zZXJpZjtmb250LXNpemU6MTJweDtiYWNrZ3JvdW5kOmhzbCg4MCwgMTAwJSwgOTYuMjc0NTA5ODAzOSUpO2JvcmRlcjoxcHggc29saWQgI2FhYWEzMztib3JkZXItcmFkaXVzOjJweDtwb2ludGVyLWV2ZW50czpub25lO3otaW5kZXg6MTAwO30jbXktc3ZnIC5mbG93Y2hhcnRUaXRsZVRleHR7dGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxOHB4O2ZpbGw6IzMzMzt9I215LXN2ZyA6cm9vdHstLW1lcm1haWQtZm9udC1mYW1pbHk6InRyZWJ1Y2hldCBtcyIsdmVyZGFuYSxhcmlhbCxzYW5zLXNlcmlmO308L3N0eWxlPjxnPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjEyIiBtYXJrZXJXaWR0aD0iMTIiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNSIgcmVmWD0iNiIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgMCBMIDEwIDUgTCAwIDEwIHoiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjQuNSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtcG9pbnRTdGFydCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMTsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMCA1IEwgMTAgMTAgTCAxMCAwIHoiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjExIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVFbmQiPjxjaXJjbGUgc3R5bGU9InN0cm9rZS13aWR0aDogMTsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIHI9IjUiIGN5PSI1IiBjeD0iNSIvPjwvbWFya2VyPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjExIiBtYXJrZXJXaWR0aD0iMTEiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNSIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNpcmNsZVN0YXJ0Ij48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iMTIiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzRW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAyOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAxLDEgbCA5LDkgTSAxMCwxIGwgLTksOSIvPjwvbWFya2VyPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjExIiBtYXJrZXJXaWR0aD0iMTEiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNS4yIiByZWZYPSItMSIgdmlld0JveD0iMCAwIDExIDExIiBjbGFzcz0ibWFya2VyIGNyb3NzIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY3Jvc3NTdGFydCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48ZyBjbGFzcz0icm9vdCI+PGcgY2xhc3M9ImNsdXN0ZXJzIi8+PGcgY2xhc3M9ImVkZ2VQYXRocyI+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLVMxIExFLVMyIiBpZD0iTC1TMS1TMi0wIiBkPSJNMTE5LjI5Nyw3NEwxMjMuNDY0LDc0QzEyNy42Myw3NCwxMzUuOTY0LDc0LDE0My40MTQsNzRDMTUwLjg2NCw3NCwxNTcuNDMsNzQsMTYwLjcxNCw3NEwxNjMuOTk3LDc0Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLVMyIExFLVMzIiBpZD0iTC1TMi1TMy0wIiBkPSJNMjUxLjM2NCw1OC41TDI2MS43MzMsNTEuMzMzQzI3Mi4xMDIsNDQuMTY3LDI5Mi44NCwyOS44MzMsMzA2LjQ5MiwyMi42NjdDMzIwLjE0NSwxNS41LDMyNi43MTEsMTUuNSwzMjkuOTk1LDE1LjVMMzMzLjI3OCwxNS41Ii8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLVMzIExFLVM0IiBpZD0iTC1TMy1TNC0wIiBkPSJNNDg1LjA3OCwxNS41TDQ4OS4yNDUsMTUuNUM0OTMuNDExLDE1LjUsNTAxLjc0NSwxNS41LDUxNS45MjYsMjIuMTc3QzUzMC4xMDgsMjguODUzLDU1MC4xMzgsNDIuMjA3LDU2MC4xNTMsNDguODgzTDU3MC4xNjgsNTUuNTYiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZS13aWR0aDoycHg7c3Ryb2tlLWRhc2hhcnJheTozOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tZG90dGVkIGZsb3djaGFydC1saW5rIExTLVMyIExFLVM0IiBpZD0iTC1TMi1TNC0wIiBkPSJNMjg4LjU3OCw3NEwyOTIuNzQ1LDc0QzI5Ni45MTEsNzQsMzA1LjI0NSw3NCwzMjUuNzg2LDc0QzM0Ni4zMjgsNzQsMzc5LjA3OCw3NCw0MTEuODI4LDc0QzQ0NC41NzgsNzQsNDc3LjMyOCw3NCw0OTYuOTg2LDc0QzUxNi42NDUsNzQsNTIzLjIxMSw3NCw1MjYuNDk1LDc0TDUyOS43NzgsNzQiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZS13aWR0aDoycHg7c3Ryb2tlLWRhc2hhcnJheTozOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tZG90dGVkIGZsb3djaGFydC1saW5rIExTLVM0IExFLVMyIiBpZD0iTC1TNC1TMi0wIiBkPSJNNTYwLjA0Nyw4OS41TDU1MS43MTksOTIuOTE3QzU0My4zOTEsOTYuMzMzLDUyNi43MzQsMTAzLjE2Nyw1MDIuMDMxLDEwNi41ODNDNDc3LjMyOCwxMTAsNDQ0LjU3OCwxMTAsNDExLjgyOCwxMTBDMzc5LjA3OCwxMTAsMzQ2LjMyOCwxMTAsMzIyLjczMywxMDYuOTI5QzI5OS4xMzgsMTAzLjg1OCwyODQuNjk3LDk3LjcxNiwyNzcuNDc3LDk0LjY0NUwyNzAuMjU3LDkxLjU3NCIvPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVscyI+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDExLjgyODEyNSwgNzQpIiBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNDUuMTQwNjI1LCAtOCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjkwLjI4MTI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+TmVlZCBhbGxvY2F0b3I8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDExLjgyODEyNSwgMTEwKSIgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI2LjQ2ODc1LCAtOCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjUyLjkzNzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj5Ub28gbGF0ZSE8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjxnIGNsYXNzPSJub2RlcyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNTkuNjQ4NDM3NSwgNzQpIiBkYXRhLWlkPSJTMSIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LVMxLTAiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIxMTkuMjk2ODc1IiB5PSItMTUuNSIgeD0iLTU5LjY0ODQzNzUiIHJ5PSIwIiByeD0iMCIgc3R5bGU9IiIgY2xhc3M9ImJhc2ljIGxhYmVsLWNvbnRhaW5lciIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC01Mi4xNDg0Mzc1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMDQuMjk2ODc1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+MS4gQ3JlYXRlIHNlbmRlcjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyMjguOTM3NSwgNzQpIiBkYXRhLWlkPSJTMiIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LVMyLTEiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIxMTkuMjgxMjUiIHk9Ii0xNS41IiB4PSItNTkuNjQwNjI1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTIuMTQwNjI1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMDQuMjgxMjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj4yLiBBbGxvY2F0ZSBmcmFtZTwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg0MTEuODI4MTI1LCAxNS41KSIgZGF0YS1pZD0iUzMiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1TMy0zIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTQ2LjUiIHk9Ii0xNS41IiB4PSItNzMuMjUiIHJ5PSIwIiByeD0iMCIgc3R5bGU9IiIgY2xhc3M9ImJhc2ljIGxhYmVsLWNvbnRhaW5lciIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC02NS43NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTMxLjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj4zLiBjb25uZWN0KHNuZHIsIHJjdnIpPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDU5Ny44MjgxMjUsIDc0KSIgZGF0YS1pZD0iUzQiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1TNC01IiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTI1LjUiIHk9Ii0xNS41IiB4PSItNjIuNzUiIHJ5PSIwIiByeD0iMCIgc3R5bGU9IiIgY2xhc3M9ImJhc2ljIGxhYmVsLWNvbnRhaW5lciIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC01NS4yNSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTEwLjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj40LiBRdWVyeSBhbGxvY2F0b3I8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjwvZz48L2c+PC9zdmc+" alt /></p>
-<p>Our forward flow model resolves this by making the allocator
+<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggNzE2LjI1IDEzNCIgaGVpZ2h0PSIxMzQiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MTYuMjUiIGlkPSJteS1zdmciIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiB3aGl0ZTsiPjxzdHlsZT4jbXktc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7ZmlsbDojMzMzO30jbXktc3ZnIC5lcnJvci1pY29ue2ZpbGw6IzU1MjIyMjt9I215LXN2ZyAuZXJyb3ItdGV4dHtmaWxsOiM1NTIyMjI7c3Ryb2tlOiM1NTIyMjI7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLW5vcm1hbHtzdHJva2Utd2lkdGg6MnB4O30jbXktc3ZnIC5lZGdlLXRoaWNrbmVzcy10aGlja3tzdHJva2Utd2lkdGg6My41cHg7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1zb2xpZHtzdHJva2UtZGFzaGFycmF5OjA7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kYXNoZWR7c3Ryb2tlLWRhc2hhcnJheTozO30jbXktc3ZnIC5lZGdlLXBhdHRlcm4tZG90dGVke3N0cm9rZS1kYXNoYXJyYXk6Mjt9I215LXN2ZyAubWFya2Vye2ZpbGw6IzMzMzMzMztzdHJva2U6IzMzMzMzMzt9I215LXN2ZyAubWFya2VyLmNyb3Nze3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIHN2Z3tmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O30jbXktc3ZnIC5sYWJlbHtmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2NvbG9yOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyAubGFiZWwgdGV4dCwjbXktc3ZnIHNwYW4sI215LXN2ZyBwe2ZpbGw6IzMzMztjb2xvcjojMzMzO30jbXktc3ZnIC5ub2RlIHJlY3QsI215LXN2ZyAubm9kZSBjaXJjbGUsI215LXN2ZyAubm9kZSBlbGxpcHNlLCNteS1zdmcgLm5vZGUgcG9seWdvbiwjbXktc3ZnIC5ub2RlIHBhdGh7ZmlsbDojRUNFQ0ZGO3N0cm9rZTojOTM3MERCO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmZsb3djaGFydC1sYWJlbCB0ZXh0e3RleHQtYW5jaG9yOm1pZGRsZTt9I215LXN2ZyAubm9kZSAua2F0ZXggcGF0aHtmaWxsOiMwMDA7c3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAubm9kZSAubGFiZWx7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLm5vZGUuY2xpY2thYmxle2N1cnNvcjpwb2ludGVyO30jbXktc3ZnIC5hcnJvd2hlYWRQYXRoe2ZpbGw6IzMzMzMzMzt9I215LXN2ZyAuZWRnZVBhdGggLnBhdGh7c3Ryb2tlOiMzMzMzMzM7c3Ryb2tlLXdpZHRoOjIuMHB4O30jbXktc3ZnIC5mbG93Y2hhcnQtbGlua3tzdHJva2U6IzMzMzMzMztmaWxsOm5vbmU7fSNteS1zdmcgLmVkZ2VMYWJlbHtiYWNrZ3JvdW5kLWNvbG9yOiNlOGU4ZTg7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLmVkZ2VMYWJlbCByZWN0e29wYWNpdHk6MC41O2JhY2tncm91bmQtY29sb3I6I2U4ZThlODtmaWxsOiNlOGU4ZTg7fSNteS1zdmcgLmxhYmVsQmtne2JhY2tncm91bmQtY29sb3I6cmdiYSgyMzIsIDIzMiwgMjMyLCAwLjUpO30jbXktc3ZnIC5jbHVzdGVyIHJlY3R7ZmlsbDojZmZmZmRlO3N0cm9rZTojYWFhYTMzO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmNsdXN0ZXIgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXIgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyBkaXYubWVybWFpZFRvb2x0aXB7cG9zaXRpb246YWJzb2x1dGU7dGV4dC1hbGlnbjpjZW50ZXI7bWF4LXdpZHRoOjIwMHB4O3BhZGRpbmc6MnB4O2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjEycHg7YmFja2dyb3VuZDpoc2woODAsIDEwMCUsIDk2LjI3NDUwOTgwMzklKTtib3JkZXI6MXB4IHNvbGlkICNhYWFhMzM7Ym9yZGVyLXJhZGl1czoycHg7cG9pbnRlci1ldmVudHM6bm9uZTt6LWluZGV4OjEwMDt9I215LXN2ZyAuZmxvd2NoYXJ0VGl0bGVUZXh0e3RleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MThweDtmaWxsOiMzMzM7fSNteS1zdmcgOnJvb3R7LS1tZXJtYWlkLWZvbnQtZmFtaWx5OiJ0cmVidWNoZXQgbXMiLHZlcmRhbmEsYXJpYWwsc2Fucy1zZXJpZjt9PC9zdHlsZT48Zz48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjYiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAwIDAgTCAxMCA1IEwgMCAxMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTIiIG1hcmtlcldpZHRoPSIxMiIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSI0LjUiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50U3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgNSBMIDEwIDEwIEwgMTAgMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSIxMSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY2lyY2xlRW5kIj48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9Ii0xIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVTdGFydCI+PGNpcmNsZSBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgcj0iNSIgY3k9IjUiIGN4PSI1Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1LjIiIHJlZlg9IjEyIiB2aWV3Qm94PSIwIDAgMTEgMTEiIGNsYXNzPSJtYXJrZXIgY3Jvc3MgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jcm9zc0VuZCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzU3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDI7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDEsMSBsIDksOSBNIDEwLDEgbCAtOSw5Ii8+PC9tYXJrZXI+PGcgY2xhc3M9InJvb3QiPjxnIGNsYXNzPSJjbHVzdGVycyIvPjxnIGNsYXNzPSJlZGdlUGF0aHMiPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1TMSBMRS1TMiIgaWQ9IkwtUzEtUzItMCIgZD0iTTExOS4yOTcsNzRMMTIzLjQ2NCw3NEMxMjcuNjMsNzQsMTM1Ljk2NCw3NCwxNDMuNDE0LDc0QzE1MC44NjQsNzQsMTU3LjQzLDc0LDE2MC43MTQsNzRMMTYzLjk5Nyw3NCIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1TMiBMRS1TMyIgaWQ9IkwtUzItUzMtMCIgZD0iTTI1MS4zNjQsNTguNUwyNjEuNzMzLDUxLjMzM0MyNzIuMTAyLDQ0LjE2NywyOTIuODQsMjkuODMzLDMwNi40OTIsMjIuNjY3QzMyMC4xNDUsMTUuNSwzMjYuNzExLDE1LjUsMzI5Ljk5NSwxNS41TDMzMy4yNzgsMTUuNSIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1TMyBMRS1TNCIgaWQ9IkwtUzMtUzQtMCIgZD0iTTQ4NS4wNzgsMTUuNUw0ODkuMjQ1LDE1LjVDNDkzLjQxMSwxNS41LDUwMS43NDUsMTUuNSw1MTguMzE1LDIyLjI0NUM1MzQuODg2LDI4Ljk4OSw1NTkuNjk0LDQyLjQ3OSw1NzIuMDk4LDQ5LjIyM0w1ODQuNTAyLDU1Ljk2OCIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlLXdpZHRoOjJweDtzdHJva2UtZGFzaGFycmF5OjM7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1kb3R0ZWQgZmxvd2NoYXJ0LWxpbmsgTFMtUzIgTEUtUzQiIGlkPSJMLVMyLVM0LTAiIGQ9Ik0yODguNTc4LDc0TDI5Mi43NDUsNzRDMjk2LjkxMSw3NCwzMDUuMjQ1LDc0LDMyNS43ODYsNzRDMzQ2LjMyOCw3NCwzNzkuMDc4LDc0LDQxMS44MjgsNzRDNDQ0LjU3OCw3NCw0NzcuMzI4LDc0LDQ5Ni45ODYsNzRDNTE2LjY0NSw3NCw1MjMuMjExLDc0LDUyNi40OTUsNzRMNTI5Ljc3OCw3NCIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7c3Ryb2tlLXdpZHRoOjJweDtzdHJva2UtZGFzaGFycmF5OjM7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1kb3R0ZWQgZmxvd2NoYXJ0LWxpbmsgTFMtUzQgTEUtUzIiIGlkPSJMLVM0LVMyLTAiIGQ9Ik01NzEuMzQyLDg5LjVMNTYxLjEzMiw5Mi45MTdDNTUwLjkyMSw5Ni4zMzMsNTMwLjUsMTAzLjE2Nyw1MDMuOTE0LDEwNi41ODNDNDc3LjMyOCwxMTAsNDQ0LjU3OCwxMTAsNDExLjgyOCwxMTBDMzc5LjA3OCwxMTAsMzQ2LjMyOCwxMTAsMzIyLjczMywxMDYuOTI5QzI5OS4xMzgsMTAzLjg1OCwyODQuNjk3LDk3LjcxNiwyNzcuNDc3LDk0LjY0NUwyNzAuMjU3LDkxLjU3NCIvPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVscyI+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDExLjgyODEyNSwgNzQpIiBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNjQuOTc2NTYyNSwgLTgpIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMjkuOTUzMTI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+TmVlZCBmcmFtZSBhbGxvY2F0b3I8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDExLjgyODEyNSwgMTEwKSIgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI2LjQ2ODc1LCAtOCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjUyLjkzNzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj5Ub28gbGF0ZSE8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjxnIGNsYXNzPSJub2RlcyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNTkuNjQ4NDM3NSwgNzQpIiBkYXRhLWlkPSJTMSIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LVMxLTAiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIxMTkuMjk2ODc1IiB5PSItMTUuNSIgeD0iLTU5LjY0ODQzNzUiIHJ5PSIwIiByeD0iMCIgc3R5bGU9IiIgY2xhc3M9ImJhc2ljIGxhYmVsLWNvbnRhaW5lciIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC01Mi4xNDg0Mzc1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMDQuMjk2ODc1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+MS4gQ3JlYXRlIHNlbmRlcjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyMjguOTM3NSwgNzQpIiBkYXRhLWlkPSJTMiIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LVMyLTEiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIxMTkuMjgxMjUiIHk9Ii0xNS41IiB4PSItNTkuNjQwNjI1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTIuMTQwNjI1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMDQuMjgxMjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj4yLiBBbGxvY2F0ZSBmcmFtZTwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg0MTEuODI4MTI1LCAxNS41KSIgZGF0YS1pZD0iUzMiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1TMy0zIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTQ2LjUiIHk9Ii0xNS41IiB4PSItNzMuMjUiIHJ5PSIwIiByeD0iMCIgc3R5bGU9IiIgY2xhc3M9ImJhc2ljIGxhYmVsLWNvbnRhaW5lciIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC02NS43NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTMxLjUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj4zLiBjb25uZWN0KHNuZHIsIHJjdnIpPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDYxNy42NjQwNjI1LCA3NCkiIGRhdGEtaWQ9IlM0IiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtUzQtNSIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjE2NS4xNzE4NzUiIHk9Ii0xNS41IiB4PSItODIuNTg1OTM3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTc1LjA4NTkzNzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjE1MC4xNzE4NzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj40LiBRdWVyeSBmcmFtZSBhbGxvY2F0b3I8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PC9nPjwvZz48L2c+PC9zdmc+" alt /></p>
+<p>Our forward flow model resolves this by making the frame allocator
 available before the frame is allocated:</p>
-<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggNjA5LjQyMTg3NSA5OCIgaGVpZ2h0PSI5OCIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjYwOS40MjE4NzUiIGlkPSJteS1zdmciIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOiB3aGl0ZTsiPjxzdHlsZT4jbXktc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7ZmlsbDojMzMzO30jbXktc3ZnIC5lcnJvci1pY29ue2ZpbGw6IzU1MjIyMjt9I215LXN2ZyAuZXJyb3ItdGV4dHtmaWxsOiM1NTIyMjI7c3Ryb2tlOiM1NTIyMjI7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLW5vcm1hbHtzdHJva2Utd2lkdGg6MnB4O30jbXktc3ZnIC5lZGdlLXRoaWNrbmVzcy10aGlja3tzdHJva2Utd2lkdGg6My41cHg7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1zb2xpZHtzdHJva2UtZGFzaGFycmF5OjA7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kYXNoZWR7c3Ryb2tlLWRhc2hhcnJheTozO30jbXktc3ZnIC5lZGdlLXBhdHRlcm4tZG90dGVke3N0cm9rZS1kYXNoYXJyYXk6Mjt9I215LXN2ZyAubWFya2Vye2ZpbGw6IzMzMzMzMztzdHJva2U6IzMzMzMzMzt9I215LXN2ZyAubWFya2VyLmNyb3Nze3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIHN2Z3tmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O30jbXktc3ZnIC5sYWJlbHtmb250LWZhbWlseTphcmlhbCxzYW5zLXNlcmlmO2NvbG9yOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXItbGFiZWwgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyAubGFiZWwgdGV4dCwjbXktc3ZnIHNwYW4sI215LXN2ZyBwe2ZpbGw6IzMzMztjb2xvcjojMzMzO30jbXktc3ZnIC5ub2RlIHJlY3QsI215LXN2ZyAubm9kZSBjaXJjbGUsI215LXN2ZyAubm9kZSBlbGxpcHNlLCNteS1zdmcgLm5vZGUgcG9seWdvbiwjbXktc3ZnIC5ub2RlIHBhdGh7ZmlsbDojRUNFQ0ZGO3N0cm9rZTojOTM3MERCO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmZsb3djaGFydC1sYWJlbCB0ZXh0e3RleHQtYW5jaG9yOm1pZGRsZTt9I215LXN2ZyAubm9kZSAua2F0ZXggcGF0aHtmaWxsOiMwMDA7c3Ryb2tlOiMwMDA7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAubm9kZSAubGFiZWx7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLm5vZGUuY2xpY2thYmxle2N1cnNvcjpwb2ludGVyO30jbXktc3ZnIC5hcnJvd2hlYWRQYXRoe2ZpbGw6IzMzMzMzMzt9I215LXN2ZyAuZWRnZVBhdGggLnBhdGh7c3Ryb2tlOiMzMzMzMzM7c3Ryb2tlLXdpZHRoOjIuMHB4O30jbXktc3ZnIC5mbG93Y2hhcnQtbGlua3tzdHJva2U6IzMzMzMzMztmaWxsOm5vbmU7fSNteS1zdmcgLmVkZ2VMYWJlbHtiYWNrZ3JvdW5kLWNvbG9yOiNlOGU4ZTg7dGV4dC1hbGlnbjpjZW50ZXI7fSNteS1zdmcgLmVkZ2VMYWJlbCByZWN0e29wYWNpdHk6MC41O2JhY2tncm91bmQtY29sb3I6I2U4ZThlODtmaWxsOiNlOGU4ZTg7fSNteS1zdmcgLmxhYmVsQmtne2JhY2tncm91bmQtY29sb3I6cmdiYSgyMzIsIDIzMiwgMjMyLCAwLjUpO30jbXktc3ZnIC5jbHVzdGVyIHJlY3R7ZmlsbDojZmZmZmRlO3N0cm9rZTojYWFhYTMzO3N0cm9rZS13aWR0aDoxcHg7fSNteS1zdmcgLmNsdXN0ZXIgdGV4dHtmaWxsOiMzMzM7fSNteS1zdmcgLmNsdXN0ZXIgc3BhbiwjbXktc3ZnIHB7Y29sb3I6IzMzMzt9I215LXN2ZyBkaXYubWVybWFpZFRvb2x0aXB7cG9zaXRpb246YWJzb2x1dGU7dGV4dC1hbGlnbjpjZW50ZXI7bWF4LXdpZHRoOjIwMHB4O3BhZGRpbmc6MnB4O2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjEycHg7YmFja2dyb3VuZDpoc2woODAsIDEwMCUsIDk2LjI3NDUwOTgwMzklKTtib3JkZXI6MXB4IHNvbGlkICNhYWFhMzM7Ym9yZGVyLXJhZGl1czoycHg7cG9pbnRlci1ldmVudHM6bm9uZTt6LWluZGV4OjEwMDt9I215LXN2ZyAuZmxvd2NoYXJ0VGl0bGVUZXh0e3RleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MThweDtmaWxsOiMzMzM7fSNteS1zdmcgOnJvb3R7LS1tZXJtYWlkLWZvbnQtZmFtaWx5OiJ0cmVidWNoZXQgbXMiLHZlcmRhbmEsYXJpYWwsc2Fucy1zZXJpZjt9PC9zdHlsZT48Zz48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjYiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAwIDAgTCAxMCA1IEwgMCAxMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTIiIG1hcmtlcldpZHRoPSIxMiIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSI0LjUiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LXBvaW50U3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgNSBMIDEwIDEwIEwgMTAgMCB6Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1IiByZWZYPSIxMSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY2lyY2xlRW5kIj48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9Ii0xIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVTdGFydCI+PGNpcmNsZSBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAxOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgcj0iNSIgY3k9IjUiIGN4PSI1Ii8+PC9tYXJrZXI+PG1hcmtlciBvcmllbnQ9ImF1dG8iIG1hcmtlckhlaWdodD0iMTEiIG1hcmtlcldpZHRoPSIxMSIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiByZWZZPSI1LjIiIHJlZlg9IjEyIiB2aWV3Qm94PSIwIDAgMTEgMTEiIGNsYXNzPSJtYXJrZXIgY3Jvc3MgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jcm9zc0VuZCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzU3RhcnQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDI7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDEsMSBsIDksOSBNIDEwLDEgbCAtOSw5Ii8+PC9tYXJrZXI+PGcgY2xhc3M9InJvb3QiPjxnIGNsYXNzPSJjbHVzdGVycyIvPjxnIGNsYXNzPSJlZGdlUGF0aHMiPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1JMSBMRS1JMiIgaWQ9IkwtSTEtSTItMCIgZD0iTTEwMC4xMywyOS4yNUwxMDYuNTM4LDI2Ljk1OEMxMTIuOTQ2LDI0LjY2NywxMjUuNzYyLDIwLjA4MywxMzUuNDUzLDE3Ljc5MkMxNDUuMTQ1LDE1LjUsMTUxLjcxMSwxNS41LDE1NC45OTUsMTUuNUwxNTguMjc4LDE1LjUiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtSTIgTEUtSTMiIGlkPSJMLUkyLUkzLTAiIGQ9Ik0yNTcuMTU2LDE1LjVMMjYxLjMyMywxNS41QzI2NS40OSwxNS41LDI3My44MjMsMTUuNSwyODMuNTE2LDE3LjQ5MkMyOTMuMjEsMTkuNDg0LDMwNC4yNjMsMjMuNDY5LDMwOS43OSwyNS40NjFMMzE1LjMxNywyNy40NTMiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tc29saWQgZmxvd2NoYXJ0LWxpbmsgTFMtSTMgTEUtSTQiIGlkPSJMLUkzLUk0LTAiIGQ9Ik00MTkuNDUzLDQ0Ljc1TDQyMy42Miw0NC43NUM0MjcuNzg2LDQ0Ljc1LDQzNi4xMiw0NC43NSw0NDMuNTcsNDQuNzVDNDUxLjAyLDQ0Ljc1LDQ1Ny41ODYsNDQuNzUsNDYwLjg3LDQ0Ljc1TDQ2NC4xNTMsNDQuNzUiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZS13aWR0aDoycHg7c3Ryb2tlLWRhc2hhcnJheTozOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tZG90dGVkIGZsb3djaGFydC1saW5rIExTLUkxIExFLUkzIiBpZD0iTC1JMS1JMy0wIiBkPSJNMTAwLjEzLDYwLjI1TDEwNi41MzgsNjIuNTQyQzExMi45NDYsNjQuODMzLDEyNS43NjIsNjkuNDE3LDE0NC4xMzUsNzEuNzA4QzE2Mi41MDgsNzQsMTg2LjQzOCw3NCwyMTAuMzY3LDc0QzIzNC4yOTcsNzQsMjU4LjIyNyw3NCwyNzUuNzE4LDcyLjAwOEMyOTMuMjEsNzAuMDE2LDMwNC4yNjMsNjYuMDMxLDMwOS43OSw2NC4wMzlMMzE1LjMxNyw2Mi4wNDciLz48L2c+PGcgY2xhc3M9ImVkZ2VMYWJlbHMiPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIxMC4zNjcxODc1LCA3NCkiIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKC00Ni42OTUzMTI1LCAtOCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9IjkzLjM5MDYyNSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPkFsbG9jYXRvciByZWFkeTwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48L2c+PGcgY2xhc3M9Im5vZGVzIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg1Ni43ODkwNjI1LCA0NC43NSkiIGRhdGEtaWQ9IkkxIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtSTEtMCIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjExMy41NzgxMjUiIHk9Ii0xNS41IiB4PSItNTYuNzg5MDYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ5LjI4OTA2MjUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9Ijk4LjU3ODEyNSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPjEuIFNldCBUTFMgYWxsb2M8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjEwLjM2NzE4NzUsIDE1LjUpIiBkYXRhLWlkPSJJMiIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUkyLTEiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSI5My41NzgxMjUiIHk9Ii0xNS41IiB4PSItNDYuNzg5MDYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTM5LjI4OTA2MjUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9Ijc4LjU3ODEyNSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPjIuIENhbGwgdGFzaygpPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDM2My4zMDQ2ODc1LCA0NC43NSkiIGRhdGEtaWQ9IkkzIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtSTMtMyIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjExMi4yOTY4NzUiIHk9Ii0xNS41IiB4PSItNTYuMTQ4NDM3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ4LjY0ODQzNzUsIC04KSIgc3R5bGU9IiIgY2xhc3M9ImxhYmVsIj48cmVjdC8+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIxNiIgd2lkdGg9Ijk3LjI5Njg3NSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJub2RlTGFiZWwiPjMuIG9wZXJhdG9yIG5ldzwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg1MzEuNDM3NSwgNDQuNzUpIiBkYXRhLWlkPSJJNCIgZGF0YS1ub2RlPSJ0cnVlIiBpZD0iZmxvd2NoYXJ0LUk0LTUiIGNsYXNzPSJub2RlIGRlZmF1bHQgZGVmYXVsdCBmbG93Y2hhcnQtbGFiZWwiPjxyZWN0IGhlaWdodD0iMzEiIHdpZHRoPSIxMjMuOTY4NzUiIHk9Ii0xNS41IiB4PSItNjEuOTg0Mzc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTQuNDg0Mzc1LCAtOCkiIHN0eWxlPSIiIGNsYXNzPSJsYWJlbCI+PHJlY3QvPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMTYiIHdpZHRoPSIxMDguOTY4NzUiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0ibm9kZUxhYmVsIj40LiBhd2FpdF9zdXNwZW5kPC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjwvZz48L2c+PC9nPjwvc3ZnPg==" alt /></p>
+<p><img role="img" aria-label src="data:image/svg+xml;base64,PHN2ZyBhcmlhLXJvbGVkZXNjcmlwdGlvbj0iZmxvd2NoYXJ0LXYyIiByb2xlPSJncmFwaGljcy1kb2N1bWVudCBkb2N1bWVudCIgdmlld0JveD0iLTggLTggNjkxLjY4NzUgOTgiIGhlaWdodD0iOTgiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2OTEuNjg3NSIgaWQ9Im15LXN2ZyIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6IHdoaXRlOyI+PHN0eWxlPiNteS1zdmd7Zm9udC1mYW1pbHk6YXJpYWwsc2Fucy1zZXJpZjtmb250LXNpemU6MTRweDtmaWxsOiMzMzM7fSNteS1zdmcgLmVycm9yLWljb257ZmlsbDojNTUyMjIyO30jbXktc3ZnIC5lcnJvci10ZXh0e2ZpbGw6IzU1MjIyMjtzdHJva2U6IzU1MjIyMjt9I215LXN2ZyAuZWRnZS10aGlja25lc3Mtbm9ybWFse3N0cm9rZS13aWR0aDoycHg7fSNteS1zdmcgLmVkZ2UtdGhpY2tuZXNzLXRoaWNre3N0cm9rZS13aWR0aDozLjVweDt9I215LXN2ZyAuZWRnZS1wYXR0ZXJuLXNvbGlke3N0cm9rZS1kYXNoYXJyYXk6MDt9I215LXN2ZyAuZWRnZS1wYXR0ZXJuLWRhc2hlZHtzdHJva2UtZGFzaGFycmF5OjM7fSNteS1zdmcgLmVkZ2UtcGF0dGVybi1kb3R0ZWR7c3Ryb2tlLWRhc2hhcnJheToyO30jbXktc3ZnIC5tYXJrZXJ7ZmlsbDojMzMzMzMzO3N0cm9rZTojMzMzMzMzO30jbXktc3ZnIC5tYXJrZXIuY3Jvc3N7c3Ryb2tlOiMzMzMzMzM7fSNteS1zdmcgc3Zne2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Zm9udC1zaXplOjE0cHg7fSNteS1zdmcgLmxhYmVse2ZvbnQtZmFtaWx5OmFyaWFsLHNhbnMtc2VyaWY7Y29sb3I6IzMzMzt9I215LXN2ZyAuY2x1c3Rlci1sYWJlbCB0ZXh0e2ZpbGw6IzMzMzt9I215LXN2ZyAuY2x1c3Rlci1sYWJlbCBzcGFuLCNteS1zdmcgcHtjb2xvcjojMzMzO30jbXktc3ZnIC5sYWJlbCB0ZXh0LCNteS1zdmcgc3BhbiwjbXktc3ZnIHB7ZmlsbDojMzMzO2NvbG9yOiMzMzM7fSNteS1zdmcgLm5vZGUgcmVjdCwjbXktc3ZnIC5ub2RlIGNpcmNsZSwjbXktc3ZnIC5ub2RlIGVsbGlwc2UsI215LXN2ZyAubm9kZSBwb2x5Z29uLCNteS1zdmcgLm5vZGUgcGF0aHtmaWxsOiNFQ0VDRkY7c3Ryb2tlOiM5MzcwREI7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAuZmxvd2NoYXJ0LWxhYmVsIHRleHR7dGV4dC1hbmNob3I6bWlkZGxlO30jbXktc3ZnIC5ub2RlIC5rYXRleCBwYXRoe2ZpbGw6IzAwMDtzdHJva2U6IzAwMDtzdHJva2Utd2lkdGg6MXB4O30jbXktc3ZnIC5ub2RlIC5sYWJlbHt0ZXh0LWFsaWduOmNlbnRlcjt9I215LXN2ZyAubm9kZS5jbGlja2FibGV7Y3Vyc29yOnBvaW50ZXI7fSNteS1zdmcgLmFycm93aGVhZFBhdGh7ZmlsbDojMzMzMzMzO30jbXktc3ZnIC5lZGdlUGF0aCAucGF0aHtzdHJva2U6IzMzMzMzMztzdHJva2Utd2lkdGg6Mi4wcHg7fSNteS1zdmcgLmZsb3djaGFydC1saW5re3N0cm9rZTojMzMzMzMzO2ZpbGw6bm9uZTt9I215LXN2ZyAuZWRnZUxhYmVse2JhY2tncm91bmQtY29sb3I6I2U4ZThlODt0ZXh0LWFsaWduOmNlbnRlcjt9I215LXN2ZyAuZWRnZUxhYmVsIHJlY3R7b3BhY2l0eTowLjU7YmFja2dyb3VuZC1jb2xvcjojZThlOGU4O2ZpbGw6I2U4ZThlODt9I215LXN2ZyAubGFiZWxCa2d7YmFja2dyb3VuZC1jb2xvcjpyZ2JhKDIzMiwgMjMyLCAyMzIsIDAuNSk7fSNteS1zdmcgLmNsdXN0ZXIgcmVjdHtmaWxsOiNmZmZmZGU7c3Ryb2tlOiNhYWFhMzM7c3Ryb2tlLXdpZHRoOjFweDt9I215LXN2ZyAuY2x1c3RlciB0ZXh0e2ZpbGw6IzMzMzt9I215LXN2ZyAuY2x1c3RlciBzcGFuLCNteS1zdmcgcHtjb2xvcjojMzMzO30jbXktc3ZnIGRpdi5tZXJtYWlkVG9vbHRpcHtwb3NpdGlvbjphYnNvbHV0ZTt0ZXh0LWFsaWduOmNlbnRlcjttYXgtd2lkdGg6MjAwcHg7cGFkZGluZzoycHg7Zm9udC1mYW1pbHk6YXJpYWwsc2Fucy1zZXJpZjtmb250LXNpemU6MTJweDtiYWNrZ3JvdW5kOmhzbCg4MCwgMTAwJSwgOTYuMjc0NTA5ODAzOSUpO2JvcmRlcjoxcHggc29saWQgI2FhYWEzMztib3JkZXItcmFkaXVzOjJweDtwb2ludGVyLWV2ZW50czpub25lO3otaW5kZXg6MTAwO30jbXktc3ZnIC5mbG93Y2hhcnRUaXRsZVRleHR7dGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxOHB4O2ZpbGw6IzMzMzt9I215LXN2ZyA6cm9vdHstLW1lcm1haWQtZm9udC1mYW1pbHk6InRyZWJ1Y2hldCBtcyIsdmVyZGFuYSxhcmlhbCxzYW5zLXNlcmlmO308L3N0eWxlPjxnPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjEyIiBtYXJrZXJXaWR0aD0iMTIiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNSIgcmVmWD0iNiIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQiPjxwYXRoIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiBkPSJNIDAgMCBMIDEwIDUgTCAwIDEwIHoiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMiIgbWFya2VyV2lkdGg9IjEyIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjQuNSIgdmlld0JveD0iMCAwIDEwIDEwIiBjbGFzcz0ibWFya2VyIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtcG9pbnRTdGFydCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMTsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMCA1IEwgMTAgMTAgTCAxMCAwIHoiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUiIHJlZlg9IjExIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGNsYXNzPSJtYXJrZXIgZmxvd2NoYXJ0IiBpZD0ibXktc3ZnX2Zsb3djaGFydC1jaXJjbGVFbmQiPjxjaXJjbGUgc3R5bGU9InN0cm9rZS13aWR0aDogMTsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIHI9IjUiIGN5PSI1IiBjeD0iNSIvPjwvbWFya2VyPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjExIiBtYXJrZXJXaWR0aD0iMTEiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNSIgcmVmWD0iLTEiIHZpZXdCb3g9IjAgMCAxMCAxMCIgY2xhc3M9Im1hcmtlciBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNpcmNsZVN0YXJ0Ij48Y2lyY2xlIHN0eWxlPSJzdHJva2Utd2lkdGg6IDE7IHN0cm9rZS1kYXNoYXJyYXk6IDEsIDA7IiBjbGFzcz0iYXJyb3dNYXJrZXJQYXRoIiByPSI1IiBjeT0iNSIgY3g9IjUiLz48L21hcmtlcj48bWFya2VyIG9yaWVudD0iYXV0byIgbWFya2VySGVpZ2h0PSIxMSIgbWFya2VyV2lkdGg9IjExIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIHJlZlk9IjUuMiIgcmVmWD0iMTIiIHZpZXdCb3g9IjAgMCAxMSAxMSIgY2xhc3M9Im1hcmtlciBjcm9zcyBmbG93Y2hhcnQiIGlkPSJteS1zdmdfZmxvd2NoYXJ0LWNyb3NzRW5kIj48cGF0aCBzdHlsZT0ic3Ryb2tlLXdpZHRoOiAyOyBzdHJva2UtZGFzaGFycmF5OiAxLCAwOyIgY2xhc3M9ImFycm93TWFya2VyUGF0aCIgZD0iTSAxLDEgbCA5LDkgTSAxMCwxIGwgLTksOSIvPjwvbWFya2VyPjxtYXJrZXIgb3JpZW50PSJhdXRvIiBtYXJrZXJIZWlnaHQ9IjExIiBtYXJrZXJXaWR0aD0iMTEiIG1hcmtlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcmVmWT0iNS4yIiByZWZYPSItMSIgdmlld0JveD0iMCAwIDExIDExIiBjbGFzcz0ibWFya2VyIGNyb3NzIGZsb3djaGFydCIgaWQ9Im15LXN2Z19mbG93Y2hhcnQtY3Jvc3NTdGFydCI+PHBhdGggc3R5bGU9InN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogMSwgMDsiIGNsYXNzPSJhcnJvd01hcmtlclBhdGgiIGQ9Ik0gMSwxIGwgOSw5IE0gMTAsMSBsIC05LDkiLz48L21hcmtlcj48ZyBjbGFzcz0icm9vdCI+PGcgY2xhc3M9ImNsdXN0ZXJzIi8+PGcgY2xhc3M9ImVkZ2VQYXRocyI+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUkxIExFLUkyIiBpZD0iTC1JMS1JMi0wIiBkPSJNMTMwLjQ3OCwyOS4yNUwxMzguNDQsMjYuOTU4QzE0Ni40MDIsMjQuNjY3LDE2Mi4zMjYsMjAuMDgzLDE3Ny4xMjEsMTcuNzkyQzE5MS45MTYsMTUuNSwyMDUuNTgxLDE1LjUsMjEyLjQxNCwxNS41TDIxOS4yNDcsMTUuNSIvPjxwYXRoIG1hcmtlci1lbmQ9InVybCgjbXktc3ZnX2Zsb3djaGFydC1wb2ludEVuZCkiIHN0eWxlPSJmaWxsOm5vbmU7IiBjbGFzcz0iZWRnZS10aGlja25lc3Mtbm9ybWFsIGVkZ2UtcGF0dGVybi1zb2xpZCBmbG93Y2hhcnQtbGluayBMUy1JMiBMRS1JMyIgaWQ9IkwtSTItSTMtMCIgZD0iTTMxOC4xMjUsMTUuNUwzMjUuODQxLDE1LjVDMzMzLjU1NywxNS41LDM0OC45OSwxNS41LDM2Mi4yMzMsMTcuNDkyQzM3NS40NzUsMTkuNDg0LDM4Ni41MjksMjMuNDY5LDM5Mi4wNTYsMjUuNDYxTDM5Ny41ODMsMjcuNDUzIi8+PHBhdGggbWFya2VyLWVuZD0idXJsKCNteS1zdmdfZmxvd2NoYXJ0LXBvaW50RW5kKSIgc3R5bGU9ImZpbGw6bm9uZTsiIGNsYXNzPSJlZGdlLXRoaWNrbmVzcy1ub3JtYWwgZWRnZS1wYXR0ZXJuLXNvbGlkIGZsb3djaGFydC1saW5rIExTLUkzIExFLUk0IiBpZD0iTC1JMy1JNC0wIiBkPSJNNTAxLjcxOSw0NC43NUw1MDUuODg1LDQ0Ljc1QzUxMC4wNTIsNDQuNzUsNTE4LjM4NSw0NC43NSw1MjUuODM1LDQ0Ljc1QzUzMy4yODUsNDQuNzUsNTM5Ljg1Miw0NC43NSw1NDMuMTM1LDQ0Ljc1TDU0Ni40MTksNDQuNzUiLz48cGF0aCBtYXJrZXItZW5kPSJ1cmwoI215LXN2Z19mbG93Y2hhcnQtcG9pbnRFbmQpIiBzdHlsZT0iZmlsbDpub25lO3N0cm9rZS13aWR0aDoycHg7c3Ryb2tlLWRhc2hhcnJheTozOyIgY2xhc3M9ImVkZ2UtdGhpY2tuZXNzLW5vcm1hbCBlZGdlLXBhdHRlcm4tZG90dGVkIGZsb3djaGFydC1saW5rIExTLUkxIExFLUkzIiBpZD0iTC1JMS1JMy0wIiBkPSJNMTMwLjQ3OCw2MC4yNUwxMzguNDQsNjIuNTQyQzE0Ni40MDIsNjQuODMzLDE2Mi4zMjYsNjkuNDE3LDE4NS44MDIsNzEuNzA4QzIwOS4yNzksNzQsMjQwLjMwNyw3NCwyNzEuMzM2LDc0QzMwMi4zNjUsNzQsMzMzLjM5Myw3NCwzNTQuNDM0LDcyLjAwOEMzNzUuNDc1LDcwLjAxNiwzODYuNTI5LDY2LjAzMSwzOTIuMDU2LDY0LjAzOUwzOTcuNTgzLDYyLjA0NyIvPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVscyI+PGcgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMCwgMCkiIGNsYXNzPSJsYWJlbCI+PGZvcmVpZ25PYmplY3QgaGVpZ2h0PSIwIiB3aWR0aD0iMCI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPjwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyBjbGFzcz0iZWRnZUxhYmVsIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLCAwKSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjAiIHdpZHRoPSIwIj48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9ImVkZ2VMYWJlbCI+PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIGNsYXNzPSJlZGdlTGFiZWwiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsIDApIiBjbGFzcz0ibGFiZWwiPjxmb3JlaWduT2JqZWN0IGhlaWdodD0iMCIgd2lkdGg9IjAiPjxkaXYgc3R5bGU9ImRpc3BsYXk6IGlubGluZS1ibG9jazsgd2hpdGUtc3BhY2U6IG5vd3JhcDsiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hodG1sIj48c3BhbiBjbGFzcz0iZWRnZUxhYmVsIj48L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjcxLjMzNTkzNzUsIDc0KSIgY2xhc3M9ImVkZ2VMYWJlbCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTY4LjA4NTkzNzUsIC04KSIgY2xhc3M9ImxhYmVsIj48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTM2LjE3MTg3NSI+PGRpdiBzdHlsZT0iZGlzcGxheTogaW5saW5lLWJsb2NrOyB3aGl0ZS1zcGFjZTogbm93cmFwOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiPjxzcGFuIGNsYXNzPSJlZGdlTGFiZWwiPkZyYW1lIGFsbG9jYXRvciByZWFkeTwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48L2c+PGcgY2xhc3M9Im5vZGVzIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg3Ni42MjUsIDQ0Ljc1KSIgZGF0YS1pZD0iSTEiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1JMS0wIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTUzLjI1IiB5PSItMTUuNSIgeD0iLTc2LjYyNSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTY5LjEyNSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTM4LjI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+MS4gU2V0IFRMUyBmcmFtZSBhbGxvYzwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNzEuMzM1OTM3NSwgMTUuNSkiIGRhdGEtaWQ9IkkyIiBkYXRhLW5vZGU9InRydWUiIGlkPSJmbG93Y2hhcnQtSTItMSIgY2xhc3M9Im5vZGUgZGVmYXVsdCBkZWZhdWx0IGZsb3djaGFydC1sYWJlbCI+PHJlY3QgaGVpZ2h0PSIzMSIgd2lkdGg9IjkzLjU3ODEyNSIgeT0iLTE1LjUiIHg9Ii00Ni43ODkwNjI1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMzkuMjg5MDYyNSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iNzguNTc4MTI1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+Mi4gQ2FsbCB0YXNrKCk8L3NwYW4+PC9kaXY+PC9mb3JlaWduT2JqZWN0PjwvZz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDQ1LjU3MDMxMjUsIDQ0Ljc1KSIgZGF0YS1pZD0iSTMiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1JMy0zIiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTEyLjI5Njg3NSIgeT0iLTE1LjUiIHg9Ii01Ni4xNDg0Mzc1IiByeT0iMCIgcng9IjAiIHN0eWxlPSIiIGNsYXNzPSJiYXNpYyBsYWJlbC1jb250YWluZXIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNDguNjQ4NDM3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iOTcuMjk2ODc1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+My4gb3BlcmF0b3IgbmV3PC9zcGFuPjwvZGl2PjwvZm9yZWlnbk9iamVjdD48L2c+PC9nPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDYxMy43MDMxMjUsIDQ0Ljc1KSIgZGF0YS1pZD0iSTQiIGRhdGEtbm9kZT0idHJ1ZSIgaWQ9ImZsb3djaGFydC1JNC01IiBjbGFzcz0ibm9kZSBkZWZhdWx0IGRlZmF1bHQgZmxvd2NoYXJ0LWxhYmVsIj48cmVjdCBoZWlnaHQ9IjMxIiB3aWR0aD0iMTIzLjk2ODc1IiB5PSItMTUuNSIgeD0iLTYxLjk4NDM3NSIgcnk9IjAiIHJ4PSIwIiBzdHlsZT0iIiBjbGFzcz0iYmFzaWMgbGFiZWwtY29udGFpbmVyIi8+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTU0LjQ4NDM3NSwgLTgpIiBzdHlsZT0iIiBjbGFzcz0ibGFiZWwiPjxyZWN0Lz48Zm9yZWlnbk9iamVjdCBoZWlnaHQ9IjE2IiB3aWR0aD0iMTA4Ljk2ODc1Ij48ZGl2IHN0eWxlPSJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IHdoaXRlLXNwYWNlOiBub3dyYXA7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94aHRtbCI+PHNwYW4gY2xhc3M9Im5vZGVMYWJlbCI+NC4gYXdhaXRfc3VzcGVuZDwvc3Bhbj48L2Rpdj48L2ZvcmVpZ25PYmplY3Q+PC9nPjwvZz48L2c+PC9nPjwvZz48L3N2Zz4=" alt /></p>
 <h3 id="type-visibility-and-erasure">7.2 Type Visibility and
 Erasure</h3>
 <p>In <code>std::execution</code>, sender types encode the entire
@@ -2508,7 +2518,7 @@ type needs:</p>
 <span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>        <span class="bu">std::</span>noop_coroutine<span class="op">()};</span></span>
 <span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span><span class="op">:</span></span>
-<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Frame allocation using thread-local allocator.</span></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Frame allocation using thread-local frame allocator.</span></span>
 <span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Stores the memory_resource* at the end of each</span></span>
 <span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// frame so deallocation is correct even when TLS</span></span>
 <span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// has changed.</span></span>
@@ -2622,9 +2632,9 @@ type needs:</p>
 <ul>
 <li><strong>Frame allocation</strong>:
 <code>operator new</code>/<code>delete</code> using the thread-local
-frame allocator, with the allocator pointer stored via
+frame allocator, with the frame allocator pointer stored via
 <code>memcpy</code> at the end of each frame for correct deallocation.
-Bypasses virtual dispatch for the recycling allocator</li>
+Bypasses virtual dispatch for the recycling frame allocator</li>
 <li><strong>Continuation support</strong>:
 <code>set_continuation</code>/<code>continuation</code> for
 unconditional symmetric transfer at <code>final_suspend</code></li>
@@ -2670,16 +2680,16 @@ smaller than we expected.</p>
 <code>dispatch</code> and <code>post</code> - suffice for I/O
 workloads.</p></li>
 <li><p><strong>A clear responsibility model.</strong> The application
-decides execution, allocation, and stop policy at the launch site.
+decides execution, frame allocation, and stop policy at the launch site.
 Coroutine algorithms remain free of cross-cutting concerns.</p></li>
 <li><p><strong>Complete type hiding.</strong> Executor types do not leak
 into public interfaces. Platform I/O types remain hidden in translation
 units. Composed algorithms expose only concrete task return types. This
 directly enables ABI stability and separate compilation.</p></li>
 <li><p><strong>Forward context propagation.</strong> Execution context
-flows with control flow. The allocator is available before the frame is
-allocated. The environment is available from the first suspension
-point.</p></li>
+flows with control flow. The frame allocator is available before the
+frame is allocated. The environment is available from the first
+suspension point.</p></li>
 <li><p><strong>A conscious tradeoff.</strong> One pointer indirection
 per I/O operation (~1-2 nanoseconds <sup>[14]</sup>) buys encapsulation,
 ABI stability, and fast compilation. For I/O-bound workloads where
@@ -2781,7 +2791,7 @@ workloads.</p>
 <span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">struct</span> io_env <span class="op">{</span></span>
 <span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>    executor_ref executor<span class="op">;</span></span>
 <span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>    stop_token stop_token<span class="op">;</span></span>
-<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>    pmr<span class="op">::</span>memory_resource<span class="op">*</span> allocator <span class="op">=</span> <span class="kw">nullptr</span><span class="op">;</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>    pmr<span class="op">::</span>memory_resource<span class="op">*</span> frame_allocator <span class="op">=</span> <span class="kw">nullptr</span><span class="op">;</span></span>
 <span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">};</span></span>
 <span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>1 The struct <code>io_env</code> holds the execution environment
@@ -2796,10 +2806,10 @@ the coroutine chain.</p>
 <p>4 The <code>stop_token</code> member carries the cancellation token
 for the chain. I/O objects at the end of the chain observe this token to
 support cooperative cancellation.</p>
-<p>5 The <code>allocator</code> member, when non-null, identifies the
-memory resource used for coroutine frame allocation in the chain. A null
-value indicates that no allocator was specified at the launch site; the
-implementation is free to use any allocation strategy.</p>
+<p>5 The <code>frame_allocator</code> member, when non-null, identifies
+the memory resource used for coroutine frame allocation in the chain. A
+null value indicates that no frame allocator was specified at the launch
+site; the implementation is free to use any allocation strategy.</p>
 <h3 id="concepts-ioawait.concepts">10.3 Concepts [ioawait.concepts]</h3>
 <h4 id="concept-io_awaitable-ioawait.concepts.awaitable">10.3.1 Concept
 <code>io_awaitable</code> [ioawait.concepts.awaitable]</h4>
@@ -2927,10 +2937,10 @@ exception.</td>
 <td><code>p.set_environment(env)</code></td>
 <td><code>void</code></td>
 <td><em>Effects:</em> Sets the <code>io_env</code> pointer that
-propagates executor, stop token, and allocator through the coroutine
-chain. Shall not exit via an exception. <em>Preconditions:</em>
-<code>env</code> points to an <code>io_env</code> whose lifetime exceeds
-that of the coroutine.</td>
+propagates executor, stop token, and frame allocator through the
+coroutine chain. Shall not exit via an exception.
+<em>Preconditions:</em> <code>env</code> points to an
+<code>io_env</code> whose lifetime exceeds that of the coroutine.</td>
 </tr>
 <tr>
 <td><code>p.result()</code></td>
@@ -3390,11 +3400,11 @@ call to <code>destroy()</code>.</p>
 <p>1 <em>Returns:</em> The memory resource set via
 <code>set_frame_allocator</code>. The default value is
 implementation-defined and shall not be null. [ <em>Note:</em> A quality
-implementation uses a recycling allocator for coroutine frames. <em>-
-end note</em> ]</p>
-<p>2 <em>Remarks:</em> This function provides the default allocator for
-coroutine frames launched with executors from this context when no
-allocator is specified at the launch site.</p>
+implementation uses a recycling frame allocator for coroutine frames.
+<em>- end note</em> ]</p>
+<p>2 <em>Remarks:</em> This function provides the default frame
+allocator for coroutine frames launched with executors from this context
+when no frame allocator is specified at the launch site.</p>
 <div class="sourceCode" id="cb68"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> set_frame_allocator<span class="op">(</span>pmr<span class="op">::</span>memory_resource<span class="op">*</span> mr<span class="op">)</span> <span class="kw">noexcept</span><span class="op">;</span></span></code></pre></div>
 <p>3 <em>Effects:</em> Sets the memory resource to be returned by
 subsequent calls to <code>get_frame_allocator()</code>.</p>
@@ -3414,12 +3424,12 @@ to the wrapper. The wrapper is owned by the
 <em>Cpp17Allocator</em> requirements. <code>Allocator</code> is copy
 constructible.</p>
 <p>7 [ <em>Note:</em> The frame allocator is a quality of implementation
-concern. A conforming implementation may ignore the allocator parameter
-entirely, and programs should still behave correctly. The allocator
-mechanism is provided to enable performance optimizations such as
-thread-local recycling pools or bounded allocation strategies, but
-correct program behavior must not depend on a specific allocation
-strategy being used. <em>- end note</em> ]</p>
+concern. A conforming implementation may ignore the frame allocator
+parameter entirely, and programs should still behave correctly. The
+frame allocator mechanism is provided to enable performance
+optimizations such as thread-local recycling pools or bounded allocation
+strategies, but correct program behavior must not depend on a specific
+frame allocation strategy being used. <em>- end note</em> ]</p>
 <h4 id="execution_context-target-access-ioawait.execctx.target">10.5.5
 <code>execution_context</code> target access
 [ioawait.execctx.target]</h4>
@@ -3459,18 +3469,19 @@ expression <code>f(task)</code> is valid when <code>task</code>
 satisfies <code>io_runnable</code>.</p>
 <p>2 <em>Effects:</em> When <code>f(task)</code> is invoked:</p>
 <ul>
-<li>(2.1) Sets the thread-local frame allocator to the allocator
+<li>(2.1) Sets the thread-local frame allocator to the frame allocator
 specified in <code>Args</code>, or to
-<code>ex.context().get_frame_allocator()</code> if no allocator is
+<code>ex.context().get_frame_allocator()</code> if no frame allocator is
 specified.</li>
 <li>(2.2) Evaluates <code>task</code> (which allocates the coroutine
-frame using the thread-local allocator).</li>
+frame using the thread-local frame allocator).</li>
 <li>(2.3) Calls
 <code>task.handle().promise().set_environment(io_env{ex, token, alloc})</code>
 where <code>token</code> is the stop token specified in
 <code>Args</code>, or a default-constructed <code>stop_token</code> if
-none is specified, and <code>alloc</code> is the allocator specified in
-<code>Args</code>, or <code>nullptr</code> if none is specified.</li>
+none is specified, and <code>alloc</code> is the frame allocator
+specified in <code>Args</code>, or <code>nullptr</code> if none is
+specified.</li>
 <li>(2.4) Calls <code>task.handle().promise().set_continuation(h)</code>
 where <code>h</code> is a coroutine handle for the trampoline that will
 process completion.</li>
@@ -3483,8 +3494,8 @@ specified in <code>Args</code>, arranges for them to be invoked when
 <p>3 <em>Remarks:</em> <code>Args</code> may include:</p>
 <ul>
 <li>A <code>stop_token</code> to propagate cancellation signals.</li>
-<li>An allocator satisfying the <em>Allocator</em> requirements, or a
-<code>pmr::memory_resource*</code>, used to allocate all coroutine
+<li>A frame allocator satisfying the <em>Allocator</em> requirements, or
+a <code>pmr::memory_resource*</code>, used to allocate all coroutine
 frames in the chain.</li>
 <li>A completion handler invoked with the task’s result value upon
 successful completion.</li>
@@ -3499,15 +3510,15 @@ the task coroutine.</p>
 <code>run_async(ex)(task())</code> is required because of coroutine
 allocation timing. The outer expression <code>run_async(ex)</code> must
 complete - returning the callable and establishing the thread-local
-allocator - before <code>task()</code> is evaluated. This ordering is
-guaranteed by [expr.call] in C++17 and later: “The postfix-expression is
-sequenced before each expression in the expression-list.” <em>- end
+frame allocator - before <code>task()</code> is evaluated. This ordering
+is guaranteed by [expr.call] in C++17 and later: “The postfix-expression
+is sequenced before each expression in the expression-list.” <em>- end
 note</em> ]</p>
 <p>6 [ <em>Example:</em></p>
 <div class="sourceCode" id="cb73"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Basic launch</span></span>
 <span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span>ioc<span class="op">.</span>get_executor<span class="op">())(</span>my_task<span class="op">());</span></span>
 <span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a><span class="co">// With stop token and allocator</span></span>
+<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a><span class="co">// With stop token and frame allocator</span></span>
 <span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span>ex<span class="op">,</span> source<span class="op">.</span>get_token<span class="op">(),</span> my_allocator<span class="op">)(</span>my_task<span class="op">());</span></span>
 <span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a><span class="co">// With completion handlers</span></span>
@@ -3529,11 +3540,11 @@ satisfies <code>io_runnable</code>, and returns an awaitable object
 <code>a</code>.</p>
 <p>2 <em>Effects:</em> When <code>f(task)</code> is invoked:</p>
 <ul>
-<li>(2.1) Sets the thread-local frame allocator to the allocator
-specified in <code>Args</code>, or inherits the caller’s allocator if
-none is specified.</li>
+<li>(2.1) Sets the thread-local frame allocator to the frame allocator
+specified in <code>Args</code>, or inherits the caller’s frame allocator
+if none is specified.</li>
 <li>(2.2) Evaluates <code>task</code> (which allocates the coroutine
-frame using the thread-local allocator).</li>
+frame using the thread-local frame allocator).</li>
 <li>(2.3) Returns an awaitable <code>a</code> that stores the executor
 (if provided), stop token (if provided), and the task.</li>
 </ul>
@@ -3557,8 +3568,8 @@ promise type satisfies <code>io_runnable</code>.</p>
 <p>5 <em>Remarks:</em> <code>Args</code> may include:</p>
 <ul>
 <li>A <code>stop_token</code> to override the caller’s stop token.</li>
-<li>An allocator satisfying the <em>Allocator</em> requirements, or a
-<code>pmr::memory_resource*</code>, used for coroutine frame
+<li>A frame allocator satisfying the <em>Allocator</em> requirements, or
+a <code>pmr::memory_resource*</code>, used for coroutine frame
 allocation.</li>
 </ul>
 <p>6 <em>Remarks:</em> When no executor is provided, the task inherits

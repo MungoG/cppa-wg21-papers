@@ -1,7 +1,7 @@
 ---
 title: "The Sender Sub-Language"
 document: P4014R0
-date: 2026-02-17
+date: 2026-02-20
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"
@@ -92,7 +92,7 @@ The example uses four algorithms:
 | `timeout`          | used                | absent  |
 | `first_successful` | used                | absent  |
 
-`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed. [D0001R0](https://wg21.link/d0001r0)<sup>[58]</sup> ("When `when_any`?") examines the gap.
+`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed. Three of the four algorithms in the motivating example for `std::execution` are not part of C++26.
 
 ---
 
@@ -140,7 +140,7 @@ Senders were positioned as the optimization path for the remaining 10%:
 
 > *"The overwhelming benefit of coroutines in C++ is its ability to make your async scopes line up with lexical scopes."*
 
-The post ended with a promise: *"Next post, I'll introduce these library abstractions, which are the subject of the C++ standard proposal [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>."*
+The post ended with a promise: *"Next post, I'll introduce these library abstractions, which are the subject of the C++ standard proposal [P2300](https://wg21.link/p2300)."*
 
 **2024.** Eric Niebler published ["What are Senders Good For, Anyway?"](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)<sup>[13]</sup> one month before the Tokyo meeting where P2300 received design approval. The reference implementation, [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup>, is maintained under NVIDIA's GitHub organization. The framing had changed:
 
@@ -158,7 +158,7 @@ Senders were now the foundation. Coroutines were one of several ways to consume 
 | 2024      | "What are Senders Good For, Anyway?" | [P2300R10](https://wg21.link/p2300r10); [P3164R0](https://wg21.link/p3164r0) ("Improving Diagnostics") | Senders are the foundation                   |
 | 2025-2026 | (no blog post)                       | [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization"): early customization described as "irreparably broken"      | Design under active rework                   |
 
-Between 2017 and 2024, the emphasis changed. In 2017, the vision was coroutines and ranges. By 2020, coroutines were the primary model and senders were the optimization path for hot code. By 2024, as the problems being solved turned toward heterogeneous computing and GPU dispatch, senders naturally received more attention and the Sender Sub-Language became the foundation of `std::execution`.
+Between 2017 and 2024, the emphasis changed. In 2017, the vision was coroutines and ranges. By 2020, coroutines were the primary model and senders were the optimization path for hot code. By 2024, as the problems being solved turned toward heterogeneous computing and GPU dispatch, senders naturally received more attention, and the Sender Sub-Language became the foundation of `std::execution`.
 
 The question is not which discovery was right. Both were. Coroutines are already standardized. The question is whether the committee should give asynchronous I/O the same domain-specific accommodation it gave heterogeneous compute.
 
@@ -329,7 +329,7 @@ task<U> fold_left(auto first, auto last, U init, auto f) {
 
 The sender version above demonstrates recursive Kleisli composition with type-erased monadic returns. The `fold_left_fn` callable object recursively composes senders: each step applies the folding function and then constructs a new sender that folds the remainder. The return type is [`any_sender_of<>`](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp)<sup>[24]</sup> because the recursive type would otherwise be infinite - type erasure breaks the recursion at the cost of a dynamic allocation per step.
 
-The `any_sender_of` type is provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation, which is ahead of the standard in this area. The C++26 working paper does not yet include a type-erased sender. The stdexec team has implemented the facility that recursive sender composition requires; the standard will presumably follow in a future revision.
+The `any_sender_of` type is provided by the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[23]</sup> reference implementation, which is ahead of the standard in this area. The C++26 working paper does not yet include a type-erased sender. The stdexec team has implemented the facility that recursive sender composition requires.
 
 ### 5.6 The Backtracker
 
@@ -532,7 +532,7 @@ auto retry(F make_sender) -> task</*value type*/> {
 }
 ```
 
-The question is whether Regular C++ developers should write asynchronous code this way, or whether simpler alternatives exist for the common case.
+The question is whether regular C++ developers should write asynchronous code this way, or whether simpler alternatives exist for the common case.
 
 ---
 
@@ -547,7 +547,7 @@ The complexity documented in Section 5 is not accidental. It is the price of adm
 | Full type visibility - the compiler sees the entire work graph as a concrete type                                                                                                       | Header-only implementations        |
 | Zero allocation in steady state - the operation state lives on the stack                                                                                                                | Long compile times                 |
 | Compile-time work graph construction - [`connect`](https://eel.is/c++draft/exec.connect) collapses the pipeline into a single type                                                      | The programming model of Section 5 |
-| Deterministic nanosecond-level execution - [HPC Wire](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/) reports performance "on par with the CUDA implementation," |                     |
+| Deterministic nanosecond-level execution - [HPC Wire](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/) reports performance "on par with the CUDA implementation"  |                                    |
 
 For GPU dispatch, high-frequency trading, embedded systems, and scientific computing, every party involved has opted in. The question is whether domains that do not need these properties - networking, file I/O, ordinary request handling - should be required to pay the same cost, or whether they deserve the same freedom to choose the model that serves them.
 
@@ -630,7 +630,7 @@ Everyone can win.
 
 ## 7. Conclusion
 
-C++26 has a new programming model. It has its own control flow, its own variable binding, its own error handling, and its own type system. It is grounded in four decades of programming language research, and it is already [shipping in production](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work/)<sup>[14]</sup> at NVIDIA and Citadel Securities. That is not nothing. That is an achievement.
+C++26 has a new programming model. It has its own control flow, its own variable binding, and its own error handling. It is grounded in four decades of programming language research, and it is already [shipping in production](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work/)<sup>[14]</sup> at NVIDIA and Citadel Securities. That is not nothing. That is an achievement.
 
 The Sender Sub-Language is here, and it is not going anywhere. The committee adopted it. The implementation exists. Real users depend on it. We should be proud of it - it solves problems that no other C++ async model can touch.
 
@@ -642,11 +642,9 @@ I think we can get there. The precedent exists. The principle is sound. And the 
 
 ## 8. Suggested Straw Polls
 
-> 1. "WG21 evaluated the programming model documented in this paper before adopting `std::execution`."
+1. "`std::execution` serves coroutine-driven async I/O less ideally than heterogeneous compute."
 
-> 2. "Different C++ domains have different asynchronous programming needs."
-
-> 3. "WG21 should give C++ async I/O the same accommodation it gave heterogeneous compute."
+2. "Coroutine-driven async I/O should have the same freedom to optimize for its domain as heterogeneous compute did."
 
 ---
 
@@ -728,18 +726,11 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 32. [SML/NJ](https://www.smlnj.org/). Standard ML of New Jersey (uses CPS as internal representation). https://www.smlnj.org/
 33. [GHC](https://www.haskell.org/ghc/). Glasgow Haskell Compiler. https://www.haskell.org/ghc/
 34. [Chicken Scheme](https://www.call-cc.org/). Scheme implementation using CPS compilation. https://www.call-cc.org/
-35. Haskell [`Just`](https://hackage.haskell.org/package/base/docs/Data-Maybe.html). Data.Maybe module. https://hackage.haskell.org/package/base/docs/Data-Maybe.html
-36. Haskell [`Monad`](https://hackage.haskell.org/package/base/docs/Control-Monad.html). Control.Monad module. https://hackage.haskell.org/package/base/docs/Control-Monad.html
-37. [Kleisli category](https://en.wikipedia.org/wiki/Kleisli_category). Wikipedia. https://en.wikipedia.org/wiki/Kleisli_category
-38. [Delimited continuation](https://en.wikipedia.org/wiki/Delimited_continuation). Wikipedia. https://en.wikipedia.org/wiki/Delimited_continuation
-39. [Curry-Howard correspondence](https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence). Wikipedia. https://en.wikipedia.org/wiki/Curry%E2%80%93Howard_correspondence
-40. [Algebraic effect system](https://en.wikipedia.org/wiki/Effect_system). Wikipedia. https://en.wikipedia.org/wiki/Effect_system
 
 ### NVIDIA CUDA and nvexec
 
 41. [nvexec](https://github.com/NVIDIA/stdexec/tree/main/include/nvexec). GPU-specific sender implementation in the stdexec repository. https://github.com/NVIDIA/stdexec/tree/main/include/nvexec
 42. [`stream_context.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh). GPU stream scheduler and context. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh
-43. [`common.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/common.cuh). Shared GPU sender infrastructure. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/common.cuh
 44. [`bulk.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/bulk.cuh). GPU-specific `bulk` algorithm. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/bulk.cuh
 45. [`then.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/then.cuh). GPU-specific `then` algorithm. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/then.cuh
 46. [`when_all.cuh`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/when_all.cuh). GPU-specific `when_all` algorithm. https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream/when_all.cuh
@@ -757,4 +748,3 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 
 56. [P2300R7](https://wg21.link/p2300r7). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2023. https://wg21.link/p2300r7
 57. [P2175R0](https://wg21.link/p2175r0). Lewis Baker. "Composable cancellation for sender-based async operations." 2020. https://wg21.link/p2175r0
-58. [D0001R0](https://wg21.link/d0001r0). Vinnie Falco, Mungo Gill. "When `when_any`?" 2026. https://wg21.link/d0001r0
