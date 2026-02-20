@@ -372,7 +372,7 @@ Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2
 
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
-Kohlhoff published P2430R0 in August 2021, during the most intensive review period for P2300. The authors were unable to find minutes or polls addressing it in the published committee record. If the paper was reviewed, we would welcome a reference to the proceedings. Appendix A.3 traces the full timeline.
+Kohlhoff presented these observations during the P2300 review and published the slides as P2430R0. It was not a standalone proposal, and there were no polls to find. But the observation was right. Five years and ten revisions later, the tension Kohlhoff identified remains unresolved. Appendix A.3 traces why.
 
 ---
 
@@ -862,19 +862,19 @@ Every name is from P2300R10: `recv_sender`, `async_recv`, `connect`, `start`, `s
 
 ### A.3 Timeline of the Error Channel Question
 
-The partial success problem was not raised once and set aside. It was raised independently, across multiple groups, by participants with different domain backgrounds, over a span of five years. The question was never polled.
+The partial success problem was raised independently, across multiple groups, by participants with different domain backgrounds, over a span of five years. Every proposed resolution carried real costs. The question was never resolved - not for lack of attention, but because the three-channel model may not admit a solution that preserves both compile-time routing and I/O's tuple semantics.
 
 - **2020 (Nov):** Niebler's ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> blog post establishes the three-channel model publicly. Acknowledges CPS is harder to write and read than coroutines.
 
-- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[56]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. The concern was not addressed. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No poll on partial success.
+- **2020 (Feb, Prague):** During review of [P1678R2](https://wg21.link/p1678r2)<sup>[56]</sup> ("Callbacks and Composition"), a participant raised that asynchronous operations need not fail completely or succeed completely, and that no pattern in the proposal supports partial success. The response was that nothing would be different. LEWG polled to encourage more work (SF:7/F:14/N:9/A:3/SA:0). No resolution on partial success emerged.
 
 - **2021 (Feb, SG4 telecon):** During review of P0958R3, a participant stated that sender/receivers have a loss because they do not have success/partial-success. Another suggested adapting from success/error; the response was that the error does not carry information. No poll on the error channel design.
 
 - **2021 (Jul-Oct, LEWG telecon series):** The partial success question was debated across at least five LEWG telecons during the P2300 review. Multiple participants raised incompatible positions. One argued that partial success calling `set_value` does not work for generic retry algorithms. Others described `set_error` as effectively `set_exception` - an error channel that does not serve error conditions. The August 17, 2021 LEWG outcome document explicitly listed "Better explain how partial success works with senders/receivers" as open guidance to the P2300 authors - an acknowledgment that the question was unresolved. During the October 4, 2021 LEWG telecon, a participant (who gave the authors permission to anonymously quote what they said) indicated that partial success could be addressed through async streams once the initial sender/receiver facilities were in place, with the expectation that such streams could then be standardized. The async streams facility was never proposed, never standardized, and is not in the C++26 working draft.
 
-- **2021 (Aug):** Chris Kohlhoff published [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300") identifying that partial results must be communicated down the `set_value` channel due to limitations of `set_error` and `set_done`. Published during P2300's most intensive review period. No committee response found in the published record.
+- **2021 (Aug):** Kohlhoff published [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"), slides from a presentation during the P2300 review, identifying that partial results must be communicated down the `set_value` channel due to limitations of `set_error` and `set_done`. Independent confirmation of the same tension the preceding telecons debated, from the author of Asio.
 
-- **2022-2024:** [P2300R4](https://wg21.link/p2300r4)<sup>[2]</sup> through [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> published. Three-channel model unchanged across all revisions. P2430R0 not addressed.
+- **2022-2024:** [P2300R4](https://wg21.link/p2300r4)<sup>[2]</sup> through [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> published. Three-channel model unchanged across all revisions.
 
 - **2023:** [P2762R2](https://wg21.link/p2762r2)<sup>[4]</sup> (Dietmar K&uuml;hl, "Sender/Receiver Interface for Networking") preserves the proven `(error_code, size_t)` convention from Asio - implicitly acknowledging I/O needs both values together.
 
@@ -886,7 +886,7 @@ The partial success problem was not raised once and set aside. It was raised ind
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). Five years of active iteration on P2300 - R0 through R10, plus dozens of follow-on papers - have not produced a resolution. The three-channel model is a property of the sender model, not a bug. The unresolved timeline is what structural friction looks like from the inside.
+The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
 
 ---
 
