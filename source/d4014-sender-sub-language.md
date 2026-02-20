@@ -92,7 +92,7 @@ The example uses four algorithms:
 | `timeout`          | used                | absent  |
 | `first_successful` | used                | absent  |
 
-`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed. [D0001R0](https://wg21.link/d0001r0)<sup>[58]</sup> ("When `when_any`?") examines the gap.
+`stop_when` appeared in [P2175R0](https://wg21.link/p2175r0)<sup>[57]</sup> (2020), was present through [P2300R7](https://wg21.link/p2300r7)<sup>[56]</sup> (2023), and was removed before [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> (2024). No replacement was proposed.
 
 ---
 
@@ -757,4 +757,3 @@ and Dietmar K&uuml;hl for their valuable feedback in the development of this pap
 
 56. [P2300R7](https://wg21.link/p2300r7). Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2023. https://wg21.link/p2300r7
 57. [P2175R0](https://wg21.link/p2175r0). Lewis Baker. "Composable cancellation for sender-based async operations." 2020. https://wg21.link/p2175r0
-58. [D0001R0](https://wg21.link/d0001r0). Vinnie Falco, Mungo Gill. "When `when_any`?" 2026. https://wg21.link/d0001r0
