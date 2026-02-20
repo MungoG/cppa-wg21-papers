@@ -13,9 +13,9 @@ audience: LEWG
 
 This paper asks: *what would an execution model look like if designed from the ground up for coroutine-only asynchronous I/O?*
 
-We built one and found out. A group of practitioners implemented a complete networking library using only coroutines - no callbacks, no sender/receiver chains, no completion tokens. The fundamental abstraction which emerged is the _IoAwaitable_ protocol: a system for associating a coroutine with an executor, stop token, and allocator, and propagating this context forward through a coroutine chain to the operating system API boundary where asynchronous operations are performed.
+We built one and found out. A group of practitioners implemented a complete networking library using only coroutines. The fundamental abstraction which emerged is the _IoAwaitable_ protocol: a system for associating a coroutine with an executor, stop token, and frame allocator, and propagating this context forward through a coroutine chain to the operating system API boundary where asynchronous operations are performed.
 
-This paper presents our findings. The protocol is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps allocator policy out of coroutine signatures. It delivers correctness through compile-time protocol checking, ergonomics through clean interfaces free of cross-cutting concerns, and performance through zero-allocation steady-state operation with recycling allocators. We compare our design against `std::execution` ([P2300R10](https://wg21.link/p2300r10))<sup>[3]</sup> and its evolution ([P3826](https://wg21.link/p3826))<sup>[6]</sup> to illuminate where the designs diverge and why.
+This paper presents our findings. The protocol is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps frame allocator policy out of coroutine signatures. It delivers correctness through compile-time protocol checking, ergonomics through clean interfaces free of cross-cutting concerns, and performance through zero-allocation steady-state operation with recycling allocators. We compare our design against `std::execution` ([P2300R10](https://wg21.link/p2300r10))<sup>[3]</sup> and its evolution ([P3826](https://wg21.link/p3826))<sup>[6]</sup> to illuminate where the designs diverge and why.
 
 ---
 
@@ -29,9 +29,9 @@ This paper presents our findings. The protocol is small: two concepts, a type-er
 
 ## 1. Introduction
 
-This paper is a research report. We set out to answer a practical question: if you design a networking library from the ground up for C++ coroutines, what execution model emerges? Not as a thought experiment, but as working code - a complete library with sockets, timers, TLS, DNS resolution, HTTP, and WebSocket support, all built on a coroutine-only foundation.
+This paper is a research report. We set out to answer a practical question: if you design a networking library from the ground up for C++ coroutines, what execution model emerges? Not as a thought experiment, but as working code: a complete library with sockets, timers, TLS, DNS resolution, HTTP, and WebSocket support, all built on a coroutine-only foundation.
 
-The answer surprised us in its simplicity. The protocol that emerged is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps allocator policy out of coroutine signatures - yet it is the foundation from which a complete coroutine-only networking stack can be built. We could not find anything to remove from it without losing function. Like the narrow abstractions that have succeeded in C++: iterators for traversal, RAII for resource lifetime, allocators for memory strategy, it captures one essential property and leaves everything else to the user.
+The answer surprised us in its simplicity. The protocol that emerged is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps frame allocator policy out of coroutine signatures - yet it is the foundation from which a complete coroutine-only networking stack can be built. We could not find anything to remove from it without losing function. Like the narrow abstractions that have succeeded in C++: iterators for traversal, RAII for resource lifetime, allocators for memory strategy, it captures one essential property and leaves everything else to the user.
 
 Readers unfamiliar with event loops, completion handlers, and executor models may find the background in Appendix A helpful before proceeding.
 
@@ -53,7 +53,7 @@ Studying I/O-intensive applications reveals clear patterns. A network server com
 
 - **The application sends stop signals.** A timeout, user abort, or graceful shutdown originates at the launch site and propagates to pending operations. Algorithms need control over stopping behavior: a simple pipeline passes the stop token through, while `when_all` or `when_any` hook the caller's token to an internal stop source with fanout. A good API builds on `std::stop_token` since that is what the standard provides.
 
-- **The application decides allocation policy.** Memory strategies: recycling pools, bounded allocation, per-tenant budgets, these are a property of the coroutine chain. A good API makes stateful allocators a first-class user-facing customization point when it matters, and gets out of the way when sensible defaults suffice.
+- **The application decides frame allocation policy.** Memory strategies for coroutine frames: recycling pools, bounded allocation, per-tenant budgets, these are a property of the coroutine chain. A good API makes the frame allocator a first-class user-facing customization point when it matters, and gets out of the way when sensible defaults suffice.
 
 - **The execution context owns its I/O objects.** A socket registered with epoll on thread A cannot have completions delivered to thread B's epoll. The physical coupling is inherent. The call site cannot and should not know which event loop the socket uses, only the socket knows.
 
@@ -63,7 +63,7 @@ Studying I/O-intensive applications reveals clear patterns. A network server com
 
 Networking has specific requirements that differ from heterogeneous computing. A socket read has **one implementation per platform** - there is no algorithm selection, no hardware heterogeneity to manage. What matters is the contract between the coroutine and the platform: the coroutine suspends, a platform-specific reactor (epoll, IOCP, io_uring) performs the asynchronous operation, and the coroutine resumes in a predictable way. "Predictable" means the application controls which thread resumes it, whether completions are serialized, and whether resumption is inline or deferred.
 
-The _IoAwaitable_ protocol handles this end to end. The executor solves the resumption part: given a suspended coroutine, resume it according to the application's policy. The stop token and the allocator handle the rest. Every executor is bound to an execution context - the object that owns the platform reactor and the I/O objects registered with it. A socket registered with epoll on one context cannot have completions delivered through another; [P2762](https://wg21.link/p2762)<sup>[4]</sup> acknowledges this physical coupling in Section 3.1:
+The _IoAwaitable_ protocol handles this end to end. The executor solves the resumption part: given a suspended coroutine, resume it according to the application's policy. The stop token and the frame allocator handle the rest. Every executor is bound to an execution context - the object that owns the platform reactor and the I/O objects registered with it. A socket registered with epoll on one context cannot have completions delivered through another; [P2762](https://wg21.link/p2762)<sup>[4]</sup> acknowledges this physical coupling in Section 3.1:
 
 > "It was pointed out networking objects like sockets are specific to a context: that is necessary when using I/O Completion Ports or a TLS library and yields advantages when using, e.g., io_uring(2)."
 
@@ -81,11 +81,13 @@ http_client -> http_request -> write -> write_some -> socket
 
 At the end of the chain, the I/O object acts on the token by invoking the appropriate OS primitive - `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, or `close()` on POSIX. The pending operation completes with an error, and the coroutine chain unwinds normally. Cancellation is cooperative and predictable: no operation is forcibly terminated mid-flight.
 
-### 2.3 The Allocator
+### 2.3 The Frame Allocator
 
-Coroutine frames are allocated continuously - every `co_await` may spawn new frames. Without allocation control, heap overhead dominates. Recycling allocators eliminate this by caching recently freed frames for immediate reuse:
+A *frame allocator* is a `memory_resource` used exclusively for coroutine frame allocation. It is not a general-purpose allocator. Coroutine frames follow a narrow pattern: sizes repeat, lifetimes nest, and deallocation order mirrors allocation order. A frame allocator exploits this pattern. A general-purpose allocator cannot.
 
-| Platform    | Allocator        | Time (ms) | vs std::allocator |
+Every `co_await` may spawn new frames. Without allocation control, heap overhead dominates. Recycling frame allocators eliminate this by caching recently freed frames for immediate reuse:
+
+| Platform    | Frame Allocator  | Time (ms) | vs std::allocator |
 |-------------|------------------|----------:|------------------:|
 | MSVC        | Recycling        |   1265.2  |          +210.4%  |
 | MSVC        | mimalloc         |   1622.2  |          +142.1%  |
@@ -93,11 +95,11 @@ Coroutine frames are allocated continuously - every `co_await` may spawn new fra
 | Apple clang | Recycling        |   2297.08 |           +55.2%  |
 | Apple clang | `std::allocator` |   3565.49 |                 - |
 
-The mimalloc result is the critical comparison: a state-of-the-art general-purpose allocator with per-thread caches, yet the recycling allocator is 28% faster. Different deployments need different strategies - bounded pools, per-tenant budgets, allocation tracking - so the execution model must make allocation a first-class customization point. The allocator must also be present at invocation time: `operator new` executes before the coroutine body, so any mechanism that delivers the allocator later arrives too late. Section 5 examines the timing constraint and our solution in detail.
+The mimalloc result is the critical comparison: a state-of-the-art general-purpose allocator with per-thread caches, yet the recycling frame allocator is 28% faster. Different deployments need different strategies - bounded pools, per-tenant budgets, allocation tracking - so the execution model must make frame allocation a first-class customization point. The frame allocator must also be present at invocation time: `operator new` executes before the coroutine body, so any mechanism that delivers the frame allocator later arrives too late. Section 5 examines the timing constraint and our solution in detail.
 
 ### 2.4 Ergonomics
 
-The executor, stop token, and allocator are infrastructure. They should be invisible to every coroutine in the chain except the launch site where the chain begins. A developer writing a route handler, a parser, or a protocol state machine should see none of this machinery - just their business logic expressed as coroutines. But when the developer needs to care - choosing a different executor, wiring up cancellation, selecting an allocation strategy - the API for doing so should be natural, easy to discover, and structured to prevent mistakes.
+The executor, stop token, and frame allocator are infrastructure. They should be invisible to every coroutine in the chain except the launch site where the chain begins. A developer writing a route handler, a parser, or a protocol state machine should see none of this machinery - just their business logic expressed as coroutines. But when the developer needs to care - choosing a different executor, wiring up cancellation, selecting an allocation strategy - the API for doing so should be natural, easy to discover, and structured to prevent mistakes.
 
 ---
 
@@ -116,14 +118,14 @@ flowchart LR
 
 ### 3.1 _IoAwaitable_
 
-The _IoAwaitable_ concept propagates execution context **forward** from caller to callee at every suspension point. The context is three things a coroutine needs for I/O: the executor, the stop token, and the allocator. The entire protocol is captured in one struct and one concept:
+The _IoAwaitable_ concept propagates execution context **forward** from caller to callee at every suspension point. The context is three things a coroutine needs for I/O: the executor, the stop token, and the frame allocator. The entire protocol is captured in one struct and one concept:
 
 ```cpp
 struct io_env
 {
     executor_ref executor;
     std::stop_token stop_token;
-    std::pmr::memory_resource* allocator = nullptr;
+    std::pmr::memory_resource* frame_allocator = nullptr;
 };
 
 template< typename A >
@@ -135,7 +137,7 @@ concept IoAwaitable =
     };
 ```
 
-What makes this work is the two-argument `await_suspend`. The caller's `await_transform` injects the environment as just an extra pointer parameter - no templates, no type leakage. `task<T>` remains `task<T>`, not `task<T, Environment>`. The environment is passed as a pointer, not by value, for two reasons: the launch function - the function that starts the coroutine chain - owns the `io_env` and every coroutine in the chain borrows it, so pointer semantics make the ownership model explicit; and copying an `io_env` is never the right choice, so the API makes it difficult to do accidentally. The allocator is part of the environment and propagates to coroutine frame allocation via a thread-local write-through cache, ensuring it is available before the frame is created (Section 5 covers the mechanism).
+What makes this work is the two-argument `await_suspend`. The caller's `await_transform` injects the environment as just an extra pointer parameter - no templates, no type leakage. `task<T>` remains `task<T>`, not `task<T, Environment>`. The environment is passed as a pointer, not by value, for two reasons: the launch function - the function that starts the coroutine chain - owns the `io_env` and every coroutine in the chain borrows it, so pointer semantics make the ownership model explicit; and copying an `io_env` is never the right choice, so the API makes it difficult to do accidentally. The frame allocator is part of the environment and propagates to coroutine frame allocation via a thread-local write-through cache, ensuring it is available before the frame is created (Section 5 covers the mechanism).
 
 #### Satisfying _IoAwaitable_
 
@@ -231,7 +233,7 @@ concept IoRunnable =
       });
 ```
 
-**Why _IoRunnable_ exists.** Within a coroutine chain, _IoAwaitable_ alone is sufficient - a parent `co_await`s a child, and the compiler handles lifetime, result extraction, and exception propagation natively. But launch functions like `run_async` cannot `co_await` the task. The `run_async` trampoline must be allocated _before_ the task (C++17 evaluation order guarantees this for LIFO allocation ordering with the recycling allocator), so the trampoline exists before the task type is known. It cannot be templated on the task type. Instead, the trampoline type-erases the task, reaching into the promise after the fact to extract results. That requires a common API on every conforming task:
+**Why _IoRunnable_ exists.** Within a coroutine chain, _IoAwaitable_ alone is sufficient - a parent `co_await`s a child, and the compiler handles lifetime, result extraction, and exception propagation natively. But launch functions like `run_async` cannot `co_await` the task. The `run_async` trampoline must be allocated _before_ the task (C++17 evaluation order guarantees this for LIFO allocation ordering with the recycling frame allocator), so the trampoline exists before the task type is known. It cannot be templated on the task type. Instead, the trampoline type-erases the task, reaching into the promise after the fact to extract results. That requires a common API on every conforming task:
 
 - **`handle()`** - Returns the typed coroutine handle. The launch function needs it to start the coroutine and access the promise for type-erased result extraction.
 - **`release()`** - Transfers frame ownership. The task object normally destroys the coroutine frame in its destructor. The launch function takes over lifetime management; `release()` tells the task not to destroy the frame.
@@ -284,7 +286,7 @@ This decoupling enables library authors to write launch utilities that work with
 4. The promise must provide `exception()` returning any stored `std::exception_ptr` (must be `noexcept`)
 5. For non-void tasks, the promise must provide `result()` returning the stored value
 6. The promise's `await_transform` must intercept child awaitables and inject context
-7. Support `operator new` overloads for allocator propagation (read TLS)
+7. Support `operator new` overloads for frame allocator propagation (read TLS)
 
 **Example implementation:**
 
@@ -384,7 +386,7 @@ Two basic functions are needed to launch coroutine chains, and authors can defin
 This uses a two-call syntax where the first call captures context and returns a wrapper. The executor parameter is required. The remaining parameters are optional:
 
 * `std::stop_token` to propagate cancelation signals
-* `alloc` used to allocate **all** frames in the coroutine chain
+* `alloc` frame allocator used to allocate **all** frames in the coroutine chain
 * `h1`, invoked with the task's value at final suspend
 * `h2`, invoked with `std::exception_ptr` on exception
 
@@ -392,7 +394,7 @@ This uses a two-call syntax where the first call captures context and returns a 
 // Basic: executor only
 run_async( ex )( my_task() );
 
-// Full: executor, stop_token, allocator, success handler, error handler
+// Full: executor, stop_token, frame allocator, success handler, error handler
 run_async( ex, st, alloc, h1, h2 )( my_task() );
 
 // Example with handlers
@@ -420,7 +422,7 @@ task<void> parent()
 }
 ```
 
-The executor is stored by value in the awaitable's frame, keeping it alive for the operation's duration. Additionally, `run` provides overloads without an executor parameter that inherit the caller's executor while customizing stop_token or allocator:
+The executor is stored by value in the awaitable's frame, keeping it alive for the operation's duration. Additionally, `run` provides overloads without an executor parameter that inherit the caller's executor while customizing stop_token or frame allocator:
 
 ```cpp
 task<void> cancellable()
@@ -447,7 +449,7 @@ unspecified run( Ex ex, Args&&... args );        // returns wrapper for co_await
 
 1. Accept or provide an executor
 2. Accept or default a stop token
-3. Set thread-local allocator before invoking the child coroutine
+3. Set thread-local frame allocator before invoking the child coroutine
 4. Bootstrap context via `set_environment` on the promise
 5. Manage the task lifetime via `handle()` and `release()`
 6. Handle completion via `exception()` and `result()` on the promise
@@ -470,7 +472,7 @@ void run_async( Ex ex, std::stop_token token, Task task )
 }
 ```
 
-> **Non-normative note.** This simplified example has the allocator ordering problem described in Section 5.1: the task's frame is allocated before `run_async` is called, so any thread-local allocator setup would arrive too late. A correct implementation uses the two-call syntax shown in Section 3.4 - `run_async(ex)(my_task())` - where the first call returns a wrapper that sets up the allocator before the task expression is evaluated. A complete implementation is beyond the scope of this example.
+> **Non-normative note.** This simplified example has the frame allocator ordering problem described in Section 5.1: the task's frame is allocated before `run_async` is called, so any thread-local frame allocator setup would arrive too late. A correct implementation uses the two-call syntax shown in Section 3.4 - `run_async(ex)(my_task())` - where the first call returns a wrapper that sets up the frame allocator before the task expression is evaluated. A complete implementation is beyond the scope of this example.
 
 Because launch functions are constrained on the concept rather than a concrete type, they work with any conforming task implementation. This decoupling enables library authors to write launch utilities that interoperate with user-defined task types.
 
@@ -584,7 +586,7 @@ I/O objects hold a reference to their execution context, and do not have an asso
 
 #### Frame Allocator
 
-The `execution_context` provides `set_frame_allocator` and `get_frame_allocator` as customization points for launchers when no allocator is specified at the launch site. Since every launcher requires an _Executor_, the execution context naturally coordinates frame allocation policy. The default allocator can optimize for speed using recycling with thread-local pools, or for economy on constrained platforms. Using `std::pmr::memory_resource*` allows implementations to change the default without breaking ABI. Applications can set a policy once via `set_frame_allocator`, and all coroutines launched with the default will use it - including those in foreign libraries, without propagating allocator template parameters or recompiling.
+The `execution_context` provides `set_frame_allocator` and `get_frame_allocator` as customization points for launchers when no frame allocator is specified at the launch site. Since every launcher requires an _Executor_, the execution context naturally coordinates frame allocation policy. The default frame allocator can optimize for speed using recycling with thread-local pools, or for economy on constrained platforms. Using `std::pmr::memory_resource*` allows implementations to change the default without breaking ABI. Applications can set a policy once via `set_frame_allocator`, and all coroutines launched with the default will use it - including those in foreign libraries, without propagating allocator template parameters or recompiling.
 
 ### 4.4 ExecutionContext concept
 
@@ -613,9 +615,9 @@ The destructor semantics are also significant: when an `ExecutionContext` is des
 
 ---
 
-## 5. The Allocator
+## 5. The Frame Allocator
 
-Achieving high performance levels with coroutines demands allocator customization, yet allocator propagation presents a unique challenge. Unlike executors and stop tokens, which can be injected at suspension points via `await_transform`, the allocator must be available *before* the coroutine frame exists. This section examines why standard approaches fail and presents our solution.
+Achieving high performance levels with coroutines demands frame allocator customization, yet frame allocator propagation presents a unique challenge. Unlike executors and stop tokens, which can be injected at suspension points via `await_transform`, the frame allocator must be available *before* the coroutine frame exists. This section examines why standard approaches fail and presents our solution.
 
 ### 5.1 The Timing Constraint
 
@@ -630,10 +632,10 @@ spawn( my_coro(sock) );  // my_coro(sock) evaluated BEFORE calling spawn (too la
 
 ### 5.2 The Awkward Approach
 
-C++ provides exactly one hook at the right time: **`promise_type::operator new`**. The compiler passes coroutine arguments directly to this overload, allowing the promise to inspect parameters and select an allocator. The standard pattern uses `std::allocator_arg_t` as a tag to mark the allocator parameter:
+C++ provides exactly one hook at the right time: **`promise_type::operator new`**. The compiler passes coroutine arguments directly to this overload, allowing the promise to inspect parameters and select a frame allocator. The standard pattern uses `std::allocator_arg_t` as a tag to mark the allocator parameter:
 
 ```cpp
-// Free function: allocator intrudes on the parameter list
+// Free function: frame allocator intrudes on the parameter list
 task<int> fetch_data( std::allocator_arg_t, MyAllocator alloc,
                       socket& sock, buffer& buf ) { ... }
 
@@ -662,7 +664,7 @@ struct promise_type {
 };
 ```
 
-This approach works, but it violates encapsulation. The coroutine's parameter list - which should describe the algorithm's interface - is polluted with allocation machinery unrelated to its purpose. A function that fetches data from a socket should not need to know or care about memory policy. Worse, every coroutine in a call chain must thread the allocator through its signature, even if it never uses it directly. The allocator becomes viral, infecting interfaces throughout the codebase.
+This approach works, but it violates encapsulation. The coroutine's parameter list - which should describe the algorithm's interface - is polluted with frame allocation machinery unrelated to its purpose. A function that fetches data from a socket should not need to know or care about memory policy. Worse, every coroutine in a call chain must thread the frame allocator through its signature, even if it never uses it directly. The frame allocator becomes viral, infecting interfaces throughout the codebase.
 
 To make this concrete, consider a real HTTP route handler as written with _IoAwaitable_:
 
@@ -682,7 +684,7 @@ route_task https_redirect(route_params& rp)
 }
 ```
 
-Now consider the same handler under the `allocator_arg_t` approach. The allocator must appear in the parameter list, and every coroutine the handler calls must also accept it:
+Now consider the same handler under the `allocator_arg_t` approach. The frame allocator must appear in the parameter list, and every coroutine the handler calls must also accept it:
 
 ```cpp
 // allocator_arg_t: allocation machinery intrudes on every signature
@@ -701,7 +703,7 @@ route_task https_redirect(std::allocator_arg_t, Alloc alloc,
 }
 ```
 
-The handler's *purpose* is identical. The allocator adds nothing to its logic - it is a cross-cutting concern being threaded through the interface. The pollution compounds through a call chain. Consider a handler that calls two sub-coroutines:
+The handler's *purpose* is identical. The frame allocator adds nothing to its logic - it is a cross-cutting concern being threaded through the interface. The pollution compounds through a call chain. Consider a handler that calls two sub-coroutines:
 
 ```cpp
 // IoAwaitable: the chain is clean
@@ -716,7 +718,7 @@ route_task handle_upload(route_params& rp)
 ```
 
 ```cpp
-// allocator_arg_t: every level in the chain carries the allocator
+// allocator_arg_t: every level in the chain carries the frame allocator
 route_task handle_upload(std::allocator_arg_t, Alloc alloc,
                          route_params& rp)
 {
@@ -728,23 +730,23 @@ route_task handle_upload(std::allocator_arg_t, Alloc alloc,
 }
 ```
 
-Every `co_await` in the chain must forward the allocator. Every function in the chain must accept it. `parse_metadata` and `store_file` must thread it through to their own sub-coroutines, and so on down. In a real server with dozens of route handlers, each calling several sub-coroutines, every author of every handler must remember to pass the allocator at every call site. This is the opposite of ergonomic.
+Every `co_await` in the chain must forward the frame allocator. Every function in the chain must accept it. `parse_metadata` and `store_file` must thread it through to their own sub-coroutines, and so on down. In a real server with dozens of route handlers, each calling several sub-coroutines, every author of every handler must remember to pass the frame allocator at every call site. This is the opposite of ergonomic.
 
-Containers in the standard library accept allocators because they are written once by experts and used many times. Coroutine handlers are the reverse: they are written by application developers, often in large numbers, for specific business logic. Burdening every handler with allocation plumbing is a significant ergonomic cost.
+Containers in the standard library accept allocators because they are written once by experts and used many times. Coroutine handlers are the reverse: they are written by application developers, often in large numbers, for specific business logic. Burdening every handler with frame allocation plumbing is a significant ergonomic cost.
 
 ### 5.3 Our Solution: Thread-Local Propagation
 
-Thread-local propagation is the only approach that maintains clean interfaces while respecting the timing constraint. The premise is simple: **allocator customization happens at launch sites**, not within coroutine algorithms. Functions like `run_async` and `run` accept allocator parameters because they represent application policy decisions. Coroutine algorithms don't need to "allocator-hop" - they simply inherit whatever allocator the application has established.
+Thread-local propagation is the only approach that maintains clean interfaces while respecting the timing constraint. The premise is simple: **frame allocator customization happens at launch sites**, not within coroutine algorithms. Functions like `run_async` and `run` accept frame allocator parameters because they represent application policy decisions. Coroutine algorithms don't need to "allocator-hop" - they simply inherit whatever frame allocator the application has established.
 
 Our approach:
 
-1. **Receive the allocator at launch time.** The launch site (`run_async`, `run`) accepts a fully-typed _Allocator_ parameter, or a `std::pmr::memory_resource*` at the caller's discretion.
+1. **Receive the frame allocator at launch time.** The launch site (`run_async`, `run`) accepts a fully-typed _Allocator_ parameter, or a `std::pmr::memory_resource*` at the caller's discretion.
 
 2. **Type-erase it.** Typed allocators are stored as `std::pmr::memory_resource*`, providing a uniform interface for all downstream coroutines.
 
-3. **Maintain lifetime via frame extension.** The allocator lives in the launch coroutine's frame. Because coroutine parameter lifetimes extend until final suspension, the allocator remains valid for the entire operation chain.
+3. **Maintain lifetime via frame extension.** The frame allocator lives in the launch coroutine's frame. Because coroutine parameter lifetimes extend until final suspension, the frame allocator remains valid for the entire operation chain.
 
-4. **Propagate through thread-locals.** Before any child coroutine is invoked, the current allocator is set in TLS. The child's `promise_type::operator new` reads it. TLS serves as a delivery mechanism, not the source of truth. The canonical allocator resides in `io_env`, a heap-stable structure owned by the launch coroutine's frame. Every resume point restores TLS from `io_env`, making TLS a write-through cache that is always repopulated before it is read. This is an example implementation (non-normative):
+4. **Propagate through thread-locals.** Before any child coroutine is invoked, the current frame allocator is set in TLS. The child's `promise_type::operator new` reads it. TLS serves as a delivery mechanism, not the source of truth. The canonical frame allocator resides in `io_env`, a heap-stable structure owned by the launch coroutine's frame. Every resume point restores TLS from `io_env`, making TLS a write-through cache that is always repopulated before it is read. This is an example implementation (non-normative):
 
 ```cpp
 // Global accessors for the current frame allocator.
@@ -790,19 +792,21 @@ set_current_frame_allocator(
 // the execution window (Section 5.4): between a coroutine's
 // resumption and its next suspension point.
 //
-// A null return from get means "not specified" - no allocator
-// has been established for this chain. The caller is free to
-// use whatever allocation strategy makes best sense for its
-// situation. Null handling is the caller's responsibility;
-// the accessor must not substitute a default, because there
-// are multiple valid choices (new_delete_resource, the default
-// pmr resource, or something else entirely).
+// A null return from get means "not specified" - no frame
+// allocator has been established for this chain. The caller
+// is free to use whatever allocation strategy makes best
+// sense for its situation. Null handling is the caller's
+// responsibility; the accessor must not substitute a default,
+// because there are multiple valid choices
+// (new_delete_resource, the default pmr resource, or
+// something else entirely).
 //
 // Use of the frame allocator is optional. An awaitable that
 // ignores this value and allocates its frame by other means
 // is never wrong. However, a conforming awaitable must still
-// propagate the allocator faithfully (via set before invoking
-// child coroutines) so that downstream frames can use it.
+// propagate the frame allocator faithfully (via set before
+// invoking child coroutines) so that downstream frames can
+// use it.
 
 // In promise_type
 static void* operator new( std::size_t size ) {
@@ -810,7 +814,7 @@ static void* operator new( std::size_t size ) {
     if(!mr)
         mr = std::pmr::new_delete_resource();
 
-    // Store allocator pointer at end of frame for correct deallocation
+    // Store frame allocator pointer at end of frame for correct deallocation
     auto total = size + sizeof(std::pmr::memory_resource*);
     void* raw = mr->allocate(total, alignof(std::max_align_t));
     std::memcpy(static_cast<char*>(raw) + size, &mr, sizeof(mr));
@@ -818,7 +822,7 @@ static void* operator new( std::size_t size ) {
 }
 
 static void operator delete( void* ptr, std::size_t size ) {
-    // Read the allocator pointer from the end of the frame
+    // Read the frame allocator pointer from the end of the frame
     std::pmr::memory_resource* mr;
     std::memcpy(&mr, static_cast<char*>(ptr) + size, sizeof(mr));
     auto total = size + sizeof(std::pmr::memory_resource*);
@@ -836,11 +840,11 @@ run_async( ex )( co );      // too late, frame already exists
 
 The fallback to `pmr::new_delete_resource()` gives the same behavior the user would get if the coroutine had no custom `operator new` at all - plain `new`/`delete`. We choose `new_delete_resource` rather than `pmr::get_default_resource()` because the latter is a mutable global whose value can change at any time, which could produce surprising allocations depending on what some other part of the program stored there. One might ask why the thread-local is not simply initialized to `pmr::new_delete_resource()` so the null check is unnecessary. The reason is portability: thread-local storage works best when the variable is a plain pointer zero-initialized by the loader. A dynamic initializer - even a trivial function call - moves the variable into a costlier TLS implementation bucket on some platforms. Keeping the default as null and handling it at the call site avoids that cost entirely.
 
-This design keeps allocator policy where it belongs - at the application layer - while coroutine algorithms remain blissfully unaware of memory strategy. The propagation happens during what we call "the window": a narrow interval of execution where the correct state is guaranteed in thread-locals.
+This design keeps frame allocator policy where it belongs - at the application layer - while coroutine algorithms remain blissfully unaware of memory strategy. The propagation happens during what we call "the window": a narrow interval of execution where the correct state is guaranteed in thread-locals.
 
-**Use of the frame allocator is optional.** An awaitable whose `promise_type::operator new` ignores the thread-local value and allocates its frame by other means is never wrong - the program remains correct. The allocator controls *where* a frame's memory comes from, not what the coroutine does. However, a conforming awaitable must still propagate the allocator faithfully: before invoking any child coroutine, the currently running coroutine restores the thread-local from its `io_env` so that the child's `operator new` sees the intended value. An awaitable that consumes the allocator for its own frame without restoring it would silently break allocation policy for every downstream coroutine in the chain. Correct propagation is a protocol obligation even when the awaitable itself does not use the allocator.
+**Use of the frame allocator is optional.** An awaitable whose `promise_type::operator new` ignores the thread-local value and allocates its frame by other means is never wrong - the program remains correct. The frame allocator controls *where* a frame's memory comes from, not what the coroutine does. However, a conforming awaitable must still propagate the frame allocator faithfully: before invoking any child coroutine, the currently running coroutine restores the thread-local from its `io_env` so that the child's `operator new` sees the intended value. An awaitable that consumes the frame allocator for its own frame without restoring it would silently break allocation policy for every downstream coroutine in the chain. Correct propagation is a protocol obligation even when the awaitable itself does not use the frame allocator.
 
-An important distinction: other coroutine libraries that use thread-local storage for allocation set it once globally, so all coroutine chains share the same allocator for the lifetime of the program. Our approach is per-chain. Each launch site can choose a different allocator, and that allocator is scoped to the specific chain it launches. When a chain suspends for I/O, another chain with a different allocator can run without interference. When the first chain resumes, the window mechanism restores its allocator before any child coroutines are created. This is how allocators should work in practice - stateful and scoped to the work they serve, not a global policy that every coroutine chain must share.
+An important distinction: other coroutine libraries that use thread-local storage for frame allocation set it once globally, so all coroutine chains share the same frame allocator for the lifetime of the program. Our approach is per-chain. Each launch site can choose a different frame allocator, and that frame allocator is scoped to the specific chain it launches. When a chain suspends for I/O, another chain with a different frame allocator can run without interference. When the first chain resumes, the window mechanism restores its frame allocator before any child coroutines are created. This is how frame allocators should work in practice - stateful and scoped to the work they serve, not a global policy that every coroutine chain must share.
 
 ### 5.4 The Window
 
@@ -869,7 +873,7 @@ auto initial_suspend() noexcept {
         promise_type* p_;
         bool await_ready() const noexcept { return false; }
         void await_suspend(std::coroutine_handle<>) const noexcept {
-            // Capture TLS allocator while it's still valid
+            // Capture TLS frame allocator while it's still valid
             p_->set_frame_allocator( get_current_frame_allocator() );
         }
         void await_resume() const noexcept {
@@ -882,25 +886,25 @@ auto initial_suspend() noexcept {
 }
 ```
 
-Every time the coroutine resumes (after any `co_await`), it sets TLS to its allocator. When `child()` is called, TLS is already pointing to `parent`'s allocator. The flow:
+Every time the coroutine resumes (after any `co_await`), it sets TLS to its frame allocator. When `child()` is called, TLS is already pointing to `parent`'s frame allocator. The flow:
 
 ```mermaid
 flowchart TD
-    A["parent resumes - TLS = parent.alloc"]
+    A["parent resumes - TLS = parent.frame_alloc"]
     --> B["parent calls child()"]
-    --> C["child operator new - reads TLS - uses parent.alloc"]
+    --> C["child operator new - reads TLS - uses parent.frame_alloc"]
     --> D["child created, returns task"]
     --> E["parent's await_suspend - parent suspends"]
-    --> F["child resumes - TLS = child.alloc (inherited value)"]
+    --> F["child resumes - TLS = child.frame_alloc (inherited value)"]
     --> G["child calls grandchild() - grandchild uses TLS"]
 ```
 
 This is safe because:
-- TLS is only read in `operator new` - no other code path inspects the thread-local allocator
+- TLS is only read in `operator new` - no other code path inspects the thread-local frame allocator
 - TLS is written by the currently-running coroutine before any child is created, and restored from the heap-stable `io_env` on every resume via `await_resume`
-- Thread migration is handled: when a coroutine suspends on thread A and resumes on thread B, the `await_resume` path writes the correct allocator into thread B's TLS before the coroutine body continues. TLS is never *read* on a thread unless the coroutine that wrote it is actively executing on that thread
+- Thread migration is handled: when a coroutine suspends on thread A and resumes on thread B, the `await_resume` path writes the correct frame allocator into thread B's TLS before the coroutine body continues. TLS is never *read* on a thread unless the coroutine that wrote it is actively executing on that thread
 - No dangling: the coroutine that set TLS is still on the call stack when `operator new` reads it
-- Deallocation is thread-independent: `operator delete` reads the allocator from a pointer embedded in the frame footer, not from TLS. A frame can be destroyed on any thread
+- Deallocation is thread-independent: `operator delete` reads the frame allocator from a pointer embedded in the frame footer, not from TLS. A frame can be destroyed on any thread
 
 ### 5.5 Addressing TLS Concerns
 
@@ -912,19 +916,19 @@ TLS has earned its bad name: a global variable by another name. Functions behave
 
 This is not the general case. The thread-local here is a **write-through cache** with exactly one purpose: deliver a `memory_resource*` to `operator new`. It is written before every coroutine invocation and read in exactly one place. The canonical value lives in `io_env`, heap-stable and owned by the launch function, repopulated on every resume. No algorithm inspects it. No behavior changes based on its contents. It controls where memory comes from, not what the program does.
 
-The reason TLS is involved at all is `operator new`'s fixed signature. The allocator cannot arrive as a parameter without polluting every coroutine signature with `allocator_arg_t` (Section 5.2). The standard library already accepted this tradeoff: `std::pmr::get_default_resource()` is a process-wide thread-local allocator channel, adopted in C++17. Ours is the same principle, scoped per-chain instead of per-process.
+The reason TLS is involved at all is `operator new`'s fixed signature. The frame allocator cannot arrive as a parameter without polluting every coroutine signature with `allocator_arg_t` (Section 5.2). The standard library already accepted this tradeoff: `std::pmr::get_default_resource()` is a process-wide thread-local allocator channel, adopted in C++17. Ours is the same principle, scoped per-chain instead of per-process.
 
 #### Concern: Thread Migration
 
 Thread migration is the obvious objection: suspend on thread A, resume on thread B, read stale TLS. The invariant that prevents this is simple: **TLS is never read on a thread unless the coroutine that wrote it is actively executing on that same thread.**
 
-Every resume path - `initial_suspend`, every subsequent `co_await` via `await_transform` - unconditionally writes the allocator from `io_env` into TLS *before* the coroutine body continues:
+Every resume path - `initial_suspend`, every subsequent `co_await` via `await_transform` - unconditionally writes the frame allocator from `io_env` into TLS *before* the coroutine body continues:
 
 ```cpp
 void await_resume() const noexcept
 {
     // Restore TLS from heap-stable io_env
-    set_current_frame_allocator(p_->io_env_->allocator);
+    set_current_frame_allocator(p_->io_env_->frame_allocator);
 }
 ```
 
@@ -934,7 +938,7 @@ Deallocation is thread-independent. Each frame stores its `memory_resource*` in 
 
 #### Concern: Implicit Propagation and Lifetime
 
-Coroutine chains differ structurally from containers. A container can outlive its creator. A coroutine chain cannot outlive its launch site. The allocator outlives every frame that uses it - not by convention, but by the structural nesting of coroutine lifetimes.
+Coroutine chains differ structurally from containers. A container can outlive its creator. A coroutine chain cannot outlive its launch site. The frame allocator outlives every frame that uses it - not by convention, but by the structural nesting of coroutine lifetimes.
 
 `std::execution`'s `get_allocator(get_env(receiver))` is also an implicit lookup. The mechanism is structurally similar: an ambient environment provides the allocator. The difference is timing. In `std::execution`, the lookup happens after `connect()`, which is too late for coroutine frame allocation.
 
@@ -966,13 +970,13 @@ The _IoAwaitable_ protocol type-erases the environment through `executor_ref` an
 template<class T> class task;
 ```
 
-This enables separate compilation and ABI stability. A coroutine returning `task<int>` can be defined in a `.cpp` file and called from any translation unit without exposing the executor type, the allocator, or the stop token in the public interface. Libraries built on _IoAwaitable_ can ship as compiled binaries. [P4007R0](https://wg21.link/p4007r0)<sup>[7]</sup> Section 6.4 examines why alternative designs require a second template parameter and what the ecosystem's response has been.
+This enables separate compilation and ABI stability. A coroutine returning `task<int>` can be defined in a `.cpp` file and called from any translation unit without exposing the executor type, the frame allocator, or the stop token in the public interface. Libraries built on _IoAwaitable_ can ship as compiled binaries. [P4007R0](https://wg21.link/p4007r0)<sup>[7]</sup> Section 6.4 examines why alternative designs require a second template parameter and what the ecosystem's response has been.
 
 ### 6.4 Ergonomic Impact
 
 The ergonomic consequences compound in real applications. An HTTP server has dozens of route handlers, each a coroutine. A database access layer has query functions. A WebSocket handler has message processors. All of these are written by application developers, not framework experts.
 
-With _IoAwaitable_, the executor, allocator, and stop token are invisible. They propagate automatically through the coroutine chain. The developer focuses on business logic:
+With _IoAwaitable_, the executor, frame allocator, and stop token are invisible. They propagate automatically through the coroutine chain. The developer focuses on business logic:
 
 ```cpp
 route_task serve_api( route_params& rp )
@@ -1011,14 +1015,14 @@ The design choices in this paper diverge from `std::execution` ([P2300R10](https
 
 ### 7.1 The Late Binding Problem
 
-Coroutine frame allocation happens *before* the coroutine body executes. The allocator must be known at invocation, not discovered later through receiver queries. [P2300R10](https://wg21.link/p2300r10)<sup>[3]</sup> acknowledges this timing in its "Dependently-typed senders" section:
+Coroutine frame allocation happens *before* the coroutine body executes. The frame allocator must be known at invocation, not discovered later through receiver queries. [P2300R10](https://wg21.link/p2300r10)<sup>[3]</sup> acknowledges this timing in its "Dependently-typed senders" section:
 
 > "The implication of the above is that the sender alone does not have all the information about the async computation it will ultimately initiate; some of that information is provided late via the receiver."
 
-This "late" information includes the allocator. Consider what happens with a coroutine-based sender:
+This "late" information includes the frame allocator. Consider what happens with a coroutine-based sender:
 
 ```cpp
-// P2300 query model: allocator discovered AFTER connect
+// P2300 query model: frame allocator discovered AFTER connect
 template<receiver Rcvr>
 struct my_operation_state {
     Rcvr rcvr_;
@@ -1030,7 +1034,7 @@ struct my_operation_state {
 
 task<int> async_work();              // Frame allocated NOW
 auto sndr = async_work();            
-auto op = connect(sndr, receiver);   // Allocator available NOW - too late
+auto op = connect(sndr, receiver);   // Frame allocator available NOW - too late
 start(op);
 ```
 
@@ -1040,19 +1044,19 @@ The timing mismatch is fundamental:
 flowchart LR
     S1["1. Create sender"] --> S2["2. Allocate frame"]
     S2 --> S3["3. connect(sndr, rcvr)"]
-    S3 --> S4["4. Query allocator"]
-    S2 -.->|"Need allocator"| S4
+    S3 --> S4["4. Query frame allocator"]
+    S2 -.->|"Need frame allocator"| S4
     S4 -.->|"Too late!"| S2
 ```
 
-Our forward flow model resolves this by making the allocator available before the frame is allocated:
+Our forward flow model resolves this by making the frame allocator available before the frame is allocated:
 
 ```mermaid
 flowchart LR
-    I1["1. Set TLS alloc"] --> I2["2. Call task()"]
+    I1["1. Set TLS frame alloc"] --> I2["2. Call task()"]
     I2 --> I3["3. operator new"]
     I3 --> I4["4. await_suspend"]
-    I1 -.->|"Allocator ready"| I3
+    I1 -.->|"Frame allocator ready"| I3
 ```
 
 ### 7.2 Type Visibility and Erasure
@@ -1124,7 +1128,7 @@ class io_awaitable_promise_base
         std::noop_coroutine()};
 
 public:
-    // Frame allocation using thread-local allocator.
+    // Frame allocation using thread-local frame allocator.
     // Stores the memory_resource* at the end of each
     // frame so deallocation is correct even when TLS
     // has changed.
@@ -1238,7 +1242,7 @@ public:
 
 Promise types inherit from this mixin to gain:
 
-- **Frame allocation**: `operator new`/`delete` using the thread-local frame allocator, with the allocator pointer stored via `memcpy` at the end of each frame for correct deallocation. Bypasses virtual dispatch for the recycling allocator
+- **Frame allocation**: `operator new`/`delete` using the thread-local frame allocator, with the frame allocator pointer stored via `memcpy` at the end of each frame for correct deallocation. Bypasses virtual dispatch for the recycling frame allocator
 - **Continuation support**: `set_continuation`/`continuation` for unconditional symmetric transfer at `final_suspend`
 - **Environment storage**: `set_environment`/`environment` for executor and stop token propagation
 - **Awaitable transformation**: `await_transform` intercepts `environment_tag`, delegating all other awaitables to `transform_awaitable`
@@ -1267,11 +1271,11 @@ We set out to answer a practical question: what execution model emerges when net
 
 1. **A minimal executor abstraction.** Two operations - `dispatch` and `post` - suffice for I/O workloads.
 
-2. **A clear responsibility model.** The application decides execution, allocation, and stop policy at the launch site. Coroutine algorithms remain free of cross-cutting concerns.
+2. **A clear responsibility model.** The application decides execution, frame allocation, and stop policy at the launch site. Coroutine algorithms remain free of cross-cutting concerns.
 
 3. **Complete type hiding.** Executor types do not leak into public interfaces. Platform I/O types remain hidden in translation units. Composed algorithms expose only concrete task return types. This directly enables ABI stability and separate compilation.
 
-4. **Forward context propagation.** Execution context flows with control flow. The allocator is available before the frame is allocated. The environment is available from the first suspension point.
+4. **Forward context propagation.** Execution context flows with control flow. The frame allocator is available before the frame is allocated. The environment is available from the first suspension point.
 
 5. **A conscious tradeoff.** One pointer indirection per I/O operation (~1-2 nanoseconds <sup>[14]</sup>) buys encapsulation, ABI stability, and fast compilation. For I/O-bound workloads where operations take 10,000+ nanoseconds, this cost is negligible.
 
@@ -1345,7 +1349,7 @@ namespace std {
   struct io_env {
     executor_ref executor;
     stop_token stop_token;
-    pmr::memory_resource* allocator = nullptr;
+    pmr::memory_resource* frame_allocator = nullptr;
   };
 }
 ```
@@ -1358,7 +1362,7 @@ namespace std {
 
 4 The `stop_token` member carries the cancellation token for the chain. I/O objects at the end of the chain observe this token to support cooperative cancellation.
 
-5 The `allocator` member, when non-null, identifies the memory resource used for coroutine frame allocation in the chain. A null value indicates that no allocator was specified at the launch site; the implementation is free to use any allocation strategy.
+5 The `frame_allocator` member, when non-null, identifies the memory resource used for coroutine frame allocation in the chain. A null value indicates that no frame allocator was specified at the launch site; the implementation is free to use any allocation strategy.
 
 ### 10.3 Concepts [ioawait.concepts]
 
@@ -1415,7 +1419,7 @@ concept io_runnable =
 | `cp.exception()` | `exception_ptr` | *Returns:* The exception captured during coroutine execution, or a null `exception_ptr` if no exception occurred. Shall not exit via an exception. |
 | `t.release()` | `void` | *Effects:* Releases ownership of the coroutine frame. After this call, the task object no longer destroys the frame upon destruction. Shall not exit via an exception. *Postconditions:* The task object is in a moved-from state. |
 | `p.set_continuation(h)` | `void` | *Effects:* Sets the coroutine handle to resume when this task reaches `final_suspend`. Shall not exit via an exception. |
-| `p.set_environment(env)` | `void` | *Effects:* Sets the `io_env` pointer that propagates executor, stop token, and allocator through the coroutine chain. Shall not exit via an exception. *Preconditions:* `env` points to an `io_env` whose lifetime exceeds that of the coroutine. |
+| `p.set_environment(env)` | `void` | *Effects:* Sets the `io_env` pointer that propagates executor, stop token, and frame allocator through the coroutine chain. Shall not exit via an exception. *Preconditions:* `env` points to an `io_env` whose lifetime exceeds that of the coroutine. |
 | `p.result()` | *unspecified* | *Returns:* The result value stored in the promise. *Preconditions:* The coroutine completed with a value (not an exception). *Remarks:* This expression is only required when `await_resume()` returns a non-void type. |
 
 3 [ *Note:* The `handle()` and `release()` methods enable launch functions to manage task lifetime directly. After `release()`, the launch function assumes responsibility for destroying the coroutine frame. *- end note* ]
@@ -1744,9 +1748,9 @@ template<class Service, class... Args> Service& make_service(Args&&... args);
 pmr::memory_resource* get_frame_allocator() const noexcept;
 ```
 
-1 *Returns:* The memory resource set via `set_frame_allocator`. The default value is implementation-defined and shall not be null. [ *Note:* A quality implementation uses a recycling allocator for coroutine frames. *- end note* ]
+1 *Returns:* The memory resource set via `set_frame_allocator`. The default value is implementation-defined and shall not be null. [ *Note:* A quality implementation uses a recycling frame allocator for coroutine frames. *- end note* ]
 
-2 *Remarks:* This function provides the default allocator for coroutine frames launched with executors from this context when no allocator is specified at the launch site.
+2 *Remarks:* This function provides the default frame allocator for coroutine frames launched with executors from this context when no frame allocator is specified at the launch site.
 
 ```cpp
 void set_frame_allocator(pmr::memory_resource* mr) noexcept;
@@ -1766,7 +1770,7 @@ void set_frame_allocator(Allocator const& a);
 
 6 *Mandates:* `Allocator` satisfies the *Cpp17Allocator* requirements. `Allocator` is copy constructible.
 
-7 [ *Note:* The frame allocator is a quality of implementation concern. A conforming implementation may ignore the allocator parameter entirely, and programs should still behave correctly. The allocator mechanism is provided to enable performance optimizations such as thread-local recycling pools or bounded allocation strategies, but correct program behavior must not depend on a specific allocation strategy being used. *- end note* ]
+7 [ *Note:* The frame allocator is a quality of implementation concern. A conforming implementation may ignore the frame allocator parameter entirely, and programs should still behave correctly. The frame allocator mechanism is provided to enable performance optimizations such as thread-local recycling pools or bounded allocation strategies, but correct program behavior must not depend on a specific frame allocation strategy being used. *- end note* ]
 
 #### 10.5.5 `execution_context` target access [ioawait.execctx.target]
 
@@ -1810,9 +1814,9 @@ template<executor Ex, class... Args>
 
 2 *Effects:* When `f(task)` is invoked:
 
-  - (2.1) Sets the thread-local frame allocator to the allocator specified in `Args`, or to `ex.context().get_frame_allocator()` if no allocator is specified.
-  - (2.2) Evaluates `task` (which allocates the coroutine frame using the thread-local allocator).
-  - (2.3) Calls `task.handle().promise().set_environment(io_env{ex, token, alloc})` where `token` is the stop token specified in `Args`, or a default-constructed `stop_token` if none is specified, and `alloc` is the allocator specified in `Args`, or `nullptr` if none is specified.
+  - (2.1) Sets the thread-local frame allocator to the frame allocator specified in `Args`, or to `ex.context().get_frame_allocator()` if no frame allocator is specified.
+  - (2.2) Evaluates `task` (which allocates the coroutine frame using the thread-local frame allocator).
+  - (2.3) Calls `task.handle().promise().set_environment(io_env{ex, token, alloc})` where `token` is the stop token specified in `Args`, or a default-constructed `stop_token` if none is specified, and `alloc` is the frame allocator specified in `Args`, or `nullptr` if none is specified.
   - (2.4) Calls `task.handle().promise().set_continuation(h)` where `h` is a coroutine handle for the trampoline that will process completion.
   - (2.5) Sets up completion handling: if completion handlers are specified in `Args`, arranges for them to be invoked when `task` completes.
   - (2.6) Calls `task.release()` to transfer ownership.
@@ -1822,13 +1826,13 @@ template<executor Ex, class... Args>
 3 *Remarks:* `Args` may include:
 
   - A `stop_token` to propagate cancellation signals.
-  - An allocator satisfying the *Allocator* requirements, or a `pmr::memory_resource*`, used to allocate all coroutine frames in the chain.
+  - A frame allocator satisfying the *Allocator* requirements, or a `pmr::memory_resource*`, used to allocate all coroutine frames in the chain.
   - A completion handler invoked with the task's result value upon successful completion.
   - An error handler invoked with `exception_ptr` if the task completes with an exception.
 
 4 *Synchronization:* The call to `run_async(ex, args...)(task)` synchronizes with the invocation of the completion handler (if any) and with the resumption of the task coroutine.
 
-5 [ *Note:* The two-call syntax `run_async(ex)(task())` is required because of coroutine allocation timing. The outer expression `run_async(ex)` must complete - returning the callable and establishing the thread-local allocator - before `task()` is evaluated. This ordering is guaranteed by [expr.call] in C++17 and later: "The postfix-expression is sequenced before each expression in the expression-list." *- end note* ]
+5 [ *Note:* The two-call syntax `run_async(ex)(task())` is required because of coroutine allocation timing. The outer expression `run_async(ex)` must complete - returning the callable and establishing the thread-local frame allocator - before `task()` is evaluated. This ordering is guaranteed by [expr.call] in C++17 and later: "The postfix-expression is sequenced before each expression in the expression-list." *- end note* ]
 
 6 [ *Example:*
 
@@ -1836,7 +1840,7 @@ template<executor Ex, class... Args>
 // Basic launch
 run_async(ioc.get_executor())(my_task());
 
-// With stop token and allocator
+// With stop token and frame allocator
 run_async(ex, source.get_token(), my_allocator)(my_task());
 
 // With completion handlers
@@ -1862,8 +1866,8 @@ template<class... Args>
 
 2 *Effects:* When `f(task)` is invoked:
 
-  - (2.1) Sets the thread-local frame allocator to the allocator specified in `Args`, or inherits the caller's allocator if none is specified.
-  - (2.2) Evaluates `task` (which allocates the coroutine frame using the thread-local allocator).
+  - (2.1) Sets the thread-local frame allocator to the frame allocator specified in `Args`, or inherits the caller's frame allocator if none is specified.
+  - (2.2) Evaluates `task` (which allocates the coroutine frame using the thread-local frame allocator).
   - (2.3) Returns an awaitable `a` that stores the executor (if provided), stop token (if provided), and the task.
 
 3 *Effects:* When `a` is awaited via `co_await a`:
@@ -1879,7 +1883,7 @@ template<class... Args>
 5 *Remarks:* `Args` may include:
 
   - A `stop_token` to override the caller's stop token.
-  - An allocator satisfying the *Allocator* requirements, or a `pmr::memory_resource*`, used for coroutine frame allocation.
+  - A frame allocator satisfying the *Allocator* requirements, or a `pmr::memory_resource*`, used for coroutine frame allocation.
 
 6 *Remarks:* When no executor is provided, the task inherits the caller's executor directly, enabling zero-overhead symmetric transfer on completion.
 
