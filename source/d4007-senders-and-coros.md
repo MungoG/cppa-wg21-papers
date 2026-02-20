@@ -492,7 +492,7 @@ The allocator is set once at the launch site and reaches every operation automat
 
 However...
 
-Nothing here allocates. The operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
+Nothing here allocates. Used as intended, the operation state is a single concrete type with no heap allocation. The allocator propagates through a pipeline that does not need it.
 
 ### 5.2 Coroutines
 
