@@ -413,7 +413,7 @@ do_read(tcp_socket& s, buffer& buf)
 {
     auto [ec, n] = co_await s.async_read(buf);
     if (ec)
-        co_yield with_error(ec);        // destroys the coroutine? (answer: yes)
+        co_yield with_error(ec);        // unfortunately, terminates the coroutine
     co_return n;
 }
 ```
