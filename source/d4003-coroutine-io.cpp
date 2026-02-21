@@ -143,7 +143,7 @@ struct io_env
 {
     executor_ref executor;
     std::stop_token stop_token;
-    std::pmr::memory_resource* allocator = nullptr;
+    std::pmr::memory_resource* frame_allocator = nullptr;
 };
 
 // ============================================================
@@ -155,12 +155,12 @@ namespace this_coro {
 struct environment_tag {};
 struct executor_tag {};
 struct stop_token_tag {};
-struct allocator_tag {};
+struct frame_allocator_tag {};
 
 inline constexpr environment_tag environment{};
 inline constexpr executor_tag executor{};
 inline constexpr stop_token_tag stop_token{};
-inline constexpr allocator_tag allocator{};
+inline constexpr frame_allocator_tag frame_allocator{};
 
 } // namespace this_coro
 
@@ -345,16 +345,16 @@ public:
             };
             return awaiter{env_->stop_token};
         }
-        else if constexpr (std::is_same_v<Tag, this_coro::allocator_tag>)
+        else if constexpr (std::is_same_v<Tag, this_coro::frame_allocator_tag>)
         {
             struct awaiter
             {
-                std::pmr::memory_resource* allocator_;
+                std::pmr::memory_resource* frame_allocator_;
                 bool await_ready() const noexcept { return true; }
                 void await_suspend(std::coroutine_handle<>) const noexcept {}
-                std::pmr::memory_resource* await_resume() const noexcept { return allocator_; }
+                std::pmr::memory_resource* await_resume() const noexcept { return frame_allocator_; }
             };
-            return awaiter{env_->allocator};
+            return awaiter{env_->frame_allocator};
         }
         else
         {
@@ -417,7 +417,7 @@ struct [[nodiscard]] task
 
                 void await_resume() const noexcept
                 {
-                    set_current_frame_allocator(p_->environment()->allocator);
+                    set_current_frame_allocator(p_->environment()->frame_allocator);
                 }
             };
             return awaiter{this};
@@ -456,7 +456,7 @@ struct [[nodiscard]] task
 
             decltype(auto) await_resume()
             {
-                set_current_frame_allocator(p_->environment()->allocator);
+                set_current_frame_allocator(p_->environment()->frame_allocator);
                 return a_.await_resume();
             }
 
