@@ -793,7 +793,7 @@ The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A co
 
 2. "Asynchronous C++ need not be limited to `std::execution`."
 
-3. "WG21 should explore coroutine-native I/O alongside senders."
+3. "WG21 should explore coroutine-native I/O."
 
 ---
 
