@@ -254,7 +254,21 @@ The combinators `when_all` and `when_any` present a different challenge: they mu
 
 The generic composition that justifies having three channels cannot serve I/O under this mapping.
 
-### 3.5 Dimov's Mapping
+### 3.5 The Classification Problem
+
+Andrzej Krzemie&#324;ski observes that I/O completions flow through a pipeline with a classification step between the I/O layer and the program logic:
+
+```
+Level:      I/O        Composed I/O     Classification      Program Logic
+
+success:    [read] ----> [process] -----> [classify]  -----> [handle success]
+error:     (unused)      (unused)          (unused)    \---> [handle error  ]
+cancel:    (unused)      (unused)          (unused)     \--> [handle cancel ]
+```
+
+At the I/O level, there is only success. The error and cancellation channels become relevant only after the application classifies the I/O status - and that classification requires context the I/O layer does not have. For example, `ECONNRESET` means "fatal, abort the transaction" in an HTTP request handler, but "done, expected closure" in a long-polling connection that the server intentionally drops. The same error code, classified differently depending on the protocol state the coroutine holds. `std::execution` does not provide a standard classification adaptor that maps I/O status tuples into the three channels. Sections 3.6 through 3.8 examine what happens when the mapping is attempted.
+
+### 3.6 Dimov's Mapping
 
 Peter Dimov proposes a refined convention that avoids data loss on partial success by discriminating the channel based on the byte count and error code category:
 
@@ -269,7 +283,7 @@ This is the only mapping the authors are aware of that preserves partial results
 
 The mapping requires semantic knowledge of specific error conditions: EOF is distinguished from cancellation, which is distinguished from all other errors. It is not a generic transformation, it is domain-specific I/O logic embedded in the channel routing. Dimov characterized the convention as "ad hoc."
 
-### 3.6 Routine Errors Become Exceptions
+### 3.7 Routine Errors Become Exceptions
 
 Under Dimov's mapping, any I/O error with zero bytes transferred goes through `set_error`. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s `task` delivers `set_error` to the coroutine as a thrown exception. Three design decisions chain together:
 
@@ -297,7 +311,7 @@ auto [ec, n] = co_await s.read_some(buf);   // ec == ECONNRESET, n == 0
 if (ec) co_return {ec, std::move(body)};    // no exception, no stack unwinding
 ```
 
-### 3.7 Coroutines Always Pay
+### 3.8 Coroutines Always Pay
 
 Three solutions have been presented. Each improves on the last. None is free:
 
@@ -305,7 +319,7 @@ Three solutions have been presented. Each improves on the last. None is free:
 |-----------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `set_error` on error  | Partial results destroyed                                                                                                    |
 | `set_value` always    | Impoverished composition                                                                                                     |
-| Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.6) <br> Same error bifurcates on n           |
+| Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.7) <br> Same error bifurcates on n           |
 
 Under Dimov's mapping - the best known convention - consider the same `read_body` from Section 3.2, written with `std::execution::task`. Preserving accumulated data on the n==0 error path requires try/catch in a normal I/O loop for errors that are not exceptional:
 
@@ -340,7 +354,7 @@ In a sender pipeline, these costs do not exist. The channels route completions a
 
 *For senders, no cost. For coroutines, everything.*
 
-### 3.8 The Paper Not Polled
+### 3.9 The Paper Not Polled
 
 Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"):
 
@@ -551,12 +565,12 @@ HALO allows compilers to elide coroutine frame allocation when the frame's lifet
 ```cpp
 namespace ex = std::execution;
 
-ex::task<void> read_data(socket& s, buffer& buf)
+ex::task<> read_data(socket& s, buffer& buf)
 {
     co_await s.async_read(buf);
 }
 
-void start_read(ex::counting_scope& scope, auto sch)
+void start_read(ex::counting_scope& scope, auto sch, socket& sock, buffer& buf)
 {
     ex::spawn(
         ex::on(sch, read_data(sock, buf)),
@@ -881,7 +895,7 @@ The partial success problem was raised independently, across multiple groups, by
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
+The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.8 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
 
 ---
 
