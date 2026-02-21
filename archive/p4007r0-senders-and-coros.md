@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and frame allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and frame allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -69,15 +69,15 @@ cppcoro, folly::coro, Boost.Cobalt, Boost.Asio, libcoro, and asyncpp use the sam
 
 On Windows, `CancelIoEx` completes the pending operation with `ERROR_OPERATION_ABORTED`. On POSIX, cancellation produces `ECANCELED`. The error code arrives through the same field as every other error, accompanied by the same byte count. Code that checks `ec` handles cancellation without additional logic.
 
-### 2.4 Allocator Propagation
+### 2.4 Frame Allocator Propagation
 
-Coroutine frame allocation overhead is measurable at high request rates. A recycling allocator eliminates it (Section 5 benchmarks a 3.1x speedup on MSVC). The allocator is set once at the launch site:
+Coroutine frame allocation overhead is measurable at high request rates. A recycling frame allocator eliminates it (Section 5 benchmarks a 3.1x speedup on MSVC). The frame allocator is set once at the launch site:
 
 ```cpp
 run_async( &pool )( do_connection(sock) );
 ```
 
-The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a trampoline whose lifetime encloses the entire coroutine chain. The trampoline stores the allocator and publishes a pointer to it in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the allocator is already available. C++17 guaranteed evaluation order makes this safe.
+The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a trampoline whose lifetime encloses the entire coroutine chain. The trampoline stores the frame allocator and publishes a pointer to it in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the frame allocator is already available. C++17 guaranteed evaluation order makes this safe.
 
 A promise opts in by reading the thread-local in `operator new`:
 
@@ -102,14 +102,14 @@ void await_resume() const noexcept {
 }
 ```
 
-The thread-local carries only a pointer; the allocator itself lives in the trampoline. The window is narrow and deterministic: the pointer is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
+The thread-local carries only a pointer; the frame allocator itself lives in the trampoline. The window is narrow and deterministic: the pointer is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
 
-Coroutine signatures do not mention the allocator:
+Coroutine signatures do not mention the frame allocator:
 
 ```cpp
 route_task serve_api(route_params& rp)
 {
-    auto result = co_await db.query("SELECT ...");  // coroutine frame uses allocator here
+    auto result = co_await db.query("SELECT ...");  // uses frame allocator here
     auto json = serialize(result);
     auto [ec] = co_await rp.send(json);             // and here
     if (ec) co_return route_error(ec);
@@ -117,7 +117,7 @@ route_task serve_api(route_params& rp)
 }
 ```
 
-The allocator is set once at the launch site and reaches every frame automatically. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether a similar approach could deliver automatic allocator propagation to `std::execution::task`.
+The frame allocator is set once at the launch site and reaches every coroutine automatically. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether a similar approach could deliver automatic frame allocator propagation to `std::execution::task`.
 
 ### 2.5 Two Models of Computation
 
@@ -273,7 +273,7 @@ do_read(sock, buf)
     });
 ```
 
-The cost is not data loss. It is that `let_error`, `upon_error`, `let_stopped`, `upon_stopped`, `stopped_as_optional`, and `stopped_as_error` become inaccessible to I/O senders and thus cannot participate in the rich composition promised by the Sender Sub-Language.
+The consequence is that `let_error`, `upon_error`, `let_stopped`, `upon_stopped`, `stopped_as_optional`, and `stopped_as_error` become inaccessible to I/O and thus cannot participate in the composition promised by the Sender Sub-Language. These are framework primitives; a retry combinator built on `let_error` silently does nothing for I/O senders.
 
 #### A Note on `when_all` and `when_any`
 
@@ -413,7 +413,7 @@ do_read(tcp_socket& s, buffer& buf)
 {
     auto [ec, n] = co_await s.async_read(buf);
     if (ec)
-        co_yield with_error(ec);        // destroys the coroutine? (answer: yes)
+        co_yield with_error(ec);        // unfortunately, terminates the coroutine
     co_return n;
 }
 ```
@@ -446,21 +446,23 @@ A language rule that has served every coroutine library for a decade, and whose 
 
 ## 5. Where Is the Allocator?
 
-In the sender model, `connect`/`start` binds the continuation after the coroutine frame is already allocated. The allocator arrives too late.
-
-Niebler [identified the cost](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> in 2020:
+Coroutines dynamically allocate their frames. For I/O operations, the frame must outlive the launching function, so HALO cannot elide the allocation (Section 5.5). Niebler [identified the cost](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> in 2020:
 
 > *"With coroutines, you have an allocation when a coroutine is first called, and an indirect function call each time it is resumed. The compiler can sometimes eliminate that overhead, but sometimes not."*
 
-Each `task<T>` call invokes `promise_type::operator new`. At high request rates, frame allocations reach millions per second. A recycling allocator makes a measurable difference. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") benchmarks a 4-deep coroutine call chain (2 million iterations):
+This is a real cost and a real source of resistance to coroutines in performance-sensitive code. But the allocator that matters here is not a general-purpose allocator. It is the *frame allocator* - an allocator whose sole purpose is to allocate and deallocate coroutine frames. Control and timing of the frame allocator is crucial: `promise_type::operator new` fires at the call site, before any sender machinery runs. With the right frame allocator, the overhead disappears. The resistance stems partly from the allocation model, not from coroutines themselves.
 
-| Platform    | Allocator        | Time (ms) | Speedup |
+Each `task<T>` call invokes `promise_type::operator new`. At high request rates, frame allocations reach millions per second. A recycling frame allocator makes a measurable difference. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") benchmarks a 4-deep coroutine call chain (2 million iterations):
+
+| Platform    | Frame Allocator  | Time (ms) | Speedup |
 |-------------|------------------|----------:|--------:|
 | MSVC        | Recycling        |   1265.2  |    3.1x |
 | MSVC        | mimalloc         |   1622.2  |    2.4x |
 | MSVC        | `std::allocator` |   3926.9  |       - |
 | Apple clang | Recycling        |   2297.08 |    1.6x |
 | Apple clang | `std::allocator` |   3565.49 |       - |
+
+In the sender model, `connect`/`start` binds the continuation after the frame is already allocated. The frame allocator arrives too late.
 
 ### 5.1 Senders
 
@@ -488,7 +490,7 @@ auto op = connect(
 start(op);
 ```
 
-The allocator is set once at the launch site and reaches every operation automatically.
+The frame allocator is set once at the launch site and reaches every operation automatically.
 
 However...
 
@@ -496,32 +498,46 @@ Nothing here allocates. Used as intended, the operation state is a single concre
 
 ### 5.2 Coroutines
 
-Consider the standard usage pattern for spawning a connection handler:
+A coroutine connection handler:
 
 ```cpp
-namespace ex = std::execution;
+std::execution::task<>
+handle_connection(tcp_socket conn)
+{
+    auto [ec, n] = co_await conn.async_read(buf);
+    // ...
+}
+```
 
-ex::counting_scope scope;
+Spawned in the standard way:
 
+```cpp
 ex::spawn(
-    ex::on(sch, handle_connection(std::move(conn))),
+    ex::on(sch, handle_connection(std::move(conn))),  // operator new fires here
     scope.get_token());
 ```
 
-Two independent problems prevent the allocator from reaching the coroutine frame:
+`handle_connection(std::move(conn))` evaluates before `spawn` or `on`. No frame allocator can reach it.
 
-**First, there is no API.** Neither `spawn` nor `on` accept an allocator parameter. The sender algorithms that launch coroutines have no mechanism to forward an allocator into the coroutine's `operator new`.
-
-**Second, even if there were, the timing is wrong.** The expression `handle_connection(std::move(conn))` is a function call. The compiler evaluates it, including `promise_type::operator new`, before `spawn` or `on` execute. The frame is already allocated by the time any sender algorithm runs.
-
-The only way to get an allocator into the coroutine frame is through the coroutine's own parameter list:
+The P2300 propagation mechanism is `write_env` with `get_allocator`:
 
 ```cpp
-// What users expect to write:
-std::execution::task<>
-handle_connection( tcp_socket conn );
+recycling_allocator<> alloc;
 
-// What they must actually write:
+auto op = connect(
+    write_env(
+        ex::on(sch,
+            handle_connection(std::move(conn))),   // operator new allocates here...
+        prop(get_allocator, alloc)),               // ...but allocator arrives here
+    rcvr);
+start(op);
+```
+
+The receiver's environment carries the allocator after `connect`. The frame was allocated before.
+
+The only way to get the frame allocator into the coroutine frame is through the parameter list:
+
+```cpp
 template<class Allocator>
 std::execution::task<>
 handle_connection( std::allocator_arg_t, Allocator alloc, tcp_socket conn );
@@ -529,25 +545,25 @@ handle_connection( std::allocator_arg_t, Allocator alloc, tcp_socket conn );
 
 P2300's elegant environment propagation is structurally unreachable for coroutine frames.
 
-**Senders get the allocator they do not need. Coroutines need the allocator they do not get.**
+**Senders get the allocator they do not need. Coroutines need the frame allocator they do not get.**
 
 ### 5.3 Coroutines Work for What Senders Get Free
 
 While K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `std::allocator_arg_t` for the initial allocation, propagation remains unsolved. The child's `operator new` fires before the parent can intervene. The only workaround is manual forwarding. Three properties distinguish this from a minor inconvenience:
 
-1. **Composability loss.** Generic sender algorithms like `let_value` and `when_all` launch child operations without knowledge of the caller's allocator. Manual forwarding cannot cross algorithm boundaries.
+1. **Composability loss.** Generic sender algorithms like `let_value` and `when_all` launch child operations without knowledge of the caller's frame allocator. Manual forwarding cannot cross algorithm boundaries.
 
 2. **Silent fallback.** Omitting `allocator_arg` from one call does not produce a compile error. The child silently falls back to the default heap allocator with no diagnostic.
 
-3. **Protocol asymmetry.** Schedulers and stop tokens propagate automatically through the receiver environment. Allocators are the only execution resource that the sender model forces coroutine users to propagate by hand.
+3. **Protocol asymmetry.** Schedulers and stop tokens propagate automatically through the receiver environment. Frame allocators are the only execution resource that the sender model forces coroutine users to propagate by hand.
 
 [C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[37]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
 
-Senders receive the allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. Section 1.4 demonstrates a working mechanism.
+Senders receive the frame allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. Section 1.4 demonstrates a working mechanism.
 
 ### 5.4 Does Performance Matter?
 
-The recycling allocator eliminates coroutine frame allocation overhead. It requires `allocator_arg` at every call site. One missed site falls back to `std::allocator` with no diagnostic. In production code, sites will be missed. Users profile, see heap allocation cost, and conclude coroutines are slow. Coroutines are not slow. The fast path is too hard to use.
+The recycling frame allocator eliminates coroutine frame allocation overhead. It requires `allocator_arg` at every call site. One missed site falls back to `std::allocator` with no diagnostic. In production code, sites will be missed. Users profile, see heap allocation cost, and conclude coroutines are slow. Coroutines are not slow. The fast path is too hard to use.
 
 ### 5.5 Will HALO Save Us?
 
@@ -573,7 +589,7 @@ The compiler cannot prove bounded lifetime, so HALO cannot apply and allocation 
 
 ### 5.6 A Viral Signature?
 
-Here is what allocator propagation looks like in a coroutine call chain under [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>:
+Here is what frame allocator propagation looks like in a coroutine call chain under [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>:
 
 ```cpp
 template<typename Allocator>
@@ -606,9 +622,9 @@ task<int> level_one(
 
 ### 5.7 Domain Freedom?
 
-No workaround, global PMR, thread-local registries, or otherwise, can bypass the promise. Every allocated coroutine frame must run through `promise_type::operator new`. If the promise does not cooperate, the allocator does not reach the frame.
+No workaround, global PMR, thread-local registries, or otherwise, can bypass the promise. Every allocated coroutine frame must run through `promise_type::operator new`. If the promise does not cooperate, the frame allocator does not reach the frame.
 
-The escape hatch is to stop searching for a universal allocator model in one promise type. Let each domain's task type cooperate with its own allocator strategy. A networking task type can use thread-local propagation. A GPU task type can use device memory APIs. Solutions exist when the promise is free to serve its domain rather than forced to serve a model it does not participate in.
+The escape hatch is to stop searching for a universal frame allocator model in one promise type. Let each domain's task type cooperate with its own frame allocator strategy. A networking task type can use thread-local propagation. A GPU task type can use device memory APIs. Solutions exist when the promise is free to serve its domain rather than forced to serve a model it does not participate in.
 
 ---
 
@@ -634,15 +650,15 @@ Section 4 showed the cost of a separate error channel for coroutines. The altern
 |---|---|
 | `co_yield with_error(ec);` | `co_return std::unexpected(ec);` |
 
-### 6.3 The Allocator Tradeoff
+### 6.3 The Frame Allocator Tradeoff
 
 Section 5 showed the cost of deferred execution. Choose one:
 
-| Deferred execution via `connect`/`start` | Allocator reaches coroutine frames |
+| Deferred execution via `connect`/`start` | Frame allocator reaches coroutine frames |
 |---|---|
-| Receiver environment available after `connect()`; zero-allocation sender pipelines | `promise_type::operator new` fires at the call site with the right allocator |
+| Receiver environment available after `connect()`; zero-allocation sender pipelines | `promise_type::operator new` fires at the call site with the right frame allocator |
 
-`await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the allocator becomes available.
+`await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the frame allocator becomes available.
 
 ### 6.4 ABI Makes the Choice Permanent
 
@@ -658,7 +674,7 @@ Choose one:
 
 The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 6.1 through 6.3 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
 
-Shipping `task` is the risky choice, not the safe one. Three structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Allocator propagation still unsolved six months after adoption. K&uuml;hl himself filed sixteen open concerns. The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
+Shipping `task` is the risky choice, not the safe one. Three structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Frame allocator propagation still unsolved six months after adoption. K&uuml;hl himself filed sixteen open concerns. The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
 
 | Library       | Declaration                                       | Params  |
 |---------------|---------------------------------------------------|:-------:|
@@ -734,7 +750,7 @@ Each argument assumes `std::execution::task` is the standard task C++ needs. The
 
 The coroutine integration is not ready for C++26. Three data points:
 
-LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup>, September 2025):
+LEWG polled the frame allocator question directly ([P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup>, September 2025):
 
 > "We would like to use the allocator provided by the receivers env instead of the one from the coroutine frame"
 >
@@ -744,7 +760,7 @@ LEWG polled the allocator question directly ([P3796R1](https://wg21.link/p3796r1
 >
 > Attendance: 14. Outcome: strictly neutral.
 
-The entire room abstained. Without a mechanism to propagate allocator context through nested coroutine calls, the committee had no direction to endorse. K&uuml;hl himself identified the need for further iteration, reworking the allocator propagation model in [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[24]</sup> (2026-01-25), six months after [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
+The entire room abstained. Without a mechanism to propagate frame allocator context through nested coroutine calls, the committee had no direction to endorse. K&uuml;hl himself identified the need for further iteration, reworking the frame allocator propagation model in [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[24]</sup> (2026-01-25), six months after [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s adoption at Sofia. LWG 4356 confirms the gap has been filed as a specification defect.
 
 The task type's forwarding polls (LEWG, 2025-05-06):
 
@@ -764,7 +780,7 @@ C++29 forwarding was unanimous. C++26 was conditional and weak. With the thoroug
 
 This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
-`std::execution` has earned its place. Herb Sutter reported that Citadel Securities uses it in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)*<sup>[36]</sup> Senders work well in their domain: compile-time work graph construction, GPU dispatch, high-frequency trading pipelines. The finding is not that `std::execution` failed. It is that its scope is specific, not universal. Narrowing the scope is not admitting failure - it is recognizing success where it exists and clearing the path where it does not.
+`std::execution` has earned its place. Herb Sutter reported that Citadel Securities uses it in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)*<sup>[36]</sup> Senders work well in their domain: compile-time work graph construction, GPU dispatch, high-frequency trading pipelines. Even GPU cloud APIs are accessed through HTTP. The finding is not that `std::execution` failed. It is that its scope is specific, not universal. Narrowing the scope is not admitting failure - it is recognizing success where it exists and clearing the path where it does not.
 
 The three gaps documented in Sections 3-5 are the cost of treating the sender model as the universal model of asynchronous computation. Each gap is the cost of a property the sender model requires. They are not design defects. They are tradeoffs - and coroutine I/O should not be forced to pay them.
 
@@ -890,11 +906,11 @@ The question has been open for five years. This duration is not due to neglect -
 
 ---
 
-## Appendix B - The Allocator Gap
+## Appendix B - The Frame Allocator Gap
 
-### B.1 The Full Ceremony for Allocator-Aware Coroutines
+### B.1 The Full Ceremony for Frame-Allocator-Aware Coroutines
 
-The sender model requires five layers of machinery to propagate a custom allocator through a coroutine call chain:
+The sender model requires five layers of machinery to propagate a custom frame allocator through a coroutine call chain:
 
 ```cpp
 namespace ex = std::execution;
@@ -914,7 +930,7 @@ struct my_env
 // 2. Alias the task type with the custom environment
 using my_task = ex::task<void, my_env>;
 
-// 3. Every coroutine accepts and forwards the allocator
+// 3. Every coroutine accepts and forwards the frame allocator
 template<typename Allocator>
 my_task level_two(
     int x,
@@ -958,7 +974,7 @@ The claim is not that the volume of changes is abnormal; it is that the directio
 
 **Sender Sub-Language** items address the CPS model's own machinery: algorithm customization, operation state lifetimes, completion signature constraints, removals of primitives that violated structured concurrency.
 
-**Sender Integration** items address the boundary where the CPS model meets coroutines: the `task` type, allocator propagation into coroutine frames, `co_yield with_error` semantics. 
+**Sender Integration** items address the boundary where the CPS model meets coroutines: the `task` type, frame allocator propagation into coroutine frames, `co_yield with_error` semantics. 
 
 **Coroutine-Intrinsic** items are specific to coroutines. There are none.
 
