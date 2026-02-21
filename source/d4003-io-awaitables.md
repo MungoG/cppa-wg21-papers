@@ -1,5 +1,5 @@
 ---
-title: "IoAwaitables: A Coroutines-Only Framework"
+title: "Coroutines for I/O"
 document: P4003R0
 date: 2026-02-20
 reply-to:
@@ -11,11 +11,9 @@ audience: LEWG
 
 ## Abstract
 
-This paper asks: *what would an execution model look like if designed from the ground up for coroutine-only asynchronous I/O?*
+C++20 coroutines have five properties that, taken together, make them uniquely suited to asynchronous I/O: type erasure through `coroutine_handle<>`, customization through `promise_type`, stackless independently-resumable frames, symmetric transfer through `await_suspend`, and compiler-managed state that persists across suspension points. Each was designed for generality. Their conjunction yields something no single property suggests: the optimal basis for byte-oriented I/O.
 
-We built one and found out. A group of practitioners implemented a complete networking library using only coroutines. The fundamental abstraction which emerged is the _IoAwaitable_ protocol: a system for associating a coroutine with an executor, stop token, and frame allocator, and propagating this context forward through a coroutine chain to the operating system API boundary where asynchronous operations are performed.
-
-This paper presents our findings. The protocol is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps frame allocator policy out of coroutine signatures. It delivers correctness through compile-time protocol checking, ergonomics through clean interfaces free of cross-cutting concerns, and performance through zero-allocation steady-state operation with recycling allocators. We compare our design against `std::execution` ([P2300R10](https://wg21.link/p2300r10))<sup>[3]</sup> and its evolution ([P3826](https://wg21.link/p3826))<sup>[6]</sup> to illuminate where the designs diverge and why.
+We used C++20 coroutines directly for I/O - timers, sockets, DNS, TLS, HTTP - and observed what the language already provides. The protocol that emerged is the _IoAwaitable_: a system for associating a coroutine with an executor, stop token, and frame allocator, and propagating this context forward through a coroutine chain to the operating system API boundary where asynchronous operations are performed.
 
 ---
 
@@ -29,83 +27,81 @@ This paper presents our findings. The protocol is small: two concepts, a type-er
 
 ## 1. Introduction
 
-This paper is a research report. We set out to answer a practical question: if you design a networking library from the ground up for C++ coroutines, what execution model emerges? Not as a thought experiment, but as working code: a complete library with sockets, timers, TLS, DNS resolution, HTTP, and WebSocket support, all built on a coroutine-only foundation.
+This paper is a research report drawn from working code: a complete coroutine-only networking library.
 
-The answer surprised us in its simplicity. The protocol that emerged is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps frame allocator policy out of coroutine signatures - yet it is the foundation from which a complete coroutine-only networking stack can be built. We could not find anything to remove from it without losing function. Like the narrow abstractions that have succeeded in C++: iterators for traversal, RAII for resource lifetime, allocators for memory strategy, it captures one essential property and leaves everything else to the user.
+What we found surprised us in its simplicity. The protocol that emerged is small: two concepts, a type-erased executor, and a thread-local write-through cache that keeps frame allocator policy out of coroutine signatures - yet it is the foundation from which a complete networking stack can be built. We could not find anything to remove from it without losing function. Like the narrow abstractions that have succeeded in C++: iterators for traversal, RAII for resource lifetime, allocators for memory strategy, it captures one essential property and leaves everything else to the user. For readers interested in how this model relates to other execution frameworks, see [P4007R0](https://wg21.link/p4007r0)<sup>[3]</sup> and [P4014R0](https://wg21.link/p4014r0)<sup>[4]</sup>.
 
 Readers unfamiliar with event loops, completion handlers, and executor models may find the background in Appendix A helpful before proceeding.
 
-### Design Priorities
+### Priorities
 
-We adopted three priorities, in strict order:
+We adopted three priorities:
 
-1. **Correctness.** Protocol invariants are enforced at compile time: coroutines without protocol compliance refuse to compile.
+1. **Correctness.** Invariants are enforced at compile time.
 
-2. **Ergonomics.** The user story comes first: we studied every alternative to give developers the best experience.
+2. **Ergonomics.** User-facing interfaces stay clean.
 
-3. **Performance.** We benchmarked at every step to measure the cost of our abstractions and ensure the best performance.
+3. **Performance.** We benchmarked at every step.
 
 ### What Matters
 
-Studying I/O-intensive applications reveals clear patterns. A network server completes read operations on I/O threads, resumes handlers on application threads, and serializes access to connection state. A file system service batches completions through io_uring, dispatches callbacks to worker pools, and manages buffer lifetimes across suspension points. These patterns repeat across every I/O application. The requirements they impose are specific:
+I/O applications share four requirements:
 
-- **The application decides executor policy.** Single-threaded or multi-threaded. One reactor per thread or a shared reactor with strand serialization. Completions running freely or serialized per connection. These are deployment decisions that a read operation should not need to know about.
+- **The application decides executor policy.** A read operation should not need to know about executor policy.
 
-- **The application sends stop signals.** A timeout, user abort, or graceful shutdown originates at the launch site and propagates to pending operations. Algorithms need control over stopping behavior: a simple pipeline passes the stop token through, while `when_all` or `when_any` hook the caller's token to an internal stop source with fanout. A good API builds on `std::stop_token` since that is what the standard provides.
+- **The application sends stop signals.** Stop signals propagate from the launch site to pending operations. The API builds on std::stop_token.
 
-- **The application decides frame allocation policy.** Memory strategies for coroutine frames: recycling pools, bounded allocation, per-tenant budgets, these are a property of the coroutine chain. A good API makes the frame allocator a first-class user-facing customization point when it matters, and gets out of the way when sensible defaults suffice.
+- **The application decides frame allocation.** The allocator is a property of the coroutine chain, not of the operation.
 
-- **The execution context owns its I/O objects.** A socket registered with epoll on thread A cannot have completions delivered to thread B's epoll. The physical coupling is inherent. The call site cannot and should not know which event loop the socket uses, only the socket knows.
+- **The execution context owns its I/O objects.** A socket knows which event loop it belongs to. The call site does not.
 
 ---
 
 ## 2. Networking's Essentials
 
-Networking has specific requirements that differ from heterogeneous computing. A socket read has **one implementation per platform** - there is no algorithm selection, no hardware heterogeneity to manage. What matters is the contract between the coroutine and the platform: the coroutine suspends, a platform-specific reactor (epoll, IOCP, io_uring) performs the asynchronous operation, and the coroutine resumes in a predictable way. "Predictable" means the application controls which thread resumes it, whether completions are serialized, and whether resumption is inline or deferred.
+A socket read has **one implementation per platform**. The contract is specific: the coroutine suspends, a platform reactor performs the operation, and the coroutine resumes under the application's control.
 
-The _IoAwaitable_ protocol handles this end to end. The executor solves the resumption part: given a suspended coroutine, resume it according to the application's policy. The stop token and the frame allocator handle the rest. Every executor is bound to an execution context - the object that owns the platform reactor and the I/O objects registered with it. A socket registered with epoll on one context cannot have completions delivered through another; [P2762](https://wg21.link/p2762)<sup>[4]</sup> acknowledges this physical coupling in Section 3.1:
-
-> "It was pointed out networking objects like sockets are specific to a context: that is necessary when using I/O Completion Ports or a TLS library and yields advantages when using, e.g., io_uring(2)."
+The _IoAwaitable_ protocol defines this contract. The executor resumes the coroutine according to the application's policy. The stop token propagates cancellation. The frame allocator controls coroutine memory. Every executor is bound to an execution context that owns the platform reactor and its I/O objects. Completions are delivered through the context the socket is registered with - a coupling inherent to every platform: IOCP, epoll, kqueue, io_uring.
 
 ### 2.1 The Executor
 
-An executor is to functions what an allocator is to memory: while an allocator controls *where* objects live, an executor controls *how* coroutines resume. A minimal executor needs only two operations: `dispatch` for continuations that can safely run inline, and `post` for work that must be deferred. The distinction is a correctness requirement, not an optimization - inline execution while holding a lock can deadlock, so the caller must be able to choose. A good coroutines-only design leverages symmetric transfer in `dispatch` whenever safe to do so, avoiding stack buildup entirely. Section 4 defines the concept and its semantics in full.
+An allocator controls where objects live. An executor controls how coroutines resume. A minimal executor needs two operations: `dispatch` for continuations that can run inline, and `post` for work that must be deferred. The distinction matters for correctness: inline execution while holding a lock can deadlock. `dispatch` uses symmetric transfer to avoid stack buildup. Section 4 defines the concept and its semantics.
 
 ### 2.2 The `stop_token`
 
-The stop token propagates forward through the coroutine chain from the launch site to the I/O object at the end:
+The stop token propagates forward through the coroutine chain from the launch site to the I/O object:
 
 ```
 http_client -> http_request -> write -> write_some -> socket
 ```
 
-At the end of the chain, the I/O object acts on the token by invoking the appropriate OS primitive - `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, or `close()` on POSIX. The pending operation completes with an error, and the coroutine chain unwinds normally. Cancellation is cooperative and predictable: no operation is forcibly terminated mid-flight.
+The I/O object cancels the pending operation through the platform primitive: `CancelIoEx` on Windows, `IORING_OP_ASYNC_CANCEL` on Linux, `close()` on POSIX. The operation completes with an error and the coroutine chain unwinds normally. Cancellation is cooperative.
 
 ### 2.3 The Frame Allocator
 
-A *frame allocator* is a `memory_resource` used exclusively for coroutine frame allocation. It is not a general-purpose allocator. Coroutine frames follow a narrow pattern: sizes repeat, lifetimes nest, and deallocation order mirrors allocation order. A frame allocator exploits this pattern. A general-purpose allocator cannot.
+A *frame allocator* is a `memory_resource` used exclusively for coroutine frame allocation. Coroutine frames follow a narrow pattern: sizes repeat, lifetimes nest, and deallocation order mirrors allocation order. A frame allocator exploits this pattern.
 
-Every `co_await` may spawn new frames. Without allocation control, heap overhead dominates. Recycling frame allocators eliminate this by caching recently freed frames for immediate reuse:
+Every `co_await` may spawn new frames. Recycling frame allocators cache recently freed frames for immediate reuse:
 
-| Platform    | Frame Allocator  | Time (ms) | vs std::allocator |
-|-------------|------------------|----------:|------------------:|
-| MSVC        | Recycling        |   1265.2  |          +210.4%  |
-| MSVC        | mimalloc         |   1622.2  |          +142.1%  |
-| MSVC        | `std::allocator` |   3926.9  |                 - |
-| Apple clang | Recycling        |   2297.08 |           +55.2%  |
-| Apple clang | `std::allocator` |   3565.49 |                 - |
+| Platform    | Frame Allocator  | Time (ms) | Speedup |
+|-------------|------------------|----------:|--------:|
+| MSVC        | Recycling        |   1265.2  |   3.10x |
+| MSVC        | mimalloc         |   1622.2  |   2.42x |
+| MSVC        | `std::allocator` |   3926.9  |       - |
+| Apple clang | Recycling        |   2297.08 |   1.55x |
+| Apple clang | `std::allocator` |   3565.49 |       - |
 
-The mimalloc result is the critical comparison: a state-of-the-art general-purpose allocator with per-thread caches, yet the recycling frame allocator is 28% faster. Different deployments need different strategies - bounded pools, per-tenant budgets, allocation tracking - so the execution model must make frame allocation a first-class customization point. The frame allocator must also be present at invocation time: `operator new` executes before the coroutine body, so any mechanism that delivers the frame allocator later arrives too late. Section 5 examines the timing constraint and our solution in detail.
+The mimalloc result is the critical comparison: a state-of-the-art general-purpose allocator with per-thread caches, yet the recycling frame allocator is 1.28x faster. Different deployments need different strategies - bounded pools, per-tenant budgets, allocation tracking - so the execution model must let the application choose. The frame allocator must be present at invocation time: `operator new` executes before the coroutine body. Section 5 examines the timing constraint and the solution.
 
 ### 2.4 Ergonomics
 
-The executor, stop token, and frame allocator are infrastructure. They should be invisible to every coroutine in the chain except the launch site where the chain begins. A developer writing a route handler, a parser, or a protocol state machine should see none of this machinery - just their business logic expressed as coroutines. But when the developer needs to care - choosing a different executor, wiring up cancellation, selecting an allocation strategy - the API for doing so should be natural, easy to discover, and structured to prevent mistakes.
+The executor, stop token, and frame allocator are infrastructure. They should be invisible to every coroutine except the launch site. When the developer needs control, the API should be obvious.
 
 ---
 
-## 3. Our Solution: The _IoAwaitable_ Protocol
+## 3. The Protocol: What Coroutines Need for I/O
 
-The _IoAwaitable_ protocol is a pair of concepts layered on top of each other, working together to deliver what coroutines and networking need for correctness and performance:
+The _IoAwaitable_ protocol is a pair of concepts layered on top of each other, working together to deliver what coroutines need for I/O correctness and performance:
 
 ```mermaid
 flowchart LR
@@ -114,7 +110,7 @@ flowchart LR
 
 > To help readers understand how these requirements fit together, this paper provides the `io_awaitable_promise_base` CRTP mixin (Section 8.1) as a non-normative reference implementation. It is not proposed for standardization - implementors may write their own machinery - but examining it clarifies how the protocol works in practice. The mixin also provides the `this_coro::environment` accessor, which allows coroutines to retrieve their bound context without suspending.
 
-[Capy](https://github.com/cppalliance/capy)<sup>[10]</sup> is our implementation of the _IoAwaitable_ protocol. [Corosio](https://github.com/cppalliance/corosio)<sup>[11]</sup>, built on Capy, provides sockets, timers, TLS, and DNS resolution on multiple platforms. Both libraries are in active use. The code examples in this paper are drawn from them. 
+[Capy](https://github.com/cppalliance/capy)<sup>[7]</sup> implements the _IoAwaitable_ protocol. [Corosio](https://github.com/cppalliance/corosio)<sup>[8]</sup>, built on Capy, provides sockets, timers, TLS, and DNS resolution on multiple platforms. Both libraries are in active use. The code examples in this paper are drawn from them. 
 
 ### 3.1 _IoAwaitable_
 
@@ -193,15 +189,14 @@ This is also an interoperability feature. In a world with multiple coexisting as
 An alternative design would place the environment in the promise type and let `await_suspend` discover it by templating on the promise:
 
 ```cpp
-// Promise-based approach (std::execution)
 template<typename Promise>
 auto await_suspend(std::coroutine_handle<Promise> h) {
-    auto& env = h.promise().get_env();  // environment discovered here
+    auto& env = h.promise().get_env();
     // ...
 }
 ```
 
-This has a timing problem. The caller's `await_transform` sees the awaitable's type but not the promise that will eventually resolve `await_suspend`. A non-compliant awaitable with a standard one-argument signature compiles and runs - it simply never receives the environment. Protocol mismatches become silent runtime errors. Our two-argument signature makes participation verifiable at the point where the caller can still reject the awaitable.
+This has a timing problem. The caller's `await_transform` sees the awaitable's type but not the promise that will eventually resolve `await_suspend`. A non-compliant awaitable with a standard one-argument signature compiles and runs - it simply never receives the environment. Protocol mismatches become silent runtime errors. The two-argument signature makes participation verifiable at the point where the caller can still reject the awaitable.
 
 #### The Lifetime Invariant
 
@@ -355,7 +350,7 @@ public:
 };
 ```
 
-The vtable contains function pointers for each executor operation - `dispatch`, `post`, `context`, work tracking, and comparison. When `executor_ref` is constructed from a typed executor, the compiler generates a vtable for that executor type. Calls through `executor_ref` incur one pointer indirection - roughly 1-2 nanoseconds <sup>[14]</sup> - which is negligible for I/O operations that take 10,000+ nanoseconds.
+The vtable contains function pointers for each executor operation - `dispatch`, `post`, `context`, work tracking, and comparison. When `executor_ref` is constructed from a typed executor, the compiler generates a vtable for that executor type. Calls through `executor_ref` incur one pointer indirection - roughly 1-2 nanoseconds <sup>[10]</sup> - which is negligible for I/O operations that take 10,000+ nanoseconds.
 
 The `dispatch` member returns a `coroutine_handle<>` for symmetric transfer: if the caller is already in the executor's context, it returns the handle directly for immediate resumption. Otherwise it posts the handle to the executor's queue and returns `noop_coroutine()`. This enables zero-overhead resumption in the common case where the coroutine is already on the right thread.
 
@@ -480,7 +475,7 @@ Because launch functions are constrained on the concept rather than a concrete t
 
 ## 4. Executor concept
 
-**Terminology note.** We use the term _Executor_ rather than *scheduler* intentionally. In `std::execution`, schedulers are designed for heterogeneous computing - selecting GPU vs CPU algorithms, managing completion domains, and dispatching to hardware accelerators. Networking has different needs: strand serialization, I/O completion contexts, and thread affinity. By using *executor*, we signal a distinct concept tailored to networking's requirements. This terminology also honors Christopher Kohlhoff's executor model in Boost.Asio, which established the foundation for modern C++ asynchronous I/O.
+**Terminology note.** We use the term _Executor_ intentionally. An executor controls how coroutines resume: `dispatch` for inline continuations via symmetric transfer, `post` for deferred execution. The concept is tailored to I/O's requirements: strand serialization, I/O completion contexts, and thread affinity. This terminology honors Christopher Kohlhoff's executor model in Boost.Asio, which established the foundation for modern C++ asynchronous I/O.
 
 ```cpp
 template<class E>
@@ -511,7 +506,7 @@ C++20 coroutines provide type erasure *by construction* - but not through the ha
 2. **The return type is uniform**: All coroutines returning `task` have the same type, regardless of body
 3. **Suspension points are hidden**: The caller doesn't know where the coroutine may suspend
 
-This structural erasure is often lamented as overhead, but we recognize it as opportunity. In our model, executor type-erasure happens late; only after the API has locked in the executor choice. Executor types are fully preserved at call sites even though they are type-erased internally. This enables zero-overhead composition at the API boundary while maintaining uniform internal representation.
+This structural erasure is often lamented as overhead, but it is an opportunity. In this model, executor type-erasure happens late; only after the API has locked in the executor choice. Executor types are fully preserved at call sites even though they are type-erased internally. This enables zero-overhead composition at the API boundary while maintaining uniform internal representation.
 
 ### 4.1 Dispatch
 
@@ -621,7 +616,7 @@ Achieving high performance levels with coroutines demands frame allocator custom
 
 ### 5.1 The Timing Constraint
 
-Coroutine frame allocation has a fundamental timing constraint: `operator new` executes before the coroutine body. When a coroutine is called, the compiler allocates the frame first, then begins execution. Any mechanism that injects context later - receiver connection, `await_transform`, explicit method calls - arrives too late.
+Coroutine frame allocation has a fundamental timing constraint: `operator new` executes before the coroutine body. When a coroutine is called, the compiler allocates the frame first, then begins execution. Any mechanism that injects context later - `await_transform`, explicit method calls, post-construction configuration - arrives too late.
 
 ```cpp
 auto t = my_coro(sock);  // operator new called HERE
@@ -738,7 +733,7 @@ Containers in the standard library accept allocators because they are written on
 
 Thread-local propagation is the only approach that maintains clean interfaces while respecting the timing constraint. The premise is simple: **frame allocator customization happens at launch sites**, not within coroutine algorithms. Functions like `run_async` and `run` accept frame allocator parameters because they represent application policy decisions. Coroutine algorithms don't need to "allocator-hop" - they simply inherit whatever frame allocator the application has established.
 
-Our approach:
+The approach:
 
 1. **Receive the frame allocator at launch time.** The launch site (`run_async`, `run`) accepts a fully-typed _Allocator_ parameter, or a `std::pmr::memory_resource*` at the caller's discretion.
 
@@ -940,27 +935,25 @@ Deallocation is thread-independent. Each frame stores its `memory_resource*` in 
 
 Coroutine chains differ structurally from containers. A container can outlive its creator. A coroutine chain cannot outlive its launch site. The frame allocator outlives every frame that uses it - not by convention, but by the structural nesting of coroutine lifetimes.
 
-`std::execution`'s `get_allocator(get_env(receiver))` is also an implicit lookup. The mechanism is structurally similar: an ambient environment provides the allocator. The difference is timing. In `std::execution`, the lookup happens after `connect()`, which is too late for coroutine frame allocation.
-
-In the _IoAwaitable_ model, the lookup happens before the frame is created - the one point in time where it can actually work.
+The _IoAwaitable_ model performs the lookup before the frame is created - the one point in time where it can actually work. Any mechanism that delivers the allocator after coroutine invocation arrives too late by definition.
 
 ---
 
 ## 6. The Ergonomics of Type Erasure
 
-C++20 coroutines allocate a frame for every coroutine invocation. The frame stores local variables, awaitables, intermediate state - everything the coroutine needs across suspension points. This allocation is the cost that critics point to. It cannot be eliminated for I/O coroutines (HALO cannot apply when lifetime depends on an external event). Every coroutine pays it.
+C++20 coroutines allocate a frame for every invocation. The frame stores local variables, awaitables, and intermediate state across suspension points. For I/O coroutines, this allocation is unavoidable: HALO cannot apply when frame lifetime depends on an external event.
 
-**The allocation we cannot avoid can pay for the type erasure we need.**
+**The allocation we cannot avoid buys the type erasure we need.**
 
 ### 6.1 Coroutine Frames as Type Erasure
 
-A socket, an SSL context, an HTTP parser, a database connection - all of these can live inside a coroutine frame, and the caller's type system never knows. The caller sees `task<Response>`, not the types hidden inside. You can put the body of a coroutine in a `.cpp` file and expose only the signature in a header. The awaitable types, the I/O objects, the implementation details - all hidden behind a pointer. This is the foundation of ABI stability for coroutine-based libraries.
+A socket, an SSL context, an HTTP parser, a database connection - all live inside a coroutine frame. The caller sees `task<Response>`. The coroutine body goes in a `.cpp` file; the header exposes the signature. Every type behind the frame boundary is hidden from the caller's type system. This is the foundation of ABI stability for coroutine-based libraries.
 
 ### 6.2 Type-Erased Streams
 
-Our research produced `any_read_stream`, a type-erased wrapper for any type satisfying the `ReadStream` concept (full listing in Appendix B). It is not part of the _IoAwaitable_ protocol itself, but it demonstrates what the protocol enables: zero-steady-state-allocation type erasure for I/O, with cached awaitable storage and a vtable that dispatches through the two-argument `await_suspend`.
+This research produced `any_read_stream`, a type-erased wrapper for any type satisfying the `ReadStream` concept (full listing in Appendix B). It is not part of the _IoAwaitable_ protocol, but it demonstrates what the protocol enables: zero-steady-state-allocation type erasure for I/O, with cached awaitable storage and a vtable that dispatches through the two-argument `await_suspend`.
 
-We are developing [Boost.Http](https://github.com/cppalliance/http)<sup>[16]</sup> (not yet accepted into Boost), an HTTP library built on Capy rather than Corosio. It works entirely in terms of type-erased streams - reading requests, parsing headers, dispatching to route handlers, and sending responses without knowing whether the underlying transport is a TCP socket, a TLS connection, or a test harness. This demonstrates the viability of implementing protocol logic away from platform sockets: the HTTP library depends only on Capy's type-erased abstractions, not on any specific I/O backend. If the _IoAwaitable_ protocol were standardized, an HTTP layer like this could ship as a compiled library with stable ABI. Users could relink against different I/O backends without recompiling their application code.
+[Boost.Http](https://github.com/cppalliance/http)<sup>[16]</sup>, an HTTP library built on Capy, works entirely in terms of type-erased streams. It reads requests, parses headers, dispatches to route handlers, and sends responses without knowing whether the underlying transport is a TCP socket, a TLS connection, or a test harness. The HTTP library depends on Capy's type-erased abstractions. It ships as a compiled library with stable ABI.
 
 ### 6.3 One Template Parameter
 
@@ -970,13 +963,13 @@ The _IoAwaitable_ protocol type-erases the environment through `executor_ref` an
 template<class T> class task;
 ```
 
-This enables separate compilation and ABI stability. A coroutine returning `task<int>` can be defined in a `.cpp` file and called from any translation unit without exposing the executor type, the frame allocator, or the stop token in the public interface. Libraries built on _IoAwaitable_ can ship as compiled binaries. [P4007R0](https://wg21.link/p4007r0)<sup>[7]</sup> Section 6.4 examines why alternative designs require a second template parameter and what the ecosystem's response has been.
+This enables separate compilation and ABI stability. A coroutine returning `task<int>` can be defined in a `.cpp` file and called from any translation unit without exposing the executor type, the frame allocator, or the stop token in the public interface. Libraries built on _IoAwaitable_ ship as compiled binaries. [P4007R0](https://wg21.link/p4007r0)<sup>[7]</sup> Section 6.4 examines why alternative designs require a second template parameter and what the ecosystem's response has been.
 
 ### 6.4 Ergonomic Impact
 
-The ergonomic consequences compound in real applications. An HTTP server has dozens of route handlers, each a coroutine. A database access layer has query functions. A WebSocket handler has message processors. All of these are written by application developers, not framework experts.
+An HTTP server has dozens of route handlers. A database layer has query functions. A WebSocket handler has message processors. Application developers write these, not framework experts.
 
-With _IoAwaitable_, the executor, frame allocator, and stop token are invisible. They propagate automatically through the coroutine chain. The developer focuses on business logic:
+With _IoAwaitable_, the executor, frame allocator, and stop token propagate automatically. The developer writes business logic:
 
 ```cpp
 route_task serve_api( route_params& rp )
@@ -989,133 +982,9 @@ route_task serve_api( route_params& rp )
 }
 ```
 
-Compare with the same handler under `allocator_arg_t`:
-
-```cpp
-route_task serve_api( std::allocator_arg_t, std::pmr::polymorphic_allocator<>,
-    route_params& rp ) // <-- the business logic param is LAST
-{
-    auto result = co_await db.query(
-        std::allocator_arg, alloc, "SELECT ...");
-    auto json = serialize(result);
-    auto [ec] = co_await rp.send(
-        std::allocator_arg, alloc, json);
-    if (ec) co_return route_error(ec);
-    co_return route_done;
-}
-```
-
-Nothing here is _wrong_. `allocator_arg_t` follows the standard convention. The forwarding is correct. The types check out. And yet no one would choose to write the second version if they had a choice. That gap between correctness and usability is the design problem this paper addresses.
-
 ---
 
-## 7. Comparison with `std::execution`
-
-The design choices in this paper diverge from `std::execution` ([P2300R10](https://wg21.link/p2300r10))<sup>[3]</sup> in ways that reflect fundamentally different use cases. This section examines the divergence technically, without claiming that either approach is universally superior. Each is optimized for its primary workload.
-
-### 7.1 The Late Binding Problem
-
-Coroutine frame allocation happens *before* the coroutine body executes. The frame allocator must be known at invocation, not discovered later through receiver queries. [P2300R10](https://wg21.link/p2300r10)<sup>[3]</sup> acknowledges this timing in its "Dependently-typed senders" section:
-
-> "The implication of the above is that the sender alone does not have all the information about the async computation it will ultimately initiate; some of that information is provided late via the receiver."
-
-This "late" information includes the frame allocator. Consider what happens with a coroutine-based sender:
-
-```cpp
-// P2300 query model: frame allocator discovered AFTER connect
-template<receiver Rcvr>
-struct my_operation_state {
-    Rcvr rcvr_;
-    void start() & noexcept {
-        auto alloc = get_allocator(get_env(rcvr_));
-        // But coroutine frame was allocated BEFORE connect() returned
-    }
-};
-
-task<int> async_work();              // Frame allocated NOW
-auto sndr = async_work();            
-auto op = connect(sndr, receiver);   // Frame allocator available NOW - too late
-start(op);
-```
-
-The timing mismatch is fundamental:
-
-```mermaid
-flowchart LR
-    S1["1. Create sender"] --> S2["2. Allocate frame"]
-    S2 --> S3["3. connect(sndr, rcvr)"]
-    S3 --> S4["4. Query frame allocator"]
-    S2 -.->|"Need frame allocator"| S4
-    S4 -.->|"Too late!"| S2
-```
-
-Our forward flow model resolves this by making the frame allocator available before the frame is allocated:
-
-```mermaid
-flowchart LR
-    I1["1. Set TLS frame alloc"] --> I2["2. Call task()"]
-    I2 --> I3["3. operator new"]
-    I3 --> I4["4. await_suspend"]
-    I1 -.->|"Frame allocator ready"| I3
-```
-
-### 7.2 Type Visibility and Erasure
-
-In `std::execution`, sender types encode the entire operation chain:
-
-```cpp
-auto sndr = schedule(sched) | then(f) | then(g);
-// Type: then_sender<then_sender<schedule_sender<Sched>, F>, G>
-```
-
-These deeply nested types must be visible at every composition boundary. Storing them in data structures or passing them through non-templated interfaces requires type erasure - but C++26 `std::execution` provides none. Facebook's libunifex offered `any_sender_of`, but it heap-allocates every erased sender, is hard-coded to `std::exception_ptr`, and is [effectively abandoned](https://github.com/facebookexperimental/libunifex/commit/c93740d3c0ee74311c442f55295cd0b9c8bd63cd). [Eric Niebler acknowledged](https://github.com/facebookexperimental/libunifex/issues/244#issuecomment-810686094) in 2021 that `any_sender_of` cannot handle error types beyond `exception_ptr`. The fix remains unimplemented.
-
-The `connect_result_t` pattern requires full type visibility of nested operations:
-
-```cpp
-template<class S, class R>
-struct _retry_op {
-    using _child_op_t = stdexec::connect_result_t<S&, _retry_receiver<S, R>>;
-    optional<_child_op_t> o_;  // Nested operation state, fully typed
-};
-```
-
-For GPU workloads, this compile-time visibility enables real optimization: inlining kernel launches, eliminating intermediate buffers, selecting memory transfer strategies. This is not an accident - the sender/receiver model was designed around compile-time work graphs, where the entire operation chain is visible to the optimizer before execution begins. That design choice serves GPU workloads well, but it structurally prevents the kind of type erasure that coroutine frames provide for free. The two designs made different bets about what matters most, and those bets lead to different tradeoffs.
-
-For networking, where I/O latency dwarfs dispatch overhead by orders of magnitude, compile-time operation chain visibility provides no benefit while imposing compile-time and ABI costs.
-
-Our design achieves zero type leakage. Composed algorithms expose only concrete task return types:
-
-| Aspect              | _IoAwaitable_               | `std::execution`             |
-| ------------------- | --------------------------- | ---------------------------- |
-| Task types          | Simple `task<T>`            | Encode operation chain       |
-| Standard solution   | Native `coroutine_handle<>` | None in C++26                |
-| Coroutine cost      | Frame only                  | Frame + erasure wrapper      |
-| Error types         | Any (`error_code`, etc.)    | Only `exception_ptr`         |
-| Conversion overhead | None                        | Required                     |
-
-### 7.3 The Integration Tax
-
-Networking code that participates in the sender/receiver ecosystem must implement `get_env`, `get_domain`, `get_completion_scheduler`, and satisfy sender/receiver concepts - even when only returning defaults. [P2300R10](https://wg21.link/p2300r10)<sup>[3]</sup>/[P3826](https://wg21.link/p3826)<sup>[6]</sup> don't break networking code - defaults work. The question is whether networking should pay for abstractions it does not use.
-
-| Abstraction                  | Networking Need    | GPU/Parallel Need     |
-| ---------------------------- | ------------------ | --------------------- |
-| Domain-based dispatch        | None               | Critical              |
-| Completion scheduler queries | Unused             | Required              |
-| Sender transforms            | Pass-through only  | Algorithm selection   |
-| Typed operation state        | ABI liability      | Optimization benefit  |
-| Executor/Scheduler           | `dispatch`, `post` | `schedule`, `transfer`|
-| Context discovery            | Forward            | Backward (query)      |
-
-A simpler, networking-focused design achieves the same I/O goals without this overhead.
-
----
-
-## 8. Reference Implementation
-
-This section is non-normative. It provides implementation guidance for library authors who want to adopt the _IoAwaitable_ protocol.
-
-### 8.1 The `io_awaitable_promise_base` Mixin
+## 7. The `io_awaitable_promise_base` Mixin
 
 This utility simplifies promise type implementation by providing the internal machinery that every _IoRunnable_-conforming promise type needs:
 
@@ -1263,47 +1132,43 @@ This mixin encapsulates the boilerplate that every _IoRunnable_-compatible promi
 
 ---
 
-## 9. Conclusion
+## 8. Conclusion
 
-We set out to answer a practical question: what execution model emerges when networking requirements drive the design? The answer is smaller than we expected.
+We asked what happens when networking requirements drive the design of a coroutine execution model. The protocol that emerged is small, and we could not find anything to remove from it without losing function. Every language feature it depends on - `coroutine_handle<>`, `promise_type`, `await_suspend`, compiler-managed state - is part of C++20.
 
-**What we found:**
+The abstractions that succeed in C++ are narrow. Iterators capture traversal. Allocators capture memory strategy. Each serves a broad category by focusing on one set of requirements. I/O asynchrony is one such category. GPU computing is another. Each deserves a model that fits.
 
-1. **A minimal executor abstraction.** Two operations - `dispatch` and `post` - suffice for I/O workloads.
+**For I/O, the basis is already in the language.**
 
-2. **A clear responsibility model.** The application decides execution, frame allocation, and stop policy at the launch site. Coroutine algorithms remain free of cross-cutting concerns.
+A reference implementation is available as [Capy](https://github.com/cppalliance/capy)<sup>[10]</sup>, with networking provided by [Corosio](https://github.com/cppalliance/corosio)<sup>[11]</sup>. A self-contained demonstration is on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT) (https://godbolt.org/z/Wzrb7McrT).
 
-3. **Complete type hiding.** Executor types do not leak into public interfaces. Platform I/O types remain hidden in translation units. Composed algorithms expose only concrete task return types. This directly enables ABI stability and separate compilation.
+These libraries arose from use-case-first development with a simple mandate: use C++20 coroutines directly for I/O and observe what the language provides. Every design decision emerged from implementing the solution. Standards should follow implementations, not the reverse. The _IoAwaitable_ protocol is offered in that spirit: not as a theoretical construct, but as a distillation of patterns proven in practice.
 
-4. **Forward context propagation.** Execution context flows with control flow. The frame allocator is available before the frame is allocated. The environment is available from the first suspension point.
+---
 
-5. **A conscious tradeoff.** One pointer indirection per I/O operation (~1-2 nanoseconds <sup>[14]</sup>) buys encapsulation, ABI stability, and fast compilation. For I/O-bound workloads where operations take 10,000+ nanoseconds, this cost is negligible.
+## 9. Suggested Straw Polls
 
-### On Universal Models
+SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2) ("Sender/Receiver Interface For Networking"):
 
-C++ has a strong track record with universal abstractions, but the ones that succeed share a distinctive property: they are narrow. Iterators, allocators, ranges, each captures a focused set of requirements and enables a broad category of use cases.
+> *"Networking should support only a sender/receiver model for asynchronous operations; the Networking TS's executor model should be removed"*
+>
+> | SF | F | N | A | SA |
+> |----|---|---|---|----|
+> |  5 | 5 | 1 | 0 |  1 |
+>
+> Consensus.
 
-Attempting to impose a universal model of asynchrony does a disservice to C++ users. Networking asynchrony is fundamentally different from GPU computing, which is different from CPU-bound parallel algorithms. A socket read has one implementation per platform. A GPU kernel has multiple implementations selected at compile time based on hardware capabilities. These are different problems with different optimization opportunities and different correctness requirements.
+The approach described in this paper - a coroutine-native I/O model using C++20 language features - was not among the alternatives considered.
 
-The _IoAwaitable_ protocol is designed for networking. We would not suggest using it for GPU workloads, and we would not suggest adapting a GPU-focused framework for networking. Each domain deserves a model that fits its requirements, and interoperability at the boundaries is achievable without forcing everything through a single abstraction.
+**Poll 1.** A coroutine-native I/O model is a distinct approach from both the Networking TS executor model and the sender/receiver model.
 
-### Implementation and Next Steps
-
-A reference implementation of this protocol exists as a complete library: [Capy](https://github.com/cppalliance/capy)<sup>[10]</sup>. It is the foundation for [Corosio](https://github.com/cppalliance/corosio)<sup>[11]</sup>, which provides sockets, timers, signals, DNS resolution, and TLS on multiple platforms. An HTTP server, WebSocket support, and a URL parser are built on top. A self-contained demonstration of the protocol is available on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT) (https://godbolt.org/z/Wzrb7McrT).
-
-These libraries arose from use-case-first development with a simple mandate: produce a networking library built only for coroutines. Every design decision emerged from solving real problems in production I/O code. Standards should follow implementations, not the reverse. The _IoAwaitable_ protocol is offered in that spirit: not as a theoretical construct, but as a distillation of patterns proven in practice.
-
-In October 2021, LEWG polled:
-
-> *"Networking should be based on the sender/receiver model" - Weak consensus in favor*
-
-This direction was reasonable given the information available at the time. The evidence presented in this paper suggests the committee may wish to revisit this guidance. A "weak consensus" is not a mandate; it is an invitation to reconsider as new information emerges.
+**Poll 2.** New research into coroutine-native I/O, not available at the time of the Kona poll, warrants consideration.
 
 ---
 
 ## 10. Thoughts on Wording
 
-> **Non-normative note.** The wording below is not primarily intended for standardization. Its purpose is to demonstrate how a networking-focused, use-case-first design produces a lean specification footprint. Compare this compact specification against the machinery required by P2300/P3826 - domains, completion schedulers, sender transforms, query protocols - and observe how much simpler an execution model becomes when designed specifically for I/O workloads.
+> **Non-normative note.** The wording below is not primarily intended for standardization. Its purpose is to demonstrate how a use-case-first design produces a lean specification footprint, and to show how compact an execution model becomes when designed specifically for I/O workloads.
 
 ### 10.1 Header `<io_awaitable>` synopsis [ioawait.syn]
 
@@ -1532,7 +1397,6 @@ namespace std {
 3 [ *Note:* At two pointers in size, `executor_ref` is designed for efficient propagation through coroutine chains. The `dispatch` member returns a `coroutine_handle<>` for symmetric transfer, enabling zero-overhead resumption when executors match. *- end note* ]
 
 #### 10.4.1 `executor_ref` constructors [ioawait.execref.cons]
-
 ```cpp
 executor_ref() = default;
 ```
@@ -1972,9 +1836,9 @@ This paper builds on the foundational work of many contributors to C++ asynchron
 
 **Chris Kohlhoff** for Boost.Asio, which has served the C++ community for over two decades and established many of the patterns we build upon - and some we consciously depart from. The executor model in this paper honors his pioneering work.
 
-**Lewis Baker** for his work on C++ coroutines, the Asymmetric Transfer blog series, and his contributions to [P2300R10](https://wg21.link/p2300r10) and [P3826](https://wg21.link/p3826). His explanations of symmetric transfer and coroutine optimization techniques directly informed our design.
+**Lewis Baker** for his work on C++ coroutines and the Asymmetric Transfer blog series. His explanations of symmetric transfer and coroutine optimization techniques directly informed this work.
 
-**Dietmar K&uuml;hl** for [P2762](https://wg21.link/p2762) and [P3552](https://wg21.link/p3552), which explore sender/receiver networking and coroutine task types. His clear articulation of design tradeoffs - including the late-binding problem and cancellation overhead concerns - helped crystallize our understanding of where the sender model introduces friction for networking.
+**Dietmar K&uuml;hl** for his work on networking and coroutine task types. His clear articulation of design tradeoffs in asynchronous C++ helped crystallize our understanding of I/O requirements.
 
 The analysis in this paper is not a critique of these authors' contributions, but rather an exploration of whether networking's specific requirements are best served by adapting to general-purpose abstractions or by purpose-built designs.
 
@@ -2378,17 +2242,13 @@ Peter Dimov, and Mateusz Pusz for their valuable feedback in the development of 
 
 1. [N4242](https://wg21.link/n4242) - Executors and Asynchronous Operations, Revision 1 (2014). https://wg21.link/n4242
 2. [N4482](https://wg21.link/n4482) - Some notes on executors and the Networking Library Proposal (2015). https://wg21.link/n4482
-3. [P2300R10](https://wg21.link/p2300r10) - std::execution (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler). https://wg21.link/p2300r10
-4. [P2762R2](https://wg21.link/p2762) - Sender/Receiver Interface for Networking (Dietmar K&uuml;hl). https://wg21.link/p2762
-5. [P3552R3](https://wg21.link/p3552) - Add a Coroutine Task Type (Dietmar K&uuml;hl, Maikel Nadolski); approved for C++26 at Sofia plenary. https://wg21.link/p3552
-6. [P3826R2](https://wg21.link/p3826) - Fix or Remove Sender Algorithm Customization (Lewis Baker, Eric Niebler). https://wg21.link/p3826
-7. [P4007R0](https://wg21.link/p4007r0) - Senders and C++ (Vinnie Falco, Mungo Gill). https://wg21.link/p4007r0
-8. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Chris Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
-9. [The C10K problem](http://www.kegel.com/c10k.html) - Scalable network programming (Dan Kegel). http://www.kegel.com/c10k.html
-10. [Capy](https://github.com/cppalliance/capy) - _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/capy
-11. [Corosio](https://github.com/cppalliance/corosio) - Coroutine-first networking library (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/corosio
-12. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
-13. [libunifex](https://github.com/facebookexperimental/libunifex) - Unified Executors library for C++ (Facebook/Meta, Eric Niebler). https://github.com/facebookexperimental/libunifex
-14. [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw) - CppCon 2023 (Shachar Shemesh). https://www.youtube.com/watch?v=i5MAXAxp_Tw
-15. [Boost.Asio low-latency guidance](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications) - Chris Kohlhoff, SG-14 mailing list (via Stack Overflow). https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications
-16. [Boost.Http](https://github.com/cppalliance/http) - HTTP library built on Capy (Vinnie Falco). https://github.com/cppalliance/http
+3. [P4007R0](https://wg21.link/p4007r0) - Senders and Coroutines (Vinnie Falco, Mungo Gill). https://wg21.link/p4007r0
+4. [P4014R0](https://wg21.link/p4014r0) - The Sender Sub-Language (Vinnie Falco, Mungo Gill). https://wg21.link/p4014r0
+5. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Chris Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
+6. [The C10K problem](http://www.kegel.com/c10k.html) - Scalable network programming (Dan Kegel). http://www.kegel.com/c10k.html
+7. [Capy](https://github.com/cppalliance/capy) - _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/capy
+8. [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O library (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/corosio
+9. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
+10. [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw) - CppCon 2023 (Shachar Shemesh). https://www.youtube.com/watch?v=i5MAXAxp_Tw
+11. [Boost.Asio low-latency guidance](https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications) - Chris Kohlhoff, SG-14 mailing list (via Stack Overflow). https://stackoverflow.com/questions/44446984/can-boost-asio-be-used-to-build-low-latency-applications
+12. [Boost.Http](https://github.com/cppalliance/http) - HTTP library built on Capy (Vinnie Falco). https://github.com/cppalliance/http
