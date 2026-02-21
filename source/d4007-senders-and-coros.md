@@ -311,13 +311,14 @@ Under Dimov's mapping - the best known convention - consider the same `read_body
 
 ```cpp
 std::execution::task<std::string>
-read_body(tcp_socket& s, buffer& buf)
+read_body( tcp_socket& sock )
 {
+    char buf[1024];
     std::string body;
     while (true) {
         try {
-            auto [ec, n] = co_await s.async_read_some(buf);
-            body.append(buf.data(), n);
+            auto [ec, n] = co_await sock.async_read_some(buf);
+            body.append( buf, n );
             if (ec == eof)
                 co_return body;
             if (ec)
@@ -368,13 +369,18 @@ A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.
 In regular C++, `co_return` delivers errors:
 
 ```cpp
-my_task<std::expected<std::size_t, std::error_code>>
-do_read(tcp_socket& s, buffer& buf)
+my_task< std::pair<std::error_code, std::string> >
+read_body( tcp_socket& sock )
 {
-    auto [ec, n] = co_await s.async_read(buf);
-    if (ec)
-        co_return std::unexpected(ec);
-    co_return n;
+    char buf[1024];
+    std::string body;
+    for(;;)
+    {
+        auto [ec, n] = co_await sock.async_read_some(buf);
+        body.append( buf, n );
+        if( ec )
+            co_return { ec, std::move(body) };
+    }
 }
 ```
 
