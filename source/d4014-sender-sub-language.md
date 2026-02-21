@@ -291,11 +291,11 @@ struct fold_left_fn {
         -> any_sender_of<                                 // type-erased monadic return
             stdexec::set_value_t(
                 std::decay_t<
-                    std::invoke_result_t<F, T, std::iter_reference_t<I>>>),
+                    std::invoke_result_t<F&, T, std::iter_reference_t<I>>>),
             stdexec::set_stopped_t(),
             stdexec::set_error_t(std::exception_ptr)> {
         using U = std::decay_t<
-            std::invoke_result_t<F, T, std::iter_reference_t<I>>>;
+            std::invoke_result_t<F&, T, std::iter_reference_t<I>>>;
 
         if (first == last) {                              // base case
             return stdexec::just(U(std::move(init)));     // pure/return
@@ -406,7 +406,7 @@ struct _op;
 // All other completions pass through to the inner receiver
 template <class S, class R>
 struct _retry_receiver                                    // receiver adaptor pattern
-    : stdexec::receiver_adaptor<                          // CRTP base for receiver
+    : exec::receiver_adaptor<                              // CRTP base for receiver
           _retry_receiver<S, R>> {
     _op<S, R>* o_;                                        // pointer to owning op state
 

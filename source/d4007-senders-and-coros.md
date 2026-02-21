@@ -157,7 +157,7 @@ Each channel has a fixed signature shape:
 A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
 ```cpp
-task<pair<error_code, string>>
+task<std::pair<std::error_code, std::string>>
 read(tcp::socket& sock)
 {
     std::string result;

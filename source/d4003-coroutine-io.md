@@ -1068,6 +1068,9 @@ public:
 
     // Default pass-through; derived classes override
     // to add custom awaitable transformation.
+    // Concrete task types must wrap IoAwaitable types
+    // here, bridging the compiler's one-argument
+    // await_suspend to the two-argument IoAwaitable form.
 
     template<typename A>
     decltype(auto) transform_awaitable(A&& a)
@@ -1864,7 +1867,9 @@ The natural response to blocking I/O is to spawn a thread per connection. Each t
 ```cpp
 void handle_client(socket client) {
     char buf[1024];
-    while (auto [ec, n] = client.read_some(buf); !ec) {
+    while (true) {
+        auto [ec, n] = client.read_some(buf);
+        if (ec) break;
         process(buf, n);
     }
 }
