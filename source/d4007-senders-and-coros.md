@@ -362,6 +362,10 @@ Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2
 
 Kohlhoff presented these observations during the P2300 review and published the slides as P2430R0. It was not a standalone proposal, and there were no polls to find. But the observation was right. Five years and ten revisions later, the tension Kohlhoff identified remains unresolved. Appendix A.3 traces why.
 
+### 3.10 LEWG Background
+
+A [companion document](https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md)<sup>[61]</sup> captures the design space and trade-offs around how asynchronous I/O completion results interact with the three-channel model of `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>). It is intended for LEWG consumption as background for decisions concerning `std::execution::task`, the SG4 networking mandate, and the relationship between senders and coroutines.
+
 ---
 
 ## 4. Where Is the `co_return`?
@@ -1072,3 +1076,4 @@ development of this paper.
 58. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
 59. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0
 60. Robert Leahy, [`use_sender.hpp`](https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp) - Asio-to-sender bridge in stdexec (2026). https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp
+61. ["Design Rationale: Sender Channels and I/O Return Types"](https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md) - Channel routing alternatives for LEWG (2026). https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md
