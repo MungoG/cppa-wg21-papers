@@ -318,7 +318,7 @@ Three solutions have been presented. Each improves on the last. None is free:
 | Solution              | Cost                                                                                                                         |
 |-----------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `set_error` on error  | Partial results destroyed                                                                                                    |
-| `set_value` always    | Impoverished composition                                                                                                     |
+| `set_value` always    | Reduced composition surface                                                                                                  |
 | Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.7) <br> Same error bifurcates on n           |
 
 Under Dimov's mapping - the best known convention - consider the same `read_body` from Section 3.2, written with `std::execution::task`. Preserving accumulated data on the n==0 error path requires try/catch in a normal I/O loop for errors that are not exceptional:
