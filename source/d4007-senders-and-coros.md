@@ -152,7 +152,7 @@ Each channel has a fixed signature shape:
 - `set_error(receiver, E)` carries a single, strongly-typed error.
 - `set_stopped(receiver)` is a stateless signal.
 
-### 3.2 Coroutines Return Tuples
+### 3.2 I/O works with tuples
 
 A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
