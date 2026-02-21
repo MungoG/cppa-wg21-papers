@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and frame allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [D4014R0](https://wg21.link/d4014)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O exploration ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and frame allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that exploration's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and frame allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O research report ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and frame allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that report's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -24,9 +24,9 @@ audience: LEWG
 
 ## 1. Disclosure
 
-The authors developed [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework"), a coroutine-native I/O exploration. P4003 is one point in a design space, not a proposal. It asks: "what does I/O look like when designed exclusively for coroutines?" That question has its own tradeoffs. A coroutine-only design cannot express compile-time work graphs, does not support heterogeneous dispatch, and assumes a cooperative runtime. Those are real costs.
+The authors developed [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("Coroutines for I/O"). A coroutine-only design cannot express compile-time work graphs, does not support heterogeneous dispatch, and assumes a cooperative runtime. Those are real costs.
 
-The point is not that coroutine-native I/O is universally superior. The point is that different domains have different costs, and a single model cannot minimize all of them simultaneously. The structural gaps documented in Sections 3-5 exist at the boundary where `std::execution` meets coroutines. They hold regardless of whether P4003 is the right design or any design at all. Code examples in Section 2 are drawn from P4003 to illustrate what coroutine-native I/O looks like - not to propose it as the only way forward.
+The structural gaps documented in Sections 3-5 exist at the boundary where `std::execution` meets coroutines. They hold regardless of whether P4003 is the right design or any design at all. Code examples in Section 2 are drawn from P4003 - not to propose it as the only way forward.
 
 ---
 
@@ -34,7 +34,7 @@ The point is not that coroutine-native I/O is universally superior. The point is
 
 Eric Niebler wrote in ["Structured Concurrency"](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> (2020): *"I think that 90% of all async code in the future should be coroutines simply for maintainability."*
 
-If coroutines are the primary tool, what does I/O look like when designed for them? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") explored this with a working implementation compiled on three toolchains, with benchmarks and unit tests. The exploration identified four properties of the coroutine-native approach.
+If coroutines are the primary tool, what does I/O look like when designed for them? [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("Coroutines for I/O") is a research report drawn from a working implementation compiled on three toolchains, with benchmarks and unit tests. It produced a minimal protocol - two concepts, a type-erased executor, and thread-local frame allocator propagation - and identified four properties of the coroutine-native approach.
 
 ### 2.1 Partial Results
 
@@ -77,34 +77,7 @@ Coroutine frame allocation overhead is measurable at high request rates. A recyc
 run_async( &pool )( do_connection(sock) );
 ```
 
-The two-call syntax exists because of `operator new` timing. `run_async(&pool)` returns a trampoline whose lifetime encloses the entire coroutine chain. The trampoline stores the frame allocator and publishes a pointer to it in thread-local storage *before* `do_connection(sock)` is invoked. By the time `do_connection`'s `promise_type::operator new` fires, the frame allocator is already available. C++17 guaranteed evaluation order makes this safe.
-
-A promise opts in by reading the thread-local in `operator new`:
-
-```cpp
-static void* operator new(std::size_t size) {
-    auto* mr = get_current_frame_allocator();
-    if (!mr)
-        mr = std::pmr::new_delete_resource();
-    auto total = size + sizeof(std::pmr::memory_resource*);
-    void* raw = mr->allocate(total, alignof(std::max_align_t));
-    std::memcpy(static_cast<char*>(raw) + size, &mr, sizeof(mr));
-    return raw;
-}
-```
-
-On every resume, the coroutine restores the thread-local from its heap-stable environment:
-
-```cpp
-void await_resume() const noexcept {
-    if (p_->frame_allocator())
-        set_current_frame_allocator(p_->frame_allocator());
-}
-```
-
-The thread-local carries only a pointer; the frame allocator itself lives in the trampoline. The window is narrow and deterministic: the pointer is written when the coroutine resumes and read only in `operator new` of a child coroutine called during that execution. The technique is the same principle as `std::pmr::get_default_resource()`, scoped per-chain instead of per-process.
-
-Coroutine signatures do not mention the frame allocator:
+Thread-local propagation delivers the frame allocator to every coroutine in the chain without polluting signatures. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> Section 5 provides the complete mechanism: the `operator new` hook, the resume-time restore, and the timing guarantee from C++17 evaluation order. Coroutine signatures do not mention the frame allocator:
 
 ```cpp
 route_task serve_api(route_params& rp)
@@ -117,7 +90,7 @@ route_task serve_api(route_params& rp)
 }
 ```
 
-The frame allocator is set once at the launch site and reaches every coroutine automatically. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether a similar approach could deliver automatic frame allocator propagation to `std::execution::task`.
+The frame allocator is set once at the launch site and reaches every coroutine automatically. We would welcome the opportunity to work with the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> and [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> authors to explore whether [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>'s thread-local propagation mechanism could deliver automatic frame allocator propagation to `std::execution::task`.
 
 ### 2.5 Two Models of Computation
 
@@ -184,7 +157,7 @@ Each channel has a fixed signature shape:
 A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
 ```cpp
-task<pair<error_code, string>>
+task<std::pair<std::error_code, std::string>>
 read(tcp::socket& sock)
 {
     std::string result;
@@ -281,7 +254,21 @@ The combinators `when_all` and `when_any` present a different challenge: they mu
 
 The generic composition that justifies having three channels cannot serve I/O under this mapping.
 
-### 3.5 Dimov's Mapping
+### 3.5 The Classification Problem
+
+Andrzej Krzemie&#324;ski observes that I/O completions flow through a pipeline with a classification step between the I/O layer and the program logic:
+
+```
+Level:      I/O        Composed I/O     Classification      Program Logic
+
+success:    [read] ----> [process] -----> [classify]  -----> [handle success]
+error:     (unused)      (unused)          (unused)    \---> [handle error  ]
+cancel:    (unused)      (unused)          (unused)     \--> [handle cancel ]
+```
+
+At the I/O level, there is only success. The error and cancellation channels become relevant only after the application classifies the I/O status - and that classification requires context the I/O layer does not have. For example, `ECONNRESET` means "fatal, abort the transaction" in an HTTP request handler, but "done, expected closure" in a long-polling connection that the server intentionally drops. The same error code, classified differently depending on the protocol state the coroutine holds. `std::execution` does not provide a standard classification adaptor that maps I/O status tuples into the three channels. Sections 3.6 through 3.8 examine what happens when the mapping is attempted.
+
+### 3.6 Dimov's Mapping
 
 Peter Dimov proposes a refined convention that avoids data loss on partial success by discriminating the channel based on the byte count and error code category:
 
@@ -296,7 +283,7 @@ This is the only mapping the authors are aware of that preserves partial results
 
 The mapping requires semantic knowledge of specific error conditions: EOF is distinguished from cancellation, which is distinguished from all other errors. It is not a generic transformation, it is domain-specific I/O logic embedded in the channel routing. Dimov characterized the convention as "ad hoc."
 
-### 3.6 Routine Errors Become Exceptions
+### 3.7 Routine Errors Become Exceptions
 
 Under Dimov's mapping, any I/O error with zero bytes transferred goes through `set_error`. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>'s `task` delivers `set_error` to the coroutine as a thrown exception. Three design decisions chain together:
 
@@ -324,27 +311,28 @@ auto [ec, n] = co_await s.read_some(buf);   // ec == ECONNRESET, n == 0
 if (ec) co_return {ec, std::move(body)};    // no exception, no stack unwinding
 ```
 
-### 3.7 Coroutines Always Pay
+### 3.8 Coroutines Always Pay
 
 Three solutions have been presented. Each improves on the last. None is free:
 
 | Solution              | Cost                                                                                                                         |
 |-----------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `set_error` on error  | Partial results destroyed                                                                                                    |
-| `set_value` always    | Impoverished composition                                                                                                     |
-| Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.6) <br> Same error bifurcates on n           |
+| `set_value` always    | Reduced composition surface                                                                                                  |
+| Dimov's mapping       | `co_yield with_error` required <br> Routine errors become exceptions (Section 3.7) <br> Same error bifurcates on n           |
 
 Under Dimov's mapping - the best known convention - consider the same `read_body` from Section 3.2, written with `std::execution::task`. Preserving accumulated data on the n==0 error path requires try/catch in a normal I/O loop for errors that are not exceptional:
 
 ```cpp
 std::execution::task<std::string>
-read_body(tcp_socket& s, buffer& buf)
+read_body( tcp_socket& sock )
 {
+    char buf[1024];
     std::string body;
     while (true) {
         try {
-            auto [ec, n] = co_await s.async_read_some(buf);
-            body.append(buf.data(), n);
+            auto [ec, n] = co_await sock.async_read_some(buf);
+            body.append( buf, n );
             if (ec == eof)
                 co_return body;
             if (ec)
@@ -366,7 +354,7 @@ In a sender pipeline, these costs do not exist. The channels route completions a
 
 *For senders, no cost. For coroutines, everything.*
 
-### 3.8 The Paper Not Polled
+### 3.9 The Paper Not Polled
 
 Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2430r0)<sup>[3]</sup> ("Partial success scenarios with P2300"):
 
@@ -395,13 +383,18 @@ A coroutine promise can define `return_void` or `return_value`, not both ([[dcl.
 In regular C++, `co_return` delivers errors:
 
 ```cpp
-my_task<std::expected<std::size_t, std::error_code>>
-do_read(tcp_socket& s, buffer& buf)
+my_task< std::pair<std::error_code, std::string> >
+read_body( tcp_socket& sock )
 {
-    auto [ec, n] = co_await s.async_read(buf);
-    if (ec)
-        co_return std::unexpected(ec);
-    co_return n;
+    char buf[1024];
+    std::string body;
+    for(;;)
+    {
+        auto [ec, n] = co_await sock.async_read_some(buf);
+        body.append( buf, n );
+        if( ec )
+            co_return { ec, std::move(body) };
+    }
 }
 ```
 
@@ -452,7 +445,7 @@ Coroutines dynamically allocate their frames. For I/O operations, the frame must
 
 This is a real cost and a real source of resistance to coroutines in performance-sensitive code. But the allocator that matters here is not a general-purpose allocator. It is the *frame allocator* - an allocator whose sole purpose is to allocate and deallocate coroutine frames. Control and timing of the frame allocator is crucial: `promise_type::operator new` fires at the call site, before any sender machinery runs. With the right frame allocator, the overhead disappears. The resistance stems partly from the allocation model, not from coroutines themselves.
 
-Each `task<T>` call invokes `promise_type::operator new`. At high request rates, frame allocations reach millions per second. A recycling frame allocator makes a measurable difference. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("IoAwaitables: A Coroutines-Only Framework") benchmarks a 4-deep coroutine call chain (2 million iterations):
+Each `task<T>` call invokes `promise_type::operator new`. At high request rates, frame allocations reach millions per second. A recycling frame allocator makes a measurable difference. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("Coroutines for I/O") benchmarks a 4-deep coroutine call chain (2 million iterations):
 
 | Platform    | Frame Allocator  | Time (ms) | Speedup |
 |-------------|------------------|----------:|--------:|
@@ -559,7 +552,7 @@ While K&uuml;hl's [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> provides `
 
 [C++ Core Guidelines F.7](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines.html#Rf-smart)<sup>[37]</sup>: a function should not be coupled to the caller's ownership policy. Lampson (1983): *"An interface should capture the minimum essentials of an abstraction."*
 
-Senders receive the frame allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. Section 1.4 demonstrates a working mechanism.
+Senders receive the frame allocator through the environment, automatically, at every level of nesting, with no signature pollution. Coroutines receive it through `allocator_arg`, manually, at every call site, with silent fallback on any mistake. [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> Section 3.5.11 identifies the absence of a TLS capture/restore hook in `task`. [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> Section 5 demonstrates a working mechanism.
 
 ### 5.4 Does Performance Matter?
 
@@ -572,12 +565,12 @@ HALO allows compilers to elide coroutine frame allocation when the frame's lifet
 ```cpp
 namespace ex = std::execution;
 
-ex::task<void> read_data(socket& s, buffer& buf)
+ex::task<> read_data(socket& s, buffer& buf)
 {
     co_await s.async_read(buf);
 }
 
-void start_read(ex::counting_scope& scope, auto sch)
+void start_read(ex::counting_scope& scope, auto sch, socket& sock, buffer& buf)
 {
     ex::spawn(
         ex::on(sch, read_data(sock, buf)),
@@ -674,7 +667,7 @@ Choose one:
 
 The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 6.1 through 6.3 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
 
-Shipping `task` is the risky choice, not the safe one. Three structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Frame allocator propagation still unsolved six months after adoption. K&uuml;hl himself filed sixteen open concerns. The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
+Shipping `task` is the risky choice, not the safe one. Three structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Frame allocator propagation still unsolved six months after adoption. K&uuml;hl himself filed a catalogue of open concerns (Section 8). The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
 
 | Library       | Declaration                                       | Params  |
 |---------------|---------------------------------------------------|:-------:|
@@ -800,7 +793,7 @@ The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A co
 
 2. "Asynchronous C++ need not be limited to `std::execution`."
 
-3. "WG21 should explore coroutine-native I/O alongside senders."
+3. "WG21 should explore coroutine-native I/O."
 
 ---
 
@@ -902,7 +895,7 @@ The partial success problem was raised independently, across multiple groups, by
 
 - **2025-2026:** P2300 adopted into the C++26 working draft. [P3570R2](https://wg21.link/p3570r2)<sup>[15]</sup> (Fracassi, "Optional variants in sender/receiver") documents the interface mismatch between `optional<T>` and the channel model. The error channel / partial success question remains open. No paper in the published record proposes a resolution that preserves compile-time channel routing.
 
-The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.7 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
+The question has been open for five years. This duration is not due to neglect - some of the most capable engineers in the C++ community have worked on P2300 across ten revisions and dozens of follow-on papers. Every proposed fix involves a tradeoff with real downsides (Sections 3.3 through 3.8 document the costs). The three-channel model is a property of the sender model, not a bug. When the best people in the field iterate for five years on a well-understood problem and every solution trades one cost for another, the evidence points toward a structural constraint rather than a missing insight.
 
 ---
 
@@ -1030,7 +1023,7 @@ development of this paper.
 22. [P3941R1](https://wg21.link/p3941r1) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3941r1
 23. [P3950R0](https://wg21.link/p3950r0) - "return_value & return_void Are Not Mutually Exclusive" (Robert Leahy, 2025). https://wg21.link/p3950r0
 24. [D3980R0](https://isocpp.org/files/papers/D3980R0.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026). https://isocpp.org/files/papers/D3980R0.html
-25. [P4003R0](https://wg21.link/p4003r0) - "IoAwaitables: A Coroutines-Only Framework" (Vinnie Falco, 2026). https://wg21.link/p4003r0
+25. [P4003R0](https://wg21.link/p4003r0) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r0
 26. [P4014R0](https://wg21.link/p4014r0) - "The Sender Sub-Language" (Vinnie Falco, 2026). https://wg21.link/p4014r0
 27. [N5028](https://wg21.link/n5028) - "Result of voting on ISO/IEC CD 14882" (2025). https://wg21.link/n5028
 
