@@ -824,7 +824,7 @@ outline: none;
 <!-- Document Metadata -->
 <div class="document-info">
   <p><strong>Document Number:</strong> P4014R0</p>
-  <p><strong>Date:</strong> 2026-02-20</p>
+  <p><strong>Date:</strong> 2026-02-22</p>
   <p><strong>Audience:</strong> LEWG</p>
   <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Mungo Gill
 <a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
@@ -970,6 +970,18 @@ language feature to its Sub-Language counterpart:</p>
 <td><code>\|</code> pipe chaining</td>
 </tr>
 <tr>
+<td>Local variables</td>
+<td>Lambda captures (with move semantics across boundaries)</td>
+</tr>
+<tr>
+<td><code>return</code></td>
+<td><code>set_value</code> into the receiver</td>
+</tr>
+<tr>
+<td><code>try</code> / <code>catch</code></td>
+<td><code>upon_error</code> / <code>let_error</code></td>
+</tr>
+<tr>
 <td><code>for</code> / <code>while</code> loop</td>
 <td>Recursive <code>let_value</code> with type-erased return</td>
 </tr>
@@ -982,24 +994,12 @@ language feature to its Sub-Language counterpart:</p>
 <td>Nested <code>let_value</code> with continuation selection</td>
 </tr>
 <tr>
-<td><code>try</code> / <code>catch</code></td>
-<td><code>upon_error</code> / <code>let_error</code></td>
-</tr>
-<tr>
 <td><code>throw</code></td>
 <td><code>set_error</code></td>
 </tr>
 <tr>
 <td><code>break</code> / <code>continue</code></td>
 <td><code>set_stopped</code> / continuation selection</td>
-</tr>
-<tr>
-<td><code>return</code></td>
-<td><code>set_value</code> into the receiver</td>
-</tr>
-<tr>
-<td>Local variables</td>
-<td>Lambda captures (with move semantics across boundaries)</td>
 </tr>
 <tr>
 <td>Function call + return</td>

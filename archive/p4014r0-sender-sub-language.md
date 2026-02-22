@@ -1,7 +1,7 @@
 ---
 title: "The Sender Sub-Language"
 document: P4014R0
-date: 2026-02-20
+date: 2026-02-22
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"
@@ -49,14 +49,14 @@ The Sender Sub-Language provides equivalents for most of C++'s fundamental contr
 | Regular C++             | Sender Sub-Language                                     |
 |-------------------------|---------------------------------------------------------|
 | Sequential statements   | `\|` pipe chaining                                      |
+| Local variables         | Lambda captures (with move semantics across boundaries) |
+| `return`                | `set_value` into the receiver                           |
+| `try` / `catch`         | `upon_error` / `let_error`                              |
 | `for` / `while` loop    | Recursive `let_value` with type-erased return           |
 | `if` / `else`           | `let_value` returning different sender types            |
 | `switch`                | Nested `let_value` with continuation selection          |
-| `try` / `catch`         | `upon_error` / `let_error`                              |
 | `throw`                 | `set_error`                                             |
 | `break` / `continue`    | `set_stopped` / continuation selection                  |
-| `return`                | `set_value` into the receiver                           |
-| Local variables         | Lambda captures (with move semantics across boundaries) |
 | Function call + return  | `connect` + `start` + `set_value`                       |
 | Concurrent selection    | (absent)                                                |
 | Structured bindings     | (not needed)                                            |

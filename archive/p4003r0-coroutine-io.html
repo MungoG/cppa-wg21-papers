@@ -824,7 +824,7 @@ outline: none;
 <!-- Document Metadata -->
 <div class="document-info">
   <p><strong>Document Number:</strong> P4003R0</p>
-  <p><strong>Date:</strong> 2026-02-20</p>
+  <p><strong>Date:</strong> 2026-02-22</p>
   <p><strong>Audience:</strong> LEWG</p>
   <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Steve
 Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a><br><strong></strong> Mungo Gill <a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
@@ -2304,48 +2304,45 @@ type needs:</p>
 <span id="cb35-77"><a href="#cb35-77" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb35-78"><a href="#cb35-78" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Default pass-through; derived classes override</span></span>
 <span id="cb35-79"><a href="#cb35-79" aria-hidden="true" tabindex="-1"></a>    <span class="co">// to add custom awaitable transformation.</span></span>
-<span id="cb35-80"><a href="#cb35-80" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Concrete task types must wrap IoAwaitable types</span></span>
-<span id="cb35-81"><a href="#cb35-81" aria-hidden="true" tabindex="-1"></a>    <span class="co">// here, bridging the compiler&#39;s one-argument</span></span>
-<span id="cb35-82"><a href="#cb35-82" aria-hidden="true" tabindex="-1"></a>    <span class="co">// await_suspend to the two-argument IoAwaitable form.</span></span>
-<span id="cb35-83"><a href="#cb35-83" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-84"><a href="#cb35-84" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> A<span class="op">&gt;</span></span>
-<span id="cb35-85"><a href="#cb35-85" aria-hidden="true" tabindex="-1"></a>    <span class="kw">decltype</span><span class="op">(</span><span class="kw">auto</span><span class="op">)</span> transform_awaitable<span class="op">(</span>A<span class="op">&amp;&amp;</span> a<span class="op">)</span></span>
-<span id="cb35-86"><a href="#cb35-86" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb35-87"><a href="#cb35-87" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">std::</span>forward<span class="op">&lt;</span>A<span class="op">&gt;(</span>a<span class="op">);</span></span>
-<span id="cb35-88"><a href="#cb35-88" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb35-80"><a href="#cb35-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-81"><a href="#cb35-81" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> A<span class="op">&gt;</span></span>
+<span id="cb35-82"><a href="#cb35-82" aria-hidden="true" tabindex="-1"></a>    <span class="kw">decltype</span><span class="op">(</span><span class="kw">auto</span><span class="op">)</span> transform_awaitable<span class="op">(</span>A<span class="op">&amp;&amp;</span> a<span class="op">)</span></span>
+<span id="cb35-83"><a href="#cb35-83" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb35-84"><a href="#cb35-84" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">std::</span>forward<span class="op">&lt;</span>A<span class="op">&gt;(</span>a<span class="op">);</span></span>
+<span id="cb35-85"><a href="#cb35-85" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb35-86"><a href="#cb35-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-87"><a href="#cb35-87" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Intercepts this_coro tags, delegates the rest</span></span>
+<span id="cb35-88"><a href="#cb35-88" aria-hidden="true" tabindex="-1"></a>    <span class="co">// to transform_awaitable.</span></span>
 <span id="cb35-89"><a href="#cb35-89" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-90"><a href="#cb35-90" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Intercepts this_coro tags, delegates the rest</span></span>
-<span id="cb35-91"><a href="#cb35-91" aria-hidden="true" tabindex="-1"></a>    <span class="co">// to transform_awaitable.</span></span>
-<span id="cb35-92"><a href="#cb35-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-93"><a href="#cb35-93" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> T<span class="op">&gt;</span></span>
-<span id="cb35-94"><a href="#cb35-94" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> await_transform<span class="op">(</span>T<span class="op">&amp;&amp;</span> t<span class="op">)</span></span>
-<span id="cb35-95"><a href="#cb35-95" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
-<span id="cb35-96"><a href="#cb35-96" aria-hidden="true" tabindex="-1"></a>        <span class="kw">using</span> Tag <span class="op">=</span> <span class="bu">std::</span>decay_t<span class="op">&lt;</span>T<span class="op">&gt;;</span></span>
-<span id="cb35-97"><a href="#cb35-97" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-98"><a href="#cb35-98" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
-<span id="cb35-99"><a href="#cb35-99" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>is_same_v<span class="op">&lt;</span>Tag<span class="op">,</span> environment_tag<span class="op">&gt;)</span></span>
-<span id="cb35-100"><a href="#cb35-100" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
-<span id="cb35-101"><a href="#cb35-101" aria-hidden="true" tabindex="-1"></a>            <span class="kw">struct</span> awaiter</span>
-<span id="cb35-102"><a href="#cb35-102" aria-hidden="true" tabindex="-1"></a>            <span class="op">{</span></span>
-<span id="cb35-103"><a href="#cb35-103" aria-hidden="true" tabindex="-1"></a>                io_env <span class="at">const</span><span class="op">*</span> <span class="va">env_</span><span class="op">;</span></span>
-<span id="cb35-104"><a href="#cb35-104" aria-hidden="true" tabindex="-1"></a>                <span class="dt">bool</span> await_ready<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
-<span id="cb35-105"><a href="#cb35-105" aria-hidden="true" tabindex="-1"></a>                    <span class="op">{</span> <span class="cf">return</span> <span class="kw">true</span><span class="op">;</span> <span class="op">}</span></span>
-<span id="cb35-106"><a href="#cb35-106" aria-hidden="true" tabindex="-1"></a>                <span class="dt">void</span> await_suspend<span class="op">(</span></span>
-<span id="cb35-107"><a href="#cb35-107" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;)</span></span>
-<span id="cb35-108"><a href="#cb35-108" aria-hidden="true" tabindex="-1"></a>                    <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{}</span></span>
-<span id="cb35-109"><a href="#cb35-109" aria-hidden="true" tabindex="-1"></a>                io_env <span class="at">const</span><span class="op">*</span> await_resume<span class="op">()</span></span>
-<span id="cb35-110"><a href="#cb35-110" aria-hidden="true" tabindex="-1"></a>                    <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="cf">return</span> <span class="va">env_</span><span class="op">;</span> <span class="op">}</span></span>
-<span id="cb35-111"><a href="#cb35-111" aria-hidden="true" tabindex="-1"></a>            <span class="op">};</span></span>
-<span id="cb35-112"><a href="#cb35-112" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> awaiter<span class="op">{</span><span class="va">env_</span><span class="op">};</span></span>
-<span id="cb35-113"><a href="#cb35-113" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
-<span id="cb35-114"><a href="#cb35-114" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
-<span id="cb35-115"><a href="#cb35-115" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
-<span id="cb35-116"><a href="#cb35-116" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="kw">static_cast</span><span class="op">&lt;</span>Derived<span class="op">*&gt;(</span><span class="kw">this</span><span class="op">)</span></span>
-<span id="cb35-117"><a href="#cb35-117" aria-hidden="true" tabindex="-1"></a>                <span class="op">-&gt;</span>transform_awaitable<span class="op">(</span></span>
-<span id="cb35-118"><a href="#cb35-118" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>forward<span class="op">&lt;</span>T<span class="op">&gt;(</span>t<span class="op">));</span></span>
-<span id="cb35-119"><a href="#cb35-119" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
-<span id="cb35-120"><a href="#cb35-120" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
-<span id="cb35-121"><a href="#cb35-121" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<span id="cb35-90"><a href="#cb35-90" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">typename</span> T<span class="op">&gt;</span></span>
+<span id="cb35-91"><a href="#cb35-91" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> await_transform<span class="op">(</span>T<span class="op">&amp;&amp;</span> t<span class="op">)</span></span>
+<span id="cb35-92"><a href="#cb35-92" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb35-93"><a href="#cb35-93" aria-hidden="true" tabindex="-1"></a>        <span class="kw">using</span> Tag <span class="op">=</span> <span class="bu">std::</span>decay_t<span class="op">&lt;</span>T<span class="op">&gt;;</span></span>
+<span id="cb35-94"><a href="#cb35-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-95"><a href="#cb35-95" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb35-96"><a href="#cb35-96" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>is_same_v<span class="op">&lt;</span>Tag<span class="op">,</span> environment_tag<span class="op">&gt;)</span></span>
+<span id="cb35-97"><a href="#cb35-97" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb35-98"><a href="#cb35-98" aria-hidden="true" tabindex="-1"></a>            <span class="kw">struct</span> awaiter</span>
+<span id="cb35-99"><a href="#cb35-99" aria-hidden="true" tabindex="-1"></a>            <span class="op">{</span></span>
+<span id="cb35-100"><a href="#cb35-100" aria-hidden="true" tabindex="-1"></a>                io_env <span class="at">const</span><span class="op">*</span> <span class="va">env_</span><span class="op">;</span></span>
+<span id="cb35-101"><a href="#cb35-101" aria-hidden="true" tabindex="-1"></a>                <span class="dt">bool</span> await_ready<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb35-102"><a href="#cb35-102" aria-hidden="true" tabindex="-1"></a>                    <span class="op">{</span> <span class="cf">return</span> <span class="kw">true</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb35-103"><a href="#cb35-103" aria-hidden="true" tabindex="-1"></a>                <span class="dt">void</span> await_suspend<span class="op">(</span></span>
+<span id="cb35-104"><a href="#cb35-104" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;)</span></span>
+<span id="cb35-105"><a href="#cb35-105" aria-hidden="true" tabindex="-1"></a>                    <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{}</span></span>
+<span id="cb35-106"><a href="#cb35-106" aria-hidden="true" tabindex="-1"></a>                io_env <span class="at">const</span><span class="op">*</span> await_resume<span class="op">()</span></span>
+<span id="cb35-107"><a href="#cb35-107" aria-hidden="true" tabindex="-1"></a>                    <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">{</span> <span class="cf">return</span> <span class="va">env_</span><span class="op">;</span> <span class="op">}</span></span>
+<span id="cb35-108"><a href="#cb35-108" aria-hidden="true" tabindex="-1"></a>            <span class="op">};</span></span>
+<span id="cb35-109"><a href="#cb35-109" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> awaiter<span class="op">{</span><span class="va">env_</span><span class="op">};</span></span>
+<span id="cb35-110"><a href="#cb35-110" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb35-111"><a href="#cb35-111" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb35-112"><a href="#cb35-112" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb35-113"><a href="#cb35-113" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="kw">static_cast</span><span class="op">&lt;</span>Derived<span class="op">*&gt;(</span><span class="kw">this</span><span class="op">)</span></span>
+<span id="cb35-114"><a href="#cb35-114" aria-hidden="true" tabindex="-1"></a>                <span class="op">-&gt;</span>transform_awaitable<span class="op">(</span></span>
+<span id="cb35-115"><a href="#cb35-115" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>forward<span class="op">&lt;</span>T<span class="op">&gt;(</span>t<span class="op">));</span></span>
+<span id="cb35-116"><a href="#cb35-116" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb35-117"><a href="#cb35-117" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb35-118"><a href="#cb35-118" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>Promise types inherit from this mixin to gain:</p>
 <ul>
 <li><strong>Frame allocation</strong>:

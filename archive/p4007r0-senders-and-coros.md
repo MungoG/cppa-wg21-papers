@@ -1,7 +1,7 @@
 ---
 title: "Senders and Coroutines"
 document: P4007R0
-date: 2026-02-20
+date: 2026-02-22
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"
@@ -152,7 +152,7 @@ Each channel has a fixed signature shape:
 - `set_error(receiver, E)` carries a single, strongly-typed error.
 - `set_stopped(receiver)` is a stateless signal.
 
-### 3.2 Coroutines Return Tuples
+### 3.2 I/O works with tuples
 
 A composed read accumulates bytes across multiple receives. In a coroutine, this is expressed naturally as a tuple (here, `pair`):
 
@@ -220,6 +220,8 @@ sender_of<dynamic_buffer> auto async_read_array(auto handle) {
        });
 }
 ```
+
+No coroutines appear in this example. The data loss occurs in the sender pipeline itself.
 
 `async_read` completes through `set_value` with the byte count, or through `set_error` with the error code. Consider the second `async_read` failing partway through. Some bytes transfer. The connection resets. `set_error` fires. The byte count - how far the second read got - has no channel. `then` handles only `set_value`. The error propagates past it, exits `let_value`, and the `dynamic_buffer` with its valid `size`, allocated `data`, and partial contents is destroyed.
 
@@ -361,6 +363,10 @@ Chris Kohlhoff identified this tension in 2021 in [P2430R0](https://wg21.link/p2
 > *"Due to the limitations of the set_error channel (which has a single 'error' argument) and set_done channel (which takes no arguments), partial results must be communicated down the set_value channel."*
 
 Kohlhoff presented these observations during the P2300 review and published the slides as P2430R0. It was not a standalone proposal, and there were no polls to find. But the observation was right. Five years and ten revisions later, the tension Kohlhoff identified remains unresolved. Appendix A.3 traces why.
+
+### 3.10 LEWG Background
+
+A [companion document](https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md)<sup>[61]</sup> captures the design space and trade-offs around how asynchronous I/O completion results interact with the three-channel model of `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>). It is intended for LEWG consumption as background for decisions concerning `std::execution::task`, the SG4 networking mandate, and the relationship between senders and coroutines.
 
 ---
 
@@ -789,11 +795,11 @@ The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A co
 
 ## 10. Suggested Straw Polls
 
-1. "`std::execution::task` concerns are addressable by C++29."
+1. "I/O completions that carry both an error code and a byte count present a design challenge for the three-channel completion model."
 
-2. "Asynchronous C++ need not be limited to `std::execution`."
+2. "The coroutine integration in `std::execution` has open design questions that would benefit from further iteration."
 
-3. "WG21 should explore coroutine-native I/O."
+3. "WG21 should explore coroutine-native I/O designs alongside sender-based designs."
 
 ---
 
@@ -1072,3 +1078,4 @@ development of this paper.
 58. [P3388R2](https://wg21.link/p3388r2) - "Provide nothrow connect guarantee for P2300" (Lewis Baker, 2025). https://wg21.link/p3388r2
 59. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0
 60. Robert Leahy, [`use_sender.hpp`](https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp) - Asio-to-sender bridge in stdexec (2026). https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp
+61. ["Design Rationale: Sender Channels and I/O Return Types"](https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md) - Channel routing alternatives for LEWG (2026). https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md

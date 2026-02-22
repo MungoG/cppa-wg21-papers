@@ -1,7 +1,7 @@
 ---
 title: "Coroutines for I/O"
 document: P4003R0
-date: 2026-02-20
+date: 2026-02-22
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
@@ -1068,9 +1068,6 @@ public:
 
     // Default pass-through; derived classes override
     // to add custom awaitable transformation.
-    // Concrete task types must wrap IoAwaitable types
-    // here, bridging the compiler's one-argument
-    // await_suspend to the two-argument IoAwaitable form.
 
     template<typename A>
     decltype(auto) transform_awaitable(A&& a)

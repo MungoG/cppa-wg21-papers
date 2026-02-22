@@ -824,7 +824,7 @@ outline: none;
 <!-- Document Metadata -->
 <div class="document-info">
   <p><strong>Document Number:</strong> P4007R0</p>
-  <p><strong>Date:</strong> 2026-02-20</p>
+  <p><strong>Date:</strong> 2026-02-22</p>
   <p><strong>Audience:</strong> LEWG</p>
   <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Mungo Gill
 <a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
@@ -861,8 +861,8 @@ outline: none;
   <ul>
   <li><a href="#senders-use-channels" id="toc-senders-use-channels">3.1
   Senders Use Channels</a></li>
-  <li><a href="#coroutines-return-tuples" id="toc-coroutines-return-tuples">3.2 Coroutines Return
-  Tuples</a></li>
+  <li><a href="#io-works-with-tuples" id="toc-io-works-with-tuples">3.2
+  I/O works with tuples</a></li>
   <li><a href="#published-sender-code-loses-data" id="toc-published-sender-code-loses-data">3.3 Published Sender Code
   Loses Data</a></li>
   <li><a href="#everything-through-set_value" id="toc-everything-through-set_value">3.4 Everything Through
@@ -876,6 +876,8 @@ outline: none;
   <li><a href="#coroutines-always-pay" id="toc-coroutines-always-pay">3.8 Coroutines Always Pay</a></li>
   <li><a href="#the-paper-not-polled" id="toc-the-paper-not-polled">3.9
   The Paper Not Polled</a></li>
+  <li><a href="#lewg-background" id="toc-lewg-background">3.10 LEWG
+  Background</a></li>
   </ul></li>
   <li><a href="#where-is-the-co_return" id="toc-where-is-the-co_return">4. Where Is the
   <code>co_return</code>?</a>
@@ -1163,7 +1165,7 @@ payload.</li>
 error.</li>
 <li><code>set_stopped(receiver)</code> is a stateless signal.</li>
 </ul>
-<h3 id="coroutines-return-tuples">3.2 Coroutines Return Tuples</h3>
+<h3 id="io-works-with-tuples">3.2 I/O works with tuples</h3>
 <p>A composed read accumulates bytes across multiple receives. In a
 coroutine, this is expressed naturally as a tuple (here,
 <code>pair</code>):</p>
@@ -1239,6 +1241,8 @@ first the size, then the data.</p>
 <span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>                    <span class="op">});</span></span>
 <span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>       <span class="op">});</span></span>
 <span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>No coroutines appear in this example. The data loss occurs in the
+sender pipeline itself.</p>
 <p><code>async_read</code> completes through <code>set_value</code> with
 the byte count, or through <code>set_error</code> with the error code.
 Consider the second <code>async_read</code> failing partway through.
@@ -1482,6 +1486,14 @@ published the slides as P2430R0. It was not a standalone proposal, and
 there were no polls to find. But the observation was right. Five years
 and ten revisions later, the tension Kohlhoff identified remains
 unresolved. Appendix A.3 traces why.</p>
+<h3 id="lewg-background">3.10 LEWG Background</h3>
+<p>A <a href="https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md">companion
+document</a><sup>[61]</sup> captures the design space and trade-offs
+around how asynchronous I/O completion results interact with the
+three-channel model of <code>std::execution</code> (<a href="https://wg21.link/p2300r10">P2300R10</a><sup>[1]</sup>). It is
+intended for LEWG consumption as background for decisions concerning
+<code>std::execution::task</code>, the SG4 networking mandate, and the
+relationship between senders and coroutines.</p>
 <hr />
 <h2 id="where-is-the-co_return">4. Where Is the
 <code>co_return</code>?</h2>
@@ -2232,11 +2244,14 @@ remain binary.</p>
 <hr />
 <h2 id="suggested-straw-polls">10. Suggested Straw Polls</h2>
 <ol type="1">
-<li><p>“<code>std::execution::task</code> concerns are addressable by
-C++29.”</p></li>
-<li><p>“Asynchronous C++ need not be limited to
-<code>std::execution</code>.”</p></li>
-<li><p>“WG21 should explore coroutine-native I/O.”</p></li>
+<li><p>“I/O completions that carry both an error code and a byte count
+present a design challenge for the three-channel completion
+model.”</p></li>
+<li><p>“The coroutine integration in <code>std::execution</code> has
+open design questions that would benefit from further
+iteration.”</p></li>
+<li><p>“WG21 should explore coroutine-native I/O designs alongside
+sender-based designs.”</p></li>
 </ol>
 <hr />
 <h2 id="appendix-a---the-three-channel-model">Appendix A - The
@@ -2735,6 +2750,10 @@ co_return; and co_return value; in the same coroutine” (Lewis Baker,
 <li>Robert Leahy, <a href="https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp"><code>use_sender.hpp</code></a>
 - Asio-to-sender bridge in stdexec (2026).
 https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp</li>
+<li><a href="https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md">“Design
+Rationale: Sender Channels and I/O Return Types”</a> - Channel routing
+alternatives for LEWG (2026).
+https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md</li>
 </ol>
 
 </body>
