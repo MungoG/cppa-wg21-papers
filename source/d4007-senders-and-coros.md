@@ -795,11 +795,11 @@ The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A co
 
 ## 10. Suggested Straw Polls
 
-1. "`std::execution::task` concerns are addressable by C++29."
+1. "I/O completions that carry both an error code and a byte count present a design challenge for the three-channel completion model."
 
-2. "Asynchronous C++ need not be limited to `std::execution`."
+2. "The coroutine integration in `std::execution` has open design questions that would benefit from further iteration."
 
-3. "WG21 should explore coroutine-native I/O."
+3. "WG21 should explore coroutine-native I/O designs alongside sender-based designs."
 
 ---
 
