@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies three structural gaps at the boundary where the sender model meets coroutines: in error reporting, error returns, and frame allocator propagation. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O research report ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and frame allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that report's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
+`std::execution` serves its domain well. Different asynchronous domains have different costs, and a single model cannot minimize all of them simultaneously. This paper identifies four structural gaps where the sender model meets coroutines: three at the boundary - error reporting, error returns, and frame allocator propagation - and one inside the composition mechanism - the symmetric transfer gap documented in [P2583R0](https://wg21.link/p2583r0)<sup>[63]</sup>. Each gap is the cost of a property the sender model requires for compile-time analysis ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>, [P4014R0](https://wg21.link/p4014r0)<sup>[26]</sup>). They are not design defects, they are tradeoffs. Mandating that standard networking be built on the sender model would force coroutine I/O users to pay these costs. A coroutine-native I/O research report ([P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup>) made the gaps visible by showing that partial results, error returns, cancellation, and frame allocator propagation emerge naturally when I/O is designed for coroutines. The findings hold regardless of that report's specific design. This paper recommends: ship `std::execution` for C++26, defer `task` ([P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup>, "Add a Coroutine Task Type") to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 ---
 
@@ -26,7 +26,7 @@ audience: LEWG
 
 The authors developed [P4003R0](https://wg21.link/p4003r0)<sup>[25]</sup> ("Coroutines for I/O"). A coroutine-only design cannot express compile-time work graphs, does not support heterogeneous dispatch, and assumes a cooperative runtime. Those are real costs.
 
-The structural gaps documented in Sections 3-5 exist at the boundary where `std::execution` meets coroutines. They hold regardless of whether P4003 is the right design or any design at all. Code examples in Section 2 are drawn from P4003 - not to propose it as the only way forward.
+The structural gaps documented in Sections 3-5 exist at the boundary where `std::execution` meets coroutines. Section 6 summarizes a fourth gap - inside the composition mechanism - documented in full by [P2583R0](https://wg21.link/p2583r0)<sup>[63]</sup>. All four gaps hold regardless of whether P4003 is the right design or any design at all. Code examples in Section 2 are drawn from P4003 - not to propose it as the only way forward.
 
 ---
 
@@ -130,7 +130,7 @@ SG4 polled at Kona (November 2023) on [P2762R2](https://wg21.link/p2762r2)<sup>[
 
 The poll presented two alternatives: the Networking TS's executor model and the sender model. A coroutine-native approach was not among the choices. This paper introduces a third option.
 
-This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs. The following three sections explain why.
+This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs. The following four sections explain why.
 
 ---
 
@@ -627,13 +627,39 @@ The escape hatch is to stop searching for a universal frame allocator model in o
 
 ---
 
-## 6. The Gaps Are The Tradeoff
+## 6. Where Is the Tail Call?
+
+C++20 provides symmetric transfer ([P0913R1](https://wg21.link/p0913r1)<sup>[62]</sup>): `await_suspend` returns a `coroutine_handle<>` and the compiler resumes the designated coroutine as a tail call. The stack does not grow. One coroutine suspends and another resumes in constant space. This is the mechanism C++20 provides to prevent stack overflow in coroutine chains. [P2583R0](https://wg21.link/p2583r0)<sup>[63]</sup> ("Symmetric Transfer and Sender Composition") surveys six major production coroutine libraries. Five of six use symmetric transfer. The convergence is independent: different authors, different platforms, different design goals, the same mechanism.
+
+[P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>'s bridges between coroutines and the sender model use `void await_suspend`. When a coroutine co_awaits a sender, the `sender-awaitable` starts the sender inside `await_suspend`:
+
+```cpp
+void await_suspend(coroutine_handle<Promise>) noexcept { start(state); }
+```
+
+When the sender completes synchronously, the receiver calls `.resume()` as a function call within `set_value`. The stack grows by one frame per synchronous completion. Sender algorithms (`then`, `let_value`, `when_all`) compose operations by wrapping one receiver in another. The wrapping receiver is a struct. It is not a coroutine. It has no `coroutine_handle<>`. No handle exists at any intermediate point in a sender pipeline. There is nothing to symmetric-transfer to.
+
+K&uuml;hl documented this in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup>, Section 3.2.3:
+
+> *"The specification doesn't mention any use of symmetric transfer. Further, the `task` gets adapted by `affine_on` in `await_transform` ([[task.promise] p10](https://eel.is/c++draft/exec#task.promise-10)) which produces a different sender than `task` which needs special treatment to use symmetric transfer."*
+
+K&uuml;hl suggested domain customization of `affine_on` as a partial fix for the task-to-task case. M&uuml;ller confirmed in [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup>, Section 3.1, that the partial fix does not reach the general case:
+
+> *"while this would solve the example above, it would not solve the general problem of stack overflow when awaiting other senders. A thorough fix is non-trivial and requires support for guaranteed tail calls."*
+
+The only runtime mitigation is a trampoline scheduler that detects stack depth and reschedules. This is the queue-and-scheduler approach that [P0913R1](https://wg21.link/p0913r1)<sup>[62]</sup> was specifically adopted to eliminate. [P2583R0](https://wg21.link/p2583r0)<sup>[63]</sup> documents the full mechanism, surveys production practice, and argues the gap is architectural: sender algorithms are structs with void-returning completions. These are not boundary properties. They are what sender algorithms are. The gap cannot be closed without removing the property it trades against - non-coroutine composition through sender algorithms - or by a language feature that does not exist. This is a tradeoff, not a defect. [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> was designed for GPU dispatch and heterogeneous computing - domains where symmetric transfer provides no benefit.
+
+**Symmetric transfer requires a handle. The sender model provides a function call.**
+
+---
+
+## 7. The Gaps Are The Tradeoff
 
 Niebler wrote in 2024: *["If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like."](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)*<sup>[34]</sup> The phrase "if they like" implies this is straightforward. Niebler himself [characterized](https://ericniebler.com/2020/11/08/structured-concurrency/)<sup>[33]</sup> the sender style as *"far harder to write and read than the equivalent coroutine."* The previous three sections suggest the cost is structural.
 
-Each gap has the same shape. The sender model requires a property for compile-time analysis. That property forces a cost on coroutines at the boundary. The committee standardized the sender model for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 3-5 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
+Each gap has the same shape. The sender model requires a property for compile-time analysis. That property forces a cost on coroutines at the boundary or inside the composition mechanism. The committee standardized the sender model for specific properties: compile-time routing, zero-allocation reification, type-level dispatch. Each gap documented in Sections 3-6 is the cost of one of those properties. Closing any gap requires removing the property it pays for.
 
-### 6.1 The Channel Tradeoff
+### 7.1 The Channel Tradeoff
 
 Section 3 showed the cost of compile-time channel routing. Choose one:
 
@@ -641,7 +667,7 @@ Section 3 showed the cost of compile-time channel routing. Choose one:
 |---|---|
 | `upon_error`, `let_error`, `upon_stopped` attach at the type level; algorithms dispatch on channel without runtime inspection | `(error_code, size_t)` returned together; error, cancellation, and byte count are all meaningful and inseparable |
 
-### 6.2 The `co_yield` Tradeoff
+### 7.2 The `co_yield` Tradeoff
 
 Section 4 showed the cost of a separate error channel for coroutines. The alternative, lifting the `return_void`/`return_value` mutual exclusion, is not part of C++26. Choose one:
 
@@ -649,7 +675,7 @@ Section 4 showed the cost of a separate error channel for coroutines. The altern
 |---|---|
 | `co_yield with_error(ec);` | `co_return std::unexpected(ec);` |
 
-### 6.3 The Frame Allocator Tradeoff
+### 7.3 The Frame Allocator Tradeoff
 
 Section 5 showed the cost of deferred execution. Choose one:
 
@@ -659,21 +685,29 @@ Section 5 showed the cost of deferred execution. Choose one:
 
 `await_transform` cannot help: the child's `operator new` fires before `co_await` processing begins. [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> offers `allocator_arg` for the initial allocation, but propagation remains unsolved. [P3826R3](https://wg21.link/p3826r3)<sup>[20]</sup> offers five solutions for algorithm dispatch; none changes when the frame allocator becomes available.
 
-### 6.4 ABI Makes the Choice Permanent
+### 7.4 The Symmetric Transfer Tradeoff
 
-The first three tradeoffs are structural. This subsection is about timing.
+Section 6 showed the cost of composing coroutines through sender algorithms. Choose one:
 
-Once shipped, the three-channel model and the `connect`/`start` protocol become ABI. Every sender algorithm's behavior is defined in terms of which channel fires. The relationship between the promise's `operator new` and `connect()` becomes fixed. Closing any of the three gaps after standardization requires changing these relationships - a breaking change to the sender protocol.
+| Coroutine composition through sender algorithms                                                  | Symmetric transfer                                                          |
+|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| Sender algorithms are structs with void-returning completions; zero-allocation sender pipelines   | `await_suspend` returns `coroutine_handle<>`; constant-stack coroutine chains |
+
+### 7.5 ABI Makes the Choice Permanent
+
+The first four tradeoffs are structural. This subsection is about timing.
+
+Once shipped, the three-channel model, the `connect`/`start` protocol, and the `void await_suspend` bridge become ABI. Every sender algorithm's behavior is defined in terms of which channel fires. The relationship between the promise's `operator new` and `connect()` becomes fixed. The void-returning `await_suspend` in `sender-awaitable` becomes fixed. Closing any of the four gaps after standardization requires changing these relationships - a breaking change to the sender protocol.
 
 Choose one:
 
 | Ship `task` in C++26 | Iterate the coroutine integration |
 |---|---|
-| The three tradeoffs above become ABI | The three tradeoffs remain open |
+| The four tradeoffs above become ABI | The four tradeoffs remain open |
 
-The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 6.1 through 6.3 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
+The natural compromise, ship `task` with known limitations and fix via DR or C++29 addendum, assumes the fix is a minor adjustment. Sections 7.1 through 7.4 show it is not. Each gap is the cost of a specific design property. Closing the gap means removing the property.
 
-Shipping `task` is the risky choice, not the safe one. Three structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Frame allocator propagation still unsolved six months after adoption. K&uuml;hl himself filed a catalogue of open concerns (Section 8). The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
+Shipping `task` is the risky choice, not the safe one. Four structural gaps locked in by ABI. A language change proposed to fix `co_yield with_error` for a channel I/O never uses. Frame allocator propagation still unsolved six months after adoption. Symmetric transfer structurally unreachable through the sender pipeline. K&uuml;hl himself filed a catalogue of open concerns (Section 9). The sender model's environment leaks into the coroutine's public type: [P3552R3](https://wg21.link/p3552r3)<sup>[13]</sup> defines `task` with two template parameters where every production coroutine library has independently converged on one:
 
 | Library       | Declaration                                       | Params  |
 |---------------|---------------------------------------------------|:-------:|
@@ -688,15 +722,15 @@ Sources: [cppcoro](https://github.com/lewissbaker/cppcoro/blob/master/include/cp
 
 Deferring `task` to C++29 costs nothing: no production user depends on it, every networking library already ships its own task type, and C++29 forwarding was unanimous.
 
-The narrowest remedy is to ship `std::execution` without `task`. The sender pipeline is valuable and ready. The three gaps exist only at the coroutine boundary. Remove `task` from C++26, and no production user is affected. The cost falls on no one.
+The narrowest remedy is to ship `std::execution` without `task`. The sender pipeline is valuable and ready. The four gaps exist at the coroutine boundary and inside the composition mechanism. Remove `task` from C++26, and no production user is affected. The cost falls on no one.
 
 ---
 
-## 7. Why Wait To Ship?
+## 8. Why Wait To Ship?
 
-The cost of shipping is documented above. What is the cost of waiting? The cost is real. C++26 ships without a standard task, and the committee's work on coroutine integration does not reach users in this cycle. The question is whether that cost exceeds the cost of locking in the three gaps documented above.
+The cost of shipping is documented above. What is the cost of waiting? The cost is real. C++26 ships without a standard task, and the committee's work on coroutine integration does not reach users in this cycle. The question is whether that cost exceeds the cost of locking in the four gaps documented above.
 
-### 7.1 "C++ needs a standard task. Six years is long enough."
+### 8.1 "C++ needs a standard task. Six years is long enough."
 
 C++ needs `std::task`. The question is whether `std::execution::task` is that type.
 
@@ -707,15 +741,15 @@ C++ needs `std::task`. The question is whether `std::execution::task` is that ty
 
 A task bound to one model's conventions is a task for that model. The standard task for C++ has not been written yet.
 
-### 7.2 "The gaps are manageable. Ship now, iterate later."
+### 8.2 "The gaps are manageable. Ship now, iterate later."
 
 "Fix later" assumes the fix is a minor adjustment.
 
-Each gap is the cost of a specific design property (Section 6). Closing the gap means removing the property. ABI lock-in makes the choice permanent (subsection 6.4). The committee deferred P2300 from C++23 for the same pattern of ongoing design changes.
+Each gap is the cost of a specific design property (Section 7). Closing the gap means removing the property. ABI lock-in makes the choice permanent (Section 7.5). The committee deferred P2300 from C++23 for the same pattern of ongoing design changes.
 
 The committee has been here before.
 
-### 7.3 "A standard task enables library interop that no third-party type can."
+### 8.3 "A standard task enables library interop that no third-party type can."
 
 Coroutine interop requires the awaitable protocol, not type identity.
 
@@ -726,7 +760,7 @@ Coroutine interop requires the awaitable protocol, not type identity.
 
 Open task types ship in [cppcoro](https://github.com/lewissbaker/cppcoro)<sup>[42]</sup>, [Boost.Cobalt](https://www.boost.org/doc/libs/develop/libs/cobalt/doc/html/index.html)<sup>[41]</sup>, [libunifex](https://github.com/facebookexperimental/libunifex)<sup>[43]</sup>, [folly::coro](https://github.com/facebook/folly/tree/main/folly/experimental/coro)<sup>[44]</sup>, [QCoro](https://qcoro.dev/)<sup>[45]</sup>, and [asyncpp](https://github.com/petiaccja/asyncpp)<sup>[46]</sup>. Each interoperates through the awaitable protocol.
 
-### 7.4 "Without `task`, coroutine users cannot access standard networking."
+### 8.4 "Without `task`, coroutine users cannot access standard networking."
 
 No standard networking exists in C++26. Every networking library that supports coroutines already ships its own task type:
 
@@ -745,7 +779,7 @@ Each argument assumes `std::execution::task` is the standard task C++ needs. The
 
 ---
 
-## 8. Maturity of the Coroutine Integration
+## 9. Maturity of the Coroutine Integration
 
 The coroutine integration is not ready for C++26. Three data points:
 
@@ -771,17 +805,17 @@ The task type's forwarding polls (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-C++29 forwarding was unanimous. C++26 was conditional and weak. With the thoroughness that has defined his stewardship of `task`, K&uuml;hl catalogued sixteen open concerns in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues").
+C++29 forwarding was unanimous. C++26 was conditional and weak. With the thoroughness that has defined his stewardship of `task`, K&uuml;hl cataloged sixteen open concerns in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues").
 
 ---
 
-## 9. Conclusion
+## 10. Conclusion
 
 This paper recommends: ship `std::execution` for C++26, defer `task` to C++29, and explore coroutine-native I/O designs alongside sender-based designs.
 
 `std::execution` has earned its place. Herb Sutter reported that Citadel Securities uses it in production: *["We already use C++26's `std::execution` in production for an entire asset class, and as the foundation of our new messaging infrastructure."](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work)*<sup>[36]</sup> Senders work well in their domain: compile-time work graph construction, GPU dispatch, high-frequency trading pipelines. Even GPU cloud APIs are accessed through HTTP. The finding is not that `std::execution` failed. It is that its scope is specific, not universal. Narrowing the scope is not admitting failure - it is recognizing success where it exists and clearing the path where it does not.
 
-The three gaps documented in Sections 3-5 are the cost of treating the sender model as the universal model of asynchronous computation. Each gap is the cost of a property the sender model requires. They are not design defects. They are tradeoffs - and coroutine I/O should not be forced to pay them.
+The four gaps documented in Sections 3-6 are the cost of treating the sender model as the universal model of asynchronous computation. Each gap is the cost of a property the sender model requires. They are not design defects. They are tradeoffs - and coroutine I/O should not be forced to pay them.
 
 1. **Is the sender model a universal model of asynchronous computation, or a domain-specific one?** The evidence suggests it serves GPU dispatch, high-frequency trading, and heterogeneous computing, but not I/O.
 
@@ -789,11 +823,11 @@ The three gaps documented in Sections 3-5 are the cost of treating the sender mo
 
 3. **Should `task<T>` ship in C++26 with these costs?** Ship `std::execution` for the domains it serves. Let the coroutine integration iterate independently.
 
-The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A coroutine-native approach was not among the choices. The straw polls in Section 10 ask the committee whether the choice should remain binary.
+The SG4 poll (Kona 2023, SF:5/F:5/N:1/A:0/SA:1) presented two alternatives. A coroutine-native approach was not among the choices. The straw polls in Section 11 ask the committee whether the choice should remain binary.
 
 ---
 
-## 10. Suggested Straw Polls
+## 11. Suggested Straw Polls
 
 1. "I/O completions that carry both an error code and a byte count present a design challenge for the three-channel completion model."
 
@@ -1005,7 +1039,7 @@ development of this paper.
 
 ### WG21 Papers
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024). https://wg21.link/p2300r10
+1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
 2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Micha&lstrok; Dominiak, et al., 2022). https://wg21.link/p2300r4
 3. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
 4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r2
@@ -1079,3 +1113,5 @@ development of this paper.
 59. [P1713R0](https://wg21.link/p1713r0) - "Allowing both co_return; and co_return value; in the same coroutine" (Lewis Baker, 2019). https://wg21.link/p1713r0
 60. Robert Leahy, [`use_sender.hpp`](https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp) - Asio-to-sender bridge in stdexec (2026). https://github.com/NVIDIA/stdexec/blob/9d5836a634a21ecb06d17352905d04f99f635be6/include/asioexec/use_sender.hpp
 61. ["Design Rationale: Sender Channels and I/O Return Types"](https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md) - Channel routing alternatives for LEWG (2026). https://github.com/cppalliance/capy/blob/eb1de34a93b64b49e2c8826ca5088bdf72e1e1eb/doc/sender-channels-rationale.md
+62. [P0913R1](https://wg21.link/p0913r1) - "Add symmetric coroutine control transfer" (Gor Nishanov, 2018). https://wg21.link/p0913r1
+63. [P2583R0](https://wg21.link/p2583r0) - "Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026). https://wg21.link/p2583r0
