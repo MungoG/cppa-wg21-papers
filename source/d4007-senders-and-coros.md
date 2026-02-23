@@ -643,7 +643,7 @@ K&uuml;hl documented this in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup>
 
 > *"The specification doesn't mention any use of symmetric transfer. Further, the `task` gets adapted by `affine_on` in `await_transform` ([[task.promise] p10](https://eel.is/c++draft/exec#task.promise-10)) which produces a different sender than `task` which needs special treatment to use symmetric transfer."*
 
-K&uuml;hl proposed domain customization of `affine_on` as a partial fix for the task-to-task case. M&uuml;ller confirmed in [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup>, Section 3.1, that the partial fix does not reach the general case:
+K&uuml;hl suggested domain customization of `affine_on` as a partial fix for the task-to-task case. M&uuml;ller confirmed in [P3801R0](https://wg21.link/p3801r0)<sup>[19]</sup>, Section 3.1, that the partial fix does not reach the general case:
 
 > *"while this would solve the example above, it would not solve the general problem of stack overflow when awaiting other senders. A thorough fix is non-trivial and requires support for guaranteed tail calls."*
 
@@ -805,7 +805,7 @@ The task type's forwarding polls (LEWG, 2025-05-06):
 >
 > SF:5 / F:3 / N:4 / A:1 / SA:0 - weak consensus, with "if possible" qualifier.
 
-C++29 forwarding was unanimous. C++26 was conditional and weak. With the thoroughness that has defined his stewardship of `task`, K&uuml;hl catalogued sixteen open concerns in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues").
+C++29 forwarding was unanimous. C++26 was conditional and weak. With the thoroughness that has defined his stewardship of `task`, K&uuml;hl cataloged sixteen open concerns in [P3796R1](https://wg21.link/p3796r1)<sup>[18]</sup> ("Coroutine Task Issues").
 
 ---
 
@@ -1039,7 +1039,7 @@ development of this paper.
 
 ### WG21 Papers
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Eric Niebler, 2024). https://wg21.link/p2300r10
+1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
 2. [P2300R4](https://wg21.link/p2300r4) - "std::execution" (Micha&lstrok; Dominiak, et al., 2022). https://wg21.link/p2300r4
 3. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
 4. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r2

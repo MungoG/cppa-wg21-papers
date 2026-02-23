@@ -148,7 +148,7 @@ The post ended with a promise: *"Next post, I'll introduce these library abstrac
 
 Senders were now the foundation. Coroutines were one of several ways to consume them.
 
-**2025-2026.** The coroutine integration shipped via [P3552R3](https://wg21.link/p3552r3)<sup>[5]</sup> ("Add a Coroutine Task Type"). [P3796R1](https://wg21.link/p3796r1)<sup>[6]</sup> ("Coroutine Task Issues") catalogued twenty-nine open concerns. [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[8]</sup> ("Task's Allocator Use") reworked the allocator model six months after adoption. [P4007R0](https://wg21.link/p4007r0)<sup>[9]</sup> ("Senders and C++") documented three structural gaps.
+**2025-2026.** The coroutine integration shipped via [P3552R3](https://wg21.link/p3552r3)<sup>[5]</sup> ("Add a Coroutine Task Type"). [P3796R1](https://wg21.link/p3796r1)<sup>[6]</sup> ("Coroutine Task Issues") cataloged twenty-nine open concerns. [D3980R0](https://isocpp.org/files/papers/D3980R0.html)<sup>[8]</sup> ("Task's Allocator Use") reworked the allocator model six months after adoption. [P4007R0](https://wg21.link/p4007r0)<sup>[9]</sup> ("Senders and C++") documented three structural gaps.
 
 | Date      | Published writing                    | Concurrent paper activity                                                                              | Sender/coroutine relationship              |
 |-----------|--------------------------------------|--------------------------------------------------------------------------------------------------------|--------------------------------------------|
