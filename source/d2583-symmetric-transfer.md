@@ -1,10 +1,11 @@
 ---
-title: "The Cost of Coroutine Composition in `std::execution`"
+title: "Symmetric Transfer and Sender Composition"
 document: P2583R0
 date: 2026-02-22
 reply-to:
+  - "Mungo Gill <mungo.gill@me.com>"
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: LWG, LEWG, WG21
+audience: LEWG
 ---
 
 ## Abstract
