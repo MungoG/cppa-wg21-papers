@@ -44,13 +44,13 @@ bool await_suspend(coroutine_handle<>);               // conditional suspend
 coroutine_handle<> await_suspend(coroutine_handle<>);  // symmetric transfer
 ```
 
-The third form returns a `coroutine_handle<>`. The compiler resumes the designated coroutine as if by a tail call. The note in [[expr.await]](https://eel.is/c++draft/expr.await)<sup>[14]</sup> states:
+The third form returns a `coroutine_handle<>`. The compiler resumes the designated coroutine as if by a tail call. The note in [[expr.await]](https://eel.is/c++draft/expr.await)<sup>[15]</sup> states:
 
 > "Any number of coroutines can be successively resumed in this fashion, eventually returning control flow to the current coroutine caller or resumer."
 
 The stack does not grow. One coroutine suspends and another resumes in constant stack space. This is the mechanism C++20 provides to prevent stack overflow in coroutine chains.
 
-Lewis Baker, author of [cppcoro](https://github.com/lewissbaker/cppcoro)<sup>[8]</sup> and co-author of [P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup>, implemented symmetric transfer in cppcoro and documented the motivation in the source:
+Lewis Baker, author of [cppcoro](https://github.com/lewissbaker/cppcoro)<sup>[9]</sup> and co-author of [P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup>, implemented symmetric transfer in cppcoro and documented the motivation in the source:
 
 > "We can eliminate the use of the std::atomic once we have access to coroutine_handle-returning await_suspend() on both MSVC and Clang as this will provide ability to suspend the awaiting coroutine and resume another coroutine with a **guaranteed tail-call to resume()**."
 
@@ -184,7 +184,7 @@ Could the protocol be changed? If `set_value` returned `coroutine_handle<>`, eve
 
 ## 6. `std::execution::task` and `affine_on`
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `task` wraps every `co_await`ed sender in `affine_on` for scheduler affinity. The `await_transform` is defined in [[task.promise] p10](https://eel.is/c++draft/exec#task.promise-10)<sup>[14]</sup>:
+[P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `task` wraps every `co_await`ed sender in `affine_on` for scheduler affinity. The `await_transform` is defined in [[task.promise] p10](https://eel.is/c++draft/exec#task.promise-10)<sup>[15]</sup>:
 
 ```cpp
 as_awaitable(affine_on(std::forward<Sender>(sndr), SCHED(*this)), *this)
@@ -248,10 +248,10 @@ The stack growth is not specific to `inline_scheduler`. Any sender that complete
 
 Two mitigations exist. Both have costs:
 
-| Mitigation        | Mechanism                                                           | Cost                                                                    |
-|-------------------|---------------------------------------------------------------------|-------------------------------------------------------------------------|
-| Real scheduler    | Every `co_await` round-trips through the scheduler queue              | Latency per iteration, even when the work completes immediately         |
-| Trampoline        | Detect stack depth at runtime, reschedule when threshold is reached | Runtime check on every completion, plus occasional rescheduling latency |
+| Mitigation     | Mechanism                                                           | Cost                                                                    |
+|----------------|---------------------------------------------------------------------|-------------------------------------------------------------------------|
+| Real scheduler | Every `co_await` round-trips through the scheduler queue            | Latency per iteration, even when the work completes immediately         |
+| Trampoline     | Detect stack depth at runtime, reschedule when threshold is reached | Runtime check on every completion, plus occasional rescheduling latency |
 
 Neither mitigation is zero-cost. Symmetric transfer is zero-cost. The difference is the price of composing coroutines through sender algorithms rather than through the awaitable protocol.
 
@@ -267,8 +267,8 @@ Section 7 showed that the proposed task-to-task fix does not reach the general c
 
 [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup> provides two ways to start a `task` from non-coroutine code:
 
-- [`sync_wait(task)`](https://eel.is/c++draft/exec.sync.wait)<sup>[14]</sup> - blocks the calling thread until the task completes.
-- [`spawn(task, token)`](https://wg21.link/p3149r11)<sup>[15]</sup> - launches the task into a `counting_scope`.
+- [`sync_wait(task)`](https://eel.is/c++draft/exec.sync.wait)<sup>[15]</sup> - blocks the calling thread until the task completes.
+- [`spawn(task, token)`](https://wg21.link/p3149r11)<sup>[8]</sup> ("async_scope") - launches the task into a `counting_scope`.
 
 The paper's only complete example uses `sync_wait`:
 
@@ -303,15 +303,15 @@ ex::spawn(ex::on(sch, my_task()), scope.get_token());
 
 ### 8.3 `on` Is a Sender Algorithm
 
-[`on(sch, sndr)`](https://eel.is/c++draft/exec.on)<sup>[14]</sup> is a sender algorithm. Its receiver is a struct with void-returning `set_value`. This is the composition layer Section 5 proved cannot support symmetric transfer. The task's completion traverses the `on` algorithm's receiver before reaching the scope's receiver. No `coroutine_handle<>` exists at any point in this path.
+[`on(sch, sndr)`](https://eel.is/c++draft/exec.on)<sup>[15]</sup> is a sender algorithm. Its receiver is a struct with void-returning `set_value`. This is the composition layer Section 5 proved cannot support symmetric transfer. The task's completion traverses the `on` algorithm's receiver before reaching the scope's receiver. No `coroutine_handle<>` exists at any point in this path.
 
 `sync_wait` goes through the same bridge. Section 4.2 showed that `sender-awaitable` uses `void await_suspend`. The `run_loop` scheduler inside `sync_wait` resumes the coroutine through `.resume()` as a function call.
 
 Both entry points route through sender algorithms. Both use void-returning completions. Neither can perform symmetric transfer.
 
-### 8.4 Production Practice
+### 8.4 Implementation Experience
 
-A coroutine-native launcher avoids the sender pipeline entirely. [Boost.Capy](https://github.com/cppalliance/capy)<sup>[12]</sup> starts a task directly on an executor:
+A coroutine-native launcher avoids the sender pipeline entirely. [Boost.Capy](https://github.com/cppalliance/capy)<sup>[13]</sup> starts a task directly on an executor:
 
 ```cpp
 corosio::io_context ioc;
@@ -366,7 +366,7 @@ This document is written in Markdown and depends on the extensions in
 [`mermaid`](https://github.com/mermaid-js/mermaid), and we would like to
 thank the authors of those extensions and associated libraries.
 
-The author would like to thank Gor Nishanov for the design of symmetric
+The authors would like to thank Gor Nishanov for the design of symmetric
 transfer, Lewis Baker for demonstrating it in cppcoro, and Dietmar K&uuml;hl
 and Jonathan M&uuml;ller for documenting the limitation in
 [P3796R1](https://wg21.link/p3796r1) and [P3801R0](https://wg21.link/p3801r0).
@@ -384,17 +384,17 @@ and Jonathan M&uuml;ller for documenting the limitation in
 5. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
 6. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025). https://wg21.link/p3796r1
 7. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan M&uuml;ller, 2025). https://wg21.link/p3801r0
-15. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025). https://wg21.link/p3149r11
+8. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025). https://wg21.link/p3149r11
 
 ### Libraries
 
-8. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
-9. [folly::coro](https://github.com/facebook/folly/tree/main/folly/coro) - Facebook's coroutine library. https://github.com/facebook/folly/tree/main/folly/coro
-10. [Boost.Cobalt](https://github.com/boostorg/cobalt) - Coroutine task types for Boost (Klemens Morgenstern). https://github.com/boostorg/cobalt
-11. [libcoro](https://github.com/jbaldwin/libcoro) - C++20 coroutine library (Josh Baldwin). https://github.com/jbaldwin/libcoro
-12. [Boost.Capy](https://github.com/cppalliance/capy) - Coroutines for I/O (Vinnie Falco). https://github.com/cppalliance/capy
-13. [asyncpp](https://github.com/petiaccja/asyncpp) - Async coroutine library (P&eacute;ter Kardos). https://github.com/petiaccja/asyncpp
+9. [cppcoro](https://github.com/lewissbaker/cppcoro) - A library of C++ coroutine abstractions (Lewis Baker). https://github.com/lewissbaker/cppcoro
+10. [folly::coro](https://github.com/facebook/folly/tree/main/folly/coro) - Facebook's coroutine library. https://github.com/facebook/folly/tree/main/folly/coro
+11. [Boost.Cobalt](https://github.com/boostorg/cobalt) - Coroutine task types for Boost (Klemens Morgenstern). https://github.com/boostorg/cobalt
+12. [libcoro](https://github.com/jbaldwin/libcoro) - C++20 coroutine library (Josh Baldwin). https://github.com/jbaldwin/libcoro
+13. [Boost.Capy](https://github.com/cppalliance/capy) - Coroutines for I/O (Vinnie Falco). https://github.com/cppalliance/capy
+14. [asyncpp](https://github.com/petiaccja/asyncpp) - Async coroutine library (P&eacute;ter Kardos). https://github.com/petiaccja/asyncpp
 
 ### Other
 
-14. [C++ Working Draft](https://eel.is/c++draft/) - (Richard Smith, ed.). https://eel.is/c++draft/
+15. [C++ Working Draft](https://eel.is/c++draft/) - (Richard Smith, ed.). https://eel.is/c++draft/
