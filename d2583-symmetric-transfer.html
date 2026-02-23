@@ -876,8 +876,8 @@ outline: none;
   Compile</a></li>
   <li><a href="#on-is-a-sender-algorithm" id="toc-on-is-a-sender-algorithm">8.3 <code>on</code> Is a Sender
   Algorithm</a></li>
-  <li><a href="#production-practice" id="toc-production-practice">8.4
-  Production Practice</a></li>
+  <li><a href="#implementation-experience" id="toc-implementation-experience">8.4 Implementation
+  Experience</a></li>
   </ul></li>
   <li><a href="#the-symmetric-transfer-gap" id="toc-the-symmetric-transfer-gap">9. The Symmetric Transfer
   Gap</a></li>
@@ -951,7 +951,7 @@ provides three:</p>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> await_suspend<span class="op">(</span>coroutine_handle<span class="op">&lt;&gt;);</span>  <span class="co">// symmetric transfer</span></span></code></pre></div>
 <p>The third form returns a <code>coroutine_handle&lt;&gt;</code>. The
 compiler resumes the designated coroutine as if by a tail call. The note
-in <a href="https://eel.is/c++draft/expr.await">[expr.await]</a><sup>[14]</sup>
+in <a href="https://eel.is/c++draft/expr.await">[expr.await]</a><sup>[15]</sup>
 states:</p>
 <blockquote>
 <p>“Any number of coroutines can be successively resumed in this
@@ -961,7 +961,7 @@ caller or resumer.”</p>
 <p>The stack does not grow. One coroutine suspends and another resumes
 in constant stack space. This is the mechanism C++20 provides to prevent
 stack overflow in coroutine chains.</p>
-<p>Lewis Baker, author of <a href="https://github.com/lewissbaker/cppcoro">cppcoro</a><sup>[8]</sup>
+<p>Lewis Baker, author of <a href="https://github.com/lewissbaker/cppcoro">cppcoro</a><sup>[9]</sup>
 and co-author of <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[5]</sup>,
 implemented symmetric transfer in cppcoro and documented the motivation
 in the source:</p>
@@ -1172,7 +1172,7 @@ The continuation remains suspended.</p>
 <code>task</code> wraps every <code>co_await</code>ed sender in
 <code>affine_on</code> for scheduler affinity. The
 <code>await_transform</code> is defined in <a href="https://eel.is/c++draft/exec#task.promise-10">[task.promise]
-p10</a><sup>[14]</sup>:</p>
+p10</a><sup>[15]</sup>:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>as_awaitable<span class="op">(</span>affine_on<span class="op">(</span><span class="bu">std::</span>forward<span class="op">&lt;</span>Sender<span class="op">&gt;(</span>sndr<span class="op">),</span> SCHED<span class="op">(*</span><span class="kw">this</span><span class="op">)),</span> <span class="op">*</span><span class="kw">this</span><span class="op">)</span></span></code></pre></div>
 <p>Even when one <code>task</code> <code>co_await</code>s another
 <code>task</code>, the inner task is wrapped in <code>affine_on</code>,
@@ -1281,9 +1281,9 @@ result, an in-memory lookup.</p>
 <p>Two mitigations exist. Both have costs:</p>
 <table>
 <colgroup>
-<col style="width: 11%" />
-<col style="width: 42%" />
-<col style="width: 45%" />
+<col style="width: 10%" />
+<col style="width: 43%" />
+<col style="width: 46%" />
 </colgroup>
 <thead>
 <tr>
@@ -1327,10 +1327,11 @@ sender composition layer.</p>
 provides two ways to start a <code>task</code> from non-coroutine
 code:</p>
 <ul>
-<li><a href="https://eel.is/c++draft/exec.sync.wait"><code>sync_wait(task)</code></a><sup>[14]</sup>
+<li><a href="https://eel.is/c++draft/exec.sync.wait"><code>sync_wait(task)</code></a><sup>[15]</sup>
 - blocks the calling thread until the task completes.</li>
-<li><a href="https://wg21.link/p3149r11"><code>spawn(task, token)</code></a><sup>[15]</sup>
-- launches the task into a <code>counting_scope</code>.</li>
+<li><a href="https://wg21.link/p3149r11"><code>spawn(task, token)</code></a><sup>[8]</sup>
+(“async_scope”) - launches the task into a
+<code>counting_scope</code>.</li>
 </ul>
 <p>The paper’s only complete example uses <code>sync_wait</code>:</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> main<span class="op">()</span> <span class="op">{</span></span>
@@ -1362,7 +1363,7 @@ expected to be quite common.”</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>ex<span class="op">::</span>spawn<span class="op">(</span>ex<span class="op">::</span>on<span class="op">(</span>sch<span class="op">,</span> my_task<span class="op">()),</span> scope<span class="op">.</span>get_token<span class="op">());</span></span></code></pre></div>
 <h3 id="on-is-a-sender-algorithm">8.3 <code>on</code> Is a Sender
 Algorithm</h3>
-<p><a href="https://eel.is/c++draft/exec.on"><code>on(sch, sndr)</code></a><sup>[14]</sup>
+<p><a href="https://eel.is/c++draft/exec.on"><code>on(sch, sndr)</code></a><sup>[15]</sup>
 is a sender algorithm. Its receiver is a struct with void-returning
 <code>set_value</code>. This is the composition layer Section 5 proved
 cannot support symmetric transfer. The task’s completion traverses the
@@ -1376,8 +1377,8 @@ inside <code>sync_wait</code> resumes the coroutine through
 <code>.resume()</code> as a function call.</p>
 <p>Both entry points route through sender algorithms. Both use
 void-returning completions. Neither can perform symmetric transfer.</p>
-<h3 id="production-practice">8.4 Production Practice</h3>
-<p>A coroutine-native launcher avoids the sender pipeline entirely. <a href="https://github.com/cppalliance/capy">Boost.Capy</a><sup>[12]</sup>
+<h3 id="implementation-experience">8.4 Implementation Experience</h3>
+<p>A coroutine-native launcher avoids the sender pipeline entirely. <a href="https://github.com/cppalliance/capy">Boost.Capy</a><sup>[13]</sup>
 starts a task directly on an executor:</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>corosio<span class="op">::</span>io_context ioc<span class="op">;</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>run_async<span class="op">(</span>ioc<span class="op">.</span>get_executor<span class="op">())(</span>do_session<span class="op">());</span></span>
@@ -1489,7 +1490,7 @@ integration with <code>std::execution</code>.</p>
 and <a href="https://github.com/mermaid-js/mermaid"><code>mermaid</code></a>,
 and we would like to thank the authors of those extensions and
 associated libraries.</p>
-<p>The author would like to thank Gor Nishanov for the design of
+<p>The authors would like to thank Gor Nishanov for the design of
 symmetric transfer, Lewis Baker for demonstrating it in cppcoro, and
 Dietmar Kühl and Jonathan Müller for documenting the limitation in <a href="https://wg21.link/p3796r1">P3796R1</a> and <a href="https://wg21.link/p3801r0">P3801R0</a>.</p>
 <hr />
@@ -1522,7 +1523,7 @@ https://wg21.link/p3801r0</li>
 https://wg21.link/p3149r11</li>
 </ol>
 <h3 id="libraries">Libraries</h3>
-<ol start="8" type="1">
+<ol start="9" type="1">
 <li><a href="https://github.com/lewissbaker/cppcoro">cppcoro</a> - A
 library of C++ coroutine abstractions (Lewis Baker).
 https://github.com/lewissbaker/cppcoro</li>
@@ -1543,7 +1544,7 @@ coroutine library (Péter Kardos).
 https://github.com/petiaccja/asyncpp</li>
 </ol>
 <h3 id="other">Other</h3>
-<ol start="14" type="1">
+<ol start="15" type="1">
 <li><a href="https://eel.is/c++draft/">C++ Working Draft</a> - (Richard
 Smith, ed.). https://eel.is/c++draft/</li>
 </ol>
