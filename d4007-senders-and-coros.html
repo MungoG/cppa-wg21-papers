@@ -1900,10 +1900,13 @@ specifically adopted to eliminate. <a href="https://wg21.link/p2583r0">P2583R0</
 the full mechanism, surveys production practice, and argues the gap is
 architectural: sender algorithms are structs with void-returning
 completions. These are not boundary properties. They are what sender
-algorithms are. The gap cannot be closed without removing the property
-it trades against - non-coroutine composition through sender algorithms
-- or by a language feature that does not exist. This is a tradeoff, not
-a defect. <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[1]</sup> was
+algorithms are. No launch mechanism in <a href="https://wg21.link/p3552r3">P3552R3</a><sup>[13]</sup> avoids the
+sender composition layer - neither <code>sync_wait</code> nor
+<code>spawn(on(sch, task()), token)</code> - so the gap is inescapable
+from the entry point. The gap cannot be closed without removing the
+property it trades against - non-coroutine composition through sender
+algorithms - or by a language feature that does not exist. This is a
+tradeoff, not a defect. <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[1]</sup> was
 designed for GPU dispatch and heterogeneous computing - domains where
 symmetric transfer provides no benefit.</p>
 <p><strong>Symmetric transfer requires a handle. The sender model

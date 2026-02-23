@@ -10,7 +10,7 @@ audience: LEWG
 
 ## Abstract
 
-C++20 provides symmetric transfer ([P0913R1](https://wg21.link/p0913r1)<sup>[1]</sup>) - a mechanism where `await_suspend` returns a `coroutine_handle<>` and the compiler resumes the designated coroutine as a tail call. Coroutine chains execute in constant stack space. `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup>) composes asynchronous operations through sender algorithms. These algorithms create receivers that are structs, not coroutines. No `coroutine_handle<>` exists at any intermediate point in a sender pipeline. When a coroutine `co_await`s a sender that completes synchronously, the stack grows by one frame per completion. [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `std::execution::task` inherits this property. The sender model's zero-allocation composition property and symmetric transfer's constant-stack property cannot both be satisfied. One requires structs. The other requires coroutines. This paper describes the mechanism, surveys production practice, and documents the tradeoff.
+C++20 provides symmetric transfer ([P0913R1](https://wg21.link/p0913r1)<sup>[1]</sup>) - a mechanism where `await_suspend` returns a `coroutine_handle<>` and the compiler resumes the designated coroutine as a tail call. Coroutine chains execute in constant stack space. `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup>) composes asynchronous operations through sender algorithms. These algorithms create receivers that are structs, not coroutines. No `coroutine_handle<>` exists at any intermediate point in a sender pipeline. When a coroutine `co_await`s a sender that completes synchronously, the stack grows by one frame per completion. [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `std::execution::task` inherits this property. The sender model's zero-allocation composition property and symmetric transfer's constant-stack property cannot both be satisfied. One requires structs. The other requires coroutines. This paper describes the mechanism, provides implementation experience, and documents the tradeoff.
 
 ---
 
@@ -259,7 +259,75 @@ Symmetric transfer does not prevent all stack overflow. Infinite recursion exhau
 
 ---
 
-## 8. The Symmetric Transfer Gap
+## 8. Failure To Launch
+
+Section 7 showed that the proposed task-to-task fix does not reach the general case of `co_await`ing arbitrary senders. This section shows that the gap extends further: no launch mechanism in [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup> avoids the sender composition layer.
+
+### 8.1 Two Entry Points
+
+[P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup> provides two ways to start a `task` from non-coroutine code:
+
+- [`sync_wait(task)`](https://eel.is/c++draft/exec.sync.wait)<sup>[14]</sup> - blocks the calling thread until the task completes.
+- [`spawn(task, token)`](https://wg21.link/p3149r11)<sup>[15]</sup> - launches the task into a `counting_scope`.
+
+The paper's only complete example uses `sync_wait`:
+
+```cpp
+int main() {
+    return std::get<0>(*ex::sync_wait([]->ex::task<int> {
+        std::cout << "Hello, world!\n";
+        co_return co_await ex::just(0);
+    }()));
+}
+```
+
+### 8.2 `spawn` Does Not Compile
+
+`task` is scheduler-affine by default. The scheduler is obtained from the receiver's environment when `start` is called. [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>, Section 4.5:
+
+> "An example where no scheduler is available is when starting a task on a `counting_scope`. The scope doesn't know about any schedulers and, thus, the receiver used by `counting_scope` when `connect`ing to a sender doesn't support the `get_scheduler` query, i.e., this example doesn't work:"
+
+```cpp
+ex::spawn([]->ex::task<void> { co_await ex::just(); }(), token);
+```
+
+The paper acknowledges this is not a corner case:
+
+> "Using `spawn()` with coroutines doing the actual work is expected to be quite common."
+
+The working pattern wraps the task in `on`:
+
+```cpp
+ex::spawn(ex::on(sch, my_task()), scope.get_token());
+```
+
+### 8.3 `on` Is a Sender Algorithm
+
+[`on(sch, sndr)`](https://eel.is/c++draft/exec.on)<sup>[14]</sup> is a sender algorithm. Its receiver is a struct with void-returning `set_value`. This is the composition layer Section 5 proved cannot support symmetric transfer. The task's completion traverses the `on` algorithm's receiver before reaching the scope's receiver. No `coroutine_handle<>` exists at any point in this path.
+
+`sync_wait` goes through the same bridge. Section 4.2 showed that `sender-awaitable` uses `void await_suspend`. The `run_loop` scheduler inside `sync_wait` resumes the coroutine through `.resume()` as a function call.
+
+Both entry points route through sender algorithms. Both use void-returning completions. Neither can perform symmetric transfer.
+
+### 8.4 Production Practice
+
+A coroutine-native launcher avoids the sender pipeline entirely. [Boost.Capy](https://github.com/cppalliance/capy)<sup>[12]</sup> starts a task directly on an executor:
+
+```cpp
+corosio::io_context ioc;
+run_async(ioc.get_executor())(do_session());
+ioc.run();
+```
+
+The launcher creates a trampoline coroutine that owns the task. The task chain uses symmetric transfer throughout. No sender algorithm participates. The gap documented in Sections 5 through 7 does not arise because the composition layer is the awaitable protocol, not the sender protocol.
+
+This is not an argument for one design over another. It is evidence that the symmetric transfer gap is specific to the sender launch path, not inherent to launching coroutines.
+
+**Every path into `std::execution::task` enters the sender composition layer. No path out preserves symmetric transfer.**
+
+---
+
+## 9. The Symmetric Transfer Gap
 
 The prior papers document the symptom. K&uuml;hl's [P3796R1](https://wg21.link/p3796r1)<sup>[6]</sup> states that the specification does not mention symmetric transfer and suggests a partial fix through domain customization of `affine_on`. M&uuml;ller's [P3801R0](https://wg21.link/p3801r0)<sup>[7]</sup> confirms the partial fix does not reach the general case and identifies guaranteed tail calls as a language-level direction. Neither paper claims the gap is architectural. Both frame it as a missing feature - absent, difficult to add, but not structurally precluded.
 
@@ -279,11 +347,11 @@ Symmetric transfer requires `await_suspend` to return a `coroutine_handle<>`. Se
 
 This is a tradeoff, not a defect. [P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup> was designed for GPU dispatch and heterogeneous computing - domains where symmetric transfer provides no benefit. The cost appears only when the same model is applied to coroutine composition, where symmetric transfer is the primary stack-overflow prevention mechanism that C++20 provides.
 
-## 9. Conclusion
+## 10. Conclusion
 
 [P0913R1](https://wg21.link/p0913r1)<sup>[1]</sup> was adopted into C++20 to solve a specific problem: stack overflow in coroutine chains. The solution is `coroutine_handle<>`-returning `await_suspend`. Every major coroutine library adopted it.
 
-The sender model's architectural choice - composing operations through non-coroutine sender algorithms - structurally prevents this mechanism from operating. [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `std::execution::task` inherits this limitation. The proposed task-to-task fix does not reach the general case. The trampoline scheduler mitigation reintroduces the runtime cost that symmetric transfer was designed to eliminate.
+The sender model's architectural choice - composing operations through non-coroutine sender algorithms - structurally prevents this mechanism from operating. [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup>'s `std::execution::task` inherits this limitation. The proposed task-to-task fix does not reach the general case. No launch mechanism avoids the sender composition layer. The trampoline scheduler mitigation reintroduces the runtime cost that symmetric transfer was designed to eliminate.
 
 The gap is architectural. It cannot be closed without removing the property - non-coroutine composition - that enables zero-allocation sender pipelines. Three directions could be explored: domain customization that short-circuits the receiver abstraction for known coroutine types, a language feature for guaranteed tail calls, or coroutine task types that use the awaitable protocol directly for coroutine-to-coroutine composition and reserve the sender model for the boundaries where it is needed.
 
@@ -316,6 +384,7 @@ and Jonathan M&uuml;ller for documenting the limitation in
 5. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
 6. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025). https://wg21.link/p3796r1
 7. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of std::execution::task" (Jonathan M&uuml;ller, 2025). https://wg21.link/p3801r0
+15. [P3149R11](https://wg21.link/p3149r11) - "async_scope" (Ian Petersen, Jessica Wong, Kirk Shoop, et al., 2025). https://wg21.link/p3149r11
 
 ### Libraries
 
