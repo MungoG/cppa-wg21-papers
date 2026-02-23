@@ -8,4 +8,4 @@ node_modules/
 mermaid-filter.err
 .mermaid-config.json
 
-/reports/
+/reports
