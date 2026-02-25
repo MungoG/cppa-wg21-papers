@@ -493,6 +493,14 @@ Every coroutine bridge point where `await_suspend` receives a handle from `start
 
 Sender algorithm receivers remain structs. No coroutine frames are allocated at intermediate points. The return value is a `coroutine_handle<>` - a pointer-sized value passed on the stack. The compile-time type-level composition is unchanged. The zero-allocation property is preserved.
 
+### 10.7 Conditional Return Types
+
+The proposed protocol changes every completion function to return `coroutine_handle<>` unconditionally. An alternative approach is possible: make the return type a compile-time property of the receiver. Receivers that participate in coroutine composition would return `coroutine_handle<>`; receivers that do not (terminal receivers, GPU-targeted receivers) would return `void`. Sender algorithms, which are already templates parameterized on the receiver type, could branch on a trait to select the return type at compile time.
+
+This approach would eliminate the null-handle check at async completion sites for non-coroutine paths. The cost of the unconditional approach on those paths is one branch per completion - a `test`/`jz` pair on x86-64 - which is small but not zero.
+
+The conditional approach doubles the implementation surface: every sender algorithm must implement two code paths for every completion function, one returning `coroutine_handle<>` and one returning `void`. It also introduces a trait that must propagate correctly through every wrapper receiver in the chain. A wrapper that fails to propagate the trait silently disables symmetric transfer for the entire pipeline, with no compile-time diagnostic. We note these costs without implementation experience in [P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup>. The P2300 architects are in a better position to determine whether this approach is viable within the existing algorithm implementations.
+
 ---
 
 ## 11. Scope of Changes to `std::execution`
