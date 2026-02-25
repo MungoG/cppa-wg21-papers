@@ -15,7 +15,7 @@ audience: LEWG
 
 ## Revision History
 
-### R0: February 2026
+### R0: February 2026 (post-Croydon mailing)
 
 * Initial version.
 
