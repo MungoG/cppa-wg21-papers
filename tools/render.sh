@@ -124,9 +124,9 @@ render_pdf() {
 
     "$CHROME" --headless --no-pdf-header-footer \
         --run-all-compositor-stages-before-draw \
-        --disable-gpu --no-sandbox --disable-dbus \
+        --disable-gpu --no-sandbox \
         --print-to-pdf="$pdffile" \
-        "$html_url"
+        "$html_url" 2> >(grep -v 'dbus/' >&2)
 }
 
 # ── Process a directory ───────────────────────────────────────
