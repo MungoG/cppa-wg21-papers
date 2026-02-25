@@ -837,8 +837,8 @@ outline: none;
   <li><a href="#revision-history" id="toc-revision-history">Revision
   History</a>
   <ul>
-  <li><a href="#r1-march-2026-pre-croydon-mailing" id="toc-r1-march-2026-pre-croydon-mailing">R1: March 2026 (pre-Croydon
-  mailing)</a></li>
+  <li><a href="#r1-february-2026-pre-croydon-mailing" id="toc-r1-february-2026-pre-croydon-mailing">R1: February 2026
+  (pre-Croydon mailing)</a></li>
   <li><a href="#r0-march-2026-pre-croydon-mailing" id="toc-r0-march-2026-pre-croydon-mailing">R0: March 2026 (pre-Croydon
   mailing)</a></li>
   </ul></li>
@@ -855,8 +855,8 @@ outline: none;
   <li><a href="#sender-co-awaited-by-coroutine" id="toc-sender-co-awaited-by-coroutine">4.2 Sender Co-Awaited by
   Coroutine</a></li>
   </ul></li>
-  <li><a href="#why-sender-algorithms-cannot-provide-a-handle" id="toc-why-sender-algorithms-cannot-provide-a-handle">5. Why Sender
-  Algorithms Cannot Provide a Handle</a>
+  <li><a href="#why-sender-algorithms-do-not-provide-a-handle" id="toc-why-sender-algorithms-do-not-provide-a-handle">5. Why Sender
+  Algorithms Do Not Provide a Handle</a>
   <ul>
   <li><a href="#the-composition-layer" id="toc-the-composition-layer">5.1 The Composition Layer</a></li>
   <li><a href="#the-protocol" id="toc-the-protocol">5.2 The
@@ -898,6 +898,8 @@ outline: none;
   Asynchronous Paths</a></li>
   <li><a href="#zero-allocation-preserved" id="toc-zero-allocation-preserved">10.6 Zero Allocation
   Preserved</a></li>
+  <li><a href="#conditional-return-types" id="toc-conditional-return-types">10.7 Conditional Return
+  Types</a></li>
   </ul></li>
   <li><a href="#scope-of-changes-to-stdexecution" id="toc-scope-of-changes-to-stdexecution">11. Scope of Changes to
   <code>std::execution</code></a>
@@ -957,8 +959,8 @@ documents the gap, describes the fix, and enumerates the changes
 required.</p>
 <hr />
 <h2 id="revision-history">Revision History</h2>
-<h3 id="r1-march-2026-pre-croydon-mailing">R1: March 2026 (pre-Croydon
-mailing)</h3>
+<h3 id="r1-february-2026-pre-croydon-mailing">R1: February 2026
+(pre-Croydon mailing)</h3>
 <ul>
 <li>Corrected Section 5’s characterization: struct receivers cannot
 produce a <code>coroutine_handle&lt;&gt;</code>, but they can propagate
@@ -977,7 +979,9 @@ mailing)</h3>
 <h2 id="disclosure">1. Disclosure</h2>
 <p>The authors developed <a href="https://wg21.link/p4003r0">P4003R0</a><sup>[3]</sup> (“Coroutines
 for I/O”) and <a href="https://wg21.link/p4007r0">P4007R0</a><sup>[4]</sup> (“Senders and
-Coroutines”). Coroutines solve specific problems. We do not claim they
+Coroutines”). A coroutine-only design cannot express compile-time work
+graphs, does not support heterogeneous dispatch, and assumes a
+cooperative runtime. Those are real costs. We do not claim coroutines
 are the answer to all problems. The limitation documented here exists
 independently of any alternative design.</p>
 <p><a href="https://wg21.link/p4007r0">P4007R0</a><sup>[4]</sup>
@@ -1109,8 +1113,10 @@ provides for preventing stack overflow in coroutine chains.</p>
 <h2 id="stdexecutions-coroutine-bridges">4.
 <code>std::execution</code>’s Coroutine Bridges</h2>
 <p><a href="https://wg21.link/p2300r10">P2300R10</a><sup>[5]</sup>
-provides two bridges between coroutines and the sender model. Neither
-uses symmetric transfer.</p>
+achieves zero-allocation composition of asynchronous operations,
+compile-time work graph construction, and heterogeneous dispatch across
+execution contexts. It provides two bridges between coroutines and the
+sender model. Neither uses symmetric transfer.</p>
 <h3 id="coroutine-completing-as-sender">4.1 Coroutine Completing as
 Sender</h3>
 <p>When an awaitable is used where a sender is expected, P2300R10
@@ -1164,8 +1170,8 @@ allowing the compiler to arrange a tail call. The sender model calls
 <code>set_value</code>.</p>
 <p><strong>Both bridges use <code>void await_suspend</code>. Neither can
 perform symmetric transfer.</strong></p>
-<h2 id="why-sender-algorithms-cannot-provide-a-handle">5. Why Sender
-Algorithms Cannot Provide a Handle</h2>
+<h2 id="why-sender-algorithms-do-not-provide-a-handle">5. Why Sender
+Algorithms Do Not Provide a Handle</h2>
 <p>Symmetric transfer requires <code>await_suspend</code> to return a
 <code>coroutine_handle&lt;&gt;</code>. The question is where that handle
 would come from. The answer has two parts.</p>
@@ -1245,8 +1251,9 @@ Task Issues”), Section 3.2.3:</p>
 <p>“The specification doesn’t mention any use of symmetric transfer.
 Further, the <code>task</code> gets adapted by <code>affine_on</code> in
 <code>await_transform</code> (<a href="https://eel.is/c++draft/exec#task.promise-10">[task.promise]
-p10</a>) which produces a different sender than <code>task</code> which
-needs special treatment to use symmetric transfer.”</p>
+p10</a><sup>[16]</sup>) which produces a different sender than
+<code>task</code> which needs special treatment to use symmetric
+transfer.”</p>
 </blockquote>
 <p>Jonathan Müller demonstrated the consequence in <a href="https://wg21.link/p3801r0">P3801R0</a><sup>[7]</sup> (“Concerns
 about the design of std::execution::task”), Section 3.1:</p>
@@ -1475,10 +1482,11 @@ Even coroutine-backed receivers complete through void-returning
 gap is not a missing feature. It is a consequence of the design choices
 that define the sender model.</p>
 <p>The distinction matters. If symmetric transfer is merely missing, it
-can be added. If it is architectural, it can only be closed by removing
-the property it trades against - non-coroutine composition through
-sender algorithms - or by a language feature that does not exist. The
-committee should know which characterization is correct.</p>
+can be added independently. If it is a consequence of protocol choices,
+it can only be closed by changing one of those choices - as Section 10
+demonstrates by changing the return type while preserving struct
+receivers - or by a language feature that does not exist. The committee
+should know which characterization is correct.</p>
 <p>Symmetric transfer requires <code>await_suspend</code> to return a
 <code>coroutine_handle&lt;&gt;</code>. Sender algorithms create
 receivers that are structs. These structs are not coroutines and have no
@@ -1513,7 +1521,8 @@ handle to the caller.</p>
 </tbody>
 </table>
 <p><strong>Symmetric transfer requires a handle. The sender model
-provides a function call. No bridge exists between the two.</strong></p>
+provides a function call. Under the current protocol, no bridge exists
+between the two.</strong></p>
 <p>Section 10 describes a protocol-level fix. Completion functions and
 <code>start()</code> return <code>coroutine_handle&lt;&gt;</code>
 instead of <code>void</code>. Struct receivers propagate handles from
@@ -1597,11 +1606,18 @@ propagates upward:</p>
 <span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">next_</span><span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>result<span class="op">));</span></span>
 <span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
 <span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co">// proposed then_receiver</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co">// proposed then_receiver (exception handling elided)</span></span>
 <span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> set_value<span class="op">(</span>Args<span class="op">&amp;&amp;...</span> args<span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
 <span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> result <span class="op">=</span> invoke<span class="op">(</span><span class="va">f_</span><span class="op">,</span> <span class="bu">std::</span>forward<span class="op">&lt;</span>Args<span class="op">&gt;(</span>args<span class="op">)...);</span></span>
 <span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">next_</span><span class="op">,</span> <span class="bu">std::</span>move<span class="op">(</span>result<span class="op">));</span></span>
 <span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Exception handling is elided for clarity. If
+<code>invoke(f_, args...)</code> throws, the implementation catches the
+exception and routes it through
+<code>set_error(next_, current_exception())</code>, which also returns
+<code>coroutine_handle&lt;&gt;</code>. The protocol is self-consistent
+across error boundaries: the handle from <code>set_error</code>
+propagates identically to one from <code>set_value</code>.</p>
 <p>The <code>then</code> receiver does not produce a handle. It returns
 whatever the next receiver returned. The handle originates from the
 coroutine-backed receiver at the end of the chain and propagates through
@@ -1622,15 +1638,46 @@ counter. Only the last completing sub-sender propagates the handle:</p>
 caller receives null, propagates it through <code>start()</code>, and
 <code>when_all</code>’s own <code>start()</code> proceeds to the next
 sub-sender. Only the final completion produces a non-null handle.</p>
+<p>The <code>set_stopped</code> path requires care. When a sub-sender
+completes with an error or cancellation, <code>when_all</code> calls
+<code>request_stop()</code> on the remaining sub-senders. Stop callbacks
+registered by those sub-senders may fire synchronously inside
+<code>request_stop()</code>. P2300’s stop callbacks are
+<code>void</code>-returning. If a sibling sub-sender completes inside a
+stop callback and its counter decrement is the last one, the returned
+handle has no propagation path through the <code>void</code>-returning
+callback.</p>
+<p>The ordering constraint resolves this: the counter decrement must
+occur after <code>request_stop()</code> returns.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> set_stopped<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    <span class="va">stopped_</span><span class="op">.</span>store<span class="op">(</span><span class="kw">true</span><span class="op">,</span> <span class="bu">std::</span>memory_order_relaxed<span class="op">);</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="va">stop_source_</span><span class="op">.</span>request_stop<span class="op">();</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(--</span><span class="va">count_</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> execution<span class="op">::</span>set_stopped<span class="op">(</span><span class="va">final_</span><span class="op">);</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">{};</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Sibling completions that fire synchronously inside
+<code>request_stop()</code> decrement the counter but cannot be the last
+decrement, because the caller’s own decrement has not yet occurred. The
+last decrement always occurs in a normal completion context where the
+returned handle can propagate.</p>
 <h3 id="let_value-dynamic-chains">10.4 <code>let_value</code>: Dynamic
 Chains</h3>
 <p>A <code>let_value</code> receiver calls its factory function,
 connects the resulting sender, and starts the new operation:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> set_value<span class="op">(</span>Args<span class="op">&amp;&amp;...</span> args<span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> sndr <span class="op">=</span> invoke<span class="op">(</span><span class="va">f_</span><span class="op">,</span> <span class="bu">std::</span>forward<span class="op">&lt;</span>Args<span class="op">&gt;(</span>args<span class="op">)...);</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span><span class="op">&amp;</span> op <span class="op">=</span> emplace_op<span class="op">(</span><span class="fu">connect</span><span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>sndr<span class="op">),</span> <span class="va">next_</span><span class="op">));</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> start<span class="op">(</span>op<span class="op">);</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">// exception handling elided</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> set_value<span class="op">(</span>Args<span class="op">&amp;&amp;...</span> args<span class="op">)</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> sndr <span class="op">=</span> invoke<span class="op">(</span><span class="va">f_</span><span class="op">,</span> <span class="bu">std::</span>forward<span class="op">&lt;</span>Args<span class="op">&gt;(</span>args<span class="op">)...);</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span><span class="op">&amp;</span> op <span class="op">=</span> emplace_op<span class="op">(</span><span class="fu">connect</span><span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>sndr<span class="op">),</span> <span class="va">next_</span><span class="op">));</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> start<span class="op">(</span>op<span class="op">);</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Exception handling is elided. If <code>invoke(f_, args...)</code> or
+<code>connect</code> throws, the implementation catches the exception
+and routes it through
+<code>set_error(next_, current_exception())</code>. As with
+<code>then</code>, both completion channels return
+<code>coroutine_handle&lt;&gt;</code> and the handle propagates
+identically regardless of which channel produced it.</p>
 <p>The inner sender’s <code>start()</code> may complete synchronously
 and return a handle. The <code>let_value</code> receiver propagates it.
 The pattern is the same: return what is received from downstream.</p>
@@ -1652,12 +1699,46 @@ coroutine resumes on whatever thread the completion occurred.</p>
 uses <code>.resume()</code>. Both are correct. The stack growth
 documented in Sections 5 through 8 occurs only on the synchronous path,
 and handle propagation eliminates it.</p>
+<p>Every coroutine bridge point where <code>await_suspend</code>
+receives a handle from <code>start()</code> or a completion function
+must convert a null handle to <code>noop_coroutine()</code>. The
+<code>sender-awaitable</code> bridge in Section 10.1 demonstrates the
+pattern. The <code>connect-awaitable</code> /
+<code>suspend-complete</code> bridge requires the same conversion. This
+is a general invariant of the proposed protocol: null means “no transfer
+needed,” and <code>noop_coroutine()</code> is the mechanism by which the
+compiler suspends the coroutine without transferring to another.</p>
 <h3 id="zero-allocation-preserved">10.6 Zero Allocation Preserved</h3>
 <p>Sender algorithm receivers remain structs. No coroutine frames are
 allocated at intermediate points. The return value is a
 <code>coroutine_handle&lt;&gt;</code> - a pointer-sized value passed on
 the stack. The compile-time type-level composition is unchanged. The
 zero-allocation property is preserved.</p>
+<h3 id="conditional-return-types">10.7 Conditional Return Types</h3>
+<p>The proposed protocol changes every completion function to return
+<code>coroutine_handle&lt;&gt;</code> unconditionally. An alternative
+approach is possible: make the return type a compile-time property of
+the receiver. Receivers that participate in coroutine composition would
+return <code>coroutine_handle&lt;&gt;</code>; receivers that do not
+(terminal receivers, GPU-targeted receivers) would return
+<code>void</code>. Sender algorithms, which are already templates
+parameterized on the receiver type, could branch on a trait to select
+the return type at compile time.</p>
+<p>This approach would eliminate the null-handle check at async
+completion sites for non-coroutine paths. The cost of the unconditional
+approach on those paths is one branch per completion - a
+<code>test</code>/<code>jz</code> pair on x86-64 - which is small but
+not zero.</p>
+<p>The conditional approach doubles the implementation surface: every
+sender algorithm must implement two code paths for every completion
+function, one returning <code>coroutine_handle&lt;&gt;</code> and one
+returning <code>void</code>. It also introduces a trait that must
+propagate correctly through every wrapper receiver in the chain. A
+wrapper that fails to propagate the trait silently disables symmetric
+transfer for the entire pipeline, with no compile-time diagnostic. We
+note these costs without implementation experience in <a href="https://wg21.link/p2300r10">P2300R10</a><sup>[5]</sup>. The P2300
+architects are in a better position to determine whether this approach
+is viable within the existing algorithm implementations.</p>
 <hr />
 <h2 id="scope-of-changes-to-stdexecution">11. Scope of Changes to
 <code>std::execution</code></h2>
@@ -1720,15 +1801,15 @@ type of <code>start()</code> changes from <code>void</code> to
 <code>coroutine_handle&lt;&gt;</code>. The factory propagates whatever
 the receiver’s completion function returns.</p>
 <p>Example - <code>just</code>:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">// current</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> start<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">rcvr_</span><span class="op">,</span> <span class="va">values_</span><span class="op">...);</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="co">// proposed</span></span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> start<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">rcvr_</span><span class="op">,</span> <span class="va">values_</span><span class="op">...);</span></span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co">// current</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> start<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>    execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">rcvr_</span><span class="op">,</span> <span class="va">values_</span><span class="op">...);</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="co">// proposed</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>coroutine_handle<span class="op">&lt;&gt;</span> start<span class="op">()</span> <span class="kw">noexcept</span> <span class="op">{</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> execution<span class="op">::</span>set_value<span class="op">(</span><span class="va">rcvr_</span><span class="op">,</span> <span class="va">values_</span><span class="op">...);</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Affected factories:</p>
 <ul>
 <li><code>just</code></li>
@@ -1827,6 +1908,22 @@ The caller receives the handle and must call
 and call <code>.resume()</code> if it is non-null. Failure to do so
 silently leaves the coroutine suspended. The program does not crash. It
 hangs. The requirement does not exist in the current protocol.</p>
+<p>The synchronous path is self-correcting: handles propagate through
+return values and the compiler’s symmetric transfer machinery consumes
+them. The asynchronous path requires explicit action from the caller of
+<code>set_value</code>. Standard library algorithms (sender factories,
+adaptors, consumers) are written once and reviewed. Custom senders that
+wrap OS I/O operations, timers, or other async primitives are the risk
+population. An author who tests with synchronous completions will see
+correct behavior; the bug manifests only when the sender completes
+asynchronously.</p>
+<p>The return types of <code>set_value</code>, <code>set_error</code>,
+<code>set_stopped</code>, and <code>start()</code> should be marked
+<code>[[nodiscard]]</code>. A discarded
+<code>coroutine_handle&lt;&gt;</code> return is always a bug under this
+protocol. The <code>[[nodiscard]]</code> attribute catches the most
+common form of misuse - calling a completion function as a statement
+without using the return value - at compile time.</p>
 <h3 id="third-party-impact">11.9 Third-Party Impact</h3>
 <p>The concept changes in Section 11.1 affect every type that models
 <code>receiver</code> or <code>operation_state</code>, including types
@@ -1896,6 +1993,11 @@ boundaries where it is needed.</p>
 integration with <code>std::execution</code>.</p>
 <hr />
 <h1 id="acknowledgements">Acknowledgements</h1>
+<p>This document is written in Markdown and depends on the extensions in
+<a href="https://pandoc.org/MANUAL.html#pandocs-markdown"><code>pandoc</code></a>
+and <a href="https://github.com/mermaid-js/mermaid"><code>mermaid</code></a>,
+and we would like to thank the authors of those extensions and
+associated libraries.</p>
 <p>The authors would like to thank Gor Nishanov for the design of
 symmetric transfer, Lewis Baker for demonstrating it in cppcoro, and
 Dietmar Kühl and Jonathan Müller for documenting the limitation in <a href="https://wg21.link/p3796r1">P3796R1</a> and <a href="https://wg21.link/p3801r0">P3801R0</a>.</p>
