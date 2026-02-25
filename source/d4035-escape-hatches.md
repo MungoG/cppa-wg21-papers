@@ -15,7 +15,7 @@ audience: LEWG
 
 ## Revision History
 
-### R0: February 2026 (pre-Tokyo mailing)
+### R0: February 2026
 
 * Initial version.
 
