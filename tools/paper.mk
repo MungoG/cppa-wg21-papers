@@ -5,15 +5,26 @@
 
 # Detect OS
 ifeq ($(OS),Windows_NT)
-    DETECTED_OS := Windows
-    SHELL := cmd.exe
-    .SHELLFLAGS := /c
-    NPM := npm
-    WHICH := where
-    NULL := nul
-    MKDIR := mkdir
-    RM := del /q
-    CP := copy
+    ifneq ($(MSYSTEM),)
+        # MSYS2 / Git Bash - keep default SHELL, use Unix syntax
+        DETECTED_OS := MSYS
+        NPM := npm
+        WHICH := which
+        NULL := /dev/null
+        MKDIR := mkdir -p
+        RM := rm -f
+        CP := cp
+    else
+        DETECTED_OS := Windows
+        SHELL := cmd.exe
+        .SHELLFLAGS := /c
+        NPM := npm
+        WHICH := where
+        NULL := nul
+        MKDIR := mkdir
+        RM := del /q
+        CP := copy
+    endif
 else
     DETECTED_OS := $(shell uname -s)
     NPM := npm
@@ -31,16 +42,26 @@ TOOLDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 # Pandoc options (common)
 PANDOC := pandoc
-PANDOC_COMMON := --standalone --filter mermaid-filter
+# npm creates .cmd wrappers on Windows; pandoc cannot find the
+# extensionless Unix shell script that npm also drops, so we must
+# point it at the .cmd variant explicitly.
+ifneq (,$(filter Windows MSYS,$(DETECTED_OS)))
+    PANDOC_COMMON := --standalone --filter mermaid-filter.cmd
+else
+    PANDOC_COMMON := --standalone --filter mermaid-filter
+endif
 
 # PDF generation via headless Chrome (supports variable fonts,
 # font-variation-settings, break-inside on table rows, and
 # CSS @page margin boxes).
-ifeq ($(DETECTED_OS),Windows)
-    CHROME := $(firstword $(wildcard \
-        $(LOCALAPPDATA)/Google/Chrome/Application/chrome.exe \
-        C:/Program\ Files/Google/Chrome/Application/chrome.exe \
-        C:/Program\ Files\ (x86)/Google/Chrome/Application/chrome.exe))
+ifneq (,$(filter Windows MSYS,$(DETECTED_OS)))
+    CHROME := $(wildcard $(LOCALAPPDATA)/Google/Chrome/Application/chrome.exe)
+    ifeq ($(CHROME),)
+        CHROME := $(wildcard C:/Program\ Files/Google/Chrome/Application/chrome.exe)
+    endif
+    ifeq ($(CHROME),)
+        CHROME := $(wildcard C:/Program\ Files\ (x86)/Google/Chrome/Application/chrome.exe)
+    endif
 else ifeq ($(DETECTED_OS),Darwin)
     CHROME := $(shell \
         if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then \
@@ -98,7 +119,7 @@ endif
 
 # Pattern rules for conversion
 %.pdf: %.html check-deps-pdf
-	"$(CHROME)" $(CHROME_PDF_FLAGS) --print-to-pdf=$(OUTDIR)/$@ "file://$(abspath $(OUTDIR)/$*.html)"
+	"$(CHROME)" $(CHROME_PDF_FLAGS) --print-to-pdf="$(abspath $(OUTDIR)/$@)" "file://$(abspath $(OUTDIR)/$*.html)"
 	@echo "Created $(OUTDIR)/$@"
 
 %.html: $(SRCDIR)/%.md check-deps
@@ -119,18 +140,18 @@ endif
 .PHONY: check check-deps check-deps-pdf
 check:
 	@echo "Checking dependencies..."
-	@$(MAKE) --no-print-directory check-pandoc
-	@$(MAKE) --no-print-directory check-mermaid
-	@$(MAKE) --no-print-directory check-chrome
+	@"$(MAKE)" --no-print-directory check-pandoc
+	@"$(MAKE)" --no-print-directory check-mermaid
+	@"$(MAKE)" --no-print-directory check-chrome
 	@echo ""
 	@echo "All checks complete."
 
 check-deps:
-	@$(MAKE) --no-print-directory check-pandoc
-	@$(MAKE) --no-print-directory check-mermaid
+	@"$(MAKE)" --no-print-directory check-pandoc
+	@"$(MAKE)" --no-print-directory check-mermaid
 
 check-deps-pdf: check-deps
-	@$(MAKE) --no-print-directory check-chrome
+	@"$(MAKE)" --no-print-directory check-chrome
 
 .PHONY: check-pandoc
 check-pandoc:
@@ -157,7 +178,7 @@ ifeq ($(CHROME),)
 	@echo "PDF generation requires Chrome or Chromium."
 ifeq ($(DETECTED_OS),Darwin)
 	@echo "Install from: https://www.google.com/chrome/"
-else ifeq ($(DETECTED_OS),Windows)
+else ifneq (,$(filter Windows MSYS,$(DETECTED_OS)))
 	@echo "Install from: https://www.google.com/chrome/"
 else
 	@echo "Install with: sudo apt install google-chrome-stable"
