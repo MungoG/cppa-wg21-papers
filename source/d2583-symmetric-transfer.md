@@ -16,14 +16,15 @@ C++20 provides symmetric transfer ([P0913R1](https://wg21.link/p0913r1)<sup>[1]<
 
 ## Revision History
 
-### R1: February 2026 (pre-Croydon mailing)
+### R1: February 2026 (Croydon)
 
 * Corrected Section 5's characterization: struct receivers cannot produce a `coroutine_handle<>`, but they can propagate one from downstream. The gap is a protocol choice, not a structural impossibility.
 * Added handle propagation fix (Section 10).
 * Added scope of changes analysis (Section 11).
 * Added ABI considerations (Section 12).
+* Corrected date of R0 revision (March -> February).
 
-### R0: March 2026 (pre-Croydon mailing)
+### R0: February 2026 (pre-Croydon mailing)
 
 * Initial version.
 
