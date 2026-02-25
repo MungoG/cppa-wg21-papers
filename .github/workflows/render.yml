@@ -2,7 +2,7 @@ name: Render Papers
 
 on:
   push:
-    branches: [master]
+    branches: [rendertest]
 
 concurrency:
   group: render-papers
