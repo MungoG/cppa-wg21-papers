@@ -124,7 +124,7 @@ render_pdf() {
 
     "$CHROME" --headless --no-pdf-header-footer \
         --run-all-compositor-stages-before-draw \
-        --disable-gpu --no-sandbox \
+        --disable-gpu --no-sandbox --disable-dbus \
         --print-to-pdf="$pdffile" \
         "$html_url"
 }
