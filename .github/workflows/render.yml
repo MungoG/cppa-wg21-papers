@@ -46,7 +46,19 @@ jobs:
       - name: Install mermaid-filter
         run: npm install -g mermaid-filter
 
-      # Google Chrome is pre-installed on ubuntu-latest
+      # Google Chrome is pre-installed on ubuntu-latest.
+      # Puppeteer (used by mermaid-filter) needs --no-sandbox on CI.
+      # Create a wrapper so puppeteer's internal Chrome launch gets
+      # the flag automatically.
+      - name: Configure Chrome for CI
+        run: |
+          CHROME=$(which google-chrome || which chromium-browser || which chromium)
+          cat > /tmp/chrome-no-sandbox <<WRAPPER
+          #!/bin/bash
+          exec "$CHROME" --no-sandbox --disable-setuid-sandbox "\$@"
+          WRAPPER
+          chmod +x /tmp/chrome-no-sandbox
+          echo "PUPPETEER_EXECUTABLE_PATH=/tmp/chrome-no-sandbox" >> "$GITHUB_ENV"
 
       - name: Render papers
         run: bash master/tools/render.sh master rendered
