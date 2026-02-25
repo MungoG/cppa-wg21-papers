@@ -32,6 +32,8 @@ jobs:
             mkdir -p rendered
             cd rendered
             git init
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
             git checkout --orphan rendered
             git commit --allow-empty -m "Initial rendered branch"
             git remote add origin \
