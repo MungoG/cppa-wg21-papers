@@ -1,0 +1,71 @@
+name: Render Papers
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: render-papers
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          path: master
+
+      - name: Check out rendered branch
+        run: |
+          if git ls-remote --heads \
+              "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+              rendered | grep -q rendered; then
+            git clone --single-branch --branch rendered \
+              "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+              rendered
+          else
+            mkdir -p rendered
+            cd rendered
+            git init
+            git checkout --orphan rendered
+            git commit --allow-empty -m "Initial rendered branch"
+            git remote add origin \
+              "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          fi
+
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
+
+      - name: Install mermaid-filter
+        run: npm install -g mermaid-filter
+
+      # Google Chrome is pre-installed on ubuntu-latest
+
+      - name: Render papers
+        run: bash master/tools/render.sh master rendered
+
+      - name: Commit and push
+        working-directory: rendered
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            SUBJECT=$(git -C "$GITHUB_WORKSPACE/master" log -1 --format=%s "$GITHUB_SHA")
+            git commit -m "$(cat <<EOF
+          Render from ${GITHUB_SHA::7}: $SUBJECT
+
+          Source commit: ${{ github.repository }}@${GITHUB_SHA}
+          EOF
+          )"
+            git push origin rendered
+          fi
