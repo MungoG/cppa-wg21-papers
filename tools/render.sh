@@ -186,6 +186,7 @@ process_dir() {
                 echo -e "  \033[31m*** ERROR\033[0m"
                 echo " "
                 echo " "
+                git -C "$RENDERED" rm -f --ignore-unmatch "$(basename "$html_dst")" "$(basename "$pdf_dst")" 2>/dev/null || rm -f "$html_dst" "$pdf_dst"
                 FAILURES=$((FAILURES + 1))
                 continue
             fi
@@ -198,6 +199,7 @@ process_dir() {
                 echo -e "  \033[31m*** ERROR\033[0m"
                 echo " "
                 echo " "
+                git -C "$RENDERED" rm -f --ignore-unmatch "$(basename "$html_dst")" "$(basename "$pdf_dst")" 2>/dev/null || rm -f "$html_dst" "$pdf_dst"
                 FAILURES=$((FAILURES + 1))
                 continue
             fi
@@ -233,7 +235,7 @@ process_dir() {
             echo "  Generating HTML..."
             if ! render_html "$subdir/$mdname" "$stem.html"; then
                 echo "  ERROR: HTML generation failed for $mdname"
-                rm -f "$html_dst" "$pdf_dst"
+                git -C "$RENDERED" rm -f --ignore-unmatch "$(basename "$html_dst")" "$(basename "$pdf_dst")" 2>/dev/null || rm -f "$html_dst" "$pdf_dst"
                 FAILURES=$((FAILURES + 1))
                 continue
             fi
@@ -251,7 +253,7 @@ process_dir() {
             echo "  Generating PDF..."
             if ! render_pdf "$html_dst" "$pdf_dst"; then
                 echo "  ERROR: PDF generation failed for $mdname"
-                rm -f "$pdf_dst"
+                git -C "$RENDERED" rm -f --ignore-unmatch "$(basename "$pdf_dst")" 2>/dev/null || rm -f "$pdf_dst"
                 FAILURES=$((FAILURES + 1))
                 continue
             fi

@@ -61,7 +61,10 @@ jobs:
           echo "PUPPETEER_EXECUTABLE_PATH=/tmp/chrome-no-sandbox" >> "$GITHUB_ENV"
 
       - name: Render papers
-        run: bash master/tools/render.sh master rendered
+        id: render
+        run: |
+          bash master/tools/render.sh master rendered && echo "rc=0" >> "$GITHUB_OUTPUT" \
+            || echo "rc=$?" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push
         working-directory: rendered
@@ -83,3 +86,9 @@ jobs:
           )"
             git push origin rendered
           fi
+
+      - name: Fail if rendering had errors
+        if: steps.render.outputs.rc != '0'
+        run: |
+          echo "Rendering reported errors (see above)"
+          exit 1
