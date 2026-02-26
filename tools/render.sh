@@ -179,21 +179,25 @@ process_dir() {
             local file_prefix="${stem%%-*}"
 
             if [ -z "$doc_field" ]; then
-                echo ""
-                echo "  *** ERROR"
-                echo "  *** ERROR: no document field in YAML front matter"
-                echo "  *** ERROR"
-                echo ""
+                echo " "
+                echo " "
+                echo -e "  \033[31m*** ERROR\033[0m"
+                echo -e "  \033[31m*** ERROR: no document field in YAML front matter\033[0m"
+                echo -e "  \033[31m*** ERROR\033[0m"
+                echo " "
+                echo " "
                 FAILURES=$((FAILURES + 1))
                 continue
             fi
 
             if [ "$doc_lower" != "$file_prefix" ]; then
-                echo ""
-                echo "  *** ERROR"
-                echo "  *** ERROR: document '$doc_field' does not match filename prefix '$file_prefix'"
-                echo "  *** ERROR"
-                echo ""
+                echo " "
+                echo " "
+                echo -e "  \033[31m*** ERROR\033[0m"
+                echo -e "  \033[31m*** ERROR: document '$doc_field' does not match filename prefix '$file_prefix'\033[0m"
+                echo -e "  \033[31m*** ERROR\033[0m"
+                echo " "
+                echo " "
                 FAILURES=$((FAILURES + 1))
                 continue
             fi
