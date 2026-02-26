@@ -267,9 +267,9 @@ process_dir() {
 
 # ── Main ──────────────────────────────────────────────────────
 
-process_dir "source"  "d*.md"  "skip"
+process_dir "source"  "[dD]*.md"  "skip"
 echo ""
-process_dir "archive" "p*.md"  "validate"
+process_dir "archive" "[pP]*.md"  "validate"
 
 echo ""
 if [ "$FAILURES" -gt 0 ]; then
