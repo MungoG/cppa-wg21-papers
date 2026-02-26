@@ -63,7 +63,9 @@ jobs:
       - name: Render papers
         id: render
         continue-on-error: true
-        run: bash master/tools/render.sh master rendered
+        run: |
+          set -o pipefail
+          bash master/tools/render.sh master rendered 2>&1 | tee /tmp/render.log
 
       - name: Commit and push
         working-directory: rendered
@@ -89,5 +91,5 @@ jobs:
       - name: Fail if rendering had errors
         if: steps.render.outcome == 'failure'
         run: |
-          echo "Rendering reported errors (see above)"
+          cat /tmp/render.log
           exit 1
