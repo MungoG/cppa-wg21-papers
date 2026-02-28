@@ -96,6 +96,29 @@ Rules for all work on WG21 papers in this repository.
     summarize arithmetic or data
 30. Align trailing comment columns when consecutive lines have
     trailing comments
+31. Fenced code blocks must not exceed 80 characters per
+    line. This rule does not apply to mermaid blocks -
+    never reformat mermaid source. When wrapping is
+    needed, follow the conventions for the block's
+    language:
+
+    **C++** - break at a natural syntactic boundary and
+    indent the continuation 4 spaces from the construct
+    it belongs to:
+    - Function signatures: break after the return type,
+      or after the opening parenthesis
+    - Template parameter lists: break after a comma,
+      align with the first parameter or indent 4 spaces
+    - Chained expressions (pipe `|`, `<<`, etc.): break
+      before the operator, align operators vertically
+    - Trailing comments: shorten the gap between code and
+      comment rather than wrapping the code, but keep
+      grouped comments aligned with each other (rule 30)
+    - If shortening the gap is not enough, move the
+      comment to the line above the code it describes
+
+    **Prose in code fences** (markdown, plain text) -
+    wrap at word boundaries with no continuation indent
 
 ## Structure
 
