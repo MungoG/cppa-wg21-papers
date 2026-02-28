@@ -107,22 +107,7 @@ Rules for all work on WG21 papers in this repository.
     before Section 1. Each revision is an H3 subheading in the
     form `### R<n>: <Month> <Year> (<pre-Meeting mailing>)`
     followed by a bullet list of changes
-33. Every paper must contain a `# Acknowledgements` section
-    near the end of the file (before References), preceded and
-    followed by a horizontal rule (`---`). The first paragraph
-    must be exactly:
-
-    > This document is written in Markdown and depends on the
-    > extensions in
-    > [`pandoc`](https://pandoc.org/MANUAL.html#pandocs-markdown)
-    > and
-    > [`mermaid`](https://github.com/mermaid-js/mermaid), and we
-    > would like to thank the authors of those extensions and
-    > associated libraries.
-
-    Additional paragraphs may follow for paper-specific
-    acknowledgements
-34. References and citations - for readers of printed copies:
+33. References and citations - for readers of printed copies:
     - Every hyperlink in the document body must also appear
       in the References section
     - Every hyperlink in the document body must have a
@@ -148,10 +133,10 @@ Rules for all work on WG21 papers in this repository.
 
 ## Tone
 
-35. Do not present options as predetermined conclusions. When
+34. Do not present options as predetermined conclusions. When
     recommending alternatives to a committee, present them as options
     to contemplate, not dictated outcomes
-36. Avoid politically charged comparisons - do not invoke other
+35. Avoid politically charged comparisons - do not invoke other
     contentious features as analogies unless the comparison is
     structurally precise. If the structures being compared are
     fundamentally different, the analogy will be perceived as
