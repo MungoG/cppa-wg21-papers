@@ -96,7 +96,7 @@ Rules for all work on WG21 papers in this repository.
     summarize arithmetic or data
 30. Align trailing comment columns when consecutive lines have
     trailing comments
-31. Fenced code blocks must not exceed 80 characters per
+31. Fenced code blocks must not exceed 90 characters per
     line. This rule does not apply to mermaid blocks -
     never reformat mermaid source. When wrapping is
     needed, follow the conventions for the block's
@@ -114,23 +114,27 @@ Rules for all work on WG21 papers in this repository.
     - Trailing comments: shorten the gap between code and
       comment rather than wrapping the code, but keep
       grouped comments aligned with each other (rule 30)
-    - If shortening the gap is not enough, move the
-      comment to the line above the code it describes
+    - If a trailing comment still exceeds 90 characters
+      after tightening the gap, wrap the comment text to
+      a second line. The continuation `//` must align
+      with the `//` on the first line. Never move a
+      trailing comment above the code line - keep all
+      comments in a contiguous block on the right
 
     **Prose in code fences** (markdown, plain text) -
     wrap at word boundaries with no continuation indent
 
 ## Structure
 
-31. Sections with subsections should have at least one introductory
+32. Sections with subsections should have at least one introductory
     sentence between the section heading and the first subsection
     heading - do not leave an empty section heading
-32. Every paper must contain a `## Revision History` section,
+33. Every paper must contain a `## Revision History` section,
     placed immediately after the Abstract's trailing `---` and
     before Section 1. Each revision is an H3 subheading in the
     form `### R<n>: <Month> <Year> (<pre-Meeting mailing>)`
     followed by a bullet list of changes
-33. References and citations - for readers of printed copies:
+34. References and citations - for readers of printed copies:
     - Every hyperlink in the document body must also appear
       in the References section
     - Every hyperlink in the document body must have a
@@ -156,10 +160,10 @@ Rules for all work on WG21 papers in this repository.
 
 ## Tone
 
-34. Do not present options as predetermined conclusions. When
+35. Do not present options as predetermined conclusions. When
     recommending alternatives to a committee, present them as options
     to contemplate, not dictated outcomes
-35. Avoid politically charged comparisons - do not invoke other
+36. Avoid politically charged comparisons - do not invoke other
     contentious features as analogies unless the comparison is
     structurally precise. If the structures being compared are
     fundamentally different, the analogy will be perceived as
