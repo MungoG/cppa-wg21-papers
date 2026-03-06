@@ -1,7 +1,7 @@
 ---
 title: "Symmetric Transfer and Sender Composition"
-document: D2583R1
-date: 2026-02-24
+document: P2583R1
+date: 2026-03-06
 reply-to:
   - "Mungo Gill <mungo.gill@me.com>"
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -16,7 +16,7 @@ C++20 provides symmetric transfer ([P0913R1](https://wg21.link/p0913r1)<sup>[1]<
 
 ## Revision History
 
-### R1: February 2026 (Croydon)
+### R1: March 2026 (Croydon)
 
 * Corrected Section 5's characterization: struct receivers cannot produce a `coroutine_handle<>`, but they can propagate one from downstream. The gap is a protocol choice, not a structural impossibility.
 * Added handle propagation fix (Section 10).
