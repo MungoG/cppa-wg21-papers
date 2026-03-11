@@ -2125,8 +2125,14 @@ defined as “expression-equivalent to
 the return type. The authors are uncertain whether the return type
 requirement belongs in a <code>Mandates</code> clause on each CPO, in
 the semantic requirements of <code>receiver</code>, or in a new concept
-requirement. The draft below adds a return type requirement to each CPO
-specification. LWG input on the correct pattern is invited.</p></li>
+requirement. The draft below uses a <code>Mandates</code> clause on each
+CPO because it is the pattern the authors are most familiar with. LWG
+may prefer a different specification pattern - for example, adding the
+requirement to the semantic requirements of <code>receiver</code>,
+introducing a new exposition-only concept, or modifying
+<code>MANDATE-NOTHROW</code> to accept a return type parameter. The
+intent is the same regardless of pattern: the expression must have type
+<code>std::coroutine_handle&lt;&gt;</code>.</p></li>
 <li><p><strong><code>unhandled_stopped</code> interaction.</strong> The
 current <code>awaitable-receiver::set_stopped</code> calls
 <code>unhandled_stopped()</code>, casts the result to
@@ -2137,6 +2143,11 @@ returning the handle for symmetric transfer by the caller preserves the
 intended semantics. Review from someone familiar with the
 <code>unhandled_stopped</code> contract is invited.</p></li>
 </ol>
+<p>Mandating <code>[[nodiscard]]</code> on the return values of
+completion functions and <code>start()</code> may be worth considering
+but has not been included in the draft wording below. SD-9 states that
+library wording should not use <code>[[nodiscard]]</code>, leaving it as
+a quality-of-implementation decision for vendors.</p>
 <h3 id="exec.async.ops-completion-functions">15.2 [exec.async.ops]
 Completion Functions</h3>
 <p>In [exec.async.ops] paragraph 6, after “A valid invocation of a
@@ -2157,31 +2168,45 @@ boundary, where the language requires it. – end note]</em></p>
 [exec.set.value], [exec.set.error], [exec.set.stopped]</h3>
 <p>Modify [exec.set.value] paragraph 1 as follows:</p>
 <div class="wording">
-<p>The expression <code>set_value(rcvr, vs...)</code> for a
-subexpression <code>rcvr</code> and pack of subexpressions
-<code>vs</code> is ill-formed if <code>rcvr</code> is an lvalue or an
-rvalue of const type. Otherwise, it is expression-equivalent to
+<p><code>set_value</code> is a value completion function. Its associated
+completion tag is <code>set_value_t</code>. The expression
+<code>set_value(rcvr, vs...)</code> for a subexpression
+<code>rcvr</code> and pack of subexpressions <code>vs</code> is
+ill-formed if <code>rcvr</code> is an lvalue or an rvalue of const type.
+Otherwise, it is expression-equivalent to
 <code>MANDATE-NOTHROW(rcvr.set_value(vs...))</code>.</p>
 <ins>
 <em>Mandates:</em> The expression has type
 <code>std::coroutine_handle&lt;&gt;</code>.
 </ins>
+</div>
+<p>Modify [exec.set.error] paragraph 1 as follows:</p>
+<div class="wording">
+<p><code>set_error</code> is an error completion function. Its
+associated completion tag is <code>set_error_t</code>. The expression
+<code>set_error(rcvr, err)</code> for some subexpressions
+<code>rcvr</code> and <code>err</code> is ill-formed if
+<code>rcvr</code> is an lvalue or an rvalue of const type. Otherwise, it
+is expression-equivalent to
+<code>MANDATE-NOTHROW(rcvr.set_error(err))</code>.</p>
 <ins>
-The return value should not be discarded.
+<em>Mandates:</em> The expression has type
+<code>std::coroutine_handle&lt;&gt;</code>.
 </ins>
 </div>
-<p>Apply the same change to [exec.set.error] paragraph 1 (for
-<code>set_error(rcvr, err)</code>) and [exec.set.stopped] paragraph 1
-(for <code>set_stopped(rcvr)</code>).</p>
-<p>The <code>Mandates</code> clause was chosen because it is the pattern
-the authors are most familiar with for expressing return type
-requirements on CPOs. LWG may prefer a different specification pattern -
-for example, adding the requirement to the semantic requirements of
-<code>receiver</code>, introducing a new exposition-only concept, or
-modifying <code>MANDATE-NOTHROW</code> to accept a return type
-parameter. The intent is the same regardless of pattern: the expression
-must have type <code>std::coroutine_handle&lt;&gt;</code>. We defer to
-LWG on the correct way to express this in the standard.</p>
+<p>Modify [exec.set.stopped] paragraph 1 as follows:</p>
+<div class="wording">
+<p><code>set_stopped</code> is a stopped completion function. Its
+associated completion tag is <code>set_stopped_t</code>. The expression
+<code>set_stopped(rcvr)</code> for a subexpression <code>rcvr</code> is
+ill-formed if <code>rcvr</code> is an lvalue or an rvalue of const type.
+Otherwise, it is expression-equivalent to
+<code>MANDATE-NOTHROW(rcvr.set_stopped())</code>.</p>
+<ins>
+<em>Mandates:</em> The expression has type
+<code>std::coroutine_handle&lt;&gt;</code>.
+</ins>
+</div>
 <h3 id="exec.opstate.start">15.4 [exec.opstate.start]</h3>
 <p>Modify [exec.opstate.start] paragraph 1 as follows:</p>
 <div class="wording">
@@ -2192,9 +2217,6 @@ Otherwise, it is expression-equivalent to
 <ins>
 <em>Mandates:</em> The expression has type
 <code>std::coroutine_handle&lt;&gt;</code>.
-</ins>
-<ins>
-The return value should not be discarded.
 </ins>
 </div>
 <h3 id="coroutine-bridges">15.5 Coroutine Bridges</h3>
@@ -2255,10 +2277,6 @@ the operation completed asynchronously), the caller of the completion
 function shall call <code>.resume()</code> on the returned
 <code>coroutine_handle&lt;&gt;</code> if it is non-null. Failure to do
 so leaves the associated coroutine permanently suspended.</p>
-<p><em>Recommended practice:</em> Implementations should mark the return
-types of <code>set_value</code>, <code>set_error</code>,
-<code>set_stopped</code>, and <code>start</code> as
-<code>[[nodiscard]]</code>.</p>
 </div>
 <h3 id="sections-requiring-algorithm-specific-wording">15.7 Sections
 Requiring Algorithm-Specific Wording</h3>
