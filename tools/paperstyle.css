@@ -717,6 +717,7 @@ figcaption {
    -------------------------------------------------------------------------- */
 .wording {
   background-color: var(--bg-secondary);
+  border-left: 3px solid var(--text-muted);
   border-radius: 4px;
   padding: var(--spacing-lg);
   margin: var(--spacing-lg) 0;
@@ -724,16 +725,41 @@ figcaption {
 
 .wording-add {
   background-color: #eef6ee;
-  border-color: #66aa66;
+  border-left: 3px solid #66aa66;
+  border-radius: 4px;
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+  color: #006e28;
 }
 
 .wording-remove {
   background-color: #fdf2f2;
-  border-color: var(--cpp-alliance-red);
+  border-left: 3px solid var(--cpp-alliance-red);
+  border-radius: 4px;
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+  color: #bf0303;
+  text-decoration: line-through;
 }
 
-.wording-remove > p:not(:first-child) {
-  text-decoration: line-through;
+/* Neutralise inline code colour inside wording blocks so that the
+   default reddish code colour is not confused with del styling. */
+.wording code,
+.wording-add code,
+.wording-remove code {
+  color: inherit;
+}
+
+/* Reset pre styling inside wording blocks: no double border,
+   padding, margin, or background. */
+.wording pre,
+.wording-add pre,
+.wording-remove pre {
+  border-left: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  box-shadow: none;
 }
 
 /* Paragraph numbers in wording sections */
