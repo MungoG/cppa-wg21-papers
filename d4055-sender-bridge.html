@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>D4007R1: Open Issues in
-<code>std::execution::task</code></title>
+  <title>P4055R0: Consuming Senders from Coroutine-Native Code</title>
   <style type="text/css">
 
 @font-face {
@@ -843,15 +842,15 @@ outline: none;
   <div class="header-text">WG21 Proposal</div>
 </header>
 
-<h1>Open Issues in <code>std::execution::task</code></h1>
+<h1>Consuming Senders from Coroutine-Native Code</h1>
 
 <!-- Document Metadata -->
 <div class="document-info">
-  <p><strong>Document Number:</strong> D4007R1</p>
-  <p><strong>Date:</strong> 2026-03-12</p>
+  <p><strong>Document Number:</strong> P4055R0</p>
+  <p><strong>Date:</strong> 2026-03-13</p>
   <p><strong>Audience:</strong> LEWG</p>
-  <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Mungo Gill
-<a href="mailto:mungo.gill@me.com" class="email">mungo.gill@me.com</a></p>
+  <p><strong>Reply-to:</strong> Vinnie Falco <a href="mailto:vinnie.falco@gmail.com" class="email">vinnie.falco@gmail.com</a><br><strong></strong> Steve
+Gerbino <a href="mailto:steve@gerbino.co" class="email">steve@gerbino.co</a></p>
 </div>
 
 <!-- Table of Contents -->
@@ -862,229 +861,622 @@ outline: none;
   <li><a href="#revision-history" id="toc-revision-history">Revision
   History</a>
   <ul>
-  <li><a href="#r1-march-2026-prior-to-croydon-meeting" id="toc-r1-march-2026-prior-to-croydon-meeting">R1: March 2026 (prior
-  to Croydon meeting)</a></li>
-  <li><a href="#r0-february-2026-pre-croydon-mailing" id="toc-r0-february-2026-pre-croydon-mailing">R0: February 2026
-  (pre-Croydon mailing)</a></li>
+  <li><a href="#r0-march-2026-post-croydon-mailing" id="toc-r0-march-2026-post-croydon-mailing">R0: March 2026
+  (post-Croydon mailing)</a></li>
   </ul></li>
   <li><a href="#disclosure" id="toc-disclosure">1. Disclosure</a></li>
-  <li><a href="#fixed-after-ship" id="toc-fixed-after-ship">2. Fixed
-  After Ship</a></li>
-  <li><a href="#not-fixable-post-ship" id="toc-not-fixable-post-ship">3.
-  Not Fixable Post-Ship</a></li>
-  <li><a href="#acknowledgements" id="toc-acknowledgements">Acknowledgements</a></li>
-  <li><a href="#references" id="toc-references">References</a>
-  <ul>
-  <li><a href="#wg21-papers" id="toc-wg21-papers">WG21 Papers</a></li>
-  <li><a href="#other" id="toc-other">Other</a></li>
-  </ul></li>
+  <li><a href="#the-bridge" id="toc-the-bridge">2. The Bridge</a></li>
+  <li><a href="#demonstration" id="toc-demonstration">3.
+  Demonstration</a></li>
+  <li><a href="#what-the-bridge-does" id="toc-what-the-bridge-does">4.
+  What the Bridge Does</a></li>
+  <li><a href="#what-the-bridge-does-not-require" id="toc-what-the-bridge-does-not-require">5. What the Bridge Does Not
+  Require</a></li>
+  <li><a href="#the-narrowest-abstraction" id="toc-the-narrowest-abstraction">6. The Narrowest
+  Abstraction</a></li>
+  <li><a href="#acknowledgments" id="toc-acknowledgments">7.
+  Acknowledgments</a></li>
+  <li><a href="#references" id="toc-references">References</a></li>
+  <li><a href="#appendix-a.-bridge-implementation" id="toc-appendix-a.-bridge-implementation">Appendix A. Bridge
+  Implementation</a></li>
   </ul>
 </nav>
 
 <h2 id="abstract">Abstract</h2>
-<p><code>std::execution::task</code> (<a href="https://wg21.link/p3552r3">P3552R3</a><sup>[1]</sup>) has open
-issues identified by national ballot comments, LWG issues, and published
-papers. This paper classifies each issue by whether it can be resolved
-after C++26 ships or whether shipping forecloses the fix.</p>
+<p>An <code>IoAwaitable</code> bridge (<a href="https://wg21.link/p4003r0">P4003R0</a><sup>[3]</sup>) consumes
+<code>std::execution</code> (<a href="https://wg21.link/p2300r10">P2300R10</a><sup>[1]</sup>) senders
+with inline operation state, correct stop token propagation, and
+automatic executor dispatch-back. The bridge is one class template. The
+complete implementation is in Appendix A.</p>
+<p>This paper is one of a suite of six that examines the relationship
+between compound I/O results and the sender three-channel model. The
+companion papers are <a href="https://wg21.link/p4050r0">P4050R0</a><sup>[13]</sup>, “On Task
+Type Diversity”; <a href="https://wg21.link/p4053r0">P4053R0</a><sup>[2]</sup>, “Sender I/O:
+A Constructed Comparison”; <a href="https://wg21.link/p4054r0">P4054R0</a><sup>[11]</sup>, “Two Error
+Models”; <a href="https://wg21.link/p4056r0">P4056R0</a><sup>[12]</sup>,
+“Producing Senders from Coroutine-Native Code”; and <a href="https://wg21.link/p4058r0">P4058R0</a><sup>[14]</sup>, “The Case
+for Coroutines.”</p>
 <hr />
 <h2 id="revision-history">Revision History</h2>
-<h3 id="r1-march-2026-prior-to-croydon-meeting">R1: March 2026 (prior to
-Croydon meeting)</h3>
+<h3 id="r0-march-2026-post-croydon-mailing">R0: March 2026 (post-Croydon
+mailing)</h3>
 <ul>
-<li>Complete rewrite as an informational classification of open
-issues.</li>
-</ul>
-<h3 id="r0-february-2026-pre-croydon-mailing">R0: February 2026
-(pre-Croydon mailing)</h3>
-<ul>
-<li>Original analysis of structural gaps. See <a href="https://wg21.link/p4007r0">P4007R0</a><sup>[2]</sup>.</li>
+<li>Initial version.</li>
 </ul>
 <hr />
 <h2 id="disclosure">1. Disclosure</h2>
-<p>The authors developed <a href="https://wg21.link/p4007r0">P4007R0</a><sup>[2]</sup> (“Senders and
-Coroutines”). The classification below holds regardless of whether any
-alternative design exists.</p>
+<p>The authors developed <a href="https://github.com/cppalliance/capy">Capy</a><sup>[4]</sup> and <a href="https://github.com/cppalliance/corosio">Corosio</a><sup>[6]</sup>
+and believe coroutine-native I/O is the correct foundation for
+networking in C++. The bridge depends on <a href="https://github.com/cppalliance/capy">Capy</a><sup>[4]</sup>
+(coroutine primitives, no sockets, no platform I/O) and
+<code>beman::execution</code><sup>[5]</sup>. The authors provide
+information, ask nothing, and serve at the pleasure of the chair.</p>
+<p>The authors regard <code>std::execution</code> as an important
+contribution to C++ and support its standardization for the domains it
+serves well - GPU dispatch, heterogeneous execution, and compile-time
+work-graph composition among them. Nothing in this paper or its
+companions argues for removing, delaying, or diminishing
+<code>std::execution</code>.</p>
+<p>The authors’ position is narrower: that networking and stream I/O
+present a compound-result structure that the three-channel model was not
+designed to carry, and that this domain is better served by a
+coroutine-native facility that can coexist with senders and interoperate
+where the domains meet. Two models, each correct for its domain, is a
+stronger standard than one model asked to serve both.</p>
 <hr />
-<h2 id="fixed-after-ship">2. Fixed After Ship</h2>
-<p><code>task</code>’s <code>promise_type</code> is a class template
-instantiated in user code. Its <code>operator new</code>, allocator
-selection, stop token storage, environment forwarding, and destruction
-ordering can change between standard revisions without binary
-incompatibility. These issues are fixable post-ship: <a href="https://wg21.link/p3796r1">Unusual Allocator
-Customisation</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Flexible Allocator
-Position</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Shadowing The Environment
-Allocator</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Stop
-Source Always Created</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Stop Token Default
-Constructible</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Task Not Actually Lazily
-Started</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Frame
-Destroyed Too Late</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">No Default Arguments</a><sup>[3]</sup>,
-<a href="https://wg21.link/p3796r1"><code>unhandled_stopped</code> Not
-<code>noexcept</code></a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Environment Design
-Inefficient</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Non-Sender Awaitables
-Unsupported</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Future Language Feature Could Avoid
-<code>co_yield</code></a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">No TLS Capture/Restore
-Hook</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>return_value</code>/<code>return_void</code>
-Have No Specification</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>co_return { args... }</code>
-Unsupported</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>change_coroutine_scheduler</code>
-Requires Assignable Scheduler</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Sender-Unaware Coroutines Cannot
-<code>co_await</code> a <code>task</code></a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Missing Rvalue
-Qualification</a><sup>[3]</sup>, <a href="https://wg21.link/p3801r0">Parameter Lifetime Is
-Surprising</a><sup>[4]</sup>, <a href="https://wg21.link/p3801r0">No
-Protection Against Dangling References</a><sup>[4]</sup>, <a href="https://wg21.link/p3801r0"><code>co_yield with_error</code> Is
-Clunky</a><sup>[4]</sup>, <a href="https://wg21.link/p3801r0"><code>co_await schedule(sch)</code> Is
-an Expensive No-Op</a><sup>[4]</sup>, <a href="https://wg21.link/p3801r0">Coroutine Cancellation Is
-Ad-Hoc</a><sup>[4]</sup>.</p>
-<p><code>affine_on</code> semantics, rescheduling behavior, and
-algorithm customisation are specification-level concerns. Tightening
-requirements or adding default implementations does not change any
-published interface. These issues are fixable post-ship: <a href="https://wg21.link/p3796r1"><code>affine_on</code> Default
-Implementation Lacks Specification</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>affine_on</code> Semantics Not
-Clear</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>affine_on</code> Shape May Not Be
-Correct</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>affine_on</code> Shouldn’t
-Forward Stop Requests</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>affine_on</code> Customisation
-For Other Senders</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Starting a <code>task</code>
-Reschedules Unconditionally</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">Resuming After a <code>task</code>
-Reschedules Unnecessarily</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>bulk</code>
-vs. <code>task_scheduler</code></a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1">No Completion
-Scheduler</a><sup>[3]</sup>, <a href="https://wg21.link/p3796r1"><code>with_awaitable_senders</code>
-Unused</a><sup>[3]</sup>.</p>
+<h2 id="the-bridge">2. The Bridge</h2>
+<p><code>await_sender</code> consumes a <code>std::execution</code>
+sender from inside a coroutine. The sender runs on whatever scheduler it
+was given; the coroutine resumes on its own executor.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>capy<span class="op">::</span>task<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> compute<span class="op">(</span><span class="kw">auto</span> sched<span class="op">)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> result <span class="op">=</span> <span class="cf">co_await</span> capy<span class="op">::</span>await_sender<span class="op">(</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        ex<span class="op">::</span>schedule<span class="op">(</span>sched<span class="op">)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>            <span class="op">|</span> ex<span class="op">::</span>then<span class="op">([]</span> <span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>cout</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                    <span class="op">&lt;&lt;</span> <span class="st">&quot;  sender running on thread &quot;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                    <span class="op">&lt;&lt;</span> <span class="bu">std::</span>this_thread::get_id<span class="op">()</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                    <span class="op">&lt;&lt;</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> <span class="dv">42</span> <span class="op">*</span> <span class="dv">42</span><span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>            <span class="op">}));</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>cout</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">&lt;&lt;</span> <span class="st">&quot;  coroutine resumed on thread &quot;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">&lt;&lt;</span> <span class="bu">std::</span>this_thread::get_id<span class="op">()</span> <span class="op">&lt;&lt;</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">co_return</span> result<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p><code>await_sender</code> returns a <code>sender_awaitable</code>
+satisfying <code>IoAwaitable</code> (<a href="https://wg21.link/p4003r0">P4003R0</a><sup>[3]</sup>). Any
+coroutine type that propagates <code>io_env</code> through
+<code>await_suspend(h, io_env const*)</code> can use it. The
+two-argument form is deliberate: the compiler rejects any coroutine type
+that does not propagate <code>io_env</code>, enforcing the sandbox
+boundary at compile time. Complete implementation in Appendix A.</p>
 <hr />
-<h2 id="not-fixable-post-ship">3. Not Fixable Post-Ship</h2>
-<p>The issues in this section are items where shipping forecloses the
-fix.</p>
+<h2 id="demonstration">3. Demonstration</h2>
+<p>Output from the example in Section 2, compiled with MSVC 19.43
+against <a href="https://github.com/cppalliance/capy">Capy</a><sup>[4]</sup> and
+<code>beman::execution</code><sup>[5]</sup> (a community implementation
+of <code>std::execution</code>):</p>
+<pre><code>main thread: 32208
+  sender running on thread 9560
+  coroutine resumed on thread 34356
+result: 1764</code></pre>
+<p>The sender ran on the <code>run_loop</code> thread. The coroutine
+resumed on the Capy thread pool. Zero bytes allocated beyond the
+coroutine frame.</p>
+<hr />
+<h2 id="what-the-bridge-does">4. What the Bridge Does</h2>
+<p>The bridge consumes any <code>std::execution</code> sender whose
+value completion signature is a single type or <code>void</code>.
+Operation state stored inline. <code>set_value</code>,
+<code>set_error</code>, <code>set_stopped</code> handled. Standard
+pipelines - <code>when_all</code>, <code>then</code>,
+<code>let_value</code>, <code>on</code> - compose with the bridge.</p>
+<p>The bridge inspects error completion signatures at compile time. If
+the sender advertises <code>set_error(std::error_code)</code>,
+<code>await_resume</code> returns <code>io_result&lt;T&gt;</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> <span class="op">[</span>ec<span class="op">,</span> val<span class="op">]</span> <span class="op">=</span> <span class="cf">co_await</span> await_sender<span class="op">(</span>sndr<span class="op">);</span></span></code></pre></div>
+<p>No exceptions for <code>error_code</code>. Otherwise
+<code>await_resume</code> returns <code>T</code> directly; genuine
+exceptions are rethrown and cancellation is surfaced as an exception.
+Static dispatch, zero runtime cost. The <code>operation_cancelled</code>
+type in Appendix A is illustrative; a production implementation would
+use a project-appropriate cancellation exception.</p>
+<p>The error-code dispatch is the consuming side of the
+<strong>abstraction floor</strong> (<a href="https://wg21.link/p4056r0">P4056R0</a><sup>[12]</sup> Section
+4):</p>
 <table>
-<colgroup>
-<col style="width: 7%" />
-<col style="width: 89%" />
-<col style="width: 2%" />
-</colgroup>
 <thead>
 <tr>
-<th>Issue</th>
-<th>References</th>
-<th style="text-align: center;">Fixed</th>
+<th>Region</th>
+<th>What the code sees</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Allocator Timing</td>
-<td><a href="https://isocpp.org/files/papers/P3980R0.html">P3980R0</a><sup>[5]</sup>,
-<a href="https://wg21.link/p3796r1">P3796R1</a><sup>[3]</sup>, <a href="https://cplusplus.github.io/LWG/issue4356">LWG
-4356</a><sup>[6]</sup>, <a href="https://github.com/cplusplus/nbballot/issues/960">US
-254-385</a><sup>[7]</sup></td>
-<td style="text-align: center;">no</td>
+<td>Above the floor</td>
+<td><code>error_code</code> alone - composition works</td>
 </tr>
 <tr>
-<td>Allocator Propagation</td>
-<td><a href="https://isocpp.org/files/papers/P3980R0.html">P3980R0</a><sup>[5]</sup>,
-<a href="https://wg21.link/p3796r1">P3796R1</a><sup>[3]</sup></td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td>Error Return</td>
-<td><a href="https://wg21.link/p3950r0">P3950R0</a><sup>[8]</sup>, <a href="https://wg21.link/p3801r0">P3801R0</a><sup>[4]</sup>, <a href="https://wg21.link/p1713r0">P1713R0</a><sup>[9]</sup></td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td>Symmetric Transfer</td>
-<td><a href="https://isocpp.org/files/papers/P2583R3.pdf">P2583R3</a><sup>[10]</sup>,
-<a href="https://github.com/cplusplus/nbballot/issues/948">US
-246-373</a><sup>[11]</sup>, <a href="https://cplusplus.github.io/LWG/issue4348">LWG
-4348</a><sup>[12]</sup>, <a href="https://wg21.link/p3801r0">P3801R0</a><sup>[4]</sup>, <a href="https://wg21.link/p3796r1">P3796R1</a><sup>[3]</sup></td>
-<td style="text-align: center;">no</td>
+<td>Below the floor</td>
+<td><code>(error_code, size_t)</code> - both values intact</td>
 </tr>
 </tbody>
 </table>
-<ul>
-<li><p><strong>Allocator Timing.</strong> <code>task</code> does not
-allow the user to specify an allocator at the launch site for coroutine
-frame allocation. The coroutine frame is allocated by
-<code>operator new</code> at the call site, before any sender
-<code>connect</code>/<code>start</code> machinery runs. The receiver’s
-environment - which carries the allocator - is not yet available at that
-point. The <code>allocator_arg</code> mechanism in <a href="https://wg21.link/p3552r3">P3552R3</a><sup>[1]</sup> works around
-this by requiring the allocator in the coroutine’s parameter list, but
-that locks in a caller-specified approach and forecloses
-environment-based injection.</p></li>
-<li><p><strong>Allocator Propagation.</strong> <code>task</code> does
-not propagate the frame allocator to child tasks. Each child task
-allocates its frame independently. Shipping without propagation locks in
-a design where every launch site must specify its allocator explicitly,
-foreclosing transparent propagation through the coroutine call
-tree.</p></li>
-<li><p><strong>Error Return.</strong> <code>task</code> requires
-<code>co_yield with_error(e)</code> to propagate an error to the caller.
-<code>co_return</code> cannot carry an error value because
-<code>return_value</code> and <code>return_void</code> are mutually
-exclusive in the current coroutine specification. Shipping this
-interface locks in the <code>co_yield</code> mechanism and forecloses
-<code>co_return</code>-based error propagation, which would require a
-language change.</p></li>
-<li><p><strong>Symmetric Transfer.</strong> The completion functions
-(<code>set_value</code>, <code>set_error</code>,
-<code>set_stopped</code>) and <code>start()</code> return
-<code>void</code>, providing no channel to propagate a
-<code>coroutine_handle&lt;&gt;</code>. When a sender completes
-synchronously, the receiver calls <code>handle.resume()</code> on the
-caller’s stack, adding a frame per completion with no upper bound.
-Shipping this protocol forecloses the
-<code>coroutine_handle&lt;&gt;</code>-returning completion protocol that
-would enable symmetric transfer.</p></li>
-</ul>
+<p>When the sender completes, the bridge posts the resumption back to
+the coroutine’s originating executor. The coroutine resumes in the
+correct context regardless of where the sender executed.</p>
+<p>Does not use <code>execution::task</code>.</p>
 <hr />
-<h2 id="acknowledgements">Acknowledgements</h2>
-<p>The authors thank Andrzej Krzemieński for feedback that sharpened the
-scope of this revision. Thanks are also due to Dietmar Kühl, Michael
-Hava, Mark Hoemmen, Ian Petersen, and Ville Voutilainen for technical
-discussion that informed the analysis.</p>
+<h2 id="what-the-bridge-does-not-require">5. What the Bridge Does Not
+Require</h2>
+<p><a href="https://wg21.link/p3552r3">P3552R3</a><sup>[15]</sup>, “Add
+a Coroutine Task Type,” defines <code>std::execution::task</code>. Its
+<code>connect</code> operation type-erases the operation state, and its
+error path converts <code>error_code</code> to
+<code>exception_ptr</code> via <code>AS-EXCEPT-PTR</code>. The bridge
+avoids both mechanisms:</p>
+<table>
+<colgroup>
+<col style="width: 53%" />
+<col style="width: 37%" />
+<col style="width: 8%" />
+</colgroup>
+<thead>
+<tr>
+<th>Property</th>
+<th><code>execution::task</code></th>
+<th>Bridge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Routine I/O errors become exceptions</td>
+<td>Yes (via <code>AS-EXCEPT-PTR</code>)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Type erasure on connect</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Allocation beyond coroutine frame</td>
+<td>Yes (type-erased state)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Requires <code>std::execution::task</code></td>
+<td>-</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>The bridge consumes senders without
+<code>std::execution::task</code>.</p>
+<hr />
+<h2 id="the-narrowest-abstraction">6. The Narrowest Abstraction</h2>
+<p>The bridge depends on two things: <a href="https://github.com/cppalliance/capy">Capy</a><sup>[4]</sup>
+(coroutine primitives) and <code>std::execution</code> (sender/receiver
+protocol). No platform I/O. No networking headers. No additional
+coroutine type. The implementation in Appendix A uses
+<code>beman::execution</code><sup>[5]</sup>, a community implementation
+of <code>std::execution</code>, but the bridge requires only the
+standard sender/receiver concepts.</p>
+<p>Narrower than <code>execution::task</code>: the bridge does not
+type-erase, does not allocate, and does not impose an
+<code>Environment</code> parameter. Narrower than a completion-token
+adapter: the bridge does not require Asio or any I/O service. The
+coroutine type the programmer already uses does not change when the
+bridge is added.</p>
+<p>The bridge is the proof that coexistence works. Senders compose.
+Coroutines do I/O. One class template connects them.</p>
+<hr />
+<h2 id="acknowledgments">7. Acknowledgments</h2>
+<p>The authors thank Dietmar Kühl for
+<code>beman::execution</code><sup>[5]</sup> and for the channel-routing
+enumeration in <a href="https://wg21.link/p2762r2">P2762R2</a><sup>[7]</sup>, Michał
+Dominiak, Eric Niebler, and Lewis Baker for <code>std::execution</code>,
+Chris Kohlhoff for identifying the partial-success problem in <a href="https://wg21.link/p2430r0">P2430R0</a><sup>[8]</sup>, Kirk Shoop
+for the completion-token heuristic analysis in <a href="https://wg21.link/p2471r1">P2471R1</a><sup>[9]</sup>, Fabio
+Fracassi for <a href="https://wg21.link/p3570r2">P3570R2</a><sup>[10]</sup>, Ville
+Voutilainen and Jens Maurer for reflector discussion on dispatch
+patterns, Herb Sutter for identifying the need for tutorials and
+documentation, Mark Hoemmen for insights on <code>std::linalg</code> and
+the layered abstraction model, and Peter Dimov for the refined channel
+mapping.</p>
 <hr />
 <h2 id="references">References</h2>
-<p>Papers, issues, and ballot comments referenced in this document.</p>
-<h3 id="wg21-papers">WG21 Papers</h3>
 <ol type="1">
-<li><a href="https://wg21.link/p3552r3">P3552R3</a> - “Add a Coroutine
-Task Type” (Dietmar Kühl, Maikel Nadolski, 2025).
-https://wg21.link/p3552r3</li>
-<li><a href="https://wg21.link/p4007r0">P4007R0</a> - “Senders and
-Coroutines” (Vinnie Falco, Mungo Gill, 2026).
-https://wg21.link/p4007r0</li>
-<li><a href="https://wg21.link/p3796r1">P3796R1</a> - “Coroutine Task
-Issues” (Dietmar Kühl, 2025). https://wg21.link/p3796r1</li>
-<li><a href="https://wg21.link/p3801r0">P3801R0</a> - “Concerns about
-the design of std::execution::task” (Jonathan Müller, 2025).
-https://wg21.link/p3801r0</li>
-<li><a href="https://isocpp.org/files/papers/P3980R0.html">P3980R0</a> -
-“Task’s Allocator Use” (Dietmar Kühl, 2026).
-https://isocpp.org/files/papers/P3980R0.html</li>
-<li><a href="https://cplusplus.github.io/LWG/issue4356">LWG 4356</a> -
-“connect() should use get_allocator(get_env(rcvr))”.
-https://cplusplus.github.io/LWG/issue4356</li>
-<li><a href="https://github.com/cplusplus/nbballot/issues/960">US
-254-385</a> - C++26 NB ballot comment.
-https://github.com/cplusplus/nbballot/issues/960</li>
-<li><a href="https://wg21.link/p3950r0">P3950R0</a> - “return_value
-&amp; return_void Are Not Mutually Exclusive” (Robert Leahy, 2025).
-https://wg21.link/p3950r0</li>
-<li><a href="https://wg21.link/p1713r0">P1713R0</a> - “Allowing both
-co_return; and co_return value; in the same coroutine” (Lewis Baker,
-2019). https://wg21.link/p1713r0</li>
-<li><a href="https://isocpp.org/files/papers/P2583R3.pdf">P2583R3</a> -
-“Symmetric Transfer and Sender Composition” (Mungo Gill, Vinnie Falco,
-2026). https://isocpp.org/files/papers/P2583R3.pdf</li>
-<li><a href="https://github.com/cplusplus/nbballot/issues/948">US
-246-373</a> - C++26 NB ballot comment.
-https://github.com/cplusplus/nbballot/issues/948</li>
-<li><a href="https://cplusplus.github.io/LWG/issue4348">LWG 4348</a> -
-“task doesn’t support symmetric transfer”.
-https://cplusplus.github.io/LWG/issue4348</li>
-<li><a href="https://wg21.link/p2300r10">P2300R10</a> - “std::execution”
-(Michał Dominiak et al., 2024). https://wg21.link/p2300r10</li>
+<li><p><a href="https://wg21.link/p2300r10">P2300R10</a> -
+“std::execution” (Michał Dominiak et al., 2024).
+https://wg21.link/p2300r10</p></li>
+<li><p><a href="https://wg21.link/p4053r0">P4053R0</a> - “Sender I/O: A
+Constructed Comparison” (Vinnie Falco, Steve Gerbino, 2026).
+https://wg21.link/p4053r0</p></li>
+<li><p><a href="https://wg21.link/p4003r0">P4003R0</a> - “Coroutines for
+I/O” (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+https://wg21.link/p4003r0</p></li>
+<li><p><a href="https://github.com/cppalliance/capy">cppalliance/capy</a> -
+Coroutine primitives library.
+https://github.com/cppalliance/capy</p></li>
+<li><p><a href="https://github.com/bemanproject/execution">bemanproject/execution</a>
+- Community implementation of <code>std::execution</code>.
+https://github.com/bemanproject/execution</p></li>
+<li><p><a href="https://github.com/cppalliance/corosio">cppalliance/corosio</a> -
+Coroutine-native networking library.
+https://github.com/cppalliance/corosio</p></li>
+<li><p><a href="https://wg21.link/p2762r2">P2762R2</a> -
+“Sender/Receiver Interface For Networking” (Dietmar Kühl, 2023).
+https://wg21.link/p2762r2</p></li>
+<li><p><a href="https://wg21.link/p2430r0">P2430R0</a> - “Partial
+success scenarios with P2300” (Chris Kohlhoff, 2021).
+https://wg21.link/p2430r0</p></li>
+<li><p><a href="https://wg21.link/p2471r1">P2471R1</a> - “NetTS, ASIO
+and Sender Library Design Comparison” (Kirk Shoop, 2021).
+https://wg21.link/p2471r1</p></li>
+<li><p><a href="https://wg21.link/p3570r2">P3570R2</a> - “Optional
+variants in sender/receiver” (Fabio Fracassi, 2025).
+https://wg21.link/p3570r2</p></li>
+<li><p><a href="https://wg21.link/p4054r0">P4054R0</a> - “Two Error
+Models” (Vinnie Falco, 2026). https://wg21.link/p4054r0</p></li>
+<li><p><a href="https://wg21.link/p4056r0">P4056R0</a> - “Producing
+Senders from Coroutine-Native Code” (Vinnie Falco, Steve Gerbino, 2026).
+https://wg21.link/p4056r0</p></li>
+<li><p><a href="https://wg21.link/p4050r0">P4050R0</a> - “On Task Type
+Diversity” (Vinnie Falco, 2026). https://wg21.link/p4050r0</p></li>
+<li><p><a href="https://wg21.link/p4058r0">P4058R0</a> - “The Case for
+Coroutines” (Vinnie Falco, 2026). https://wg21.link/p4058r0</p></li>
+<li><p><a href="https://wg21.link/p3552r3">P3552R3</a> - “Add a
+Coroutine Task Type” (Dietmar Kühl, Maikel Nadolski, 2025).
+https://wg21.link/p3552r3</p></li>
 </ol>
-<h3 id="other">Other</h3>
-<ol start="14" type="1">
-<li><a href="https://eel.is/c++draft/">C++ Working Draft</a> - (Richard
-Smith, ed.). https://eel.is/c++draft/</li>
-</ol>
+<hr />
+<h2 id="appendix-a.-bridge-implementation">Appendix A. Bridge
+Implementation</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;boost/capy/error.hpp&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;boost/capy/ex/io_env.hpp&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;boost/capy/io_result.hpp&gt;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;beman/execution/execution.hpp&gt;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;coroutine&gt;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;exception&gt;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;new&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stop_token&gt;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;system_error&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;tuple&gt;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;type_traits&gt;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;utility&gt;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;variant&gt;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> <span class="ex">boost::</span>capy <span class="op">{</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="kw">namespace</span> detail <span class="op">{</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> <span class="dt">stopped_t</span> <span class="op">{};</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> operation_cancelled <span class="op">{};</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> bridge_env</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>stop_token <span class="va">st_</span><span class="op">;</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> query<span class="op">(</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>        beman<span class="op">::</span>execution<span class="op">::</span><span class="dt">get_stop_token_t</span> <span class="at">const</span><span class="op">&amp;)</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>            <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="va">st_</span><span class="op">;</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Sender<span class="op">&gt;</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> <span class="dt">sender_single_value_t</span> <span class="op">=</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    beman<span class="op">::</span>execution<span class="op">::</span><span class="dt">value_types_of_t</span><span class="op">&lt;</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>        Sender<span class="op">,</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>        bridge_env<span class="op">,</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>        <span class="bu">std::</span>tuple<span class="op">,</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>        <span class="bu">std::</span>type_identity_t<span class="op">&gt;;</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Sender<span class="op">&gt;</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> has_error_code_completion</span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span><span class="op">...</span> Es<span class="op">&gt;</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    <span class="kw">struct</span> checker</span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>        <span class="at">static</span> <span class="kw">constexpr</span> <span class="dt">bool</span> value <span class="op">=</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>            <span class="op">(</span><span class="bu">std::</span>is_same_v<span class="op">&lt;</span></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>                Es<span class="op">,</span> <span class="bu">std::</span>error_code<span class="op">&gt;</span> <span class="op">||</span> <span class="op">...);</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">static</span> <span class="kw">constexpr</span> <span class="dt">bool</span> value <span class="op">=</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>        beman<span class="op">::</span>execution<span class="op">::</span><span class="dt">error_types_of_t</span><span class="op">&lt;</span></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>            Sender<span class="op">,</span></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>            bridge_env<span class="op">,</span></span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>            checker<span class="op">&gt;::</span>value<span class="op">;</span></span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Sender<span class="op">&gt;</span></span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a><span class="kw">constexpr</span> <span class="dt">bool</span> has_error_code_v <span class="op">=</span></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a>    has_error_code_completion<span class="op">&lt;</span>Sender<span class="op">&gt;::</span>value<span class="op">;</span></span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a><span class="co">// Variant when sender can complete with</span></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a><span class="co">// set_error(error_code): separate slot for</span></span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a><span class="co">// error_code so it is not wrapped in</span></span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a><span class="co">// exception_ptr.</span></span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> ValueTuple<span class="op">&gt;</span></span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> ec_result_variant <span class="op">=</span> <span class="bu">std::</span>variant<span class="op">&lt;</span></span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>monostate<span class="op">,</span></span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>    ValueTuple<span class="op">,</span></span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>error_code<span class="op">,</span></span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>exception_ptr<span class="op">,</span></span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>    <span class="dt">stopped_t</span><span class="op">&gt;;</span></span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a><span class="co">// Variant when sender does not complete with</span></span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a><span class="co">// set_error(error_code).</span></span>
+<span id="cb4-81"><a href="#cb4-81" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> ValueTuple<span class="op">&gt;</span></span>
+<span id="cb4-82"><a href="#cb4-82" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> no_ec_result_variant <span class="op">=</span> <span class="bu">std::</span>variant<span class="op">&lt;</span></span>
+<span id="cb4-83"><a href="#cb4-83" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>monostate<span class="op">,</span></span>
+<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a>    ValueTuple<span class="op">,</span></span>
+<span id="cb4-85"><a href="#cb4-85" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>exception_ptr<span class="op">,</span></span>
+<span id="cb4-86"><a href="#cb4-86" aria-hidden="true" tabindex="-1"></a>    <span class="dt">stopped_t</span><span class="op">&gt;;</span></span>
+<span id="cb4-87"><a href="#cb4-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-88"><a href="#cb4-88" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> ValueTuple<span class="op">,</span> <span class="dt">bool</span> HasEc<span class="op">&gt;</span></span>
+<span id="cb4-89"><a href="#cb4-89" aria-hidden="true" tabindex="-1"></a><span class="kw">using</span> result_variant <span class="op">=</span> <span class="bu">std::</span>conditional_t<span class="op">&lt;</span></span>
+<span id="cb4-90"><a href="#cb4-90" aria-hidden="true" tabindex="-1"></a>    HasEc<span class="op">,</span></span>
+<span id="cb4-91"><a href="#cb4-91" aria-hidden="true" tabindex="-1"></a>    ec_result_variant<span class="op">&lt;</span>ValueTuple<span class="op">&gt;,</span></span>
+<span id="cb4-92"><a href="#cb4-92" aria-hidden="true" tabindex="-1"></a>    no_ec_result_variant<span class="op">&lt;</span>ValueTuple<span class="op">&gt;&gt;;</span></span>
+<span id="cb4-93"><a href="#cb4-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-94"><a href="#cb4-94" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> ValueTuple<span class="op">,</span> <span class="dt">bool</span> HasEc<span class="op">&gt;</span></span>
+<span id="cb4-95"><a href="#cb4-95" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> bridge_receiver</span>
+<span id="cb4-96"><a href="#cb4-96" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-97"><a href="#cb4-97" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> receiver_concept <span class="op">=</span></span>
+<span id="cb4-98"><a href="#cb4-98" aria-hidden="true" tabindex="-1"></a>        beman<span class="op">::</span>execution<span class="op">::</span><span class="dt">receiver_t</span><span class="op">;</span></span>
+<span id="cb4-99"><a href="#cb4-99" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-100"><a href="#cb4-100" aria-hidden="true" tabindex="-1"></a>    result_variant<span class="op">&lt;</span>ValueTuple<span class="op">,</span> HasEc<span class="op">&gt;*</span> <span class="va">result_</span><span class="op">;</span></span>
+<span id="cb4-101"><a href="#cb4-101" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;</span>            <span class="va">cont_</span><span class="op">;</span></span>
+<span id="cb4-102"><a href="#cb4-102" aria-hidden="true" tabindex="-1"></a>    io_env <span class="at">const</span><span class="op">*</span>                      <span class="va">env_</span><span class="op">;</span></span>
+<span id="cb4-103"><a href="#cb4-103" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-104"><a href="#cb4-104" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> get_env<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span> <span class="op">-&gt;</span> bridge_env</span>
+<span id="cb4-105"><a href="#cb4-105" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-106"><a href="#cb4-106" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">{</span><span class="va">env_</span><span class="op">-&gt;</span>stop_token<span class="op">};</span></span>
+<span id="cb4-107"><a href="#cb4-107" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-108"><a href="#cb4-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-109"><a href="#cb4-109" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span><span class="op">...</span> Args<span class="op">&gt;</span></span>
+<span id="cb4-110"><a href="#cb4-110" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> set_value<span class="op">(</span>Args<span class="op">&amp;&amp;...</span> args<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span></span>
+<span id="cb4-111"><a href="#cb4-111" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-112"><a href="#cb4-112" aria-hidden="true" tabindex="-1"></a>        <span class="va">result_</span><span class="op">-&gt;</span><span class="kw">template</span> emplace<span class="op">&lt;</span><span class="dv">1</span><span class="op">&gt;(</span></span>
+<span id="cb4-113"><a href="#cb4-113" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>forward<span class="op">&lt;</span>Args<span class="op">&gt;(</span>args<span class="op">)...);</span></span>
+<span id="cb4-114"><a href="#cb4-114" aria-hidden="true" tabindex="-1"></a>        <span class="va">env_</span><span class="op">-&gt;</span>executor<span class="op">.</span>post<span class="op">(</span><span class="va">cont_</span><span class="op">);</span></span>
+<span id="cb4-115"><a href="#cb4-115" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-116"><a href="#cb4-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-117"><a href="#cb4-117" aria-hidden="true" tabindex="-1"></a>    <span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> E<span class="op">&gt;</span></span>
+<span id="cb4-118"><a href="#cb4-118" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> set_error<span class="op">(</span>E<span class="op">&amp;&amp;</span> e<span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span></span>
+<span id="cb4-119"><a href="#cb4-119" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-120"><a href="#cb4-120" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-121"><a href="#cb4-121" aria-hidden="true" tabindex="-1"></a>            HasEc <span class="op">&amp;&amp;</span></span>
+<span id="cb4-122"><a href="#cb4-122" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>is_same_v<span class="op">&lt;</span></span>
+<span id="cb4-123"><a href="#cb4-123" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>decay_t<span class="op">&lt;</span>E<span class="op">&gt;,</span></span>
+<span id="cb4-124"><a href="#cb4-124" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>error_code<span class="op">&gt;)</span></span>
+<span id="cb4-125"><a href="#cb4-125" aria-hidden="true" tabindex="-1"></a>            <span class="va">result_</span><span class="op">-&gt;</span><span class="kw">template</span> emplace<span class="op">&lt;</span><span class="dv">2</span><span class="op">&gt;(</span></span>
+<span id="cb4-126"><a href="#cb4-126" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>forward<span class="op">&lt;</span>E<span class="op">&gt;(</span>e<span class="op">));</span></span>
+<span id="cb4-127"><a href="#cb4-127" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span> <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-128"><a href="#cb4-128" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>is_same_v<span class="op">&lt;</span></span>
+<span id="cb4-129"><a href="#cb4-129" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>decay_t<span class="op">&lt;</span>E<span class="op">&gt;,</span></span>
+<span id="cb4-130"><a href="#cb4-130" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>exception_ptr<span class="op">&gt;)</span></span>
+<span id="cb4-131"><a href="#cb4-131" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-132"><a href="#cb4-132" aria-hidden="true" tabindex="-1"></a>            <span class="kw">constexpr</span> <span class="kw">auto</span> idx <span class="op">=</span> HasEc <span class="op">?</span> <span class="dv">3</span> <span class="op">:</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb4-133"><a href="#cb4-133" aria-hidden="true" tabindex="-1"></a>            <span class="va">result_</span><span class="op">-&gt;</span><span class="kw">template</span> emplace<span class="op">&lt;</span>idx<span class="op">&gt;(</span></span>
+<span id="cb4-134"><a href="#cb4-134" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>forward<span class="op">&lt;</span>E<span class="op">&gt;(</span>e<span class="op">));</span></span>
+<span id="cb4-135"><a href="#cb4-135" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-136"><a href="#cb4-136" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb4-137"><a href="#cb4-137" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-138"><a href="#cb4-138" aria-hidden="true" tabindex="-1"></a>            <span class="kw">constexpr</span> <span class="kw">auto</span> idx <span class="op">=</span> HasEc <span class="op">?</span> <span class="dv">3</span> <span class="op">:</span> <span class="dv">2</span><span class="op">;</span></span>
+<span id="cb4-139"><a href="#cb4-139" aria-hidden="true" tabindex="-1"></a>            <span class="va">result_</span><span class="op">-&gt;</span><span class="kw">template</span> emplace<span class="op">&lt;</span>idx<span class="op">&gt;(</span></span>
+<span id="cb4-140"><a href="#cb4-140" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>make_exception_ptr<span class="op">(</span></span>
+<span id="cb4-141"><a href="#cb4-141" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>forward<span class="op">&lt;</span>E<span class="op">&gt;(</span>e<span class="op">)));</span></span>
+<span id="cb4-142"><a href="#cb4-142" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-143"><a href="#cb4-143" aria-hidden="true" tabindex="-1"></a>        <span class="va">env_</span><span class="op">-&gt;</span>executor<span class="op">.</span>post<span class="op">(</span><span class="va">cont_</span><span class="op">);</span></span>
+<span id="cb4-144"><a href="#cb4-144" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-145"><a href="#cb4-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-146"><a href="#cb4-146" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> set_stopped<span class="op">()</span> <span class="op">&amp;&amp;</span> <span class="kw">noexcept</span></span>
+<span id="cb4-147"><a href="#cb4-147" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-148"><a href="#cb4-148" aria-hidden="true" tabindex="-1"></a>        <span class="kw">constexpr</span> <span class="kw">auto</span> idx <span class="op">=</span> HasEc <span class="op">?</span> <span class="dv">4</span> <span class="op">:</span> <span class="dv">3</span><span class="op">;</span></span>
+<span id="cb4-149"><a href="#cb4-149" aria-hidden="true" tabindex="-1"></a>        <span class="va">result_</span><span class="op">-&gt;</span><span class="kw">template</span> emplace<span class="op">&lt;</span>idx<span class="op">&gt;(</span></span>
+<span id="cb4-150"><a href="#cb4-150" aria-hidden="true" tabindex="-1"></a>            <span class="dt">stopped_t</span><span class="op">{});</span></span>
+<span id="cb4-151"><a href="#cb4-151" aria-hidden="true" tabindex="-1"></a>        <span class="va">env_</span><span class="op">-&gt;</span>executor<span class="op">.</span>post<span class="op">(</span><span class="va">cont_</span><span class="op">);</span></span>
+<span id="cb4-152"><a href="#cb4-152" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-153"><a href="#cb4-153" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb4-154"><a href="#cb4-154" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-155"><a href="#cb4-155" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// namespace detail</span></span>
+<span id="cb4-156"><a href="#cb4-156" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-157"><a href="#cb4-157" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Sender<span class="op">&gt;</span></span>
+<span id="cb4-158"><a href="#cb4-158" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> sender_awaitable</span>
+<span id="cb4-159"><a href="#cb4-159" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-160"><a href="#cb4-160" aria-hidden="true" tabindex="-1"></a>    <span class="at">static</span> <span class="kw">constexpr</span> <span class="dt">bool</span> has_ec <span class="op">=</span></span>
+<span id="cb4-161"><a href="#cb4-161" aria-hidden="true" tabindex="-1"></a>        detail::has_error_code_v<span class="op">&lt;</span>Sender<span class="op">&gt;;</span></span>
+<span id="cb4-162"><a href="#cb4-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-163"><a href="#cb4-163" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> value_tuple <span class="op">=</span></span>
+<span id="cb4-164"><a href="#cb4-164" aria-hidden="true" tabindex="-1"></a>        detail::sender_single_value_t<span class="op">&lt;</span>Sender<span class="op">&gt;;</span></span>
+<span id="cb4-165"><a href="#cb4-165" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> <span class="dt">variant_type</span> <span class="op">=</span></span>
+<span id="cb4-166"><a href="#cb4-166" aria-hidden="true" tabindex="-1"></a>        detail::result_variant<span class="op">&lt;</span></span>
+<span id="cb4-167"><a href="#cb4-167" aria-hidden="true" tabindex="-1"></a>            value_tuple<span class="op">,</span> has_ec<span class="op">&gt;;</span></span>
+<span id="cb4-168"><a href="#cb4-168" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> <span class="dt">receiver_type</span> <span class="op">=</span></span>
+<span id="cb4-169"><a href="#cb4-169" aria-hidden="true" tabindex="-1"></a>        detail::bridge_receiver<span class="op">&lt;</span></span>
+<span id="cb4-170"><a href="#cb4-170" aria-hidden="true" tabindex="-1"></a>            value_tuple<span class="op">,</span> has_ec<span class="op">&gt;;</span></span>
+<span id="cb4-171"><a href="#cb4-171" aria-hidden="true" tabindex="-1"></a>    <span class="kw">using</span> <span class="dt">op_state_type</span> <span class="op">=</span> <span class="kw">decltype</span><span class="op">(</span></span>
+<span id="cb4-172"><a href="#cb4-172" aria-hidden="true" tabindex="-1"></a>        beman<span class="op">::</span>execution<span class="op">::</span><span class="fu">connect</span><span class="op">(</span></span>
+<span id="cb4-173"><a href="#cb4-173" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>declval<span class="op">&lt;</span>Sender<span class="op">&gt;(),</span></span>
+<span id="cb4-174"><a href="#cb4-174" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>declval<span class="op">&lt;</span><span class="dt">receiver_type</span><span class="op">&gt;()));</span></span>
+<span id="cb4-175"><a href="#cb4-175" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-176"><a href="#cb4-176" aria-hidden="true" tabindex="-1"></a>    Sender <span class="va">sndr_</span><span class="op">;</span></span>
+<span id="cb4-177"><a href="#cb4-177" aria-hidden="true" tabindex="-1"></a>    <span class="dt">variant_type</span> <span class="va">result_</span><span class="op">{};</span></span>
+<span id="cb4-178"><a href="#cb4-178" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-179"><a href="#cb4-179" aria-hidden="true" tabindex="-1"></a>    <span class="kw">alignas</span><span class="op">(</span><span class="dt">op_state_type</span><span class="op">)</span></span>
+<span id="cb4-180"><a href="#cb4-180" aria-hidden="true" tabindex="-1"></a>    <span class="dt">unsigned</span> <span class="dt">char</span> <span class="va">op_buf_</span><span class="op">[</span><span class="kw">sizeof</span><span class="op">(</span><span class="dt">op_state_type</span><span class="op">)];</span></span>
+<span id="cb4-181"><a href="#cb4-181" aria-hidden="true" tabindex="-1"></a>    <span class="dt">bool</span> <span class="va">op_constructed_</span> <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb4-182"><a href="#cb4-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-183"><a href="#cb4-183" aria-hidden="true" tabindex="-1"></a>    <span class="kw">explicit</span> sender_awaitable<span class="op">(</span>Sender sndr<span class="op">)</span></span>
+<span id="cb4-184"><a href="#cb4-184" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span> <span class="va">sndr_</span><span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>sndr<span class="op">))</span></span>
+<span id="cb4-185"><a href="#cb4-185" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-186"><a href="#cb4-186" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-187"><a href="#cb4-187" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-188"><a href="#cb4-188" aria-hidden="true" tabindex="-1"></a>    sender_awaitable<span class="op">(</span>sender_awaitable<span class="op">&amp;&amp;</span> o<span class="op">)</span></span>
+<span id="cb4-189"><a href="#cb4-189" aria-hidden="true" tabindex="-1"></a>        <span class="kw">noexcept</span><span class="op">(</span></span>
+<span id="cb4-190"><a href="#cb4-190" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>is_nothrow_move_constructible_v<span class="op">&lt;</span></span>
+<span id="cb4-191"><a href="#cb4-191" aria-hidden="true" tabindex="-1"></a>                Sender<span class="op">&gt;)</span></span>
+<span id="cb4-192"><a href="#cb4-192" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span> <span class="va">sndr_</span><span class="op">(</span><span class="bu">std::</span>move<span class="op">(</span>o<span class="op">.</span><span class="va">sndr_</span><span class="op">))</span></span>
+<span id="cb4-193"><a href="#cb4-193" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-194"><a href="#cb4-194" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-195"><a href="#cb4-195" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-196"><a href="#cb4-196" aria-hidden="true" tabindex="-1"></a>    sender_awaitable<span class="op">(</span></span>
+<span id="cb4-197"><a href="#cb4-197" aria-hidden="true" tabindex="-1"></a>        sender_awaitable <span class="at">const</span><span class="op">&amp;)</span> <span class="op">=</span> <span class="kw">delete</span><span class="op">;</span></span>
+<span id="cb4-198"><a href="#cb4-198" aria-hidden="true" tabindex="-1"></a>    sender_awaitable<span class="op">&amp;</span> <span class="kw">operator</span><span class="op">=(</span></span>
+<span id="cb4-199"><a href="#cb4-199" aria-hidden="true" tabindex="-1"></a>        sender_awaitable <span class="at">const</span><span class="op">&amp;)</span> <span class="op">=</span> <span class="kw">delete</span><span class="op">;</span></span>
+<span id="cb4-200"><a href="#cb4-200" aria-hidden="true" tabindex="-1"></a>    sender_awaitable<span class="op">&amp;</span> <span class="kw">operator</span><span class="op">=(</span></span>
+<span id="cb4-201"><a href="#cb4-201" aria-hidden="true" tabindex="-1"></a>        sender_awaitable<span class="op">&amp;&amp;)</span> <span class="op">=</span> <span class="kw">delete</span><span class="op">;</span></span>
+<span id="cb4-202"><a href="#cb4-202" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-203"><a href="#cb4-203" aria-hidden="true" tabindex="-1"></a>    <span class="op">~</span>sender_awaitable<span class="op">()</span></span>
+<span id="cb4-204"><a href="#cb4-204" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-205"><a href="#cb4-205" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span><span class="op">(</span><span class="va">op_constructed_</span><span class="op">)</span></span>
+<span id="cb4-206"><a href="#cb4-206" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>launder<span class="op">(</span></span>
+<span id="cb4-207"><a href="#cb4-207" aria-hidden="true" tabindex="-1"></a>                <span class="kw">reinterpret_cast</span><span class="op">&lt;</span><span class="dt">op_state_type</span><span class="op">*&gt;(</span></span>
+<span id="cb4-208"><a href="#cb4-208" aria-hidden="true" tabindex="-1"></a>                    <span class="va">op_buf_</span><span class="op">))-&gt;~</span><span class="dt">op_state_type</span><span class="op">();</span></span>
+<span id="cb4-209"><a href="#cb4-209" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-210"><a href="#cb4-210" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-211"><a href="#cb4-211" aria-hidden="true" tabindex="-1"></a>    <span class="dt">bool</span> await_ready<span class="op">()</span> <span class="at">const</span> <span class="kw">noexcept</span></span>
+<span id="cb4-212"><a href="#cb4-212" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-213"><a href="#cb4-213" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb4-214"><a href="#cb4-214" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-215"><a href="#cb4-215" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-216"><a href="#cb4-216" aria-hidden="true" tabindex="-1"></a>    <span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;</span></span>
+<span id="cb4-217"><a href="#cb4-217" aria-hidden="true" tabindex="-1"></a>    await_suspend<span class="op">(</span></span>
+<span id="cb4-218"><a href="#cb4-218" aria-hidden="true" tabindex="-1"></a>        <span class="bu">std::</span>coroutine_handle<span class="op">&lt;&gt;</span> h<span class="op">,</span></span>
+<span id="cb4-219"><a href="#cb4-219" aria-hidden="true" tabindex="-1"></a>        io_env <span class="at">const</span><span class="op">*</span> env<span class="op">)</span></span>
+<span id="cb4-220"><a href="#cb4-220" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-221"><a href="#cb4-221" aria-hidden="true" tabindex="-1"></a>        <span class="op">::</span><span class="kw">new</span><span class="op">(</span><span class="va">op_buf_</span><span class="op">)</span> <span class="dt">op_state_type</span><span class="op">(</span></span>
+<span id="cb4-222"><a href="#cb4-222" aria-hidden="true" tabindex="-1"></a>            beman<span class="op">::</span>execution<span class="op">::</span><span class="fu">connect</span><span class="op">(</span></span>
+<span id="cb4-223"><a href="#cb4-223" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>move<span class="op">(</span><span class="va">sndr_</span><span class="op">),</span></span>
+<span id="cb4-224"><a href="#cb4-224" aria-hidden="true" tabindex="-1"></a>                <span class="dt">receiver_type</span><span class="op">{</span></span>
+<span id="cb4-225"><a href="#cb4-225" aria-hidden="true" tabindex="-1"></a>                    <span class="op">&amp;</span><span class="va">result_</span><span class="op">,</span> h<span class="op">,</span> env<span class="op">}));</span></span>
+<span id="cb4-226"><a href="#cb4-226" aria-hidden="true" tabindex="-1"></a>        <span class="va">op_constructed_</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb4-227"><a href="#cb4-227" aria-hidden="true" tabindex="-1"></a>        beman<span class="op">::</span>execution<span class="op">::</span>start<span class="op">(</span></span>
+<span id="cb4-228"><a href="#cb4-228" aria-hidden="true" tabindex="-1"></a>            <span class="op">*</span><span class="bu">std::</span>launder<span class="op">(</span></span>
+<span id="cb4-229"><a href="#cb4-229" aria-hidden="true" tabindex="-1"></a>                <span class="kw">reinterpret_cast</span><span class="op">&lt;</span></span>
+<span id="cb4-230"><a href="#cb4-230" aria-hidden="true" tabindex="-1"></a>                    <span class="dt">op_state_type</span><span class="op">*&gt;(</span></span>
+<span id="cb4-231"><a href="#cb4-231" aria-hidden="true" tabindex="-1"></a>                        <span class="va">op_buf_</span><span class="op">)));</span></span>
+<span id="cb4-232"><a href="#cb4-232" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">std::</span>noop_coroutine<span class="op">();</span></span>
+<span id="cb4-233"><a href="#cb4-233" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-234"><a href="#cb4-234" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-235"><a href="#cb4-235" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> await_resume<span class="op">()</span></span>
+<span id="cb4-236"><a href="#cb4-236" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-237"><a href="#cb4-237" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span>has_ec<span class="op">)</span></span>
+<span id="cb4-238"><a href="#cb4-238" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> await_resume_ec<span class="op">();</span></span>
+<span id="cb4-239"><a href="#cb4-239" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb4-240"><a href="#cb4-240" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> await_resume_no_ec<span class="op">();</span></span>
+<span id="cb4-241"><a href="#cb4-241" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-242"><a href="#cb4-242" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-243"><a href="#cb4-243" aria-hidden="true" tabindex="-1"></a><span class="kw">private</span><span class="op">:</span></span>
+<span id="cb4-244"><a href="#cb4-244" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Sender can complete with</span></span>
+<span id="cb4-245"><a href="#cb4-245" aria-hidden="true" tabindex="-1"></a>    <span class="co">// set_error(error_code). Return io_result</span></span>
+<span id="cb4-246"><a href="#cb4-246" aria-hidden="true" tabindex="-1"></a>    <span class="co">// so the error code is a value, not an</span></span>
+<span id="cb4-247"><a href="#cb4-247" aria-hidden="true" tabindex="-1"></a>    <span class="co">// exception.</span></span>
+<span id="cb4-248"><a href="#cb4-248" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> await_resume_ec<span class="op">()</span></span>
+<span id="cb4-249"><a href="#cb4-249" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-250"><a href="#cb4-250" aria-hidden="true" tabindex="-1"></a>        <span class="co">// exception_ptr at index 3</span></span>
+<span id="cb4-251"><a href="#cb4-251" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">3</span><span class="op">)</span></span>
+<span id="cb4-252"><a href="#cb4-252" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>rethrow_exception<span class="op">(</span></span>
+<span id="cb4-253"><a href="#cb4-253" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">3</span><span class="op">&gt;(</span><span class="va">result_</span><span class="op">));</span></span>
+<span id="cb4-254"><a href="#cb4-254" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-255"><a href="#cb4-255" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-256"><a href="#cb4-256" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>tuple_size_v<span class="op">&lt;</span></span>
+<span id="cb4-257"><a href="#cb4-257" aria-hidden="true" tabindex="-1"></a>                value_tuple<span class="op">&gt;</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-258"><a href="#cb4-258" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-259"><a href="#cb4-259" aria-hidden="true" tabindex="-1"></a>            <span class="co">// stopped at index 4</span></span>
+<span id="cb4-260"><a href="#cb4-260" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">4</span><span class="op">)</span></span>
+<span id="cb4-261"><a href="#cb4-261" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;&gt;{</span></span>
+<span id="cb4-262"><a href="#cb4-262" aria-hidden="true" tabindex="-1"></a>                    make_error_code<span class="op">(</span></span>
+<span id="cb4-263"><a href="#cb4-263" aria-hidden="true" tabindex="-1"></a>                        error<span class="op">::</span>canceled<span class="op">)};</span></span>
+<span id="cb4-264"><a href="#cb4-264" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">2</span><span class="op">)</span></span>
+<span id="cb4-265"><a href="#cb4-265" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;&gt;{</span></span>
+<span id="cb4-266"><a href="#cb4-266" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">2</span><span class="op">&gt;(</span><span class="va">result_</span><span class="op">)};</span></span>
+<span id="cb4-267"><a href="#cb4-267" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> io_result<span class="op">&lt;&gt;{};</span></span>
+<span id="cb4-268"><a href="#cb4-268" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-269"><a href="#cb4-269" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span> <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-270"><a href="#cb4-270" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>tuple_size_v<span class="op">&lt;</span></span>
+<span id="cb4-271"><a href="#cb4-271" aria-hidden="true" tabindex="-1"></a>                value_tuple<span class="op">&gt;</span> <span class="op">==</span> <span class="dv">1</span><span class="op">)</span></span>
+<span id="cb4-272"><a href="#cb4-272" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-273"><a href="#cb4-273" aria-hidden="true" tabindex="-1"></a>            <span class="kw">using</span> T <span class="op">=</span> <span class="bu">std::</span>tuple_element_t<span class="op">&lt;</span></span>
+<span id="cb4-274"><a href="#cb4-274" aria-hidden="true" tabindex="-1"></a>                <span class="dv">0</span><span class="op">,</span> value_tuple<span class="op">&gt;;</span></span>
+<span id="cb4-275"><a href="#cb4-275" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">4</span><span class="op">)</span></span>
+<span id="cb4-276"><a href="#cb4-276" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;</span>T<span class="op">&gt;{</span></span>
+<span id="cb4-277"><a href="#cb4-277" aria-hidden="true" tabindex="-1"></a>                    make_error_code<span class="op">(</span></span>
+<span id="cb4-278"><a href="#cb4-278" aria-hidden="true" tabindex="-1"></a>                        error<span class="op">::</span>canceled<span class="op">)};</span></span>
+<span id="cb4-279"><a href="#cb4-279" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">2</span><span class="op">)</span></span>
+<span id="cb4-280"><a href="#cb4-280" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;</span>T<span class="op">&gt;{</span></span>
+<span id="cb4-281"><a href="#cb4-281" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">2</span><span class="op">&gt;(</span><span class="va">result_</span><span class="op">)};</span></span>
+<span id="cb4-282"><a href="#cb4-282" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> io_result<span class="op">&lt;</span>T<span class="op">&gt;{</span></span>
+<span id="cb4-283"><a href="#cb4-283" aria-hidden="true" tabindex="-1"></a>                <span class="op">{},</span></span>
+<span id="cb4-284"><a href="#cb4-284" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">0</span><span class="op">&gt;(</span></span>
+<span id="cb4-285"><a href="#cb4-285" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">1</span><span class="op">&gt;(</span></span>
+<span id="cb4-286"><a href="#cb4-286" aria-hidden="true" tabindex="-1"></a>                        <span class="bu">std::</span>move<span class="op">(</span><span class="va">result_</span><span class="op">)))};</span></span>
+<span id="cb4-287"><a href="#cb4-287" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-288"><a href="#cb4-288" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb4-289"><a href="#cb4-289" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb4-290"><a href="#cb4-290" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">4</span><span class="op">)</span></span>
+<span id="cb4-291"><a href="#cb4-291" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;</span>value_tuple<span class="op">&gt;{</span></span>
+<span id="cb4-292"><a href="#cb4-292" aria-hidden="true" tabindex="-1"></a>                    make_error_code<span class="op">(</span></span>
+<span id="cb4-293"><a href="#cb4-293" aria-hidden="true" tabindex="-1"></a>                        error<span class="op">::</span>canceled<span class="op">)};</span></span>
+<span id="cb4-294"><a href="#cb4-294" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">2</span><span class="op">)</span></span>
+<span id="cb4-295"><a href="#cb4-295" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> io_result<span class="op">&lt;</span>value_tuple<span class="op">&gt;{</span></span>
+<span id="cb4-296"><a href="#cb4-296" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">2</span><span class="op">&gt;(</span><span class="va">result_</span><span class="op">)};</span></span>
+<span id="cb4-297"><a href="#cb4-297" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> io_result<span class="op">&lt;</span>value_tuple<span class="op">&gt;{</span></span>
+<span id="cb4-298"><a href="#cb4-298" aria-hidden="true" tabindex="-1"></a>                <span class="op">{},</span></span>
+<span id="cb4-299"><a href="#cb4-299" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">1</span><span class="op">&gt;(</span></span>
+<span id="cb4-300"><a href="#cb4-300" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>move<span class="op">(</span><span class="va">result_</span><span class="op">))};</span></span>
+<span id="cb4-301"><a href="#cb4-301" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-302"><a href="#cb4-302" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-303"><a href="#cb4-303" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-304"><a href="#cb4-304" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Sender does not complete with</span></span>
+<span id="cb4-305"><a href="#cb4-305" aria-hidden="true" tabindex="-1"></a>    <span class="co">// set_error(error_code). Return the value</span></span>
+<span id="cb4-306"><a href="#cb4-306" aria-hidden="true" tabindex="-1"></a>    <span class="co">// directly; rethrow exceptions.</span></span>
+<span id="cb4-307"><a href="#cb4-307" aria-hidden="true" tabindex="-1"></a>    <span class="kw">auto</span> await_resume_no_ec<span class="op">()</span></span>
+<span id="cb4-308"><a href="#cb4-308" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-309"><a href="#cb4-309" aria-hidden="true" tabindex="-1"></a>        <span class="co">// exception_ptr at index 2</span></span>
+<span id="cb4-310"><a href="#cb4-310" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">2</span><span class="op">)</span></span>
+<span id="cb4-311"><a href="#cb4-311" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>rethrow_exception<span class="op">(</span></span>
+<span id="cb4-312"><a href="#cb4-312" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">2</span><span class="op">&gt;(</span><span class="va">result_</span><span class="op">));</span></span>
+<span id="cb4-313"><a href="#cb4-313" aria-hidden="true" tabindex="-1"></a>        <span class="co">// stopped at index 3</span></span>
+<span id="cb4-314"><a href="#cb4-314" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span><span class="op">(</span><span class="va">result_</span><span class="op">.</span>index<span class="op">()</span> <span class="op">==</span> <span class="dv">3</span><span class="op">)</span></span>
+<span id="cb4-315"><a href="#cb4-315" aria-hidden="true" tabindex="-1"></a>            <span class="cf">throw</span> detail::operation_cancelled<span class="op">{};</span></span>
+<span id="cb4-316"><a href="#cb4-316" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-317"><a href="#cb4-317" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-318"><a href="#cb4-318" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>tuple_size_v<span class="op">&lt;</span></span>
+<span id="cb4-319"><a href="#cb4-319" aria-hidden="true" tabindex="-1"></a>                value_tuple<span class="op">&gt;</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-320"><a href="#cb4-320" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span><span class="op">;</span></span>
+<span id="cb4-321"><a href="#cb4-321" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span> <span class="cf">if</span> <span class="kw">constexpr</span> <span class="op">(</span></span>
+<span id="cb4-322"><a href="#cb4-322" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>tuple_size_v<span class="op">&lt;</span></span>
+<span id="cb4-323"><a href="#cb4-323" aria-hidden="true" tabindex="-1"></a>                value_tuple<span class="op">&gt;</span> <span class="op">==</span> <span class="dv">1</span><span class="op">)</span></span>
+<span id="cb4-324"><a href="#cb4-324" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">0</span><span class="op">&gt;(</span></span>
+<span id="cb4-325"><a href="#cb4-325" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">1</span><span class="op">&gt;(</span></span>
+<span id="cb4-326"><a href="#cb4-326" aria-hidden="true" tabindex="-1"></a>                    <span class="bu">std::</span>move<span class="op">(</span><span class="va">result_</span><span class="op">)));</span></span>
+<span id="cb4-327"><a href="#cb4-327" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span></span>
+<span id="cb4-328"><a href="#cb4-328" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="bu">std::</span>get<span class="op">&lt;</span><span class="dv">1</span><span class="op">&gt;(</span></span>
+<span id="cb4-329"><a href="#cb4-329" aria-hidden="true" tabindex="-1"></a>                <span class="bu">std::</span>move<span class="op">(</span><span class="va">result_</span><span class="op">));</span></span>
+<span id="cb4-330"><a href="#cb4-330" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-331"><a href="#cb4-331" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb4-332"><a href="#cb4-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-333"><a href="#cb4-333" aria-hidden="true" tabindex="-1"></a><span class="kw">template</span><span class="op">&lt;</span><span class="kw">class</span> Sender<span class="op">&gt;</span></span>
+<span id="cb4-334"><a href="#cb4-334" aria-hidden="true" tabindex="-1"></a><span class="kw">auto</span> await_sender<span class="op">(</span>Sender<span class="op">&amp;&amp;</span> sndr<span class="op">)</span></span>
+<span id="cb4-335"><a href="#cb4-335" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-336"><a href="#cb4-336" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> sender_awaitable<span class="op">&lt;</span></span>
+<span id="cb4-337"><a href="#cb4-337" aria-hidden="true" tabindex="-1"></a>        <span class="bu">std::</span>decay_t<span class="op">&lt;</span>Sender<span class="op">&gt;&gt;(</span></span>
+<span id="cb4-338"><a href="#cb4-338" aria-hidden="true" tabindex="-1"></a>            <span class="bu">std::</span>forward<span class="op">&lt;</span>Sender<span class="op">&gt;(</span>sndr<span class="op">));</span></span>
+<span id="cb4-339"><a href="#cb4-339" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb4-340"><a href="#cb4-340" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-341"><a href="#cb4-341" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// namespace boost::capy</span></span></code></pre></div>
 
 </body>
 </html>
