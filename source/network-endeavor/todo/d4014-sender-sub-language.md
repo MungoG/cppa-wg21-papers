@@ -1,7 +1,7 @@
 ---
 title: "Tutorial: The Sender Sub-Language For Beginners"
 document: P4014R1
-date: 2026-03-28
+date: 2026-04-08
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"
@@ -20,12 +20,15 @@ The author dedicates all original content in this paper to the public domain und
 
 ## Revision History
 
-### R1: March 2026
+### R1: April 2026
 
 - Complete rewrite as a progressive tutorial.
 - Covers all thirty sender algorithms in the C++26 working draft.
 - Adds coverage of `task` and sender-coroutine composition.
 - Adds real-world examples (backtracker, retry) from stdexec and sender-examples.
+- Updated for Croydon: `affine_on` renamed to `affine` (P4151R1) and made unary
+  (P3941R4), `task_scheduler` uses `get_start_scheduler`, allocator description
+  updated for P3980R1 two-tier model.
 
 ### R0: March 2026 (pre-Croydon mailing)
 
@@ -426,18 +429,18 @@ The equivalent program:
 auto result = handle(request);
 ```
 
-### 6.5 `affine_on`
+### 6.5 `affine`
 
-`affine_on(sndr, sch)` adapts `sndr` to complete on the scheduler `sch`, skipping the transition if the sender already completes there.
+`affine(sndr)` ensures `sndr` completes on the receiver's start scheduler, skipping the transition if the sender already completes there. The scheduler is obtained from `get_start_scheduler(get_env(rcvr))` at `connect` time.
 
 ```cpp
 auto sndr = some_operation()
-          | affine_on(pool.get_scheduler());
+          | affine;
 ```
 
-The optimization the reader would hope for - if the sender already completes on the target scheduler, the transition is skipped entirely. No wasted work.
+The optimization the reader would hope for - if the sender already completes on the start scheduler, the transition is skipped entirely. No wasted work.
 
-`affine_on` was introduced by [P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup> as the scheduler affinity primitive. It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the target scheduler. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine_on` around every `co_await`ed sender. We will return to this in Section 11.
+`affine` is the scheduler affinity primitive, redesigned by [P3941R4](https://wg21.link/p3941r4) and renamed from `affine_on` by [P4151R1](https://wg21.link/p4151r1). It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the start scheduler. The scheduler is not passed as an argument - it comes from the receiver's environment. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine` around every `co_await`ed sender. We will return to this in Section 11.
 
 The equivalent program:
 
@@ -890,7 +893,7 @@ When the sender completes with `set_value(args...)`, the `co_await` expression p
 
 ### 11.3 `task_scheduler`
 
-`task_scheduler` is a type-erased scheduler used by `task` for scheduler affinity. When a `task` is connected to a receiver, the scheduler is obtained from the receiver's environment via `get_scheduler(get_env(rcvr))` and stored in the `task_scheduler`.
+`task_scheduler` is a type-erased scheduler used by `task` for scheduler affinity. When a `task` is connected to a receiver, the scheduler is obtained from the receiver's environment via `get_start_scheduler(get_env(rcvr))` and stored in the `task_scheduler`.
 
 ```cpp
 task<void> work() {
@@ -912,7 +915,7 @@ The `task_scheduler` uses small-object optimization to avoid allocation for comm
 
 ```cpp
 struct no_affinity {
-    using scheduler_type = inline_scheduler;
+    using start_scheduler_type = inline_scheduler;
 };
 
 task<void, no_affinity> fast_path() {
@@ -926,7 +929,7 @@ Disabling affinity removes the rescheduling overhead at the cost of the guarante
 
 ### 11.5 Scheduler Affinity
 
-The `task`'s promise type injects `affine_on` around every `co_await`ed sender via `await_transform`. The effect: after each `co_await`, execution resumes on the task's scheduler regardless of where the sender completed.
+The `task`'s promise type injects `affine` around every `co_await`ed sender via `await_transform`. The effect: after each `co_await`, execution resumes on the task's scheduler regardless of where the sender completed.
 
 ```cpp
 task<void> affine_demo() {
@@ -939,11 +942,11 @@ task<void> affine_demo() {
 }
 ```
 
-Scheduler affinity means the programmer can reason about execution context the same way they reason about synchronous code - each line runs on the same context as the line before it. The `affine_on` insertion is invisible. The rescheduling happens only when necessary - if the sender already completes on the correct scheduler, `affine_on` skips the transition.
+Scheduler affinity means the programmer can reason about execution context the same way they reason about synchronous code - each line runs on the same context as the line before it. The `affine` insertion is invisible. The rescheduling happens only when necessary - if the sender already completes on the correct scheduler, `affine` skips the transition.
 
 ### 11.6 Allocator Support
 
-The context parameter `C` configures allocator support. The allocator type is declared via `C::allocator_type` and is used for the coroutine frame allocation.
+The context parameter `C` declares the allocator type via `C::allocator_type`. Two allocator paths exist post-[P3980R1](https://wg21.link/p3980r1): the frame allocator is specified at the call site via `allocator_arg` (which must be the first parameter), and the environment allocator is obtained from `get_allocator(get_env(rcvr))` at `connect` time.
 
 ```cpp
 struct alloc_ctx {
@@ -965,7 +968,7 @@ auto sndr = allocated_work(
     21);
 ```
 
-The allocator is available to child operations through the receiver's environment via `get_allocator`. The design supports environments where heap allocation is prohibited - the same context parameter that controls the scheduler type controls the allocator type.
+The frame allocator controls coroutine frame allocation at the call site. The environment allocator - obtained from the receiver at `connect` time - is available to child operations via `get_allocator` and propagates through the receiver chain. The design supports environments where heap allocation is prohibited.
 
 ### 11.7 `co_yield with_error(e)`
 
@@ -1259,7 +1262,7 @@ task<actuator_result> safety_controller(
 
 ## 13. Real World Examples
 
-The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[8]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R3](https://wg21.link/p3826r3) ("Fix Sender Algorithm Customization")<sup>[19]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[21]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
+The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[8]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R5](https://wg21.link/p3826r5) ("Fix Sender Algorithm Customization")<sup>[19]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[21]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
 
 ### 13.1 The Backtracker
 
@@ -1528,7 +1531,7 @@ The authors thank the P2300 authors - Micha&lstrok; Dominiak, Georgy Evtushenko,
 
 18. [P3796R1](https://wg21.link/p3796r1). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025. https://wg21.link/p3796r1
 
-19. [P3826R3](https://wg21.link/p3826r3). Eric Niebler. "Fix Sender Algorithm Customization." 2026. https://wg21.link/p3826r3
+19. [P3826R5](https://wg21.link/p3826r5). Eric Niebler. "Fix Sender Algorithm Customization." 2026. https://wg21.link/p3826r5
 
 20. [P2079R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html). Lucian Radu Teodorescu, Ruslan Arutyunyan, Lee Howes, Michael Voss. "Parallel Scheduler." 2025. https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html
 
