@@ -1,7 +1,7 @@
 ---
 title: "Info: Consuming Senders from Coroutine-Native Code"
 document: P4092R0
-date: 2026-03-13
+date: 2026-04-10
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
@@ -112,14 +112,14 @@ Does not use `execution::task`.
 
 ## 5. What the Bridge Does Not Require
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[15]</sup>, "Add a Coroutine Task Type," defines `std::execution::task`. Its `connect` operation type-erases the operation state, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. The bridge avoids both mechanisms:
+`std::execution::task` ([P3552R3](https://wg21.link/p3552r3)<sup>[15]</sup>, revised at Croydon by [P3980R1](https://wg21.link/p3980r1)<sup>[16]</sup>, [P3941R4](https://wg21.link/p3941r4)<sup>[17]</sup>, [P3927R2](https://wg21.link/p3927r2)<sup>[18]</sup>, [P4151R1](https://wg21.link/p4151r1)<sup>[19]</sup>) is a sender-returning coroutine type. Its promise type-erases the downstream receiver, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. None of the Croydon revisions changed these properties. The bridge avoids both mechanisms:
 
-| Property                             | `execution::task`         | Bridge |
-| ------------------------------------ | ------------------------- | ------ |
-| Routine I/O errors become exceptions | Yes (via `AS-EXCEPT-PTR`) | No     |
-| Type erasure on connect              | Yes                       | No     |
-| Allocation beyond coroutine frame    | Yes (type-erased state)   | No     |
-| Requires `std::execution::task`      | -                         | No     |
+| Property                             | `execution::task`              | Bridge |
+| ------------------------------------ | ------------------------------ | ------ |
+| Routine I/O errors become exceptions | Yes (via `AS-EXCEPT-PTR`)      | No     |
+| Type-erased dispatch                 | Yes (promise continuation)     | No     |
+| Allocation beyond coroutine frame    | Yes (inner coroutine frame)    | No     |
+| Requires `std::execution::task`      | -                              | No     |
 
 The bridge consumes senders without `std::execution::task`.
 
@@ -172,6 +172,14 @@ The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[5]</sup> and for
 14. [P4088R0](https://isocpp.org/files/papers/P4088R0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4088R0.pdf
 
 15. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
+
+16. [P3980R1](https://wg21.link/p3980r1) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3980r1
+
+17. [P3941R4](https://wg21.link/p3941r4) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3941r4
+
+18. [P3927R2](https://wg21.link/p3927r2) - "`task_scheduler` Bulk Execution" (Eric Niebler, 2026). https://wg21.link/p3927r2
+
+19. [P4151R1](https://wg21.link/p4151r1) - "Rename `affine_on`" (Robert Leahy, 2026). https://wg21.link/p4151r1
 
 ---
 
