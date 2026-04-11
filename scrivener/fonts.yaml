@@ -1,0 +1,19 @@
+# Font manifest. Maps logical IDs to font files and download URLs.
+# Styles reference fonts by ID. Scrivener downloads on demand
+# into the shared .fonts/ cache.
+
+- id: noto-sans
+  file: "NotoSans[wdth,wght].ttf"
+  url: "https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/unhinted/variable-ttf/NotoSans%5Bwdth%2Cwght%5D.ttf"
+
+- id: noto-serif-italic
+  file: "NotoSerif-Italic[wdth,wght].ttf"
+  url: "https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSerif/unhinted/variable-ttf/NotoSerif-Italic%5Bwdth%2Cwght%5D.ttf"
+
+- id: noto-sans-cjk
+  file: "NotoSansCJKsc-VF.ttf"
+  url: "https://github.com/notofonts/noto-cjk/raw/main/Sans/Variable/TTF/NotoSansCJKsc-VF.ttf"
+
+- id: noto-sans-mono
+  file: "NotoSansMono[wdth,wght].ttf"
+  url: "https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSansMono/unhinted/variable-ttf/NotoSansMono%5Bwdth%2Cwght%5D.ttf"

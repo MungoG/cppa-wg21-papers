@@ -1,0 +1,10 @@
+inherits: default
+name: "WG21"
+description: "WG21 committee paper format with front matter metadata"
+
+front_matter:
+  fields:
+    - { field: document, label: "Document Number" }
+    - { field: date, label: Date }
+    - { field: audience, label: Audience }
+    - { field: reply-to, label: "Reply-to" }

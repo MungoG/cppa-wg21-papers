@@ -36,9 +36,9 @@ All original content in this paper is dedicated to the public domain under [CC0 
 
 This paper asks for nothing.
 
-Everything below this line is a structured prompt for use in a Large Language Model. The better the model, the better the results. AI output must always be verified by a human.
-
----
+Everything that follows is a structured prompt for use in a Large Language Model. The better the model, the better the results. AI output must always be verified by a human.
+ 
+\newpage
 
 # Tool: Is This C++?
 

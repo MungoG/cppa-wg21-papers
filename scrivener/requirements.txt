@@ -1,0 +1,7 @@
+reportlab
+mistune
+pyyaml
+Pillow
+fonttools
+svglib
+pygments

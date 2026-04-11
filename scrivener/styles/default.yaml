@@ -1,0 +1,187 @@
+# --- Identity ---
+name: "Default"
+description: "Clean condensed document layout"
+
+# --- Options (exposed to user via --list-styles / --options) ---
+options:
+  - id: toc
+    label: "Table of Contents"
+    type: bool
+    default: false
+  - id: logo
+    label: "Logo"
+    type: image
+    default: "C++ Alliance - Logo.svg"
+  - id: accent_saturated
+    label: "Accent Color"
+    type: color
+    default: "#A91C21"
+
+# --- Page ---
+page_size: a4
+
+# --- Color palette ---
+palette:
+  brand:       "#A91C21"
+  text:        "#2c2c2c"
+  text-mid:    "#4a4a4a"
+  text-muted:  "#6b6b6b"
+  text-faint:  "#888888"
+  bg-subtle:   "#f7f7f7"
+  bg-light:    "#e0e0e0"
+  rule:        "#e0ddd8"
+  code-fg:     "#333333"
+  code-red:    "#aa3344"
+
+# --- Colors ---
+accent_saturated: "@brand"
+accent_mid: auto
+link_color: "@brand"
+code_fg: "@code-fg"
+code_inline_fg: "@code-red"
+code_bg: "@bg-subtle"
+code_inline_bg: "@bg-subtle"
+blockquote_fg: "@text-mid"
+blockquote_bg: "@bg-subtle"
+heading_rule_color: "@rule"
+table_header_bg: "@bg-light"
+table_header_fg: "@text"
+table_header_weight: 537
+table_rule_color: "@rule"
+table_stripe_bg: "@bg-subtle"
+page_number_color: "@text-muted"
+front_matter_label_color: "@text-muted"
+
+# --- Fonts ---
+fonts:
+  body:
+    font: noto-sans
+    axes: { wdth: 75, wght: 400 }
+  body_bold:
+    font: noto-sans
+    axes: { wdth: 75, wght: 537 }
+  body_italic:
+    font: noto-serif-italic
+    axes: { wdth: 75, wght: 400 }
+  body_bold_italic:
+    font: noto-serif-italic
+    axes: { wdth: 75, wght: 537 }
+  code:
+    font: noto-sans-mono
+    axes: { wdth: 62.5, wght: 400 }
+  code_bold:
+    font: noto-sans-mono
+    axes: { wdth: 62.5, wght: 600 }
+  code_italic:
+    font: noto-sans-mono
+    axes: { wdth: 62.5, wght: 400 }
+  code_bold_italic:
+    font: noto-sans-mono
+    axes: { wdth: 62.5, wght: 600 }
+  cjk:
+    font: noto-sans-cjk
+    axes: { wght: 400 }
+
+# --- Typography ---
+body_size: 10
+line_height: 1.85
+
+headings:
+  h1: { scale: 1.60, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+  h2: { scale: 1.30, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+  h3: { scale: 1.15, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+  h4: { scale: 1.05, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+  h5: { scale: 1.00, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+  h6: { scale: 1.00, leading_scale: 1.3, space_before: 1.5, space_after: 1.0 }
+
+code_block:
+  font_scale: 0.82
+  leading_scale: 1.55
+  bar_width: 3
+  left_padding: 15
+  right_padding: 15
+  vertical_padding: 15
+
+blockquote:
+  bar_width: 3
+  left_padding: 15
+  right_padding: 15
+  vertical_padding: 10
+  corner_radius: 4
+  variants:
+    note:
+      bar_color: "#0277aa"
+      bg: "#eef6fa"
+    warning:
+      bar_color: "#dd8800"
+      bg: "#fef8ee"
+    caution:
+      bar_color: "#A91C21"
+      bg: "#fdf2f2"
+
+list:
+  left_indent: 20
+  bullet_dedent: 14
+  space_before: 4
+  space_after: 4
+  bullets: ["\u2022", "\u2013", "\u00B7"]
+
+table:
+  font_scale: 0.92
+  smart_columns: true
+  cell_padding: { top: 5, bottom: 5, left: 10, right: 10 }
+  header_rule_width: 0
+  body_rule_width: 1
+
+# --- Title block ---
+title:
+  rule_thickness: 3
+  space_after_rule: 0
+  logo_height: 36
+  logo_column_width: 55
+
+# --- Logo ---
+logo: "C++ Alliance - Logo.svg"
+
+# --- Table of Contents ---
+toc: auto
+toc_indent: 18
+
+# --- Syntax highlighting ---
+syntax:
+  keyword: "#622876"
+  type: "#005f88"
+  function: "#1b5196"
+  string: "#366d36"
+  number: "#8f4700"
+  comment: "#6e6e6e"
+  preprocessor: "#882936"
+  operator: "#444444"
+
+# --- Wording divs ---
+wording:
+  bar_width: 3
+  padding: 15
+  radius: 4
+  ins_color: "#006e28"
+  del_color: "#bf0303"
+  wording:
+    bg: "#f7f7f7"
+    bar_color: "#6b6b6b"
+  wording-add:
+    bg: "#eef6ee"
+    bar_color: "#66aa66"
+  wording-remove:
+    bg: "#fdf2f2"
+    bar_color: "#A91C21"
+
+# --- Front matter visual settings ---
+front_matter:
+  font_scale: 0.9
+  leading_scale: 1.65
+  bg: "@bg-subtle"
+  bar_width: 3
+  inner_pad: 12
+  label_col: 130
+  cell_v_pad: 3
+  space_after: 0

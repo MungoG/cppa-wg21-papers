@@ -158,7 +158,7 @@ struct io_env
 
 *Why pointer, not reference.* The launch function owns the `io_env`. Every coroutine in the chain borrows it. Pointer semantics make this ownership model explicit. Accidental copies are difficult. The lifetime invariant is structural: the `io_env` outlives every coroutine in the chain because the launch function that created it does not return until the chain completes.
 
-*Why `const*`.* The environment is set at launch time and does not change during the chain's lifetime. `const` enforces this invariant. A coroutine that needs different environment parameters (a different executor, a different stop token) uses `run` (Section 7.2) to create a new `io_env` for a sub-chain.
+*Why const.* The environment is set at launch time and does not change during the chain's lifetime. `const` enforces this invariant. A coroutine that needs different environment parameters (a different executor, a different stop token) uses `run` (Section 7.2) to create a new `io_env` for a sub-chain.
 
 ---
 
@@ -502,12 +502,12 @@ Every time a coroutine resumes (after any `co_await`), it writes its frame alloc
 ```mermaid
 flowchart TD
     A["parent resumes - slot = parent.frame_alloc"]
-    --> B["parent calls child()"]
-    --> C["child operator new - reads slot"]
-    --> D["child created, returns task"]
-    --> E["parent's await_suspend - parent suspends"]
-    --> F["child resumes - slot = child.frame_alloc"]
-    --> G["child calls grandchild()"]
+    A --> B["parent calls child()"]
+    B --> C["child operator new - reads slot"]
+    C --> D["child created, returns task"]
+    D --> E["parent's await_suspend - parent suspends"]
+    E --> F["child resumes - slot = child.frame_alloc"]
+    F --> G["child calls grandchild()"]
 ```
 
 **Intervening code and spoilage.** Between `await_resume` (which writes the slot) and `child()`'s `operator new` (which reads it), arbitrary user code may execute. If that code resumes a coroutine from a different chain, that coroutine's `await_resume` overwrites the slot. The consequence is not memory corruption - `operator delete` reads the allocator from a pointer embedded in the frame footer, not from the slot - but a frame may be allocated from the wrong resource.
@@ -670,7 +670,7 @@ We commit to a retrospective at two standard releases or six years after standar
 | 5 | The single template parameter on `task<T>` remains sufficient | No widely adopted library requires a second template parameter | +5 years |
 | 6 | At least three independent libraries adopt the protocol within five years | Count of libraries on vcpkg/Conan that declare _IoAwaitable_ conformance | +5 years |
 
----
+\newpage
 
 ## Appendix A: Understanding Asynchronous I/O
 
@@ -742,7 +742,7 @@ C++20's `std::stop_token` provides cooperative cancellation. The stop token prop
 
 With these fundamentals in hand - event loops, executors, strands, and cancellation - you have the conceptual vocabulary to understand the design decisions in the sections that precede this appendix. If you are eager to experiment, [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup> implements these concepts in production-ready code.
 
----
+\newpage
 
 ## Appendix B: `any_read_stream`
 
@@ -922,7 +922,7 @@ any_read_stream::read_some(MB buffers)
 }
 ```
 
----
+\newpage
 
 ## Appendix C: `io_awaitable_promise_base`
 
