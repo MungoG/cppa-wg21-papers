@@ -106,6 +106,7 @@
     /* Detail row */
     .detail-row td { padding: 0; }
     .detail-row:hover { background: transparent !important; cursor: default; }
+    .drop-over { background: rgba(88,166,255,0.12) !important; }
     .detail-content { padding: 10px 14px; background: var(--surface2); border-top: 1px solid var(--border); }
     .detail-grid { display: grid; grid-template-columns: 100px 1fr; gap: 3px 10px; font-size: 11px; }
     .dl { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -167,7 +168,8 @@
 <div id="top-bar">
   <div class="brand">Paperworks<span>.</span></div>
   <div class="tb-tabs">
-    <button class="tb-tab active" onclick="showTab('papers')">Papers</button>
+    <button class="tb-tab active" onclick="showTab('folio')">Folio</button>
+    <button class="tb-tab" onclick="showTab('render')">Render</button>
     <button class="tb-tab" onclick="showTab('settings')">Settings</button>
     <button class="tb-tab" onclick="showTab('log')">Log</button>
   </div>
@@ -186,8 +188,8 @@
 
 <main>
 
-  <!-- Papers tab -->
-  <div class="tab-panel active" id="tab-papers">
+  <!-- Folio tab -->
+  <div class="tab-panel active" id="tab-folio">
     <div class="section-header">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;" id="summary-pills"></div>
       <div style="display:flex;gap:4px;">
@@ -211,6 +213,27 @@
       </table>
     </div>
     <div class="empty" id="empty" style="display:none;">No papers found. Configure directories in Settings and log in.</div>
+  </div>
+
+  <!-- Render tab -->
+  <div class="tab-panel" id="tab-render">
+    <div class="section-header"><h2>Render Preview</h2></div>
+    <div class="card">
+      <span class="label">Markdown file</span>
+      <div class="row">
+        <input type="text" id="render-path" placeholder="Drop a .md file here, browse, or type a path..." />
+        <button class="btn" onclick="browseFile('render-path')">Browse</button>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-top:8px">
+      <table>
+        <thead><tr>
+          <th>Style</th>
+          <th style="width:70px;text-align:center"></th>
+        </tr></thead>
+        <tbody id="render-styles"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Log tab -->
@@ -284,7 +307,7 @@
 <div id="toast"></div>
 
 <script>
-let _papers=[], _filter='', _workingSet=new Set(), _dirtySet=new Set(), _queueDepth=0, _expandedIdx=null;
+let _papers=[], _filter='', _workingSet=new Set(), _dirtySet=new Set(), _queueDepth=0, _expandedIdx=null, _droppedFile=null;
 
 // -- Tabs --
 function showTab(name) {
@@ -531,6 +554,17 @@ async function loadCatalog(){
     const ig=document.getElementById('images-grid');
     if(!(c.images||[]).length){ig.innerHTML='<span class="muted" style="font-size:11px">No images</span>';}
     else{ig.innerHTML=c.images.map(i=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 10px;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-muted)"><img src="/api/image/${encodeURIComponent(i)}" style="width:24px;height:24px;object-fit:contain" />${i}</div>`).join('');}
+    const rtb=document.getElementById('render-styles');
+    rtb.innerHTML=(c.styles||[]).map(s=>{
+      const sid=esc(s.id);
+      return `<tr class="render-style-row" data-style="${sid}"
+        ondragover="event.preventDefault();this.classList.add('drop-over')"
+        ondragleave="this.classList.remove('drop-over')"
+        ondrop="event.preventDefault();this.classList.remove('drop-over');handleStyleDrop(event,'${sid}')">
+        <td>${esc(s.name||s.id)}</td>
+        <td style="width:70px;text-align:center"><button class="btn btn-blue" onclick="renderPreview('${sid}')" style="font-size:10px;padding:2px 8px">RENDER</button></td>
+      </tr>`;
+    }).join('');
   }catch(e){}
 }
 async function saveCreds(){const body={isocpp_username:document.getElementById('cred-user').value.trim()};const pass=document.getElementById('cred-pass').value;if(pass)body.isocpp_password=pass;await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});showToast('Credentials saved',true);}
@@ -539,6 +573,35 @@ async function removeDir(path){const r=await fetch('/api/dirs',{method:'DELETE',
 async function toggleDir(path,field,value){const r=await fetch('/api/dirs/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir:path,field,value})});if(r.ok){const d=await r.json();renderDirs(d.watch_dirs);}}
 async function openDir(path){if(!path)return;await fetch('/api/open-folder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path.trim()})});}
 async function browseDir(inputId){try{const r=await fetch('/api/pick-dir');const d=await r.json();if(d.path)document.getElementById(inputId).value=d.path;}catch(e){showToast('Browse failed');}}
+async function browseFile(inputId){try{const r=await fetch('/api/pick-file');const d=await r.json();if(d.path){document.getElementById(inputId).value=d.path;_droppedFile=null;}}catch(e){showToast('Browse failed');}}
+async function handleStyleDrop(e,styleId){
+  const files=e.dataTransfer.files;
+  if(!files||!files.length) return;
+  const f=files[0];
+  if(!f.name.endsWith('.md')){showToast('Drop a .md file');return;}
+  _droppedFile=f;
+  document.getElementById('render-path').value=f.name;
+  renderPreview(styleId);
+}
+async function renderPreview(styleId){
+  const path=document.getElementById('render-path').value.trim();
+  if(!path){showToast('Enter a markdown file path first');return;}
+  setStatus('working',`Rendering preview (${styleId})...`);
+  try{
+    let r;
+    if(_droppedFile&&_droppedFile.name===path){
+      const fd=new FormData();
+      fd.append('file',_droppedFile);
+      fd.append('style',styleId);
+      r=await fetch('/api/render-preview',{method:'POST',body:fd});
+    }else{
+      r=await fetch('/api/render-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({md_path:path,style:styleId})});
+    }
+    const d=await r.json();
+    if(r.ok&&d.pdf_path){setStatus('ready','Preview ready');window.open('/api/file?path='+encodeURIComponent(d.pdf_path),'_blank');}
+    else{setStatus('error',d.error||'Render failed');showToast(d.error||'Render failed');}
+  }catch(e){setStatus('error','Render failed');showToast('Render failed');}
+}
 async function clearLog(){await fetch('/api/log',{method:'DELETE'});document.getElementById('log-box').innerHTML='';}
 async function shutDown(){await fetch('/api/shutdown',{method:'POST'});document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#8b949e;font-size:13px;">Server shut down.</div>';}
 
@@ -583,6 +646,8 @@ function connectSSE(){
 document.getElementById('filter-input').addEventListener('keydown',e=>{if(e.key==='Escape'){e.target.value='';_filter='';renderPapers();}});
 document.getElementById('add-dir-input').addEventListener('keydown',e=>{if(e.key==='Enter')addDir();});
 document.getElementById('output-dir').addEventListener('keydown',e=>{if(e.key==='Enter')saveOutput();});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>e.preventDefault());
 
 // -- Init --
 connectSSE();

@@ -143,17 +143,10 @@ def _render_worker():
 
         try:
             _ensure_scrivener()
-            from scrivener_lib.config import (
-                load_font_manifest, load_style, resolve_font_files,
-                resolve_style_path, ensure_fonts_downloaded, FONTS_DIR,
-            )
-            from scrivener_lib.fonts import set_fonts_dir
+            from scrivener_lib.config import load_style, resolve_style_path
             from scrivener_lib.builder import build_pdf
 
-            manifest = load_font_manifest()
             style = load_style(resolve_style_path(style_name))
-            resolve_font_files(style, manifest)
-            set_fonts_dir(FONTS_DIR)
         except Exception as e:
             _add_log("render", f"Scrivener init failed: {e}", status="error")
             _broadcast("render_done", {"total": len(batch), "done": 0, "errors": len(batch)})
@@ -575,6 +568,58 @@ def render_paper():
     _add_log("render", f"Queued: {Path(md_path).name}")
     return jsonify({"ok": True})
 
+@app.route("/api/render-preview", methods=["POST"])
+def render_preview():
+    """Render a single file synchronously to a temp dir and return the PDF.
+
+    Accepts either:
+      - multipart/form-data with a "file" part and optional "style" field
+      - JSON body with {"md_path": "...", "style": "..."}
+    """
+    import tempfile
+
+    style_id = "wg21"
+    tmp_dir = Path(tempfile.mkdtemp(prefix="paperworks-preview-"))
+
+    if request.content_type and "multipart" in request.content_type:
+        f = request.files.get("file")
+        if not f or not f.filename:
+            return jsonify({"error": "No file uploaded"}), 400
+        style_id = request.form.get("style", "wg21")
+        fname = Path(f.filename).name
+        md_path = str(tmp_dir / fname)
+        f.save(md_path)
+    else:
+        data = request.get_json(force=True) or {}
+        md_path = data.get("md_path", "")
+        style_id = data.get("style", "wg21")
+        if not md_path or not Path(md_path).is_file():
+            return jsonify({"error": "Markdown file not found"}), 400
+        fname = Path(md_path).name
+
+    try:
+        _ensure_scrivener()
+        from scrivener_lib.config import load_style, resolve_style_path
+        from scrivener_lib.builder import build_pdf
+
+        style = load_style(resolve_style_path(style_id))
+    except Exception as e:
+        _add_log("preview", f"Scrivener init failed: {e}", status="error")
+        return jsonify({"error": f"Scrivener init failed: {e}"}), 500
+
+    out_file = tmp_dir / Path(fname).with_suffix(".pdf").name
+    _add_log("preview", f"Rendering {fname} ({style_id})...", status="working")
+
+    try:
+        t0 = time.time()
+        build_pdf(md_path, str(out_file), {}, style)
+        duration = round(time.time() - t0, 2)
+        _add_log("preview", f"{fname} -> {out_file.name} ({duration}s)", status="done")
+        return jsonify({"ok": True, "pdf_path": str(out_file)})
+    except Exception as e:
+        _add_log("preview", f"{fname} FAILED: {e}", status="error")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/render-all", methods=["POST"])
 def render_all():
     """Queue only markdown files whose PDF is missing or stale."""
@@ -698,6 +743,25 @@ def pick_dir():
         root.withdraw()
         root.wm_attributes("-topmost", True)
         path = filedialog.askdirectory(title="Choose a directory")
+        root.destroy()
+        if path:
+            return jsonify({"path": str(Path(path).resolve())})
+        return jsonify({"path": None})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/pick-file")
+def pick_file():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        path = filedialog.askopenfilename(
+            title="Choose a markdown file",
+            filetypes=[("Markdown", "*.md"), ("All files", "*.*")],
+        )
         root.destroy()
         if path:
             return jsonify({"path": str(Path(path).resolve())})

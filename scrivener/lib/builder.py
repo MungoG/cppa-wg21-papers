@@ -13,11 +13,14 @@ from .colors import resolve_colors
 from .config import (
     IMAGES_DIR,
     PAGE_CONFIGS,
+    ensure_fonts_downloaded,
     extract_front_matter,
+    load_font_manifest,
     merge_config,
+    resolve_font_files,
 )
 from .flowables import AccentRule, PageChrome
-from .fonts import build_body_cmap, register_families, register_fonts
+from .fonts import build_body_cmap, register_families, register_fonts, set_fonts_dir
 from .renderer import ASTRenderer
 
 
@@ -42,6 +45,10 @@ def build_pdf(md_path, output_path, cli_cfg, style):
     cfg["logo"] = logo_path
 
     resolve_colors(cfg, logo_path)
+    manifest = load_font_manifest()
+    resolve_font_files(cfg, manifest)
+    fonts_dir = ensure_fonts_downloaded(cfg, manifest)
+    set_fonts_dir(fonts_dir)
     register_fonts(cfg)
     register_families()
 

@@ -1,6 +1,12 @@
-flask
-pymupdf
-requests
 beautifulsoup4
-watchdog
+flask
+fonttools
+mistune
+Pillow
+pygments
+pymupdf
 pyyaml
+reportlab
+requests
+svglib
+watchdog
