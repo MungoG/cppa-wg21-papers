@@ -11,10 +11,10 @@ from .types import Block, Line, Section, SectionKind, Confidence
 
 _log = logging.getLogger(__name__)
 
-COLUMN_GAP_THRESHOLD = 50.0
-MIN_TABLE_ROWS = 2
-COLUMN_X_TOLERANCE = 10.0
-TABLE_Y_OVERLAP_MARGIN = 5.0
+_COLUMN_GAP_THRESHOLD = 50.0
+_MIN_TABLE_ROWS = 2
+_COLUMN_X_TOLERANCE = 10.0
+_TABLE_Y_OVERLAP_MARGIN = 5.0
 
 
 def _block_column_positions(block: Block) -> list[float] | None:
@@ -33,7 +33,7 @@ def _block_column_positions(block: Block) -> list[float] | None:
         x_starts.append(line.bbox[0])
 
     for i in range(1, len(x_starts)):
-        if x_starts[i] - x_starts[0] < COLUMN_GAP_THRESHOLD:
+        if x_starts[i] - x_starts[0] < _COLUMN_GAP_THRESHOLD:
             return None
 
     return x_starts
@@ -43,7 +43,7 @@ def _columns_match(cols_a: list[float], cols_b: list[float]) -> bool:
     """Check if two column position lists represent the same table structure."""
     if len(cols_a) != len(cols_b):
         return False
-    return all(abs(a - b) < COLUMN_X_TOLERANCE for a, b in zip(cols_a, cols_b))
+    return all(abs(a - b) < _COLUMN_X_TOLERANCE for a, b in zip(cols_a, cols_b))
 
 
 def detect_tables(blocks: list[Block]) -> tuple[list[Section], list[Block]]:
@@ -74,7 +74,7 @@ def detect_tables(blocks: list[Block]) -> tuple[list[Section], list[Block]]:
             else:
                 break
 
-        if len(table_blocks) >= MIN_TABLE_ROWS:
+        if len(table_blocks) >= _MIN_TABLE_ROWS:
             num_cols = len(cols)
             rows: list[list[list]] = []
             all_lines = []
@@ -134,8 +134,8 @@ def exclude_table_regions(blocks: list[Block],
         by = (block.bbox[1] + block.bbox[3]) / 2.0
         for pg, y_min, y_max in table_ranges:
             if (block.page_num == pg
-                    and y_min - TABLE_Y_OVERLAP_MARGIN <= by
-                    <= y_max + TABLE_Y_OVERLAP_MARGIN):
+                    and y_min - _TABLE_Y_OVERLAP_MARGIN <= by
+                    <= y_max + _TABLE_Y_OVERLAP_MARGIN):
                 in_table = True
                 break
         if not in_table:

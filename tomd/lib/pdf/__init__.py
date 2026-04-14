@@ -1,20 +1,52 @@
 """PDF to Markdown converter - pipeline entry point."""
 
 import logging
+from collections import Counter
 from pathlib import Path
 
 from .cleanup import (_get_edge_items, detect_repeating, strip_repeating,
                       cleanup_text, find_hidden_regions, strip_hidden_blocks)
 from .extract import extract_mupdf, extract_spatial, collect_links, attach_links
+from .mono import propagate_monospace
+from .wording import classify_wording, collect_line_drawings
 from .spans import normalize_spans
 from .structure import compare_extractions, structure_sections
 from .table import detect_tables, exclude_table_regions
 from .wg21 import extract_metadata_from_blocks
 from .emit import emit_markdown, emit_prompts
 from .types import SectionKind, is_readable
+from .. import ascii_escape
 from ..toc import find_toc_indices
 
 _log = logging.getLogger(__name__)
+
+
+def _get_page0_text_colors(page) -> dict[float, float]:
+    """Map y-positions to text lightness using texttrace space-color proxy.
+
+    Type 3 fonts report black for all glyphs. Space characters (type=0)
+    leak the true graphics-state fill color. Returns {rounded_y: lightness}
+    where lightness is 0.0 (black) to 1.0 (white).
+    """
+    colors: dict[float, float] = {}
+    for span in page.get_texttrace():
+        if span.get("type") != 0:
+            continue
+        color = span.get("color")
+        if color is None:
+            continue
+        chars = span.get("chars", [])
+        if not chars:
+            continue
+        y = round(chars[0][2][1])
+        if isinstance(color, (tuple, list)) and len(color) >= 3:
+            lightness = sum(color[:3]) / 3.0
+        elif isinstance(color, (int, float)):
+            lightness = float(color)
+        else:
+            continue
+        colors[y] = lightness
+    return colors
 
 
 def convert_pdf(path: Path) -> tuple[str, str | None]:
@@ -34,7 +66,6 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
         all_mupdf_blocks = []
         all_spatial_blocks = []
         all_edge_items = []
-        pages_data = []
 
         for pg_num in range(page_count):
             page = doc[pg_num]
@@ -50,11 +81,9 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
             attach_links(mupdf_blocks, links)
             attach_links(spatial_blocks, links)
 
-            pages_data.append(pg_num)
             all_mupdf_blocks.extend(mupdf_blocks)
             all_spatial_blocks.extend(spatial_blocks)
 
-        from collections import Counter
         font_counts: Counter[str] = Counter()
         for b in all_mupdf_blocks:
             for ln in b.lines:
@@ -67,6 +96,14 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
         for pg_num in range(page_count):
             page = doc[pg_num]
             all_hidden |= find_hidden_regions(page, body_fonts)
+
+        page0_colors = _get_page0_text_colors(doc[0]) if page_count > 0 else {}
+
+        page_drawings: dict[int, list] = {}
+        for pg_num in range(page_count):
+            drawings = collect_line_drawings(doc[pg_num])
+            if drawings:
+                page_drawings[pg_num] = drawings
     finally:
         doc.close()
 
@@ -86,24 +123,19 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
         all_mupdf_blocks = strip_repeating(all_mupdf_blocks, repeating)
         all_spatial_blocks = strip_repeating(all_spatial_blocks, repeating)
 
+    dominant_font = font_counts.most_common(1)[0][0] if font_counts else ""
+    propagate_monospace(all_mupdf_blocks, all_spatial_blocks, dominant_font)
+
+    wording_problems = classify_wording(all_mupdf_blocks, page_drawings)
+
     all_mupdf_blocks = cleanup_text(all_mupdf_blocks)
     all_spatial_blocks = cleanup_text(all_spatial_blocks)
 
     all_mupdf_blocks = normalize_spans(all_mupdf_blocks)
     all_spatial_blocks = normalize_spans(all_spatial_blocks)
 
-    wg21_metadata, meta_consumed = extract_metadata_from_blocks(all_mupdf_blocks)
-    if meta_consumed:
-        consumed_bboxes = [all_mupdf_blocks[i].bbox for i in meta_consumed
-                           if i < len(all_mupdf_blocks)]
-        all_mupdf_blocks = [b for i, b in enumerate(all_mupdf_blocks)
-                            if i not in meta_consumed]
-        all_spatial_blocks = [
-            b for b in all_spatial_blocks
-            if not any(b.page_num == 0
-                       and abs(b.bbox[1] - cb[1]) < 5
-                       for cb in consumed_bboxes)
-        ]
+    wg21_metadata, _ = extract_metadata_from_blocks(all_mupdf_blocks,
+                                                     text_colors=page0_colors)
 
     table_sections, all_mupdf_blocks = detect_tables(all_mupdf_blocks)
     if table_sections:
@@ -143,4 +175,12 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
     md = emit_markdown(metadata, sections)
     prompts = emit_prompts(metadata, sections)
 
-    return md, prompts
+    if wording_problems:
+        wording_prompt = "\n\n".join(
+            ["\n## Wording Detection Issues\n"] + wording_problems)
+        if prompts:
+            prompts += "\n" + wording_prompt
+        else:
+            prompts = "# tomd - Conversion Issues\n" + wording_prompt
+
+    return ascii_escape(md), prompts

@@ -20,10 +20,13 @@ _TOC_LABELS = frozenset({
     "contents",
 })
 
-MIN_TOC_RUN = 3
+_WHITESPACE_RE = re.compile(r"\s+")
+
+_MIN_TOC_RUN = 3
+_MAX_GAP = 3
 
 
-def normalize_toc_entry(text: str) -> str:
+def _normalize_toc_entry(text: str) -> str:
     """Normalize text for TOC comparison.
 
     Strips trailing page numbers, dot leaders, section number prefixes.
@@ -33,14 +36,14 @@ def normalize_toc_entry(text: str) -> str:
     text = _DOT_LEADER_RE.sub(" ", text)
     text = _TRAILING_PAGE_NUM_RE.sub("", text)
     text = _SECTION_NUM_PREFIX_RE.sub("", text)
-    text = re.sub(r"\s+", " ", text).strip().lower()
+    text = _WHITESPACE_RE.sub(" ", text).strip().lower()
     return text
 
 
 def _is_toc_label(text: str) -> bool:
     """Check if text is a TOC heading label."""
     normalized = text.strip().lower()
-    normalized = re.sub(r"\s+", " ", normalized)
+    normalized = _WHITESPACE_RE.sub(" ", normalized)
     return normalized in _TOC_LABELS
 
 
@@ -57,11 +60,11 @@ def find_toc_indices(texts: list[str], headings: set[str]) -> set[int]:
     if not texts or not headings:
         return set()
 
-    norm_headings = {normalize_toc_entry(h) for h in headings}
+    norm_headings = {_normalize_toc_entry(h) for h in headings}
     norm_headings.discard("")
 
     def _matches_heading(text: str) -> bool:
-        norm = normalize_toc_entry(text)
+        norm = _normalize_toc_entry(text)
         if not norm:
             return False
         for h in norm_headings:
@@ -84,20 +87,16 @@ def find_toc_indices(texts: list[str], headings: set[str]) -> set[int]:
     if first_match < 0:
         return set()
 
-    # From the first match, build a run bridging small gaps.
-    # Stop after a gap exceeds MAX_GAP, or when a heading repeats
-    # (the second occurrence is the real heading, not a TOC entry).
-    MAX_GAP = 3
     run_indices: list[int] = []
-    seen_normalized: set[str] = set()
+    seen_first_lines: set[str] = set()
     gap = 0
 
     for i in range(first_match, len(matches)):
         if matches[i]:
-            norm = normalize_toc_entry(texts[i].split("\n")[0].strip())
-            if norm in seen_normalized:
+            first_line = texts[i].split("\n")[0].strip().lower()
+            if first_line in seen_first_lines:
                 break
-            seen_normalized.add(norm)
+            seen_first_lines.add(first_line)
             if gap > 0:
                 for g in range(i - gap, i):
                     run_indices.append(g)
@@ -105,12 +104,12 @@ def find_toc_indices(texts: list[str], headings: set[str]) -> set[int]:
             run_indices.append(i)
         else:
             gap += 1
-            if gap > MAX_GAP:
+            if gap > _MAX_GAP:
                 break
 
     match_count = sum(1 for i in run_indices if matches[i])
     toc_indices: set[int] = set()
-    if match_count >= MIN_TOC_RUN:
+    if match_count >= _MIN_TOC_RUN:
         toc_indices = set(run_indices)
         _log.debug("TOC block: %d entries (%d matched)",
                     len(run_indices), match_count)

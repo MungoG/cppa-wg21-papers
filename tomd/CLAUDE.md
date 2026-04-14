@@ -12,14 +12,16 @@ Pipeline execution order:
 2. Close document
 3. Readability check (early exit if garbage)
 4. Header/footer detection and stripping (both paths)
-5. Text cleanup: NBSP, whitespace, dehyphenation, cross-page join (both paths)
-6. Span normalization: snap bold/italic boundaries to word edges (both paths)
-7. Table detection from MuPDF block positions; exclude table regions from spatial
-8. Dual-path comparison -> Sections (confident or uncertain per page)
-9. Merge table sections into position
-10. Structure: metadata extraction, heading/list/paragraph classification, position-based list detection, paragraph merging, code block detection, language label stripping, nesting validation
-11. TOC stripping (fuzzy match against headings)
-12. Emit .md + optional .prompts.md
+5. Monospace propagation: spatial path's glyph-width classifications applied to MuPDF spans
+6. Wording detection: HSV color analysis + drawing decoration correlation for ins/del markup
+7. Text cleanup: NBSP, whitespace, dehyphenation, cross-page join (both paths)
+8. Span normalization: snap bold/italic boundaries to word edges (both paths)
+9. Table detection from MuPDF block positions; exclude table regions from spatial
+10. Dual-path comparison -> Sections (confident or uncertain per page)
+11. Merge table sections into position
+12. Structure: metadata extraction, heading/list/paragraph classification, position-based list detection, paragraph merging, code block detection, wording section detection, language label stripping, nesting validation
+13. TOC stripping (fuzzy match against headings)
+14. Emit .md + optional .prompts.md
 
 ## Multi-Signal Confidence (Critical)
 
@@ -63,7 +65,7 @@ When paths disagree: MuPDF version goes in the output (it's more battle-tested).
 - Nesting must be validated: no heading may skip more than one level deeper than its predecessor
 - When signals conflict, section number wins if present; font-size ranking wins otherwise at lower confidence
 - Known unnumbered sections (`Abstract`, `Revision History`, `References`, `Acknowledgements`, `Motivation`, `Wording`, `Proposed Wording`, `Design Decisions`) are top-level (`##`)
-- Title is the first non-metadata text block before any numbered section, must have font size larger than body
+- Title is the largest-font non-metadata text block before any numbered section, confirmed by color darkness when available (multi-signal). Category labels (short all-uppercase text like "WG21 PROPOSAL") are consumed, not treated as titles
 
 ## Honest Output
 
@@ -100,7 +102,8 @@ Auto-resolution via `--llm` flag is deferred to v2. For v1, the tool produces a 
 - `lib/__init__.py` - Package marker for shared library.
 - `lib/similarity.py` - Dual-algorithm string similarity (SequenceMatcher + Jaccard). Per-algorithm thresholds, 200-char circuit breaker. Format-agnostic.
 - `lib/toc.py` - Table of Contents detection. Matches section texts against known headings using fuzzy similarity. Bridges small gaps. Format-agnostic - no dependency on PDF types.
-- `lib/pdf/__init__.py` - Exports `convert_pdf()`. Orchestrates the full pipeline in order.
+- `lib/pdf/__init__.py` - Exports `convert_pdf()`. Orchestrates the full pipeline in order. Includes monospace propagation, wording classification, and page 0 color extraction via space-color proxy.
+- `lib/pdf/wording.py` - Wording section detection via multi-signal HSV color + drawing decoration analysis. Detects ins/del markup. Confidence levels with prompts file for ambiguous cases.
 - `lib/pdf/types.py` - Data classes (`Block`, `Span`, `Line`, `Section`, `PageEdgeItem`), enums (`Confidence`, `SectionKind`), named constants, precompiled regex, `is_readable()`.
 - `lib/pdf/extract.py` - Dual extraction: `extract_mupdf()` (dict API) and `extract_spatial()` (rawdict + four spatial rules). Link collection and attachment. Calls `classify_monospace` during span construction.
 - `lib/pdf/mono.py` - Triple-signal monospace detection. Font name decomposition (strip modifiers, split camelCase, check keywords), glyph width uniformity, glyph spacing uniformity.

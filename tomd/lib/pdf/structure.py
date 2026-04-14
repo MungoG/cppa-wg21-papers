@@ -2,17 +2,20 @@
 
 import logging
 import re
+import unicodedata
 from collections import Counter
+from dataclasses import replace
 
 from .types import (
     Block, Line, Span, Section, SectionKind, Confidence,
-    SIMILARITY_THRESHOLD,
+    SIMILARITY_THRESHOLD, TERMINAL_PUNCTUATION, FALLBACK_BODY_SIZE,
+    MIN_UNCERTAIN_WORDS,
     _SECTION_NUM_RE, _DOC_FIELD_RE, _REPLY_TO_RE, _AUDIENCE_RE, _DATE_RE,
     _BULLET_RE, _NUMBERED_LIST_RE, _KNOWN_SECTIONS,
 )
 
-HEADING_SIZE_RATIO = 1.05
-TITLE_SIZE_RATIO = 1.2
+_HEADING_SIZE_RATIO = 1.05
+_TITLE_SIZE_RATIO = 1.2
 
 _log = logging.getLogger(__name__)
 
@@ -65,6 +68,12 @@ def compare_extractions(mupdf_blocks: list[Block],
         s_words = _block_words(s_blocks)
         sim = _word_similarity(m_words, s_words)
 
+        if sim < SIMILARITY_THRESHOLD:
+            m_joined = unicodedata.normalize('NFC', " ".join(m_words))
+            s_joined = unicodedata.normalize('NFC', " ".join(s_words))
+            if m_joined == s_joined:
+                sim = 1.0
+
         if sim >= SIMILARITY_THRESHOLD:
             for block in m_blocks:
                 sections.append(Section(
@@ -90,6 +99,81 @@ def compare_extractions(mupdf_blocks: list[Block],
                 lines=[ln for b in m_blocks for ln in b.lines],
             ))
 
+    all_pages_set = set(all_pages)
+    uncertain_pages = [pg for pg in all_pages
+                       if any(s.kind == SectionKind.UNCERTAIN and s.page_num == pg
+                              for s in sections)]
+    promoted: set[int] = set()
+    for pg in uncertain_pages:
+        if pg in promoted:
+            continue
+        next_pg = pg + 1
+        if next_pg not in all_pages_set:
+            continue
+        m_words_2 = _block_words(mupdf_by_page.get(pg, []) +
+                                 mupdf_by_page.get(next_pg, []))
+        s_words_2 = _block_words(spatial_by_page.get(pg, []) +
+                                 spatial_by_page.get(next_pg, []))
+        if _word_similarity(m_words_2, s_words_2) >= SIMILARITY_THRESHOLD:
+            promoted.add(pg)
+            promoted.add(next_pg)
+
+    if promoted:
+        kept = [s for s in sections
+                if not (s.kind == SectionKind.UNCERTAIN
+                        and s.page_num in promoted)]
+        for pg in sorted(promoted):
+            for block in mupdf_by_page.get(pg, []):
+                kept.append(Section(
+                    kind=SectionKind.PARAGRAPH,
+                    text=block.text,
+                    confidence=Confidence.HIGH,
+                    lines=block.lines,
+                    page_num=block.page_num,
+                    font_size=block.font_size,
+                ))
+        sections = kept
+
+    still_uncertain = [pg for pg in all_pages
+                       if any(s.kind == SectionKind.UNCERTAIN and s.page_num == pg
+                              for s in sections)]
+    if still_uncertain:
+        m_words_all: list[str] = []
+        s_words_all: list[str] = []
+        for pg in still_uncertain:
+            m_words_all.extend(_block_words(mupdf_by_page.get(pg, [])))
+            s_words_all.extend(_block_words(spatial_by_page.get(pg, [])))
+        m_all_nfc = unicodedata.normalize('NFC', " ".join(m_words_all))
+        s_all_nfc = unicodedata.normalize('NFC', " ".join(s_words_all))
+        doc_match = (m_all_nfc == s_all_nfc
+                     or _word_similarity(m_words_all, s_words_all)
+                     >= SIMILARITY_THRESHOLD)
+        if doc_match:
+            bulk_promoted = set(still_uncertain)
+            kept = [s for s in sections
+                    if not (s.kind == SectionKind.UNCERTAIN
+                            and s.page_num in bulk_promoted)]
+            for pg in sorted(bulk_promoted):
+                for block in mupdf_by_page.get(pg, []):
+                    kept.append(Section(
+                        kind=SectionKind.PARAGRAPH,
+                        text=block.text,
+                        confidence=Confidence.HIGH,
+                        lines=block.lines,
+                        page_num=block.page_num,
+                        font_size=block.font_size,
+                    ))
+            sections = kept
+
+    for sec in sections:
+        if sec.kind != SectionKind.UNCERTAIN:
+            continue
+        m_len = len(sec.mupdf_text.split()) if sec.mupdf_text else 0
+        s_len = len(sec.spatial_text.split()) if sec.spatial_text else 0
+        if min(m_len, s_len) < MIN_UNCERTAIN_WORDS:
+            sec.kind = SectionKind.PARAGRAPH
+            sec.confidence = Confidence.LOW
+
     return sections
 
 
@@ -102,7 +186,7 @@ def _detect_body_size(sections: list[Section]) -> float:
                 if span.text.strip():
                     sizes[span.font_size] += len(span.text)
     if not sizes:
-        return 11.0
+        return FALLBACK_BODY_SIZE
     return sizes.most_common(1)[0][0]
 
 
@@ -113,7 +197,7 @@ def _rank_font_sizes(sections: list[Section],
     for sec in sections:
         for line in sec.lines:
             fs = line.font_size
-            if fs > body_size * HEADING_SIZE_RATIO:
+            if fs > body_size * _HEADING_SIZE_RATIO:
                 sizes.add(fs)
     ranked = sorted(sizes, reverse=True)
     return {sz: i + 1 for i, sz in enumerate(ranked)}
@@ -128,24 +212,30 @@ def _heading_level_from_number(section_num: str) -> int:
 def _heading_confidence(has_number: bool, number_level: int,
                         font_level: int | None, is_bold: bool,
                         is_known: bool) -> tuple[int, Confidence]:
-    """Determine heading level and confidence from multiple signals."""
+    """Determine heading level and confidence from multiple signals.
+
+    Bold never determines heading level, but as a confirming signal
+    it raises confidence by one tier.
+    """
     if has_number:
         level = number_level
         if font_level is not None and font_level == level:
             if is_bold:
                 return level, Confidence.HIGH
-            return level, Confidence.HIGH
+            return level, Confidence.MEDIUM
         if font_level is not None:
             return level, Confidence.MEDIUM
-        return level, Confidence.MEDIUM
+        if is_bold:
+            return level, Confidence.MEDIUM
+        return level, Confidence.LOW
 
     if font_level is not None:
         if is_known and is_bold:
-            return 2, Confidence.MEDIUM
+            return 2, Confidence.HIGH
         if is_known:
             return 2, Confidence.MEDIUM
         if is_bold:
-            return font_level + 1, Confidence.LOW
+            return font_level + 1, Confidence.MEDIUM
         return font_level + 1, Confidence.LOW
 
     if is_known:
@@ -228,6 +318,10 @@ def _extract_metadata(sections: list[Section]) -> tuple[dict, list[Section]]:
                     remaining.append(sec)
                 continue
 
+            alpha = [c for c in text if c.isalpha()]
+            if alpha and all(c.isupper() for c in alpha) and len(text.split()) <= 3:
+                continue
+
             if _SECTION_NUM_RE.match(text.split("\n")[0]):
                 metadata_zone = False
 
@@ -262,7 +356,7 @@ def structure_sections(sections: list[Section],
         first_line = sec.text.split("\n")[0].strip()
 
         if not title_found:
-            if (sec.font_size > body_size * TITLE_SIZE_RATIO
+            if (sec.font_size > body_size * _TITLE_SIZE_RATIO
                     and not _SECTION_NUM_RE.match(first_line)):
                 metadata["title"] = first_line
                 sec.kind = SectionKind.TITLE
@@ -310,6 +404,7 @@ def structure_sections(sections: list[Section],
     structured = _merge_paragraphs(structured)
     structured = _detect_code_blocks(structured)
     structured = [s for s in structured if _detect_lang_label(s) is None]
+    structured = _classify_wording_sections(structured)
     _validate_nesting(structured)
     return metadata, structured
 
@@ -319,7 +414,7 @@ _BULLET_SPLIT_RE = re.compile(
     r"(?=[\u2022\u2023\u25cf\u25e6\u2043\u2219\u25aa\u25ab][\s\u200b])"
 )
 
-INDENT_TOLERANCE = 5.0
+_INDENT_TOLERANCE = 5.0
 
 
 def _get_body_margin(sections: list[Section]) -> float:
@@ -333,7 +428,7 @@ def _get_body_margin(sections: list[Section]) -> float:
     for sec in sections:
         for line in sec.lines:
             if line.text.strip() and line.spans:
-                x = round(line.bbox[0] / INDENT_TOLERANCE) * INDENT_TOLERANCE
+                x = round(line.bbox[0] / _INDENT_TOLERANCE) * _INDENT_TOLERANCE
                 x_counts[x] += 1
     if not x_counts:
         return 0.0
@@ -396,8 +491,8 @@ def _join_bullet_marker_lines(lines: list) -> list:
         if (text and text[0] in _BULLET_CHARS and len(text) <= 3
                 and i + 1 < len(lines)):
             next_line = lines[i + 1]
-            from .cleanup import strip_zero_width
-            bullet = strip_zero_width(text).rstrip()
+            from .cleanup import strip_format_chars
+            bullet = strip_format_chars(text).rstrip()
             combined_text = bullet + " " + next_line.text.lstrip()
             bullet_span = Span(
                 text=bullet + " ",
@@ -431,7 +526,7 @@ def _split_section_by_position(sec: Section, body_margin: float) -> list[Section
         if not line.text.strip() or not line.spans:
             continue
         x = line.bbox[0]
-        if x > body_margin + INDENT_TOLERANCE and _line_starts_with_bullet(line):
+        if x > body_margin + _INDENT_TOLERANCE and _line_starts_with_bullet(line):
             indented_bullets.append(line)
 
     if len(indented_bullets) < 1:
@@ -451,9 +546,9 @@ def _split_section_by_position(sec: Section, body_margin: float) -> list[Section
         x = line.bbox[0]
         is_bullet = _line_starts_with_bullet(line)
         indent = 0
-        if x > body_margin + INDENT_TOLERANCE:
+        if x > body_margin + _INDENT_TOLERANCE:
             indent = 1
-        if x > body_margin + INDENT_TOLERANCE * 3:
+        if x > body_margin + _INDENT_TOLERANCE * 3:
             indent = 2
 
         if is_bullet and indent > 0:
@@ -536,9 +631,6 @@ def _split_inline_bullets_text(sec: Section) -> list[Section]:
     return result if result else [sec]
 
 
-_TERMINAL = frozenset(".?!:")
-
-
 def _merge_paragraphs(sections: list[Section]) -> list[Section]:
     """Merge consecutive sections that are continuations.
 
@@ -552,7 +644,7 @@ def _merge_paragraphs(sections: list[Section]) -> list[Section]:
 
     mergeable = frozenset({SectionKind.PARAGRAPH, SectionKind.LIST})
 
-    result = [sections[0]]
+    result = [replace(sections[0], lines=list(sections[0].lines))]
     for sec in sections[1:]:
         prev = result[-1]
         if (prev.kind in mergeable
@@ -561,13 +653,13 @@ def _merge_paragraphs(sections: list[Section]) -> list[Section]:
                 and sec.text.lstrip()):
             prev_end = prev.text.rstrip()[-1]
             cur_start = sec.text.lstrip()[0]
-            if prev_end not in _TERMINAL and cur_start.islower():
+            if prev_end not in TERMINAL_PUNCTUATION and cur_start.islower():
                 prev.text = prev.text.rstrip() + " " + sec.text.lstrip()
                 prev.lines.extend(sec.lines)
                 if prev.lines:
                     prev.font_size = prev.lines[0].font_size
                 continue
-        result.append(sec)
+        result.append(replace(sec, lines=list(sec.lines)))
     return result
 
 
@@ -612,8 +704,8 @@ _LANG_LABELS = {
 
 def _detect_lang_label(sec: Section) -> str | None:
     """Check if a section is a code block language label."""
-    from .cleanup import strip_zero_width
-    text = strip_zero_width(sec.text).strip().lower()
+    from .cleanup import strip_format_chars
+    text = strip_format_chars(sec.text).strip().lower()
     return _LANG_LABELS.get(text)
 
 
@@ -681,6 +773,29 @@ def _detect_code_blocks(sections: list[Section]) -> list[Section]:
 
     flush_mono()
     return result
+
+
+def _classify_wording_sections(sections: list[Section]) -> list[Section]:
+    """Reclassify sections containing wording-marked spans."""
+    for sec in sections:
+        if sec.kind in (SectionKind.HEADING, SectionKind.TITLE,
+                        SectionKind.UNCERTAIN, SectionKind.TABLE):
+            continue
+        wording_spans = [s for ln in sec.lines for s in ln.spans
+                         if s.wording_role and s.text.strip()]
+        if not wording_spans:
+            continue
+        roles = {s.wording_role for s in wording_spans}
+        non_context = roles - {"context"}
+        if non_context == {"ins"}:
+            sec.kind = SectionKind.WORDING_ADD
+        elif non_context == {"del"}:
+            sec.kind = SectionKind.WORDING_REMOVE
+        elif non_context:
+            sec.kind = SectionKind.WORDING
+        elif "context" in roles:
+            sec.kind = SectionKind.WORDING
+    return sections
 
 
 def _validate_nesting(sections: list[Section]) -> None:

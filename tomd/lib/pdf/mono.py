@@ -1,11 +1,19 @@
 """Triple-signal monospace font detection.
 
-Three independent signals, any two agreeing = high confidence:
+Three independent signals:
   1. Font name decomposition (strip modifiers, split camelCase, check keywords)
   2. Glyph bounding box widths are uniform (low coefficient of variation)
   3. Glyph x-origin spacing is uniform (measures advance width directly)
 
-Signal 3 is the strongest - it measures the defining property of monospace.
+Acceptance rules:
+  - Two or more signals agreeing: accept (high confidence)
+  - Signal 3 alone: accept (measures the defining property of monospace)
+  - Signal 1 alone: accept (fallback when no glyph data is available)
+  - Signal 2 alone: reject (weakest signal, bbox widths are noisy)
+
+The spatial extraction path (rawdict) provides per-character data for signals
+2 and 3. The MuPDF dict path does not. The pipeline orchestrator propagates
+spatial glyph-width decisions to MuPDF spans of the same font after extraction.
 """
 
 import math
@@ -21,13 +29,16 @@ _FONT_MODIFIERS = frozenset({
     "display", "text", "caption", "subhead", "headline", "mt",
 })
 
-_MONO_KEYWORDS = frozenset({"mono", "courier", "code", "consolas"})
+_MONO_KEYWORDS = frozenset({"mono", "courier", "code", "consolas", "menlo"})
 
 _CAMEL_SPLIT_RE = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
-GLYPH_CV_THRESHOLD = 0.15
+_GLYPH_CV_THRESHOLD = 0.15
+_FAT_THIN_REJECT_RATIO = 1.3
 
 _MIN_CHARS_FOR_METRICS = 3
+_FAT_CHARS = frozenset("MWmw@%")
+_THIN_CHARS = frozenset("Iil1|!.,;:' ")
 
 
 def _strip_modifiers(font_name: str) -> str:
@@ -44,7 +55,7 @@ def _split_camel(name: str) -> list[str]:
     return [p.lower() for p in parts if p]
 
 
-def font_name_is_monospace(font_name: str) -> bool:
+def _font_name_is_monospace(font_name: str) -> bool:
     """Signal 1: font name contains a monospace keyword after decomposition.
 
     Strips style/weight modifiers, splits camelCase, checks for
@@ -66,7 +77,7 @@ def _coefficient_of_variation(values: list[float]) -> float:
     return math.sqrt(variance) / mean
 
 
-def glyph_widths_uniform(char_widths: list[float]) -> float:
+def _glyph_widths_uniform(char_widths: list[float]) -> float:
     """Signal 2: coefficient of variation of character bbox widths.
 
     Lower value = more uniform = more likely monospace.
@@ -78,7 +89,7 @@ def glyph_widths_uniform(char_widths: list[float]) -> float:
     return _coefficient_of_variation(widths)
 
 
-def glyph_spacing_uniform(char_x_origins: list[float]) -> float:
+def _glyph_spacing_uniform(char_x_origins: list[float]) -> float:
     """Signal 3: coefficient of variation of inter-glyph x-origin spacing.
 
     Measures the advance width directly - the defining property of
@@ -101,19 +112,33 @@ def classify_monospace(
     font_name: str,
     char_widths: list[float] | None = None,
     char_x_origins: list[float] | None = None,
+    chars: list[str] | None = None,
 ) -> bool:
-    """Combine all available signals to determine if text is monospace.
+    """Accept or reject monospace classification from available signals.
 
     Called during extraction when raw character data is available
     (all three signals), or later with just font_name (signal 1 only).
+    When chars are provided, compares fat-character widths (M, W) against
+    thin-character widths (i, l, space) for immediate reject or strong accept.
     """
-    s1 = font_name_is_monospace(font_name)
+    if chars and char_widths and len(chars) == len(char_widths):
+        fat_w = [w for c, w in zip(chars, char_widths)
+                 if c in _FAT_CHARS and w > 0]
+        thin_w = [w for c, w in zip(chars, char_widths)
+                  if c in _THIN_CHARS and w > 0]
+        if fat_w and thin_w:
+            avg_fat = sum(fat_w) / len(fat_w)
+            avg_thin = sum(thin_w) / len(thin_w)
+            if avg_thin > 0 and avg_fat / avg_thin > _FAT_THIN_REJECT_RATIO:
+                return False
 
-    s2_cv = glyph_widths_uniform(char_widths) if char_widths else -1.0
-    s3_cv = glyph_spacing_uniform(char_x_origins) if char_x_origins else -1.0
+    s1 = _font_name_is_monospace(font_name)
 
-    s2 = 0.0 <= s2_cv <= GLYPH_CV_THRESHOLD
-    s3 = 0.0 <= s3_cv <= GLYPH_CV_THRESHOLD
+    s2_cv = _glyph_widths_uniform(char_widths) if char_widths else -1.0
+    s3_cv = _glyph_spacing_uniform(char_x_origins) if char_x_origins else -1.0
+
+    s2 = 0.0 <= s2_cv <= _GLYPH_CV_THRESHOLD
+    s3 = 0.0 <= s3_cv <= _GLYPH_CV_THRESHOLD
 
     signals = sum([s1, s2, s3])
 
@@ -127,3 +152,29 @@ def classify_monospace(
         return True
 
     return False
+
+
+def propagate_monospace(mupdf_blocks: list, spatial_blocks: list,
+                        dominant_font: str) -> None:
+    """Apply spatial path's glyph-width monospace decisions to MuPDF spans.
+
+    Collects fonts classified as monospace by the spatial path (which has
+    per-character data), filters out the dominant body font (the single
+    most common font by character count), and sets monospace=True on
+    matching MuPDF spans.
+    """
+    mono_fonts: set[str] = set()
+    for b in spatial_blocks:
+        for ln in b.lines:
+            for s in ln.spans:
+                if s.monospace and s.text.strip():
+                    mono_fonts.add(s.font_name)
+    if dominant_font:
+        mono_fonts = {f for f in mono_fonts if f.lower() != dominant_font}
+    if not mono_fonts:
+        return
+    for b in mupdf_blocks:
+        for ln in b.lines:
+            for s in ln.spans:
+                if not s.monospace and s.font_name in mono_fonts:
+                    s.monospace = True

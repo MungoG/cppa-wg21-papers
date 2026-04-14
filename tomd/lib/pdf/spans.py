@@ -7,6 +7,7 @@ because code boundaries are intentional.
 """
 
 import logging
+from dataclasses import replace
 
 from .types import Block, Line, Span
 
@@ -76,30 +77,8 @@ def _normalize_line_spans(spans: list[Span]) -> list[Span]:
         wb = _find_word_boundary_left(prev.text)
         if wb < len(prev.text) and wb > 0:
             fragment = prev.text[wb:]
-            result[i - 1] = Span(
-                text=prev.text[:wb],
-                font_name=prev.font_name,
-                font_size=prev.font_size,
-                bold=prev.bold,
-                italic=prev.italic,
-                monospace=prev.monospace,
-                bbox=prev.bbox,
-                origin=prev.origin,
-                color=prev.color,
-                link_url=prev.link_url,
-            )
-            result[i] = Span(
-                text=fragment + cur.text,
-                font_name=cur.font_name,
-                font_size=cur.font_size,
-                bold=cur.bold,
-                italic=cur.italic,
-                monospace=cur.monospace,
-                bbox=cur.bbox,
-                origin=cur.origin,
-                color=cur.color,
-                link_url=cur.link_url,
-            )
+            result[i - 1] = replace(prev, text=prev.text[:wb])
+            result[i] = replace(cur, text=fragment + cur.text)
             if not result[i - 1].text:
                 result.pop(i - 1)
                 continue
@@ -129,30 +108,8 @@ def _normalize_line_spans(spans: list[Span]) -> list[Span]:
         wb = _find_word_boundary_right(nxt.text)
         if wb > 0 and wb < len(nxt.text):
             fragment = nxt.text[:wb]
-            result[i] = Span(
-                text=cur.text + fragment,
-                font_name=cur.font_name,
-                font_size=cur.font_size,
-                bold=cur.bold,
-                italic=cur.italic,
-                monospace=cur.monospace,
-                bbox=cur.bbox,
-                origin=cur.origin,
-                color=cur.color,
-                link_url=cur.link_url,
-            )
-            result[i + 1] = Span(
-                text=nxt.text[wb:],
-                font_name=nxt.font_name,
-                font_size=nxt.font_size,
-                bold=nxt.bold,
-                italic=nxt.italic,
-                monospace=nxt.monospace,
-                bbox=nxt.bbox,
-                origin=nxt.origin,
-                color=nxt.color,
-                link_url=nxt.link_url,
-            )
+            result[i] = replace(cur, text=cur.text + fragment)
+            result[i + 1] = replace(nxt, text=nxt.text[wb:])
             if not result[i + 1].text:
                 result.pop(i + 1)
                 continue

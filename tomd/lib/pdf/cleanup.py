@@ -2,11 +2,14 @@
 
 import logging
 import re
+import unicodedata
 from collections import defaultdict
+from dataclasses import replace
 
 from .types import (
     Block, Line, Span, PageEdgeItem,
     Y_TOLERANCE, REPEATING_THRESHOLD, EDGE_ITEMS_PER_PAGE,
+    TERMINAL_PUNCTUATION,
     _PAGE_NUM_RE, _DOC_NUM_RE, _COMPOUND_PREFIXES,
 )
 
@@ -165,7 +168,7 @@ def dehyphenate(text: str) -> str:
     return "\n".join(result)
 
 
-def join_cross_page(blocks: list[Block]) -> list[Block]:
+def _join_cross_page(blocks: list[Block]) -> list[Block]:
     """Join paragraphs that span page boundaries.
 
     When the last block on page N ends without terminal punctuation
@@ -175,8 +178,7 @@ def join_cross_page(blocks: list[Block]) -> list[Block]:
     if len(blocks) < 2:
         return blocks
 
-    _TERMINAL = frozenset(".?!:")
-    result = [blocks[0]]
+    result = [replace(blocks[0], lines=list(blocks[0].lines))]
 
     for block in blocks[1:]:
         prev = result[-1]
@@ -186,7 +188,7 @@ def join_cross_page(blocks: list[Block]) -> list[Block]:
         if (prev.page_num != block.page_num
                 and prev_text
                 and cur_text
-                and prev_text[-1] not in _TERMINAL
+                and prev_text[-1] not in TERMINAL_PUNCTUATION
                 and cur_text[0].islower()):
             prev.lines.extend(block.lines)
             bboxes = [ln.bbox for ln in prev.lines]
@@ -197,24 +199,27 @@ def join_cross_page(blocks: list[Block]) -> list[Block]:
                 max(b[3] for b in bboxes),
             )
         else:
-            result.append(block)
+            result.append(replace(block, lines=list(block.lines)))
 
     return result
 
 
 _MULTI_SPACE_RE = re.compile(r"[ \t]{2,}")
 _NBSP = "\u00a0"
-_ZERO_WIDTH = frozenset("\u200b\u200c\u200d\ufeff\u200e\u200f")
+_FORMAT_CHARS = frozenset(
+    chr(c) for c in range(0x10000)
+    if unicodedata.category(chr(c)) == 'Cf'
+)
 
 
-def strip_zero_width(text: str) -> str:
-    """Remove zero-width Unicode characters."""
-    return "".join(c for c in text if c not in _ZERO_WIDTH)
+def strip_format_chars(text: str) -> str:
+    """Remove Unicode format characters (category Cf)."""
+    return "".join(c for c in text if c not in _FORMAT_CHARS)
 
 
 def normalize_whitespace(text: str) -> str:
     """Collapse runs of spaces, replace non-breaking spaces, strip trailing."""
-    text = strip_zero_width(text)
+    text = strip_format_chars(text)
     text = text.replace(_NBSP, " ")
     text = _MULTI_SPACE_RE.sub(" ", text)
     lines = [line.rstrip() for line in text.split("\n")]
@@ -225,33 +230,37 @@ def find_hidden_regions(page, body_fonts: set[str] | None = None,
                         ) -> set[tuple[float, float, float, float]]:
     """Find regions of hidden text on a page.
 
-    Two detection methods:
-      1. Rendering mode 3 (declared invisible in the PDF spec) -
-         general, reliable, works on any PDF.
-      2. Non-document font with non-black color (Google Docs widget
-         artifacts) - catches UI framework text like dropdown values
-         rendered in Roboto/Material fonts.
+    Detects Google Docs widget artifacts: non-document font with
+    non-black color (e.g. Roboto/Material UI framework text rendered
+    as dropdown values).
+
+    Rendering mode 3 (invisible text) is intentionally ignored.
+    MuPDF's dict/rawdict APIs already exclude mode 3 text from
+    extraction output. Collecting mode 3 bboxes would only match
+    against the visible text at the same coordinates, causing
+    false-positive stripping on Chrome "Save as PDF" output where
+    an invisible accessibility overlay covers every page.
     """
     hidden_bboxes = set()
 
+    if body_fonts is None:
+        return hidden_bboxes
+
     for span in page.get_texttrace():
         if span.get("type") == 3:
-            for ch in span.get("chars", []):
-                hidden_bboxes.add(tuple(ch[3]))
             continue
 
-        if body_fonts is not None:
-            font = span.get("font", "")
-            font_lower = font.lower()
-            color = span.get("color")
-            is_black = (color == 0 or color == (0, 0, 0)
-                        or color == 0x000000)
-            if (font_lower not in body_fonts
-                    and not is_black
-                    and any(p in font_lower
-                            for p in ("roboto", "google", "material"))):
-                for ch in span.get("chars", []):
-                    hidden_bboxes.add(tuple(ch[3]))
+        font = span.get("font", "")
+        font_lower = font.lower()
+        color = span.get("color")
+        is_black = (color == 0 or color == (0, 0, 0)
+                    or color == 0x000000)
+        if (font_lower not in body_fonts
+                and not is_black
+                and any(p in font_lower
+                        for p in ("roboto", "google", "material"))):
+            for ch in span.get("chars", []):
+                hidden_bboxes.add(tuple(ch[3]))
 
     return hidden_bboxes
 
@@ -293,21 +302,11 @@ def cleanup_text(blocks: list[Block]) -> list[Block]:
         for line in block.lines:
             cleaned_spans = []
             for span in line.spans:
-                new_text = span.text.replace(_NBSP, " ")
+                new_text = strip_format_chars(span.text)
+                new_text = new_text.replace(_NBSP, " ")
                 if not span.monospace:
                     new_text = _MULTI_SPACE_RE.sub(" ", new_text)
-                cleaned_spans.append(Span(
-                    text=new_text,
-                    font_name=span.font_name,
-                    font_size=span.font_size,
-                    bold=span.bold,
-                    italic=span.italic,
-                    monospace=span.monospace,
-                    bbox=span.bbox,
-                    origin=span.origin,
-                    color=span.color,
-                    link_url=span.link_url,
-                ))
+                cleaned_spans.append(replace(span, text=new_text))
             cleaned_lines.append(Line(
                 spans=cleaned_spans,
                 bbox=line.bbox,
@@ -319,12 +318,24 @@ def cleanup_text(blocks: list[Block]) -> list[Block]:
             page_num=block.page_num,
         ))
 
-    result = join_cross_page(result)
+    result = _join_cross_page(result)
 
     dehyphenated = []
     for block in result:
         new_lines = []
+        pending_trim = None
         for i, line in enumerate(block.lines):
+            if pending_trim is not None:
+                if line.spans:
+                    if pending_trim:
+                        new_first = replace(line.spans[0], text=pending_trim)
+                        line = Line(spans=[new_first] + line.spans[1:],
+                                    bbox=line.bbox, page_num=line.page_num)
+                    elif len(line.spans) > 1:
+                        line = Line(spans=line.spans[1:],
+                                    bbox=line.bbox, page_num=line.page_num)
+                pending_trim = None
+
             if (i + 1 < len(block.lines)
                     and line.spans and block.lines[i + 1].spans):
                 last_span = line.spans[-1]
@@ -335,9 +346,17 @@ def cleanup_text(blocks: list[Block]) -> list[Block]:
                         and next_first.text[0].islower()):
                     prefix = last_span.text[:-1].split()[-1].lower() if last_span.text[:-1].split() else ""
                     if prefix not in _COMPOUND_PREFIXES:
-                        new_lines.append(line)
-                        continue
+                        next_text = next_first.text
+                        words = next_text.split()
+                        first_word = words[0] if words else ""
+                        new_last = replace(last_span,
+                                           text=last_span.text[:-1] + first_word)
+                        line = Line(spans=line.spans[:-1] + [new_last],
+                                    bbox=line.bbox, page_num=line.page_num)
+                        pending_trim = next_text[len(first_word):].lstrip()
+
             new_lines.append(line)
+
         dehyphenated.append(Block(
             lines=new_lines,
             bbox=block.bbox,

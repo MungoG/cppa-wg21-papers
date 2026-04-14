@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""tomd - Convert PDF files to Markdown.
+"""tomd - Convert PDF and HTML files to Markdown.
 
-Hybrid converter using dual extraction (MuPDF + spatial rules),
-multi-signal confidence scoring, and companion prompt files for
-ambiguous regions.
+PDF: hybrid dual extraction (MuPDF + spatial rules) with confidence scoring.
+HTML: DOM traversal with generator-specific metadata extraction.
 
 Usage:
     python tomd/main.py input.pdf                  # -> input.md + input.prompts.md
-    python tomd/main.py input.pdf -o output.md     # -> output.md + output.prompts.md
-    python tomd/main.py *.pdf --outdir converted/  # batch mode
+    python tomd/main.py input.html                 # -> input.md
+    python tomd/main.py *.pdf *.html --outdir out/ # batch mode
 """
 
 import argparse
@@ -16,17 +15,18 @@ import glob as globmod
 import sys
 from pathlib import Path
 
-from lib.pdf import convert_pdf
+_HTML_EXTENSIONS = frozenset({".html", ".htm"})
+_PDF_EXTENSIONS = frozenset({".pdf"})
 
 
 def main():
     parser = argparse.ArgumentParser(
         prog="tomd",
-        description="Convert PDF files to Markdown with confidence scoring.",
+        description="Convert PDF and HTML files to Markdown.",
     )
     parser.add_argument(
         "input", nargs="*",
-        help="PDF file(s) or glob patterns to convert")
+        help="PDF/HTML file(s) or glob patterns to convert")
     parser.add_argument(
         "-o", "--output",
         help="Output Markdown path (single-file mode only)")
@@ -48,54 +48,66 @@ def main():
         parser.print_help()
         sys.exit(0)
 
-    pdf_files = []
+    input_files = []
     for pattern in args.input:
         expanded = globmod.glob(pattern, recursive=True)
         if expanded:
-            pdf_files.extend(expanded)
+            input_files.extend(expanded)
         else:
-            pdf_files.append(pattern)
-    pdf_files = [Path(f) for f in pdf_files]
+            input_files.append(pattern)
+    input_files = [Path(f) for f in input_files]
 
-    if args.output and len(pdf_files) > 1:
+    if args.output and len(input_files) > 1:
         parser.error("-o/--output cannot be used with multiple input files")
 
     successes = []
     failures = []
 
-    for pdf_file in pdf_files:
-        if not pdf_file.exists():
-            print(f"SKIP: {pdf_file} not found", file=sys.stderr)
-            failures.append(pdf_file)
+    for input_file in input_files:
+        if not input_file.exists():
+            print(f"SKIP: {input_file} not found", file=sys.stderr)
+            failures.append(input_file)
             continue
 
-        if args.output and len(pdf_files) == 1:
+        if args.output and len(input_files) == 1:
             md_path = Path(args.output)
         elif args.outdir:
-            md_path = Path(args.outdir) / pdf_file.with_suffix(".md").name
+            md_path = Path(args.outdir) / input_file.with_suffix(".md").name
         else:
-            md_path = pdf_file.with_suffix(".md")
+            md_path = input_file.with_suffix(".md")
 
         prompts_path = md_path.with_suffix(".prompts.md")
 
         try:
-            md_text, prompts_text = convert_pdf(pdf_file)
+            ext = input_file.suffix.lower()
+            if ext in _HTML_EXTENSIONS:
+                from lib.html import convert_html
+                md_text, prompts_text = convert_html(input_file)
+            elif ext in _PDF_EXTENSIONS:
+                from lib.pdf import convert_pdf
+                md_text, prompts_text = convert_pdf(input_file)
+            else:
+                print(f"SKIP: {input_file} unsupported format", file=sys.stderr)
+                failures.append(input_file)
+                continue
 
             md_path.parent.mkdir(parents=True, exist_ok=True)
             md_path.write_text(md_text, encoding="utf-8")
 
             if prompts_text:
                 prompts_path.write_text(prompts_text, encoding="utf-8")
-                print(f"  ok: {pdf_file} -> {md_path} + {prompts_path}")
+                print(f"  ok: {input_file} -> {md_path} + {prompts_path}")
             else:
-                print(f"  ok: {pdf_file} -> {md_path}")
+                if prompts_path.exists():
+                    prompts_path.unlink()
+                print(f"  ok: {input_file} -> {md_path}")
 
-            successes.append(pdf_file)
+            successes.append(input_file)
         except Exception as e:
-            print(f"FAIL: {pdf_file} -- {e}", file=sys.stderr)
-            failures.append(pdf_file)
+            print(f"FAIL: {input_file} -- {e}", file=sys.stderr)
+            failures.append(input_file)
 
-    if len(pdf_files) > 1:
+    if len(input_files) > 1:
         print(f"\n{len(successes)} succeeded, {len(failures)} failed")
 
     if failures:

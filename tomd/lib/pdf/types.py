@@ -1,6 +1,7 @@
 """Shared data types, constants, and precompiled regex patterns for PDF conversion."""
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -25,6 +26,7 @@ class Span:
     origin: tuple[float, float] = (0, 0)
     color: int = 0
     link_url: str | None = None
+    wording_role: str | None = None
 
 
 @dataclass
@@ -67,7 +69,6 @@ class Block:
         sizes = [ln.font_size for ln in self.lines if ln.text.strip()]
         if not sizes:
             return 0.0
-        from collections import Counter
         return Counter(sizes).most_common(1)[0][0]
 
 
@@ -80,6 +81,9 @@ class SectionKind(Enum):
     CODE = "code"
     TABLE = "table"
     UNCERTAIN = "uncertain"
+    WORDING = "wording"
+    WORDING_ADD = "wording-add"
+    WORDING_REMOVE = "wording-remove"
 
 
 @dataclass
@@ -126,7 +130,6 @@ EDGE_ITEMS_PER_PAGE = 3
 SIMILARITY_THRESHOLD = 0.85
 
 # --- Precompiled regex patterns ---
-# Canonical source: paperworks/lib/pdf_reader.py
 
 _SECTION_NUM_RE = re.compile(
     r"^(\d+(?:\.\d+)*)\s+(.+)",
@@ -201,10 +204,16 @@ _KNOWN_SECTIONS = frozenset({
 
 _ALLOWED_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
 
-READABLE_MIN_LENGTH = 100
-READABLE_MIN_RATIO = 0.3
-READABLE_MAX_SLASH_RATIO = 0.1
-READABLE_SAMPLE_SIZE = 2000
+TERMINAL_PUNCTUATION = frozenset(".?!:")
+
+FALLBACK_FONT_SIZE = 12.0
+FALLBACK_BODY_SIZE = 11.0
+MIN_UNCERTAIN_WORDS = 10
+
+_READABLE_MIN_LENGTH = 100
+_READABLE_MIN_RATIO = 0.3
+_READABLE_MAX_SLASH_RATIO = 0.1
+_READABLE_SAMPLE_SIZE = 2000
 
 
 def is_readable(text: str) -> bool:
@@ -213,13 +222,13 @@ def is_readable(text: str) -> bool:
     Catches encrypted PDFs, scanned-image-only PDFs, and CID-encoded
     artifacts that produce mostly non-alphanumeric output.
     """
-    if not text or len(text.strip()) < READABLE_MIN_LENGTH:
+    if not text or len(text.strip()) < _READABLE_MIN_LENGTH:
         return False
-    sample = text[:READABLE_SAMPLE_SIZE]
+    sample = text[:_READABLE_SAMPLE_SIZE]
     non_space = [c for c in sample if not c.isspace()]
     if not non_space:
         return False
     readable = sum(1 for c in non_space if c.isalnum() or c in ".,;:!?-()[]{}\"'")
-    if sample.count("/") > len(sample) * READABLE_MAX_SLASH_RATIO:
+    if sample.count("/") > len(sample) * _READABLE_MAX_SLASH_RATIO:
         return False
-    return (readable / len(non_space)) > READABLE_MIN_RATIO
+    return (readable / len(non_space)) > _READABLE_MIN_RATIO

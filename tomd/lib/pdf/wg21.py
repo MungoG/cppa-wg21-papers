@@ -8,7 +8,7 @@ table detection or structuring runs.
 import logging
 import re
 
-from .cleanup import strip_zero_width
+from .cleanup import strip_format_chars
 from .types import Block
 
 _log = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 def _clean(text: str) -> str:
     """Strip zero-width chars and whitespace."""
-    return strip_zero_width(text).strip()
+    return strip_format_chars(text).strip()
 
 
 def _parse_authors(lines: list[str]) -> list[str]:
@@ -92,12 +92,30 @@ def _store_field(metadata: dict, label: str, value_lines: list[str]):
             metadata["reply-to"] = authors
 
 
-def extract_metadata_from_blocks(blocks: list[Block]) -> tuple[dict, set[int]]:
+_COLOR_Y_TOLERANCE = 5.0
+
+
+def _lookup_lightness(text_colors: dict[float, float] | None, y: float) -> float:
+    """Find the lightness value for the nearest y within tolerance."""
+    if not text_colors:
+        return 0.0
+    best_y = min(text_colors.keys(), key=lambda k: abs(k - y), default=None)
+    if best_y is not None and abs(best_y - y) <= _COLOR_Y_TOLERANCE:
+        return text_colors[best_y]
+    return 0.0
+
+
+def extract_metadata_from_blocks(blocks: list[Block],
+                                 text_colors: dict[float, float] | None = None,
+                                 ) -> tuple[dict, set[int]]:
     """Extract WG21 metadata from the first blocks of page 0.
 
     Handles two formats:
       - Scrivener: each field is its own block (label on line 0, value on line 1+)
       - Google Docs: multiple fields in one block (each line has label: value)
+
+    Title is chosen by two signals: largest font size (primary) and
+    darkest color (secondary, via space-color proxy for Type 3 fonts).
 
     Returns (metadata_dict, consumed_block_indices).
     """
@@ -106,7 +124,7 @@ def extract_metadata_from_blocks(blocks: list[Block]) -> tuple[dict, set[int]]:
 
     page0_blocks = [(i, b) for i, b in enumerate(blocks) if b.page_num == 0]
 
-    title_idx = None
+    pre_label_blocks: list[tuple[int, float, float, str]] = []
     for i, block in page0_blocks:
         if not block.lines:
             continue
@@ -116,10 +134,17 @@ def extract_metadata_from_blocks(blocks: list[Block]) -> tuple[dict, set[int]]:
         content_lines = [_clean(ln.text) for ln in block.lines if _clean(ln.text)]
         if not content_lines:
             continue
-        if (title_idx is None
-                and not _DOC_NUM_VALUE_RE.match(content_lines[0])
-                and block.font_size > 0):
-            title_idx = (i, " ".join(content_lines))
+        if not _DOC_NUM_VALUE_RE.match(content_lines[0]) and block.font_size > 0:
+            lightness = _lookup_lightness(text_colors, block.bbox[1])
+            pre_label_blocks.append(
+                (i, block.font_size, lightness, " ".join(content_lines)))
+
+    title_idx = None
+    if pre_label_blocks:
+        best = max(pre_label_blocks, key=lambda x: (x[1], -x[2]))
+        title_idx = (best[0], best[3])
+        for entry in pre_label_blocks:
+            consumed.add(entry[0])
 
     for i, block in page0_blocks:
         if not block.lines:

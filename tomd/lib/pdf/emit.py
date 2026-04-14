@@ -148,7 +148,7 @@ def _normalize_bullet(char: str) -> str:
 
 
 def _normalize_bullets(text: str) -> str:
-    """Replace Unicode bullet characters with - throughout text."""
+    """Replace Unicode bullet characters with * throughout text."""
     return "".join(_normalize_bullet(ch) for ch in text)
 
 
@@ -229,18 +229,46 @@ def _render_code_block(sec: Section) -> str:
     return f"```{lang}\n{code}\n```"
 
 
-def _render_cell_spans(spans: list) -> str:
+def _render_wording_span(span: Span) -> str:
+    """Render a span with wording role wrapping."""
+    text = span.text
+    if not text.strip():
+        return text
+    if span.wording_role == "ins":
+        return f"<ins>{text}</ins>"
+    if span.wording_role == "del":
+        return f"<del>{text}</del>"
+    return text
+
+
+def _render_wording_line(line: Line) -> str:
+    """Render a line with wording role markup."""
+    parts = []
+    for span in line.spans:
+        if span.wording_role:
+            parts.append(_render_wording_span(span))
+        elif span.monospace and span.text.strip():
+            parts.append(f"`{span.text.strip()}`")
+        else:
+            parts.append(span.text)
+    return "".join(parts)
+
+
+def _render_wording_section(sec: Section) -> str:
+    """Render a wording section with Pandoc fenced div markers."""
+    div_class = sec.kind.value
+    rendered_lines = []
+    for line in sec.lines:
+        rendered_lines.append(_render_wording_line(line))
+    text = normalize_whitespace("\n".join(rendered_lines))
+    inner = " ".join(ln.strip() for ln in text.split("\n") if ln.strip())
+    return f":::{div_class}\n\n{inner}\n\n:::"
+
+
+def _render_cell_spans(spans: list, suppress_bold: bool = False) -> str:
     """Render a table cell's spans with inline formatting."""
-    from .types import Line
     line = Line(spans=spans)
-    return _render_line_spans(line, suppress_bold=False).strip()
-
-
-def _render_header_cell_spans(spans: list) -> str:
-    """Render a table header cell, suppressing bold (already implied by header row)."""
-    from .types import Line
-    line = Line(spans=spans)
-    return _render_line_spans(line, suppress_bold=True).strip()
+    return _render_line_spans(line, suppress_bold=suppress_bold).strip()
 
 
 def _render_table(sec: Section) -> str:
@@ -252,7 +280,7 @@ def _render_table(sec: Section) -> str:
     num_cols = max(len(row) for row in rows)
 
     header = rows[0]
-    header_cells = [_render_header_cell_spans(cell) for cell in header]
+    header_cells = [_render_cell_spans(cell, suppress_bold=True) for cell in header]
     while len(header_cells) < num_cols:
         header_cells.append("")
 
@@ -286,6 +314,10 @@ def _render_section_md(sec: Section) -> str:
     if sec.kind == SectionKind.LIST:
         return _render_list_spans(sec)
 
+    if sec.kind in (SectionKind.WORDING, SectionKind.WORDING_ADD,
+                    SectionKind.WORDING_REMOVE):
+        return _render_wording_section(sec)
+
     if sec.kind == SectionKind.PARAGRAPH:
         return _render_paragraph_spans(sec)
 
@@ -304,17 +336,17 @@ def emit_markdown(metadata: dict, sections: list[Section]) -> str:
     if fm:
         parts.append(fm)
 
-    line_num = fm.count("\n") + 2 if fm else 1
+    line_num = fm.count("\n") + 3 if fm else 1
 
     for sec in sections:
         if sec.kind == SectionKind.UNCERTAIN:
-            start_line = line_num
             text = sec.text.rstrip()
             text_lines = text.count("\n") + 1
-            comment = f"<!-- tomd:uncertain:L{start_line}-L{start_line + text_lines - 1} -->"
+            text_start = line_num + 2
+            comment = f"<!-- tomd:uncertain:L{text_start}-L{text_start + text_lines - 1} -->"
             parts.append(comment)
             parts.append(text)
-            line_num += text_lines + 2
+            line_num += text_lines + 3
             continue
 
         rendered = _render_section_md(sec)
