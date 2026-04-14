@@ -15,7 +15,7 @@ Senders pay a frame allocation to enter the awaitable protocol. They do not have
 
 The IoAwaitable protocol ([P4003R1](https://wg21.link/p4003r1)<sup>[1]</sup>) defines a contract between a coroutine and an I/O reactor: the coroutine suspends, the reactor performs the operation, and the executor resumes the coroutine when the result is ready. The only way to obtain a `coroutine_handle<>` today is from a coroutine, and a coroutine requires a frame allocation. A sender pipeline that wants to invoke an IoAwaitable must allocate a coroutine frame to get a handle - even though the sender already has its own operation state and does not need a frame.
 
-This paper is additive. It does not take anything away from senders, from coroutines, or from any existing design. It gives senders something they do not have today: zero-allocation access to every awaitable ever written - timers, mutexes, channels, semaphores, I/O operations, and anything else the ecosystem produces. It gives awaitable authors a new consumer base without modifying a single line of their code.
+This paper is additive. It does not take anything away from senders, from coroutines, or from any existing design. It gives senders something they do not have today: zero-allocation access to every IoAwaitable ever written - timers, channels, semaphores, I/O operations, and anything else the ecosystem produces. A general bridge to standard awaitables would also need to handle the `void`-returning and `bool`-returning variants of `await_suspend`. It gives awaitable authors a new consumer base without modifying a single line of their code.
 
 This paper traces the history of alternative coroutine designs that explored the boundary between type erasure and type visibility, observes that C++ can support multiple coroutine models serving different domains, and explores language-level options to let senders invoke awaitables without allocating a coroutine frame. The goal is one I/O implementation consumed by both coroutines and senders with zero allocation overhead.
 
@@ -129,7 +129,7 @@ One allocation per I/O operation. For high-throughput networking - millions of o
 
 An I/O operation can take one of two shapes: a sender or an awaitable. The choice determines which consumption model pays a tax and which runs at zero cost.
 
-**If the I/O operation is a sender,** coroutines consume it through `co_await` on the sender. The sender's `connect` produces an operation state. The coroutine must store that operation state somewhere - typically in the coroutine frame or in a bridge object. The sender's completion calls `set_value` on a receiver, which must resume the coroutine. The machinery to connect a sender to a coroutine - `execution::task`, or a bridge like the one in [P4092R0](https://wg21.link/p4092r0)<sup>[5]</sup> - is the tax coroutines pay. [P3552R3](https://wg21.link/p3552r3)<sup>[22]</sup>, "Add a Coroutine Task Type," is this tax made standard: it type-erases the operation state, allocates, and converts an `error_code` to `exception_ptr` through `AS-EXCEPT-PTR`.
+**If the I/O operation is a sender,** coroutines consume it through `co_await` on the sender. The sender's `connect` produces an operation state. The coroutine must store that operation state somewhere - typically in the coroutine frame or in a bridge object. The sender's completion calls `set_value` on a receiver, which must resume the coroutine. The machinery to connect a sender to a coroutine - `execution::task`, or a bridge like the one in [P4092R0](https://wg21.link/p4092r0)<sup>[5]</sup> - is the tax coroutines pay. [P3552R3](https://wg21.link/p3552r3)<sup>[22]</sup>, "Add a Coroutine Task Type," is this tax made standard: it type-erases the operation state, allocates, and converts an `error_code` to `exception_ptr` through the execution framework's error-conversion machinery ([P2300R10](https://wg21.link/p2300r10)<sup>[20]</sup>).
 
 **If the I/O operation is an awaitable,** coroutines consume it directly. `co_await stream.read_some(buf)` is the language feature working as designed. The compiler provides the handle. The awaitable suspends the coroutine. The reactor completes the operation. The executor resumes the coroutine. No bridge. No type erasure. No allocation beyond the coroutine frame that the coroutine already needs for its own state.
 
@@ -159,8 +159,8 @@ The tension between "frame hidden from the caller" and "frame visible to the cal
 | 2019 | [P1492R0](https://wg21.link/p1492r0)<sup>[15]</sup>              | Smith, Vandevoorde et al.          | Language and implementation impact of coroutine proposals.                                |
 | 2019 | [P1493R0](https://wg21.link/p1493r0)<sup>[16]</sup>              | Romer, Nishanov, Baker, Mihailov   | Coroutines: Use-cases and Trade-offs.                                                    |
 | 2019 | [P0912R5](https://wg21.link/p0912r5)<sup>[17]</sup>              | Nishanov                           | Merge Coroutines TS into C++20. The frame-erased model ships.                            |
-| 2026 | [P0876R22](https://wg21.link/p0876r22)<sup>[18]</sup>            | Kowalke, Goodspeed                 | `fiber_context`. Stackful coroutines. Complementary, not competing.                      |
 | 2024 | [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup>              | Morgenstern                        | Implementation defined coroutine extensions. Legalizes `coroutine_handle` specialization. |
+| 2026 | [P0876R22](https://wg21.link/p0876r22)<sup>[18]</sup>            | Kowalke, Goodspeed                 | `fiber_context`. Stackful coroutines. Complementary, not competing.                      |
 
 The committee explored both frame-erased and frame-visible designs. It chose frame-erased. That was the right choice for I/O - type erasure through `coroutine_handle<>` gives type-erased streams, split compilation, and ABI stability. The I/O library compiles once.
 
@@ -200,7 +200,7 @@ This is a large language change. This paper names it as the deeper solution and 
 
 Even without frame-visible coroutines, the immediate problem is solvable.
 
-What a sender needs is a `coroutine_handle<>` that, when `.resume()` is called, invokes a function on the sender's operation state. The minimum viable representation is two pointers: a function pointer and a data pointer. No frame. No promise. No suspension points. No heap allocation. When the executor calls `.resume()`, it calls the function with the data pointer. When `.destroy()` is called, it is a no-op - the sender owns its own lifetime.
+What a sender needs is a `coroutine_handle<>` that, when `.resume()` is called, invokes a function on the sender's operation state. The minimum viable representation is two pointers: a function pointer and a data pointer. In practice, three - the coroutine frame ABI requires both a `resume` and a `destroy` function pointer at offsets 0 and 1, plus the data pointer. No frame. No promise. No suspension points. No heap allocation. When the executor calls `.resume()`, it calls the function with the data pointer. When `.destroy()` is called, it is a no-op - the sender owns its own lifetime.
 
 ### 7.1 Symmetric Transfer
 
@@ -230,7 +230,7 @@ When the reactor completes an I/O operation and calls `executor.dispatch(h)`, th
 
 ### 7.2 The Sender Path
 
-A sender pipeline would use a callback handle like this:
+A sender pipeline would use a callback handle like this. The following code works on all three major compilers today but relies on the de facto coroutine frame ABI documented by [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> - it is not guaranteed by the current standard. Sections 8 and 9 discuss the standardisation path.
 
 ```cpp
 struct callback_frame {
@@ -277,14 +277,14 @@ struct read_op_state {
         auto h =
             coroutine_handle<>::from_address(
                 &cb_);
-        aw_.await_suspend(h, &env_);
+        aw_.await_suspend(h, &env_).resume();
     }
 };
 ```
 
 The `callback_frame` struct has `resume` and `destroy` function pointers at offsets 0 and 1 - matching the coroutine frame layout that all three major compilers use. `coroutine_handle<>::from_address(&cb_)` produces a handle whose `.resume()` calls the function pointer at offset 0. The awaitable cannot tell the difference between this handle and one from a real coroutine.
 
-The `await_ready` check is a no-op for `read_some_awaitable` (which always returns `false`), but a general sender-to-awaitable bridge must respect the full awaitable protocol.
+The `await_ready` check is a no-op for `read_some_awaitable` (which always returns `false`). Calling `.resume()` on the `coroutine_handle<>` returned by `await_suspend` handles both completion paths: `noop_coroutine().resume()` is a no-op for asynchronous completion, and a real handle's `.resume()` invokes the callback for synchronous completion. IoAwaitable's `await_suspend` returns `coroutine_handle<>`; a general sender-to-awaitable bridge for standard awaitables would also need to handle the `void`-returning and `bool`-returning variants of `await_suspend`.
 
 The `io_env` carries the sender's executor. The awaitable submits the operation to the reactor. The reactor calls the executor. The executor calls `.resume()` on the callback handle. The sender's completion function runs. No coroutine frame was allocated.
 
@@ -292,7 +292,7 @@ The `io_env` carries the sender's executor. The awaitable submits the operation 
 
 ## 8. Prior Art: P3203R0
 
-[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> (Morgenstern, 2024), "Implementation defined coroutine extensions," was presented at Sofia (June 2025) by Niall Douglas on behalf of the author. The paper proposes changing the standard's prohibition on specializing `coroutine_handle` from undefined behavior to implementation defined behavior.
+[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> (Morgenstern, 2024), "Implementation defined coroutine extensions," was presented at Sofia (June 2025) by Niall Douglas on behalf of the author. The paper proposes changing the standard's prohibition on specializing `coroutine_handle` from undefined behavior to implementation defined behavior. The EWG poll to forward the paper was not consensus (SF 0 / F 9 / N 8 / A 2 / SA 1). Committee feedback indicated the paper needed a more complete design with constraints on specialisations, and that the change from undefined to implementation-defined may have no practical effect on implementations. The interest - nine in favour - suggests the use case resonates; the concerns point to the design space this paper explores.
 
 [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> documents that all three major compilers (MSVC, GCC, Clang) use the same coroutine frame layout:
 
@@ -330,7 +330,7 @@ struct callback_frame {
 
 The struct's first two members match the coroutine frame layout documented by [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup>. `coroutine_handle<>::from_address(&cb)` produces a `coroutine_handle<>` that, when `.resume()` is called, calls the function pointer at offset 0. The awaitable receives this handle. It cannot tell the difference between this handle and one from a real coroutine.
 
-The `destroy` pointer is a no-op - the sender owns its own lifetime. The `data` pointer points back to the operation state. Three pointers. Twenty-four bytes on a 64-bit platform. No heap allocation.
+The `destroy` pointer is a no-op - the sender owns its own lifetime. If a component calls `destroy()` on the callback handle - for example, during shutdown - the no-op means the sender's operation completes without calling `set_value` or `set_stopped`. In the IoAwaitable protocol, the reactor and executor call only `resume()`, never `destroy()`. If cancellation support is needed, the `destroy` pointer can map to a function that calls `set_stopped` on the receiver. The `data` pointer points back to the operation state. Three pointers. Twenty-four bytes on a 64-bit platform. No heap allocation.
 
 ### 9.2 The Type-Erasure Constraint
 
@@ -338,7 +338,7 @@ Any callback handle must be convertible to `coroutine_handle<void>`. This is non
 
 A `coroutine_handle<>` is a pointer to a frame. The storage for that frame must come from somewhere. A factory function cannot conjure storage without allocating - and allocation is the cost this paper eliminates. The compiler cannot rewrite the user's struct into something else. The only zero-allocation path is: the user provides the storage, and `coroutine_handle<>` points directly at it.
 
-This means the standard must mandate the two-pointer prefix layout - `resume` and `destroy` function pointers at offsets 0 and 1 - so that `from_address` on a user-provided struct produces a valid handle. There is no alternative design that avoids allocation.
+This means the standard would need to mandate the two-pointer prefix layout - `resume` and `destroy` function pointers at offsets 0 and 1 - so that `from_address` on a user-provided struct produces a valid handle. There is no alternative design that avoids allocation without this guarantee.
 
 ### 9.3 What the Standard Must Do
 
