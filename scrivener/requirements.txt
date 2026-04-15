@@ -8,4 +8,5 @@ pygments
 beautifulsoup4
 flask
 watchdog
+merm
 pytest
