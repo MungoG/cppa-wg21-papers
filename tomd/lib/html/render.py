@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup, Tag, NavigableString
 from .. import strip_format_chars, SECTION_NUM_PREFIX_RE, ALLOWED_LINK_SCHEMES
 
 _HEADING_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
+_LIST_CONTAINER_TAGS = frozenset({"ul", "ol"})
 
 
 def render_body(soup: BeautifulSoup, generator: str) -> str:
@@ -203,13 +204,16 @@ def _render_list(el: Tag, marker: str, generator: str) -> str | None:
     items = []
     for i, li in enumerate(el.find_all("li", recursive=False)):
         prefix = f"{i + 1}." if marker == "1." else "-"
+        # Detach nested sublists before capturing inline text so they are not
+        # walked into by _inline_text (which would duplicate their contents).
+        subs = [sub.extract()
+                for sub in li.find_all(_LIST_CONTAINER_TAGS, recursive=False)]
         nested_parts = []
-        for sub in li.find_all(["ul", "ol"], recursive=False):
+        for sub in subs:
             sub_rendered = _render_element(sub, generator)
             if sub_rendered:
                 indented = "\n".join("  " + line for line in sub_rendered.split("\n"))
                 nested_parts.append(indented)
-            sub.extract()
 
         text = _collapse_whitespace(_inline_text(li))
         if text:

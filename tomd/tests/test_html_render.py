@@ -113,6 +113,63 @@ class TestList:
         parent_line = next(l for l in lines if "Parent" in l)
         assert "Child" not in parent_line
         assert "  - Child" in md
+        assert md.count("Child") == 1, (
+            f"Child appears {md.count('Child')} times, expected 1. md={md!r}")
+        assert md.count("Parent") == 1
+
+    def test_nested_three_levels(self):
+        soup = parse_html("""
+        <ul>
+          <li>One
+            <ul>
+              <li>Two
+                <ul><li>Three</li></ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        """)
+        md = render_body(soup, "mpark")
+        assert md.count("One") == 1
+        assert md.count("Two") == 1
+        assert md.count("Three") == 1
+        assert "- One" in md
+        assert "  - Two" in md
+        assert "    - Three" in md
+
+    def test_nested_ordered(self):
+        soup = parse_html("""
+        <ol>
+          <li>First
+            <ul><li>Bullet</li></ul>
+          </li>
+          <li>Second
+            <ol><li>Sub</li></ol>
+          </li>
+        </ol>
+        """)
+        md = render_body(soup, "mpark")
+        assert md.count("Bullet") == 1
+        assert md.count("Sub") == 1
+        assert "1. First" in md
+        assert "  - Bullet" in md
+        assert "2. Second" in md
+        assert "  1. Sub" in md
+
+    def test_nested_mixed_content(self):
+        soup = parse_html("""
+        <ul>
+          <li>Before <strong>emphasis</strong>
+            <ul><li>Nested</li></ul>
+            after text
+          </li>
+        </ul>
+        """)
+        md = render_body(soup, "mpark")
+        assert md.count("Nested") == 1
+        assert "Before" in md
+        assert "**emphasis**" in md
+        assert md.count("after text") == 1
 
     def test_nested_multi_level(self):
         soup = parse_html("""
