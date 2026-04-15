@@ -5,6 +5,7 @@ mistune
 Pillow
 pygments
 pymupdf
+pytest
 pyyaml
 reportlab
 requests

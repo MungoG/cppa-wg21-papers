@@ -1,6 +1,6 @@
 ---
 title: "Info: Open Issues in `std::execution::task`"
-document: P4007R2
+document: P4007R1
 date: 2026-04-08
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -16,7 +16,7 @@ audience: LEWG
 
 ## Revision History
 
-### R2: April 2026 (post-Croydon)
+### R1: April 2026 (post-Croydon)
 
 * Updated classification to reflect Croydon motions 28-29, 33, 35-38.
   Acknowledged issues resolved by P3941R4, P3927R2, P3980R1, and P4151R1.

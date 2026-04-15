@@ -22,6 +22,72 @@ LOGIN_URL = "https://isocpp.org/member/login"
 PAPERS_URL = "https://isocpp.org/papers"
 BASE_URL = "https://isocpp.org"
 
+_ALL_OF_WG21 = "All of WG21"
+
+# Maps markdown front-matter audience shorthand (uppercased) to the exact
+# checkbox values used by the isocpp.org paper submission form.
+_AUDIENCE_MAP = {
+    "SG1":       "SG1 Concurrency and Parallelism",
+    "SG2":       "SG2 Modules",
+    "SG4":       "SG4 Networking",
+    "SG5":       "SG5 Transactional Memory",
+    "SG6":       "SG6 Numerics",
+    "SG7":       "SG7 Reflection",
+    "SG9":       "SG9 Ranges",
+    "SG10":      "SG10 Feature Test",
+    "SG12":      "SG12 Undefined and Unspecified Behavior",
+    "SG13":      "SG13 I/O",
+    "SG14":      "SG14 Low Latency",
+    "SG15":      "SG15 Tooling",
+    "SG16":      "SG16 Unicode",
+    "SG17":      "EWGI SG17: EWG Incubator",
+    "EWGI":      "EWGI SG17: EWG Incubator",
+    "SG18":      "LEWGI SG18: LEWG Incubator",
+    "LEWGI":     "LEWGI SG18: LEWG Incubator",
+    "SG19":      "SG19 Machine Learning",
+    "SG20":      "SG20 Education",
+    "SG21":      "SG21 Contracts",
+    "SG22":      "SG22 Compatibility",
+    "SG23":      "SG23 Safety and Security",
+    "EWG":       "EWG Evolution",
+    "LEWG":      "LEWG Library Evolution",
+    "CWG":       "CWG Core",
+    "LWG":       "LWG Library",
+    "WG21":      _ALL_OF_WG21,
+    "ALL":       _ALL_OF_WG21,
+    "DG":        "Direction Group",
+    "DIRECTION": "Direction Group",
+    "ARG":       "ARG ABI Review Group",
+}
+
+
+def resolve_audience(audience_str):
+    """Map a markdown audience string to remote checkbox values.
+
+    Splits the comma-separated audience_str, maps each token via
+    _AUDIENCE_MAP, and enforces the WG21 form exclusivity rule:
+    if "All of WG21" is present, all other checkboxes are cleared
+    (mirrors fixCheckBoxes() in papers.js).
+
+    Unknown tokens are logged as warnings and skipped.
+    Returns a list of remote checkbox value strings.
+    """
+    if not audience_str:
+        return []
+    values = []
+    for raw in audience_str.split(","):
+        token = raw.strip().upper()
+        if not token:
+            continue
+        mapped = _AUDIENCE_MAP.get(token)
+        if mapped:
+            values.append(mapped)
+        else:
+            _log.warning("Unknown audience token %r - skipped", token)
+    if _ALL_OF_WG21 in values:
+        return [_ALL_OF_WG21]
+    return values
+
 
 class IsoCppSession:
     """Manages an authenticated, queue-serialized session with isocpp.org.
@@ -361,6 +427,10 @@ class IsoCppSession:
             fields, checked, submits = self._read_form(form_id)
             if fields is None:
                 return False, "Could not find upload form"
+
+            audience_str = job.get("audience")
+            if audience_str is not None:
+                checked = resolve_audience(audience_str)
 
             synced = []
             if title and fields.get("title") != title:

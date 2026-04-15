@@ -583,6 +583,7 @@ def upload_paper():
         "author": data.get("author", ""),
         "abstract": data.get("abstract", ""),
         "status": data.get("status", ""),
+        "audience": data.get("audience", ""),
     })
     return jsonify({"job_id": job_id})
 
@@ -613,6 +614,7 @@ def upload_all():
             "title": p.get("title", ""),
             "author": p.get("primary_author", ""),
             "abstract": p.get("brutal_summary", ""),
+            "audience": p.get("audience", ""),
         })
         queued += 1
     if not queued:

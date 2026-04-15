@@ -346,7 +346,7 @@
 <div id="toast"></div>
 
 <script>
-let _papers=[], _filter='', _workingSet=new Set(), _dirtySet=new Set(), _queueDepth=0, _expandedIdx=null, _folderSort=false;
+let _papers=[], _filter='', _workingSet=new Set(), _dirtySet=new Set(), _queueDepth=0, _expandedIdx=null, _folderSort=false, _authenticated=false;
 
 // -- Tabs --
 function showTab(name) {
@@ -446,9 +446,13 @@ function toggleDetail(idx) {
   const busy=p.doc_number&&_workingSet.has(p.doc_number);
   const dis=busy?' disabled':'';
   const wk=busy?' working':'';
+  const canUpload=_authenticated&&!!p.pdf_path&&!!p.remote;
+  const uploadDis=(!canUpload||busy)?' disabled':'';
+  const uploadWk=busy?' working':'';
+  const uploadTitle=!_authenticated?'Not connected to isocpp.org':!p.pdf_path?'No PDF available':!p.remote?'No remote entry on isocpp.org':'Force upload to isocpp.org';
   let acts='';
   if(p.md_path) acts+=`<button class="btn btn-blue${wk}" onclick="event.stopPropagation();renderSingle(${idx})"${dis}>RENDER</button>`;
-  if(p.pdf_path&&p.remote) acts+=`<button class="btn btn-blue${wk}" onclick="event.stopPropagation();submitUpload(${idx})"${dis}>UPLOAD</button>`;
+  acts+=`<button class="btn btn-blue${uploadWk}" onclick="event.stopPropagation();submitUpload(${idx})"${uploadDis} title="${uploadTitle}">UPLOAD</button>`;
   d.innerHTML=`<td colspan="7"><div class="detail-content"><div class="detail-grid">
     <span class="dl">Document</span><span class="dv">${esc(p.doc_number)||'-'}</span>
     <span class="dl">Title</span><span class="dv">${esc(p.title)||'-'}</span>
@@ -525,7 +529,7 @@ function submitTransition(idx, target) {
 function submitUpload(idx) {
   const p = _papers[idx];
   if (!p || !p.remote) return;
-  submitJob(idx, '/api/upload', {form_id: p.remote.form_id, doc_number: p.doc_number, path: p.pdf_path, title: p.title, author: p.primary_author || '', abstract: p.brutal_summary || '', status: (p.remote && p.remote.status) || ''});
+  submitJob(idx, '/api/upload', {form_id: p.remote.form_id, doc_number: p.doc_number, path: p.pdf_path, title: p.title, author: p.primary_author || '', abstract: p.brutal_summary || '', status: (p.remote && p.remote.status) || '', audience: p.audience || ''});
 }
 function renderSingle(idx) {
   const p = _papers[idx];
@@ -580,10 +584,12 @@ async function doLogin(){
 }
 async function doLogout(){await fetch('/api/logout',{method:'POST'});updateAuth({authenticated:false});setStatus('ready','Logged out');loadInventory();}
 function updateAuth(d){
+  _authenticated=!!d.authenticated;
   document.getElementById('auth-dot').className='tb-dot '+(d.authenticated?'on':'off');
   document.getElementById('auth-text').textContent=d.authenticated?(d.username||'connected'):'';
   document.getElementById('tb-login').style.display=d.authenticated?'none':'inline-block';
   document.getElementById('tb-logout').style.display=d.authenticated?'inline-block':'none';
+  renderPapers();
 }
 
 // -- Settings --
