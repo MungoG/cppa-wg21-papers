@@ -88,18 +88,12 @@ Desktop operating systems deliver full hosted implementations, C++20 coroutines 
 | Hosted `<memory_resource>` | Yes |
 | General-purpose heap worth customising | Yes |
 | Hosted standard-library profile | Full |
-| Exceptions in typical shipping builds | Typically on |
+| Exceptions in typical shipping builds | Typically on. Most shipping desktop binaries leave exceptions enabled unless a product or studio policy turns them off |
 | Hot-path allocation style | Heap plus PMR |
-| Scheduling class | Best effort |
-| Thread-local storage access pattern | Static TLS |
+| Scheduling class | Best effort. General-purpose OS scheduling (not a hard real-time kernel guarantee) |
+| Thread-local storage access pattern | Static TLS. Thread-local objects live in the loader-managed TLS block for the process or main modules. On Windows, DLLs can still pay an extra indirection as discussed in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2 |
 
-**Notes**
-
-- **Full** - Full hosted profile for the features this table tracks.
-- **Typically on** (exceptions) - Most shipping desktop binaries leave exceptions enabled unless a product or studio policy turns them off.
-- **Best effort** - General-purpose OS scheduling (not a hard real-time kernel guarantee).
-- **Static TLS** - Thread-local objects live in the loader-managed TLS block for the process or main modules. On Windows, code in separately loaded DLLs can still pay an extra indirection for `thread_local` access compared with a single static link, as discussed in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2.
-- **[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup>** - Section 9.1 groups this row with the same top-tier capability set as other full-hosted platforms in that survey.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 groups this row with the same top-tier capability set as other full-hosted platforms in that survey.
 
 ---
 
@@ -124,9 +118,7 @@ Mobile stacks are full hosted environments on ARM64 for mainstream C++ toolchain
 | Scheduling class | Best effort |
 | Thread-local storage access pattern | Static TLS |
 
-**Notes**
-
-- **Typically on** (exceptions) - Store rules and battery targets change optimisation pressure and priorities. Hosted builds still keep the core facilities in the table, including `thread_local` and PMR. [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 lists this row alongside desktop.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 lists this row alongside desktop. Store rules and battery targets change optimisation pressure, but hosted builds keep the core facilities in the table.
 
 ---
 
@@ -146,17 +138,12 @@ Vendor SDKs supply hosted C++ with coroutine support and TLS for titles that opt
 | Hosted `<memory_resource>` | Yes |
 | General-purpose heap worth customising | Yes |
 | Hosted standard-library profile | Full |
-| Exceptions in typical shipping builds | Often off |
-| Hot-path allocation style | Arenas common |
+| Exceptions in typical shipping builds | Often off. Many titles compile with exceptions disabled for size and determinism even though the toolchain supports them |
+| Hot-path allocation style | Arenas common. Frame and transient data served from arena or pool allocators rather than unbounded heap traffic on hot paths |
 | Scheduling class | Best effort |
-| Thread-local storage access pattern | Static or vendor |
+| Thread-local storage access pattern | Static or vendor. Access path can be the usual static TLS block or a vendor-specific runtime detail not visible in public documentation |
 
-**Notes**
-
-- **Often off** (exceptions) - Reflects shipping game practice: many titles compile with exceptions disabled for size and determinism even though the toolchain supports them.
-- **Arenas common** - Much frame and transient data is served from arena or pool allocators rather than unbounded general heap traffic on hot paths.
-- **Static or vendor** (TLS access pattern) - Access path can be the usual static TLS block or a vendor-specific runtime detail not visible in public documentation.
-- **[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup>** - Section 9.1 includes this row in the top group. Public documentation for proprietary SDKs varies. Treat vendor guidance as the authority for a specific title target.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 includes this row in the top group. Treat vendor guidance as the authority for a specific title target.
 
 ---
 
@@ -173,20 +160,13 @@ These kernels support threaded C++ with TLS in configurations that ship coroutin
 | Platform category | Full RTOS (QNX, Zephyr, VxWorks) |
 | C++20 coroutines (in practice) | Yes |
 | `thread_local` available | Yes |
-| Hosted `<memory_resource>` | Hosted PMR (platform-supplied) |
+| Hosted `<memory_resource>` | Hosted PMR (platform-supplied). May appear as part of the platform-provided hosted subset, not necessarily a full desktop-class library layout. [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 records the PMR column as **Hosted** for this row |
 | General-purpose heap worth customising | Yes |
-| Hosted standard-library profile | Partial to full |
-| Exceptions in typical shipping builds | Varies |
+| Hosted standard-library profile | Partial to full. From slim RTOS images through near-desktop library surface |
+| Exceptions in typical shipping builds | Varies. Automotive and industrial certification: some builds forbid exceptions entirely, others allow them in non-safety paths |
 | Hot-path allocation style | Pools common |
-| Scheduling class | Soft to hard real-time |
+| Scheduling class | Soft to hard real-time. Spans best-effort timing guarantees through kernels with bounded response times up to formally verified schedules |
 | Thread-local storage access pattern | Static TLS |
-
-**Notes**
-
-- **Hosted PMR (platform-supplied)** - `<memory_resource>` may appear as part of the platform-provided hosted subset, not necessarily a full desktop-class library layout. [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 records the PMR column as **Hosted** for this row for that reason.
-- **Partial to full** (hosted standard library) - From slim RTOS images through near-desktop library surface.
-- **Varies** (exceptions) - Automotive and industrial certification: some builds forbid exceptions entirely, others allow them in non-safety paths.
-- **Soft to hard real-time** - Spans vendors that offer only best-effort timing guarantees through kernels that advertise bounded response times up to formally verified schedules.
 
 ---
 
@@ -206,20 +186,12 @@ Many microcontroller-focused RTOS images lack `thread_local` and lack hosted PMR
 | Hosted `<memory_resource>` | No |
 | General-purpose heap worth customising | Yes |
 | Hosted standard-library profile | Freestanding |
-| Exceptions in typical shipping builds | Typically off |
-| Hot-path allocation style | Static pools |
-| Scheduling class | Soft real-time |
+| Exceptions in typical shipping builds | Typically off. Many embedded build configurations use `-fno-exceptions` or equivalent |
+| Hot-path allocation style | Static pools. Fixed blocks and explicit allocators instead of a polymorphic PMR surface |
+| Scheduling class | Soft real-time. Typical RTOS latency goals without claiming a single certification level |
 | Thread-local storage access pattern | Not applicable |
 
-**Notes**
-
-- **Partial** (coroutines) - Library or community support can enable coroutine use without the full hosted stack that desktop toolchains assume. That is not a guarantee on every board or SDK revision.
-- **Yes** (heap worth customising) - Still applies where `malloc` exists, even without PMR.
-- **Typically off** (exceptions) - Many embedded build configurations use `-fno-exceptions` or equivalent.
-- **Static pools** - Fixed blocks and explicit allocators instead of a polymorphic PMR surface.
-- **Soft real-time** - Typical RTOS latency goals without claiming a single certification level.
-- **[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup>** - Section 9.1 gives **Partial** for coroutines and **No** for `thread_local` and PMR. The Raspberry Pi Pico (RP2040) example in that section notes community coroutine support, incomplete `thread_local` in the SDK at the time of writing, and newlib in freestanding mode without `<memory_resource>`<sup>[1]</sup>.
-- **Pigweed** - C++20 coroutines with an allocator passed per coroutine (`CoroContext`) because PMR is not available in those environments<sup>[4]</sup>.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 gives **Partial** for coroutines and **No** for `thread_local` and PMR. The Raspberry Pi Pico (RP2040) example in that section notes community coroutine support, incomplete `thread_local` in the SDK at the time of writing, and newlib in freestanding mode without `<memory_resource>`<sup>[1]</sup>. Pigweed provides C++20 coroutines with an allocator passed per coroutine (`CoroContext`) because PMR is not available in those environments<sup>[4]</sup>.
 
 ---
 
@@ -237,20 +209,14 @@ Firmware without an OS may still use a constrained heap. Coroutines are partial 
 | C++20 coroutines (in practice) | Partial |
 | `thread_local` available | No |
 | Hosted `<memory_resource>` | No |
-| General-purpose heap worth customising | Rare |
+| General-purpose heap worth customising | Rare. Many firmware images use only static storage and stack. Any heap is often a small custom arena |
 | Hosted standard-library profile | Freestanding |
 | Exceptions in typical shipping builds | Typically off |
-| Hot-path allocation style | Static only |
-| Scheduling class | Hard real-time or none |
+| Hot-path allocation style | Static only. Dominantly static and stack storage on hot paths |
+| Scheduling class | Hard real-time or none. Strict cycle-bound firmware is one case; bring-up or lab setups where no RTOS schedule applies are the other |
 | Thread-local storage access pattern | Not applicable |
 
-**Notes**
-
-- **Partial** (coroutines) - Experimental or library-driven use without a full OS-hosted implementation.
-- **Rare** (general-purpose heap) - Many firmware images use only static storage and stack. Any heap is often a small custom arena.
-- **Hard real-time or none** - Strict cycle-bound firmware is one case. Bring-up or lab setups where no RTOS schedule applies are the other.
-- **Static only** (allocation style) - Dominantly static and stack storage on hot paths.
-- **[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup>** - Section 9.1 marks heap as **Rare** for this row. The intersection of hosted PMR and absence of TLS remains empty in that paper's survey.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 marks heap as **Rare** for this row. The intersection of hosted PMR and absence of TLS remains empty in that paper's survey.
 
 ---
 
@@ -271,15 +237,11 @@ Device compilation targets are not general hosted C++ environments. Coroutines, 
 | General-purpose heap worth customising | No |
 | Hosted standard-library profile | Not applicable |
 | Exceptions in typical shipping builds | Not applicable |
-| Hot-path allocation style | Device heaps differ |
-| Scheduling class | SIMT |
+| Hot-path allocation style | Device heaps differ. Local and dynamic memory on accelerators follow vendor-specific models (device local, shared, unified memory policies) rather than `std::pmr` on the host |
+| Scheduling class | SIMT. Device-side parallel execution model (contrast with host preemption and threading) |
 | Thread-local storage access pattern | Not applicable |
 
-**Notes**
-
-- **Device heaps differ** - Local and dynamic memory on accelerators follow vendor-specific models (device local, shared, unified memory policies) rather than `std::pmr` on the host.
-- **SIMT** - Device-side parallel execution model for this row (contrast with host preemption and threading).
-- **[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup>** - Section 9.1 places this row in the bottom group. This row is the **device** environment; host compilation for the same program follows Sections 4.2-4.4.
+[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 places this row in the bottom group. This row is the **device** environment; host compilation for the same program follows Sections 4.2-4.4.
 
 ---
 
@@ -320,18 +282,12 @@ GCC is the reference open-source toolchain for many Linux distributions and embe
 | ----- | ----- |
 | Toolchain family | GCC (`g++`) |
 | C++20 coroutine support | Yes |
-| `thread_local` code generation | Platform ABI |
-| Hosted versus freestanding profile | Both hosted and freestanding |
-| Exceptions (typical default) | Typically on (hosted) |
-| PMR in shipped standard library | Yes (hosted libstdc++) |
+| `thread_local` code generation | Platform ABI. Follows the psABI for the selected target (ELF static TLS, PE TLS slots, and so on), not a vendor-specific scheme |
+| Hosted versus freestanding profile | Both hosted and freestanding. One front end with different runtimes: the same `g++` can target a full Linux rootfs or a bare-metal link where only freestanding headers apply |
+| Exceptions (typical default) | Typically on (hosted). Many embedded builds add `-fno-exceptions` explicitly |
+| PMR in shipped standard library | Yes (hosted libstdc++). Complete `<memory_resource>` support from **GCC 9.1** onward<sup>[8]</sup> |
 
-**Notes**
-
-- **Platform ABI** (`thread_local`) - The compiler follows the psABI for the selected target (ELF static TLS, PE TLS slots, and so on), not a vendor-specific ad hoc scheme.
-- **Both hosted and freestanding** - One front end with different runtimes: the same `g++` can target a full Linux rootfs or a bare-metal link where only freestanding headers apply.
-- **Typically on (hosted)** - The usual hosted driver flags. Many embedded builds add `-fno-exceptions` explicitly.
-- **Yes (hosted libstdc++)** (PMR) - Tied to the libstdc++ build that ships with that GCC package for hosted targets. Complete `<memory_resource>` support lands in libstdc++ from **GCC 9.1** onward<sup>[8]</sup>.
-- Cross GCC for bare-metal uses the same front end with a runtime link that does not supply hosted libstdc++ for that image (see Section 4.5).
+Cross GCC for bare-metal uses the same front end with a runtime link that does not supply hosted libstdc++ for that image (see Section 4.5).
 
 ---
 
@@ -349,16 +305,10 @@ cppreference lists **Clang 8** as the first column entry for C++20 coroutines ([
 | ----- | ----- |
 | Toolchain family | Clang |
 | C++20 coroutine support | Yes |
-| `thread_local` code generation | Platform ABI |
-| Hosted versus freestanding profile | Both hosted and freestanding |
+| `thread_local` code generation | Platform ABI. Same meaning as for GCC: TLS lowering follows the platform binary interface |
+| Hosted versus freestanding profile | Both hosted and freestanding. Also used for bare-metal and kernel targets |
 | Exceptions (typical default) | Typically on (hosted) |
-| PMR in shipped standard library | Yes (libc++ or libstdc++, link-time choice) |
-
-**Notes**
-
-- **Platform ABI** - Same meaning as for GCC: TLS lowering follows the platform binary interface.
-- **Both hosted and freestanding** - Clang is used for bare-metal and kernel targets as well as full OS builds.
-- **Yes (libc++ or libstdc++, link-time choice)** (PMR) - `<memory_resource>` floors are **Clang 16** with libc++ and **GCC 9.1** libstdc++ in cppreference's table<sup>[8]</sup>, for whichever library the link step selects.
+| PMR in shipped standard library | Yes (libc++ or libstdc++, link-time choice). `<memory_resource>` floors are **Clang 16** with libc++ and **GCC 9.1** libstdc++ in cppreference's table<sup>[8]</sup> |
 
 ---
 
@@ -376,16 +326,10 @@ TLS access patterns for DLLs differ from ELF static TLS as summarised in [P4127R
 | ----- | ----- |
 | Toolchain family | MSVC |
 | C++20 coroutine support | Yes |
-| `thread_local` code generation | Windows TLS model |
-| Hosted versus freestanding profile | Hosted Windows primary |
+| `thread_local` code generation | Windows TLS model. `thread_local` in DLLs can use the slow path described in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2, unlike a single static link |
+| Hosted versus freestanding profile | Hosted Windows primary. Targets user-mode Windows toolchains with the full CRT, not every experimental or kernel target MSVC can be aimed at |
 | Exceptions (typical default) | Typically on |
 | PMR in shipped standard library | Yes |
-
-**Notes**
-
-- **Windows TLS model** - Summarises MSVC and the loader together: `thread_local` in DLLs can use the slow path described in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2, unlike a single static link.
-- **Hosted Windows primary** - The inventory row targets user-mode Windows toolchains with the full CRT, not every experimental or kernel target MSVC can be aimed at.
-- Conformance tables on Microsoft Learn track feature macros and `/await` / standards modes<sup>[5]</sup>.
 
 ---
 
@@ -400,17 +344,11 @@ The Arm GNU bare-metal distribution (`arm-none-eabi-gcc`) targets Cortex-M and s
 | Field | Value |
 | ----- | ----- |
 | Toolchain family | Arm GNU Toolchain (bare-metal) |
-| C++20 coroutine support | Yes with `-fcoroutines` where available |
-| `thread_local` code generation | No TLS on typical MCU |
+| C++20 coroutine support | Yes with `-fcoroutines` where available. Same floor as upstream GCC (**GCC 10** for P0912R5<sup>[7]</sup>). Some triples still need `-fcoroutines` or a newer GCC build; depends on multilib and whether the feature is exposed for that triple |
+| `thread_local` code generation | No TLS on typical MCU. Cortex-M images usually omit thread-local storage because there is no threads model in the same sense as POSIX |
 | Hosted versus freestanding profile | Freestanding |
-| Exceptions (typical default) | Typically off in embedded |
+| Exceptions (typical default) | Typically off in embedded. The usual `-fno-exceptions` default or project policy for size |
 | PMR in shipped standard library | No |
-
-**Notes**
-
-- **Yes with `-fcoroutines` where available** - Same floor as upstream GCC in cppreference's table (**GCC 10** for P0912R5<sup>[7]</sup>). Some triples still need `-fcoroutines` or a newer GCC build. The bare-metal port also depends on multilib and whether the feature is exposed for that triple.
-- **No TLS on typical MCU** - Cortex-M images in this toolchain usually omit thread-local storage because there is no threads model in the same sense as POSIX.
-- **Typically off in embedded** - The usual `-fno-exceptions` default or project policy for size.
 
 ---
 
@@ -427,14 +365,11 @@ CUDA compilation splits host code (compiled with a host compiler: GCC, Clang, or
 | Toolchain family | NVIDIA `nvcc` with host driver |
 | C++20 coroutine support | Determined by selected host compiler |
 | `thread_local` code generation | Determined by selected host compiler |
-| Hosted versus freestanding profile | Host environment plus device compilation (split) |
+| Hosted versus freestanding profile | Host environment plus device compilation (split). Device translation units follow NVIDIA's rules for each architecture; see NVIDIA documentation for the supported language subset |
 | Exceptions (typical default) | Determined by host toolchain |
 | PMR in shipped standard library | Determined by host standard library |
 
-**Notes**
-
-- **Determined by selected host compiler** (coroutines, TLS lowering, exceptions, PMR) - The build selects a host GCC, Clang, or MSVC. Host translation units use that toolchain's semantics (version floors in Sections 4.2-4.4 and cppreference<sup>[7]</sup><sup>[8]</sup>).
-- **Host environment plus device compilation (split)** - Device translation units follow NVIDIA's rules for each architecture; see NVIDIA documentation for the supported language subset.
+The build selects a host GCC, Clang, or MSVC for host translation units; version floors follow Sections 4.2-4.4 and cppreference<sup>[7]</sup><sup>[8]</sup>.
 
 ---
 
@@ -451,17 +386,11 @@ Edison Design Group supplies a commercial C++ **front end** (parser and semantic
 | Toolchain family | EDG C++ front end |
 | C++20 coroutine support | Depends on embedding |
 | `thread_local` code generation | Depends on embedding |
-| Hosted versus freestanding profile | Sold to integrators. No single shipped runtime |
+| Hosted versus freestanding profile | Sold to integrators. No single shipped runtime or OS target bundled with the front end alone |
 | Exceptions (typical default) | Depends on embedding |
-| PMR in shipped standard library | From host standard library or none |
+| PMR in shipped standard library | From host standard library or none. PMR matches the hosted library when one is linked; bare-metal integrations often ship without it |
 
-**Notes**
-
-- **Depends on embedding** (coroutines, TLS, exceptions) - Parsing and semantics up to code generation; the integrator supplies object layout, TLS lowering, exception machinery, and runtime. No default standard library or OS target ships with the front end alone.
-- **From host standard library or none** (PMR) - PMR matches the hosted library when one is linked; bare-metal integrations often ship without it.
-- **History** - Includes the Comeau C++ compiler. Today the product is licensed to vendors building specialised or embedded compilers.
-- **Attribution** - Attribute runtime behaviour to the **complete toolchain**, not the EDG front end alone.
-- **Conformance role** - For language-conformance questions, committee members still point to EDG-backed builds as a reference parser alongside GCC and Clang.
+The integrator supplies object layout, TLS lowering, exception machinery, and runtime - attribute runtime behaviour to the **complete toolchain**, not the EDG front end alone. Includes the Comeau C++ compiler; today licensed to vendors building specialised or embedded compilers. For language-conformance questions, committee members still point to EDG-backed builds as a reference parser alongside GCC and Clang.
 
 ---
 
