@@ -934,6 +934,8 @@ class ASTRenderer:
 
     def _render_block_html(self, tok):
         raw = tok.get("raw", "")
+        if re.match(r'\s*<!--.*?-->\s*$', raw, re.DOTALL):
+            return []
         pre_m = re.match(
             r'<pre><code>(.*?)</code></pre>\s*$', raw, re.DOTALL)
         if pre_m:
