@@ -44,6 +44,7 @@ class ASTRenderer:
         self._in_heading = False
         self._in_table_header = False
         self._wording_context = None
+        self._bq_fg = None
         self._in_ins = False
         self._in_del = False
         self.has_fm_title = has_fm_title
@@ -628,6 +629,8 @@ class ASTRenderer:
         children = tok.get("children", [])
         inner = []
         variant = None
+        prev = self._bq_fg
+        self._bq_fg = parse_color(self.style["blockquote_fg"])
 
         for child in children:
             ct = child.get("type")
@@ -647,6 +650,8 @@ class ASTRenderer:
                 inner.append(Paragraph(f"<i>{markup}</i>", self.ps["blockquote"]))
             else:
                 inner.extend(self._render_token(child))
+
+        self._bq_fg = prev
 
         if not inner:
             return []
@@ -714,7 +719,11 @@ class ASTRenderer:
                 else:
                     text = self._inline_children(sub.get("children", []))
                     text = self._inject_cjk_fallback(text)
-                    item_parts.append(Paragraph(text, self.ps["list_item"]))
+                    li_style = (
+                        ParagraphStyle("list_item_bq", parent=self.ps["list_item"], textColor=self._bq_fg)
+                        if self._bq_fg is not None else self.ps["list_item"]
+                    )
+                    item_parts.append(Paragraph(text, li_style))
             if item_parts and nested_lists:
                 items.append(item_parts + nested_lists)
             elif item_parts:
@@ -741,6 +750,7 @@ class ASTRenderer:
             bulletDedent=list_cfg["bullet_dedent"],
             spaceBefore=list_cfg["space_before"] if depth == 0 else 0,
             spaceAfter=list_cfg["space_after"] if depth == 0 else 0,
+            **({"bulletColor": self._bq_fg} if self._bq_fg is not None else {}),
         )
         if bullet_fmt:
             kwargs["bulletFormat"] = bullet_fmt

@@ -150,6 +150,40 @@ def test_render_table(renderer):
     assert any(isinstance(f, Table) for f in flows)
 
 
+def test_list_in_blockquote_uses_blockquote_fg(renderer):
+    from lib.colors import parse_color
+    tok = {
+        "type": "list",
+        "attrs": {"ordered": True},
+        "children": [
+            {"type": "list_item", "children": [
+                {"type": "paragraph", "children": [{"type": "text", "raw": "item"}]}
+            ]},
+        ],
+    }
+    expected = parse_color(renderer.style["blockquote_fg"])
+    renderer._bq_fg = expected
+    flows = renderer._render_list(tok)
+    renderer._bq_fg = None
+    para = flows[0]._flowables[0]._flowables[0]
+    assert para.style.textColor == expected
+
+
+def test_blockquote_bq_fg_cleaned_up(renderer):
+    tok = {
+        "type": "block_quote",
+        "children": [
+            {"type": "list", "attrs": {"ordered": True}, "children": [
+                {"type": "list_item", "children": [
+                    {"type": "paragraph", "children": [{"type": "text", "raw": "x"}]}
+                ]},
+            ]},
+        ],
+    }
+    renderer._render_token(tok)
+    assert renderer._bq_fg is None
+
+
 def test_render_block_quote(renderer):
     tok = {
         "type": "block_quote",
