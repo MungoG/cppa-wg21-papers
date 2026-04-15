@@ -43,7 +43,8 @@ def _diff_head(actual: str, golden: str, limit: int = 120) -> str:
 @pytest.mark.parametrize("stem", _GOLDEN_STEMS)
 def test_convert_html_matches_golden(stem: str):
     html_path = _PAPERS / f"{stem}.html"
-    assert html_path.is_file(), f"missing paper HTML: {html_path}"
+    if not html_path.is_file():
+        pytest.skip(f"missing paper HTML: {html_path} (papers/ is gitignored)")
 
     md, prompts = convert_html(html_path)
     golden_md = _GOLDEN / f"{stem}.golden.md"
