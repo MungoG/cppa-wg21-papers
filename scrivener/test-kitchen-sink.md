@@ -442,6 +442,20 @@ A table where the header cells are blank (the `nhead == 0` path in the renderer 
 
 ---
 
-## 30. Final Section
+## 30. HTML Comments
+
+<!-- This block comment should be completely invisible in the PDF output. -->
+
+This paragraph follows a block-level HTML comment. Only this text should appear.
+
+This paragraph has <!-- an inline comment --> embedded within it. The surrounding text should flow together seamlessly.
+
+<!-- Multi-line comment:
+     These lines should all be suppressed.
+     None of this text should appear in the PDF. -->
+
+This paragraph follows a multi-line comment.
+
+## 31. Final Section
 
 This is the last section. It verifies that the document ends cleanly without trailing artifacts.
