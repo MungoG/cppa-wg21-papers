@@ -64,7 +64,7 @@ Enums:
   - `dy > avg_fs * 1.8` -> line break
   - `dy > avg_fs * 0.3` -> line break
   - `dx > avg_fs * 0.3` -> word break (insert space)
-- Characters sorted by y-band (half font height) with stable sort preserving document order within each band
+- Characters sorted by y-band (half font height) then x-position, giving deterministic reading order within each band
 
 **T3. Monospace classification (4 signals)**
 - `mono.py:classify_monospace`

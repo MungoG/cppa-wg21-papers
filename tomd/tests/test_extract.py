@@ -36,6 +36,35 @@ def _make_page(chars_by_span):
     return page
 
 
+def _make_page_with_blocks(block_char_order):
+    """Mock a fitz page whose rawdict iterates blocks in the given order.
+
+    block_char_order is a list of lists of (c, x, y) tuples. Each outer
+    list element becomes one block, iterated in that order.
+    """
+    blocks = []
+    for chars in block_char_order:
+        block_chars = [
+            {"c": c, "bbox": (x, y, x + 5, y + 10), "origin": (x, y + 10)}
+            for c, x, y in chars
+        ]
+        blocks.append({
+            "type": 0,
+            "lines": [{
+                "spans": [{
+                    "font": "TestFont",
+                    "size": 10.0,
+                    "flags": 0,
+                    "color": 0,
+                    "chars": block_chars,
+                }],
+            }],
+        })
+    page = MagicMock()
+    page.get_text.return_value = {"blocks": blocks}
+    return page
+
+
 def test_spatial_sorts_by_x_within_same_y():
     """Chars at the same y but reversed x-order should come out left-to-right."""
     page = _make_page([
@@ -47,6 +76,23 @@ def test_spatial_sorts_by_x_within_same_y():
     blocks = extract_spatial(page, 0)
     full_text = " ".join(ln.text for b in blocks for ln in b.lines)
     assert full_text.index("A") < full_text.index("B")
+
+
+def test_extract_spatial_sorts_across_blocks_in_y_band():
+    """Two blocks at the same y with reversed x ranges must be merged
+    in left-to-right reading order regardless of rawdict iteration order.
+    """
+    # Block B is iterated first but sits to the right of block A.
+    page = _make_page_with_blocks([
+        [("R", 300, 100), ("I", 310, 100), ("G", 320, 100), ("H", 330, 100), ("T", 340, 100)],
+        [("L", 50, 100), ("E", 60, 100), ("F", 70, 100), ("T", 80, 100)],
+    ])
+    blocks = extract_spatial(page, page_num=0)
+    text = "".join(
+        span.text for block in blocks for line in block.lines for span in line.spans
+    )
+    # The left block's characters must come first in the output.
+    assert text.index("L") < text.index("R"), f"got text={text!r}"
 
 
 def _make_block_with_span(text, bbox):
