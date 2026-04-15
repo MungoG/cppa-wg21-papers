@@ -165,6 +165,7 @@ def scan_markdown_dirs(watch_dirs):
                 "authors": authors,
                 "date": str(fm.get("date", "")),
                 "audience": fm.get("audience", ""),
+                "intent": fm.get("intent", ""),
                 "brutal_summary": brutal,
                 "md_path": str(md_path),
                 "md_mtime": md_path.stat().st_mtime,
@@ -262,6 +263,7 @@ def build_inventory(watch_dirs, output_dir, remote_papers=None):
         authors = (md or {}).get("authors") or (pdf or {}).get("authors") or (remote or {}).get("author", "")
         date = (md or {}).get("date") or (pdf or {}).get("date") or (remote or {}).get("date", "")
         audience = (md or {}).get("audience") or (pdf or {}).get("audience", "")
+        intent = (md or {}).get("intent", "")
         brutal_summary = (md or {}).get("brutal_summary") or (pdf or {}).get("brutal_summary")
 
         warnings = []
@@ -314,6 +316,7 @@ def build_inventory(watch_dirs, output_dir, remote_papers=None):
             "authors": authors,
             "date": date,
             "audience": audience,
+            "intent": intent,
             "brutal_summary": brutal_summary,
             "primary_author": primary_author,
             "md_path": md_path,

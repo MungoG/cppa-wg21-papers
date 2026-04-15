@@ -79,6 +79,7 @@
     td { padding: 5px 10px; vertical-align: middle; }
     td.mono { font-family: var(--mono); font-size: 13px; }
     td.muted { color: var(--text-muted); }
+    .ask-paper { color: #d4a017; text-shadow: 0 0 6px rgba(212,160,23,0.5); }
 
     /* Badges */
     .badge { display: inline-flex; align-items: center; justify-content: center; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; min-width: 52px; transition: filter 0.2s, box-shadow 0.2s; }
@@ -414,7 +415,7 @@ function renderPapers() {
     const dirty=p.doc_number&&p.pdf_path&&_dirtySet.has(p.doc_number)?'<span class="dirty-dot"></span>':'';
     return `<tr onclick="toggleDetail(${idx})" data-idx="${idx}">
       <td class="mono muted" style="width:24px;text-align:center;font-size:10px">${esc(''+(p.folder_idx||''))}</td>
-      <td class="mono" style="padding-right:2px">${esc(p.doc_number)||'-'}${dirty}</td>
+      <td class="mono${p.intent==='ask'?' ask-paper':''}" style="padding-right:2px">${esc(p.doc_number)||'-'}${dirty}</td>
       <td style="width:30px;text-align:center;padding-left:0;padding-right:4px">${p.md_path?`<a class="file-btn file-btn-md" href="/api/file?path=${encodeURIComponent(p.md_path)}" target="_blank" onclick="event.stopPropagation()" title="Open Markdown">MD</a>`:''}</td>
       <td style="width:34px;text-align:center;padding-left:0;padding-right:4px">${p.pdf_path?`<a class="file-btn file-btn-pdf" href="/api/file?path=${encodeURIComponent(p.pdf_path)}" target="_blank" onclick="event.stopPropagation()" title="Open PDF">PDF</a>`:''}</td>
       <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:16px">${esc(p.title)||''}</td>

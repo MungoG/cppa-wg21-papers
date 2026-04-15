@@ -35,3 +35,9 @@ wording:
 
 front_matter:
   bar_width: 1.5
+  fields:
+    - { field: document, label: "Document" }
+    - { field: date, label: Date }
+    - { field: intent, label: "Intent", transform: { info: "Inform", ask: "Ask" } }
+    - { field: audience, label: Audience }
+    - { field: reply-to, label: "Reply-to" }

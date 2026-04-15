@@ -410,6 +410,83 @@ def test_build_front_matter_empty_fields(renderer):
     assert flows == []
 
 
+def _fm_cell_values(flows):
+    """Extract (label_text, value_text) pairs from front matter flowables."""
+    pairs = []
+    for f in flows:
+        if isinstance(f, AccentBox):
+            tbl = f._content
+            if isinstance(tbl, Table):
+                for row in tbl._cellvalues:
+                    if len(row) >= 2:
+                        label = getattr(row[0], "text", "")
+                        value = getattr(row[1], "text", "")
+                        pairs.append((label, value))
+    return pairs
+
+
+def test_intent_transform_info(font_registered, tmp_path):
+    """intent: info renders as 'Inform' via transform."""
+    import copy
+    from lib.config import load_style, resolve_style_path
+    from lib.colors import resolve_colors
+
+    style = copy.deepcopy(load_style(resolve_style_path("cpp-al")))
+    resolve_colors(style, None)
+
+    r = ASTRenderer(style, {}, [], 468, tmp_path, has_fm_title=True)
+    fm = {"document": "P9999R0", "date": "2026-01-01", "intent": "info"}
+    flows = r.build_front_matter_flowables(fm)
+    pairs = _fm_cell_values(flows)
+    intent_values = [v for l, v in pairs if "Intent" in l]
+    assert len(intent_values) == 1
+    assert "Inform" in intent_values[0]
+    assert "info" not in intent_values[0]
+
+
+def test_intent_transform_ask(font_registered, tmp_path):
+    """intent: ask renders as 'Ask' via transform."""
+    import copy
+    from lib.config import load_style, resolve_style_path
+    from lib.colors import resolve_colors
+
+    style = copy.deepcopy(load_style(resolve_style_path("cpp-al")))
+    resolve_colors(style, None)
+
+    r = ASTRenderer(style, {}, [], 468, tmp_path, has_fm_title=True)
+    fm = {"document": "P9999R0", "date": "2026-01-01", "intent": "ask"}
+    flows = r.build_front_matter_flowables(fm)
+    pairs = _fm_cell_values(flows)
+    intent_values = [v for l, v in pairs if "Intent" in l]
+    assert len(intent_values) == 1
+    assert "Ask" in intent_values[0]
+
+
+def test_front_matter_field_order_matches_style(font_registered, tmp_path):
+    """Fields render in style YAML order regardless of fm dict insertion order."""
+    import copy
+    from lib.config import load_style, resolve_style_path
+    from lib.colors import resolve_colors
+
+    style = copy.deepcopy(load_style(resolve_style_path("cpp-al")))
+    resolve_colors(style, None)
+
+    r = ASTRenderer(style, {}, [], 468, tmp_path, has_fm_title=True)
+    # Insert in reverse of expected style order
+    fm = {
+        "reply-to": ["Author <a@b.com>"],
+        "audience": "LEWG",
+        "intent": "info",
+        "date": "2026-01-01",
+        "document": "P0001R0",
+    }
+    flows = r.build_front_matter_flowables(fm)
+    pairs = _fm_cell_values(flows)
+    label_names = [l.rstrip(":") for l, _ in pairs]
+    expected_order = ["Document Number", "Date", "Intent", "Audience", "Reply-to"]
+    assert label_names == expected_order
+
+
 # -- build_toc_flowables --
 
 def test_build_toc_empty(renderer):

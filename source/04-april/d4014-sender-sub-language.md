@@ -2,8 +2,8 @@
 title: "Tutorial: The Sender Sub-Language For Beginners"
 document: P4014R1
 date: 2026-04-08
+intent: info
 audience: LEWG
-posture: info-paper
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Mungo Gill <mungo.gill@me.com>"

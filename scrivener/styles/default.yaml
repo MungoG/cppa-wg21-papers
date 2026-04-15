@@ -195,3 +195,9 @@ front_matter:
   label_col: 130
   cell_v_pad: 3
   space_after: 0
+  fields:
+    - { field: document, label: "Document" }
+    - { field: date, label: Date }
+    - { field: intent, label: "Intent", transform: { info: "Inform", ask: "Ask" } }
+    - { field: audience, label: Audience }
+    - { field: reply-to, label: "Reply-to" }

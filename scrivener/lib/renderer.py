@@ -439,7 +439,9 @@ class ASTRenderer:
             if isinstance(val, list):
                 val = "<br/>".join(self._fm_value(str(v)) for v in val)
             else:
-                val = self._fm_value(str(val))
+                raw = str(val)
+                transform = entry.get("transform", {})
+                val = self._fm_value(transform.get(raw, raw))
             table_rows.append([
                 Paragraph(f"{escape_xml(label)}:", label_style),
                 Paragraph(val, val_style),

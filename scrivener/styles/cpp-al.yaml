@@ -34,5 +34,6 @@ front_matter:
   fields:
     - { field: document, label: "Document Number" }
     - { field: date, label: Date }
+    - { field: intent, label: "Intent", transform: { info: "Inform", ask: "Ask" } }
     - { field: audience, label: Audience }
     - { field: reply-to, label: "Reply-to" }
