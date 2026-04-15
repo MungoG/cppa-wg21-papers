@@ -46,6 +46,9 @@ def detect_generator(soup: BeautifulSoup) -> str:
 def extract_metadata(soup: BeautifulSoup, generator: str) -> dict:
     """Extract WG21 metadata fields from the HTML.
 
+    HTML DOM scan (pathway 3 of 3). Dispatches to a generator-specific
+    extractor based on the detected generator family.
+
     Returns a dict with possible keys: title, document, date,
     audience, reply-to.
     """
@@ -77,7 +80,7 @@ def _extract_mpark_metadata(soup: BeautifulSoup) -> dict:
         cells = row.find_all("td")
         if len(cells) < 2:
             continue
-        label = cells[0].get_text(strip=True).rstrip(":").lower()
+        label = _normalize_label(cells[0].get_text(strip=True))
         value_cell = cells[1]
 
         if "document" in label:
@@ -103,15 +106,22 @@ def _extract_mpark_metadata(soup: BeautifulSoup) -> dict:
     return metadata
 
 
+def _normalize_label(text: str) -> str:
+    """Normalize a metadata label for keyword matching.
+
+    Strips surrounding whitespace, drops a trailing colon, and lowercases.
+    """
+    return text.strip().rstrip(":").lower()
+
+
 _ANGLE_BRACKET_RE = re.compile(r"[<>]")
 
 
 def _parse_mpark_authors(cell: Tag) -> list[str]:
     """Parse 'Name<br>&lt;email&gt;' author entries from a table cell."""
-    text = str(cell)
-    text = text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
-    chunk_soup = BeautifulSoup(text, "html.parser")
-    lines = chunk_soup.get_text().split("\n")
+    for br in cell.find_all("br"):
+        br.replace_with("\n")
+    lines = cell.get_text().split("\n")
 
     def _clean_author(text):
         return _ANGLE_BRACKET_RE.sub("", text).strip()
@@ -147,14 +157,15 @@ def _extract_bikeshed_metadata(soup: BeautifulSoup) -> dict:
         if m:
             metadata["date"] = m.group(0)
 
-    dl = soup.find("dl")
+    spec_meta_div = soup.find("div", {"data-fill-with": "spec-metadata"})
+    dl = (spec_meta_div or soup).find("dl")
     if dl:
         current_label = None
         for child in dl.children:
             if not isinstance(child, Tag):
                 continue
             if child.name == "dt":
-                current_label = child.get_text(strip=True).rstrip(":").lower()
+                current_label = _normalize_label(child.get_text(strip=True))
             elif child.name == "dd" and current_label:
                 text = child.get_text(strip=True)
                 if "audience" in current_label:
@@ -211,7 +222,7 @@ def _extract_handwritten_metadata(soup: BeautifulSoup) -> dict:
             th = row.find("th")
             td = row.find("td")
             if th and td:
-                label = th.get_text(strip=True).rstrip(":").lower()
+                label = _normalize_label(th.get_text(strip=True))
                 value = td.get_text(strip=True)
                 if "document" in label:
                     m = DOC_NUM_RE.search(value)
@@ -248,7 +259,7 @@ def _extract_generic_metadata(soup: BeautifulSoup) -> dict:
         for row in table.find_all("tr"):
             cells = row.find_all(["th", "td"])
             if len(cells) >= 2:
-                label = cells[0].get_text(strip=True).rstrip(":").lower()
+                label = _normalize_label(cells[0].get_text(strip=True))
                 value = cells[-1].get_text(strip=True)
                 if "document" in label or "doc" in label:
                     m = DOC_NUM_RE.search(value)

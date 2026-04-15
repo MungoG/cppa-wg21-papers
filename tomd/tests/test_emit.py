@@ -69,3 +69,58 @@ def test_front_matter_special_chars_quoted():
     from lib import format_front_matter
     result = format_front_matter({"document": "P1234R0", "audience": "SG1: Concurrency"})
     assert '"SG1: Concurrency"' in result
+
+
+def test_emit_list():
+    from lib.pdf.types import Span, Line
+    span = make_span("- item one")
+    line = make_line(["- item one"])
+    sec = make_section("- item one", kind=SectionKind.LIST)
+    md = emit_markdown({}, [sec])
+    assert "- item one" in md
+
+
+def test_emit_table():
+    from lib.pdf.types import Span, Line, Section
+    sec = Section(
+        kind=SectionKind.TABLE,
+        text="",
+        columns=[
+            [[make_span("Header A")], [make_span("Header B")]],
+            [[make_span("Cell 1")], [make_span("Cell 2")]],
+        ],
+    )
+    md = emit_markdown({}, [sec])
+    assert "Header A" in md
+    assert "Header B" in md
+    assert "---" in md
+    assert "Cell 1" in md
+
+
+def test_emit_wording_section():
+    from lib.pdf.types import Span, Line, Section
+    span = make_span("added text")
+    span.wording_role = "ins"
+    line = make_line(["added text"])
+    line.spans[0].wording_role = "ins"
+    sec = Section(
+        kind=SectionKind.WORDING_ADD,
+        text="added text",
+        lines=[line],
+    )
+    md = emit_markdown({}, [sec])
+    assert ":::wording-add" in md
+    assert ":::" in md
+
+
+def test_emit_wording_remove_section():
+    from lib.pdf.types import Section
+    line = make_line(["removed text"])
+    line.spans[0].wording_role = "del"
+    sec = Section(
+        kind=SectionKind.WORDING_REMOVE,
+        text="removed text",
+        lines=[line],
+    )
+    md = emit_markdown({}, [sec])
+    assert ":::wording-remove" in md

@@ -118,6 +118,22 @@ class TestExtractMparkMetadata:
         meta = extract_metadata(parse_html(html), "mpark")
         assert meta["document"] == "P1111R0"
 
+    def test_reply_to_non_ascii_name(self):
+        html = """
+        <header id="title-block-header">
+        <h1 class="title">T</h1>
+        <table>
+        <tr><td>Reply-to:</td><td>
+          Johel Ernesto Guerrero Pe&ntilde;a<br>&lt;<a href="mailto:j@x.com">j@x.com</a>&gt;
+        </td></tr>
+        </table>
+        </header>
+        """
+        meta = extract_metadata(parse_html(html), "mpark")
+        assert "reply-to" in meta
+        assert any("ñ" in a for a in meta["reply-to"]), \
+            f"Expected decoded ñ in author names, got: {meta['reply-to']}"
+
     def test_reply_to_email_only_line(self):
         html = """
         <header id="title-block-header">
@@ -218,6 +234,24 @@ class TestExtractBikeshedMetadata:
         meta = extract_metadata(parse_html(html), "bikeshed")
         assert meta.get("title") == "Plain WG21 Title"
         assert "document" not in meta
+
+    def test_dl_scoped_to_spec_metadata_not_earlier_dl(self):
+        """Regression: audience/author must come from spec-metadata dl, not an earlier dl."""
+        html = """
+        <h1 class="p-name">P1000R0 My Paper</h1>
+        <dl>
+          <dt>Unrelated Term</dt>
+          <dd>Unrelated definition - should not be audience</dd>
+        </dl>
+        <div data-fill-with="spec-metadata">
+          <dl>
+            <dt>Audience:</dt>
+            <dd>EWG</dd>
+          </dl>
+        </div>
+        """
+        meta = extract_metadata(parse_html(html), "bikeshed")
+        assert meta.get("audience") == "EWG"
 
     def test_time_dt_updated_from_datetime_attr(self):
         html = """

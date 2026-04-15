@@ -83,6 +83,10 @@ def extract_metadata_from_blocks(blocks: list[Block],
                                  ) -> tuple[dict, set[int]]:
     """Extract WG21 metadata from the first blocks of page 0.
 
+    PDF block-level scan (pathway 2 of 3). Higher precedence than
+    structure._extract_metadata; both are merged in convert_pdf with this
+    result winning on key conflicts.
+
     Handles two formats:
       - Scrivener: each field is its own block (label on line 0, value on line 1+)
       - Google Docs: multiple fields in one block (each line has label: value)

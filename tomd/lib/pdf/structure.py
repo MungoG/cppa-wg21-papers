@@ -26,6 +26,18 @@ _LEADING_TRAILING_COMMA_RE = re.compile(r"^[,\s]+|[,\s]+$")
 _log = logging.getLogger(__name__)
 
 
+def _make_paragraph_section(block: Block) -> Section:
+    """Construct a high-confidence PARAGRAPH Section from a Block."""
+    return Section(
+        kind=SectionKind.PARAGRAPH,
+        text=block.text,
+        confidence=Confidence.HIGH,
+        lines=block.lines,
+        page_num=block.page_num,
+        font_size=block.font_size,
+    )
+
+
 def _block_words(blocks: list[Block]) -> list[str]:
     """Flatten blocks to a list of words for comparison."""
     words = []
@@ -83,14 +95,7 @@ def compare_extractions(mupdf_blocks: list[Block],
 
         if sim >= SIMILARITY_THRESHOLD:
             for block in m_blocks:
-                sections.append(Section(
-                    kind=SectionKind.PARAGRAPH,
-                    text=block.text,
-                    confidence=Confidence.HIGH,
-                    lines=block.lines,
-                    page_num=block.page_num,
-                    font_size=block.font_size,
-                ))
+                sections.append(_make_paragraph_section(block))
         else:
             _log.debug("Page %d: similarity %.2f < threshold, marking uncertain",
                         pg, sim)
@@ -131,14 +136,7 @@ def compare_extractions(mupdf_blocks: list[Block],
                         and s.page_num in promoted)]
         for pg in sorted(promoted):
             for block in mupdf_by_page.get(pg, []):
-                kept.append(Section(
-                    kind=SectionKind.PARAGRAPH,
-                    text=block.text,
-                    confidence=Confidence.HIGH,
-                    lines=block.lines,
-                    page_num=block.page_num,
-                    font_size=block.font_size,
-                ))
+                kept.append(_make_paragraph_section(block))
         sections = kept
 
     still_uncertain = [pg for pg in all_pages
@@ -162,14 +160,7 @@ def compare_extractions(mupdf_blocks: list[Block],
                             and s.page_num in bulk_promoted)]
             for pg in sorted(bulk_promoted):
                 for block in mupdf_by_page.get(pg, []):
-                    kept.append(Section(
-                        kind=SectionKind.PARAGRAPH,
-                        text=block.text,
-                        confidence=Confidence.HIGH,
-                        lines=block.lines,
-                        page_num=block.page_num,
-                        font_size=block.font_size,
-                    ))
+                    kept.append(_make_paragraph_section(block))
             sections = kept
 
     sections.sort(key=lambda sec: sec.page_num)
@@ -258,6 +249,9 @@ def heading_confidence(has_number: bool, number_level: int,
 def _extract_metadata(sections: list[Section]) -> tuple[dict, list[Section]]:
     """Pull WG21 metadata fields from early sections into a dict.
 
+    PDF section line scan (pathway 1 of 3). Lower precedence than
+    wg21.extract_metadata_from_blocks; both are merged in convert_pdf.
+
     Returns (metadata_dict, remaining_sections).
     """
     meta: dict[str, str] = {}
@@ -283,7 +277,7 @@ def _extract_metadata(sections: list[Section]) -> tuple[dict, list[Section]]:
 
                 m = DOC_FIELD_RE.match(lt)
                 if m:
-                    meta["doc-number"] = m.group(1).upper()
+                    meta["document"] = m.group(1).upper()
                     consumed = True
                     continue
 

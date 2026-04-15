@@ -73,12 +73,14 @@ def extract_mupdf(page, page_num: int) -> list[Block]:
 def extract_spatial(page, page_num: int) -> list[Block]:
     """Extract text using raw character coordinates and spatial rules.
 
-    Uses page.get_text("rawdict") for (character, x, y) tuples.
-    Applies dy/dx ratios against font-size-relative thresholds:
-      1. Horizontal close -> same word
-      2. Horizontal far -> word break (space)
-      3. Vertical moderate -> new line (same block)
-      4. Vertical far -> paragraph break
+    Uses page.get_text("rawdict") for per-character bounding boxes.
+    Classifies each consecutive character pair via four elif branches,
+    using font-size-relative named constants from types.py:
+
+      dy > PARA_SPACING_RATIO * avg_fs  -> flush block (paragraph break)
+      dy > LINE_SPACING_RATIO * avg_fs  -> flush line (new line, same block)
+      dy > WORD_GAP_RATIO    * avg_fs  -> flush line (large vertical gap)
+      dx > WORD_GAP_RATIO    * avg_fs  -> flush word + insert space span
     """
     data = page.get_text("rawdict", flags=0)
     chars = []

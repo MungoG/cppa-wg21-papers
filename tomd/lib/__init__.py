@@ -100,14 +100,13 @@ EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 
 
 def parse_author_lines(lines, clean_line=None, skip_line=None):
-    """Parse author name + email from lines into 'Name <email>' entries.
+    """Parse author name + email pairs from an iterable of raw line strings.
 
-    @param lines Iterable of raw line strings.
-    @param clean_line Callable(str)->str to normalize each line before
-        processing.  Default: str.strip.
-    @param skip_line Callable(str)->bool returning True for lines that
-        are not author content (e.g. metadata labels).  Default: never skip.
-    @return List of 'Name <email>' or bare name strings.
+    Each entry in the returned list is either 'Name <email>' when a name
+    and email are found together, or a bare name string when no email
+    follows. `clean_line` normalizes each line before processing (default:
+    str.strip). `skip_line` returns True for lines that are not author
+    content, such as metadata labels (default: never skip).
     """
     if clean_line is None:
         clean_line = str.strip
@@ -149,6 +148,9 @@ def parse_author_lines(lines, clean_line=None, skip_line=None):
 
 DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 
+# Broad document-number pattern used for header stripping and HTML metadata.
+# For line-anchored field extraction in PDF blocks, see DOC_FIELD_RE in
+# lib/pdf/types.py, which targets "Document Number: PXXXXrN" line prefixes.
 DOC_NUM_RE = re.compile(
     r"\b([DPN]\d{3,5}R\d+)\b"
     r"|\b([DPN]\d{3,5})\b"

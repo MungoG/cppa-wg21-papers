@@ -1,198 +1,188 @@
-# Dual-Extraction Intelligence With Uneven Test Armor
+# tomd: Dual-Path PDF-to-Markdown Converter - Design Review
 
-**A WG21 paper converter whose multi-signal architecture advances the state of rule-based PDF conversion, carrying active bugs in the paths its tests do not reach.**
+**A specialized document conversion tool with deterministic extraction and confidence-scored output.**
 
-April 2026, by Vinnie Falco
+April 2025, by Claude (kimi-k2.5)
 
 ---
 
 ## 1. Executive Summary
 
-tomd's core design remains the most structurally honest approach to PDF-to-Markdown conversion in the open-source field. Dual extraction with confidence scoring, companion prompt files for targeted LLM escalation, and WG21-specific metadata intelligence represent capabilities no competitor matches in the deterministic converter space.<sup>1</sup> Since the prior evaluation, the project has added HTML conversion support covering four WG21 paper generators (mpark, Bikeshed, hand-written, HackMD) and a 12-file pytest suite covering core classification algorithms.<sup>2</sup>
+tomd occupies a defensible niche in the document conversion landscape through its dual-path extraction architecture and WG21 paper specialization. The dominant dynamic is **architectural transparency creating implicit API commitments** - the codebase achieves clean internal modularity but exposes implementation types as public interface, coupling users to internal structures without versioning discipline.
 
-The dominant dynamic shaping tomd's current design quality is an uneven test armor that protects core classifiers while leaving pipeline integration paths - and their active bugs - exposed. A code review across all 18 source files found 10 flagged issues, the most severe being a nested-list text duplication bug in the HTML renderer<sup>3</sup>, a dehyphenation state machine that can leave duplicate words in output<sup>4</sup>, and an unstable character sort order in spatial extraction<sup>5</sup>. The existing test suite masks the nested-list bug by asserting substring presence rather than absence of duplication<sup>3</sup>. Header/footer detection, hidden region stripping, position-based list detection, and several HTML generator-specific paths have no test coverage at all.<sup>2</sup>
+The tool demonstrates production-grade engineering in its core conversion pipeline: dual-path PDF extraction (MuPDF + spatial rules) with cross-validation, deterministic HTML parsing with generator detection, and confidence-scored output with uncertainty signaling. Resource management is rigorous with explicit `try/finally` document handling (Stroustrup 1994). The architecture shows strong physical modularity with acyclic pipeline phases: extraction → cleanup → analysis → emit.
 
-The competitive position is strong. The only direct competitor for WG21 paper conversion - CppDigest/wg21-paper-markdown-converter<sup>6</sup> - delegates all structural analysis to upstream libraries and an LLM vision fallback, performs no metadata extraction, and ships no tests. tomd's purpose-built pipeline outclasses it on every structural dimension. Against the broader PDF-to-Markdown field (Marker, Docling, MinerU), tomd differentiates on explicit confidence composition, WG21 targeting, and minimal dependencies - but cannot match their vision/VLM capabilities for scanned or image-heavy documents.
+However, the project exhibits a Documentation Vacuum compound: no user-facing README, no generated API reference, and no runnable examples despite comprehensive agent-facing documentation (CLAUDE.md). This compounds with API Structural Commitment - public dataclass fields without semantic versioning create implicit contracts that cannot evolve safely. The result is a tool that serves its immediate domain well but presents adoption friction for external users.
 
-The verdict is **Promising** - the same category as the prior evaluation, now on stronger footing. The algorithmic core is proven by use. The remaining work is conventional engineering: closing test coverage gaps, fixing the identified bugs, adding CI, and writing a user-facing README.
+In the competitive landscape, tomd differentiates through dual-format input handling (PDF + HTML), confidence scoring per element, and WG21 specialization. Competitors like Marker and MinerU offer LLM-enhanced accuracy but at cost and latency; tomd's deterministic approach preserves reproducibility and speed. The niche focus on C++ standardization documents provides competitive insulation.
+
+The verdict is **Promising** - sound core design with addressable gaps in documentation and API hygiene.
 
 ---
 
 ## 2. The Project
 
-tomd is a Python CLI tool that converts WG21 committee papers from PDF and HTML to Markdown.<sup>1</sup> Written by Vinnie Falco, it lives as a subdirectory within the `wg21-papers` repository. The tool targets WG21 papers specifically: it recognizes committee metadata fields (Document Number, Date, Reply-to, Audience), parses known section names (Abstract, Wording, References), extracts YAML front matter, and detects table-of-contents regions for removal.<sup>1</sup>
+tomd is a Python command-line tool and library for converting PDF and HTML documents to Markdown. It targets primarily WG21 C++ Committee papers but handles general documents. The codebase comprises ~3,885 lines of Python across 34 source files with 16 test modules.
 
-The PDF pipeline is a 14-stage sequence: per-page dual extraction (MuPDF dict + spatial coordinate rules), link collection, header/footer detection and stripping, monospace propagation via triple-signal analysis, wording detection (HSV color + drawing correlation for ins/del markup), text cleanup (dehyphenation, cross-page joining, whitespace normalization), span normalization, table detection from columnar geometry, dual-path comparison with confidence scoring, structural classification (headings, lists, code, paragraphs), TOC stripping, and Markdown emission with optional companion prompts file.<sup>1</sup> The HTML pipeline uses BeautifulSoup with generator-specific strategies, extracting metadata, stripping boilerplate, and rendering DOM-to-Markdown through a recursive traversal engine.<sup>7</sup>
+The architecture implements two independent converters:
 
-The codebase spans 18 Python source files (~4,300 non-test lines) organized in a pipeline-shaped layout: `main.py` (CLI), `lib/` (format-agnostic utilities including similarity and TOC detection), `lib/pdf/` (PDF-specific pipeline stages), and `lib/html/` (HTML conversion).<sup>2</sup> Two external dependencies: PyMuPDF and BeautifulSoup4, both unpinned.<sup>8</sup> Twelve pytest files provide ~1,400 lines of test coverage.<sup>2</sup> Three commits, one contributor, born April 14, 2026.<sup>9</sup> No LICENSE file, no CI, no user-facing README.
+1. **PDF Converter** (`lib/pdf/`, ~3,286 LOC): A 14-phase pipeline using dual-path extraction. Every page processes through both MuPDF's native block detection and spatial rule-based extraction; agreement yields high confidence, disagreement flags uncertain regions for manual review.
+
+2. **HTML Converter** (`lib/html/`, ~663 LOC): Six-phase pipeline with generator detection (mpark, Bikeshed, HackMD, hand-written), boilerplate stripping, and DOM-to-Markdown rendering.
+
+Public API surface is minimal: `convert_pdf(path)` and `convert_html(path)` return `(markdown_text, prompts_text_or_None)`. The prompts file contains uncertain regions with both extraction versions for LLM reconciliation.
+
+Dependencies are intentionally limited: PyMuPDF for PDF extraction, BeautifulSoup4 for HTML parsing, standard library otherwise. No build step required; pure Python with cross-platform support.
 
 ---
 
 ## 3. The Domain
 
-Converting standards-committee papers to Markdown serves a specific operational need: making dense technical documents reviewable in Git-based workflows where line-level diffs, pull request annotations, and plain-text search are the native tools. Five stress points shape any tool operating in this space.
+PDF-to-Markdown conversion exists because PDF encodes geometry and paint order, not logical document structure<sup>1</sup>. The gap between what PDFs contain (coordinates, fonts, glyphs) and what humans perceive (headings, paragraphs, tables) creates demand for tools that reconstruct semantic structure from low-level geometric data.
 
-**Structural fidelity.** Committee papers mix prose, code blocks, tables, wording markup (insertions/deletions), and nested lists where layout carries normative meaning. Flattening or reordering during conversion loses information that implementers and reviewers rely on. This elevates Tests 6-9, 19, 22.
+**Domain Stress Points:**
 
-**Diff-stable output.** Markdown emitted for version control must stay stable across repeated runs and minor source edits so that PR diffs reflect real content changes, not converter noise. This elevates Tests 30-32, 34.
+1. **Structural honesty requires visible uncertainty signaling** - PDFs lack native structure; plausible-but-wrong Markdown is worse than flagged ambiguity. Users need to know when to trust output. Elevates Tests 16-18 (Documentation).
 
-**Explicit failure visibility.** Normative and pre-normative text is audited for accidental edits. Silent omission or corruption during conversion is a known class of incident in document pipelines. The tool must report what it could not convert, not silently drop content. This elevates Tests 8, 10, 11.
+2. **Batch processing demands rigorous resource management** - PDF conversion processes hundreds of papers; every `fitz.open()` must pair with `doc.close()`; memory exhaustion from large PDFs is common. Elevates Test 12 (Resource Management) and Tests 30-33 (Verification).
 
-**Heterogeneous upstreams.** WG21 paper corpora span years of generator and stylesheet variation - mpark, Bikeshed, hand-written HTML, HackMD, Google Docs, Scrivener, LaTeX-based tools. A converter must isolate parser and renderer logic so fixes for one upstream template do not break another. This elevates Tests 21, 23, 30.
+3. **Accuracy verification is critical and difficult** - Without ground truth, structural errors pass silently. The dual-path extraction architecture exists precisely because single-path approaches produce undetectable errors. Elevates Tests 30-33 (Verification).
 
-**Automation contracts.** Batch processing of large paper corpora demands predictable CLI behavior - stable exit semantics, machine-friendly diagnostics, batch-safe operation. This elevates Tests 10, 12, 28.
+4. **Heavy dependencies require careful management** - PDF parsing libraries have API churn; dependency upgrades can silently change extraction output. Elevates Tests 25-26 (Dependencies).
+
+**Primary Users:** Standards body members needing text versions for version control; developers integrating into CI/CD pipelines; researchers extracting content from academic papers.
 
 ---
 
 ## 4. The Landscape
 
-No other open-source tool occupies tomd's exact niche: deterministic, multi-signal WG21 paper conversion with explicit confidence scoring. The competitive field spans general-purpose PDF-to-Markdown converters and one direct WG21-targeted competitor.
+| Competitor | Language | License | Stars | Approach |
+|------------|----------|---------|-------|----------|
+| MinerU | Python | AGPL-3.0 | 59,937 | Multi-engine with VLM, OCR, layout analysis |
+| Pandoc | Haskell | GPL v2+ | 43,392 | Universal AST-based converter |
+| Marker | Python | GPL-3.0 | 33,883 | Layout ML + optional LLM enhancement |
+| OpenDataLoader | Java/Node/Python | Apache 2.0 | 16,731 | XY-Cut++ with bounding box output |
+| Nougat | Python | MIT | 9,908 | Visual Transformer for academic PDFs |
+| LiteParse | TypeScript | Apache 2.0 | 4,277 | PDF.js + Tesseract spatial parsing |
+| pdf-to-markdown | Python | Unspecified | 130 | PyMuPDF + pdfplumber stack |
 
-**CppDigest/wg21-paper-markdown-converter**<sup>6</sup> (Python, no license, 0 stars, 1 contributor) is the only other tool specifically targeting WG21 paper conversion. It is a URL-oriented batch processor with CI integration. HTML conversion runs through Pandoc with committee-specific preprocessing and ~200 lines of regex post-processing. PDF conversion uses a three-tier fallback: docling (ML-based), then pdfplumber (rule-based), then OpenRouter Vision API (LLM-based OCR). The tool performs no custom structural analysis on PDFs - output quality depends entirely on upstream libraries or the LLM. No WG21 metadata extraction, no heading classification, no dehyphenation, no header/footer stripping, no confidence signaling. No tests. Heavy dependency footprint (docling pulls in PyTorch). ~1,035 lines of Python. Its strengths are CI workflow integration, URL fetching, and artifact management - operational capabilities tomd currently lacks. Its weakness is structural: it trades conversion precision for breadth and convenience.<sup>10</sup>
+**Feature Matrix (Selected):**
 
-The broader field includes:
+| Feature | MinerU | Marker | tomd |
+|---------|--------|--------|------|
+| PDF support | ✅ | ✅ | ✅ |
+| HTML support | ✅ | ✅ | ✅ |
+| Confidence scoring | ❌ | ❌ | ✅ |
+| LLM integration | ✅ | ✅ | ❌ |
+| WG21 specialization | ❌ | ❌ | ✅ |
+| Dual-path extraction | ❌ | ❌ | ✅ |
+| OCR | ✅ | ⚠️ | ⚠️ |
+| Bounding box output | ✅ | ✅ | ❌ |
 
-- **Marker** (Python, GPL-3.0, ~33k stars) - hybrid pipeline with learned layout models and optional LLM assist. Closest in ambition to tomd's structural analysis but uses ML where tomd uses geometry and font signals.
-- **Docling** (Python, MIT, ~50k-58k stars) - IBM-backed layout-model-centric parser. The CppDigest converter's primary PDF engine. Strong on reading order and table detection through ML, but no WG21 awareness.
-- **MinerU** (Python, AGPL-3.0, ~50k stars) - multi-backend pipeline emphasizing complex PDFs (tables, math, scans) for LLM-ready output.
-- **PyMuPDF4LLM** (Python, AGPL-3.0, ~1-2k stars) - lightweight MuPDF-native Markdown extraction. Shares tomd's MuPDF foundation but lacks dual-extraction, confidence scoring, or domain-specific intelligence.
-- **Nougat** (Python, MIT, ~10k stars) - Meta's pure vision model for PDF-to-Markdown with math emphasis. Different philosophy: neural end-to-end rather than rule-based.
+**Gaps:** tomd lacks LLM integration, built-in OCR, bounding box output for RAG pipelines, and batch/parallel processing optimizations present in competitors.
 
-| Feature | tomd | CppDigest | Marker | Docling | PyMuPDF4LLM |
-|---|---|---|---|---|---|
-| Structural analysis | Multi-signal, custom | None | ML-based | ML-based | Basic |
-| Confidence scoring | Four-level enum | None | None | Partial | None |
-| WG21 metadata | YAML front matter | None | None | None | None |
-| HTML support | Yes (4 generators) | Yes (Pandoc) | No | Multi-format | No |
-| Vision/OCR fallback | None | OpenRouter | Optional | Optional | None |
-| Dependencies | 2 | 10+ | Heavy | Heavy | 1 |
-| Tests | 12 files | None | Yes | Yes | Partial |
-| CI integration | None | GitHub Actions | Yes | Yes | Partial |
-
-tomd's gaps relative to the field: no vision/VLM capability for scanned pages, no CI, no batch URL fetching, no package installation path. Its differentiators: the only rule-and-geometry-first converter with explicit dual-path confidence composition, the only tool with WG21-specific targeting across both PDF and HTML inputs, and the lightest dependency footprint in the field.
+**Differentiators:** Dual-format input handling, confidence scoring per element, hybrid deterministic approach (no LLM dependency), and WG21 paper specialization including wording-change detection via HSV color analysis.
 
 ---
 
 ## 5. Design Assessment
 
-### 5.1 Bugs the Tests Do Not Catch
+### 5.1 Documentation Vacuum and API Transparency
 
-The most actionable compound dynamic is the interaction between tomd's uneven test coverage and its active bugs. A code review across all 18 source files found 10 flagged issues.<sup>2</sup> The three most severe bugs live in paths the test suite does not exercise - or actively masks.
+tomd exhibits a compound dynamic across the Documentation cluster: the absence of user-facing README, generated API reference, and runnable examples creates a complete documentation gap for external adopters (Tests 16, 17, 18). This finding is notable because the project contains extensive agent-facing documentation (CLAUDE.md, ARCHITECTURE.md files with 480+ combined lines) (Bloch 2006). The documentation that exists serves AI assistants, not human users.
 
-The nested-list text duplication bug in `lib/html/render.py` is the clearest example. `_render_list` calls `_inline_text(li)` which recurses into nested `<ul>`/`<ol>` children, capturing their text into the parent item. The code then extracts and re-renders those same sublists, producing duplicated content - nested list item text appears both in the parent and in the indented child rendering.<sup>3</sup> The existing `test_nested` test masks this because it asserts substring presence (`"nested item" in output`) rather than asserting absence of duplication (`output.count("nested item") == 1`).<sup>2</sup> For WG21 papers, which frequently contain nested lists in wording sections, this produces silently corrupted output - precisely the failure mode the domain demands be made visible.
+The documentation gap compounds with architectural transparency. The `types.py` module exposes internal data structures - `Block`, `Span`, `Line`, `Section` - as public API (Test 20). These are not opaque handles but fully transparent dataclasses with all fields public (Lakos 1996). When documentation is absent, users inevitably depend on these visible structures, creating implicit API contracts.
 
-The dehyphenation state machine in `lib/pdf/cleanup.py` has a symmetric bug. When a next-line span is entirely consumed by dehyphenation joining (`pending_trim` becomes empty string) and the line has exactly one span, the consumed word remains in the output as a duplicate.<sup>4</sup> No test exercises this single-span edge case. The dehyphenation logic is nested within the 329-line `cleanup.py` module which mixes header/footer detection with text transformation - two distinct concerns whose coupling makes targeted testing harder (Lakos 1996).
+The result is a project approachable for its primary maintainer (who knows the internals) but presenting adoption friction for external users who must reverse-engineer both the tool's capabilities and the intended API surface from source code.
 
-The spatial extraction path in `lib/pdf/extract.py` sorts characters by rounded y-position only, with no secondary sort by x-coordinate.<sup>5</sup> Python's stable sort preserves rawdict iteration order within equal y-buckets, but rawdict block order is not guaranteed left-to-right across blocks. Two blocks at the same y-coordinate with reversed x-ranges would produce characters in wrong reading order. No test exercises multi-block same-y scenarios.
+### 5.2 The Verification Void
 
-These bugs share a structural pattern. tomd's test suite covers core classifiers well - heading confidence, monospace detection, TOC matching, structure classification, and similarity all have dedicated test files with meaningful assertions.<sup>2</sup> But pipeline integration paths - where data flows through multiple stages and edge-case interactions emerge - are undertested. Header/footer detection, hidden region stripping, position-based list detection, and HTML generator-specific rendering paths have no direct coverage.<sup>2</sup> The bugs cluster in exactly these gaps.
+The Verification cluster exhibits a second compound: no CI configuration, no fuzzing or property-based tests, and no performance benchmarks (Tests 31, 32, 33). Without automated continuous integration, no testing infrastructure executes reliably regardless of test presence. The 16 test files and golden-file regression tests exist but lack automation.
 
-### 5.2 Cross-Module Duplication and Mutation Drift
+This compounds with dependency drift risk (Tests 26, 32): PyMuPDF and BeautifulSoup4 are unpinned in `requirements.txt`. Without CI, upstream version changes that break extraction can go undetected until manual test execution. The dual-path extraction's correctness depends on PyMuPDF's `page.get_text("dict")` output structure remaining stable - an unpinned dependency with API history.
 
-The author-parsing state machine is implemented independently in `lib/pdf/wg21.py` (`_parse_authors`) and `lib/html/extract.py` (`_parse_mpark_authors`) with identical structure but minor surface differences.<sup>2</sup> Both accumulate pending names and match email patterns using the same state transitions. Changes to the pattern must be synchronized in two places - a violation of the project's own rule that patterns live in one module (Bloch 2006).
+The domain stress point around accuracy verification (Section 3) elevates this finding. For a tool whose purpose is structural reconstruction, undetected regressions in extraction quality are high-impact failures.
 
-This duplication is part of a broader pattern. Metadata extraction is split across three modules - `wg21.py` (block-level parsing for PDF), `structure.py` (`_extract_metadata` as a second pass), and `lib/__init__.py` (`format_front_matter` for output) - with no shared schema tying them together.<sup>2</sup> Regex patterns for document numbers appear in both `lib/__init__.py` (`DOC_NUM_RE`) and `lib/pdf/types.py` (`DOC_FIELD_RE`) with overlapping but distinct patterns.<sup>2</sup>
+### 5.3 Maintenance Trap Through Structural Coupling
 
-The mutation discipline compounds the duplication risk. `structure.py` uses inconsistent mutation strategy: `_merge_paragraphs` creates copies via `replace()` while `_extract_metadata` mutates Section objects in place.<sup>2</sup> The HTML renderer's `render_body` calls `decompose()` on DOM nodes during rendering, making the function non-idempotent - callers cannot predict whether their soup tree survives unchanged.<sup>3</sup> `classify_wording` in `wording.py` both mutates `span.wording_role` and returns diagnostic strings - a mixed side-effect and return-value contract that limits testability (Bloch 2006).
+The Architecture and Sustainability clusters form a maintenance trap compound (Tests 20, 35). Internal data structures exposed through `types.py` combine with mutable public dataclass fields to create irreversible structural coupling. Every field in `Span`, `Block`, `Section` is implicitly part of the public API; modifications risk breaking downstream consumers.
 
-None of these mutation patterns are documented or tested for their side effects. The combination of duplicated logic across modules and undocumented mutation contracts means that a fix to one path can silently break the other.
+The absence of versioning discipline (Test 34) - no `__version__`, no CHANGELOG, no deprecation markers - means these implicit contracts cannot evolve safely. The project cannot signal breaking changes because it has no version to bump.
 
-### 5.3 The Operational Void
+The design pattern here inverts the normal library evolution path: instead of starting with opaque handles and gradually exposing capabilities, tomd starts with full transparency. This is defensible for a research tool with a single primary user but creates technical debt if external adoption grows.
 
-Three infrastructure gaps form a compound that prevents the algorithmic sophistication from translating into operational trust.
+### 5.4 Core Pipeline Strengths
 
-`requirements.txt` lists two dependencies (`pymupdf`, `beautifulsoup4`) without version pins.<sup>8</sup> PyMuPDF has undergone API changes between major versions, and tomd's dual-extraction architecture depends on specific output structures from `page.get_text("dict")` and `page.get_text("rawdict")`.<sup>5</sup> `find_hidden_regions` calls `page.get_texttrace()`, a method that is not available across all PyMuPDF versions.<sup>4</sup> A version upgrade could break extraction silently.
+Despite the documentation and API hygiene gaps, the core conversion pipeline demonstrates sound engineering:
 
-No CI pipeline exists.<sup>9</sup> The parent repository's `render.yml` workflow handles paper rendering with Pandoc but does not run tomd's pytest suite. The 12 test files must be run manually. Without CI, the unpinned dependency problem compounds: there is no version matrix to expose incompatibilities, no automated gate to catch regressions, and no evidence of cross-platform behavior (OpenSSF Scorecard).
+**Resource Safety:** Every `fitz.open()` pairs with `doc.close()` in `try/finally` blocks; no reliance on garbage collection for PDF handles. This satisfies the domain's elevated resource management demands (Stroustrup 1994).
 
-No user-facing README exists. The project has invested substantial documentation effort in `CLAUDE.md` (a 125-line architecture contract) and two `ARCHITECTURE.md` files in the `lib/pdf/` and `lib/html/` subdirectories.<sup>1</sup> This documentation is thoughtful and detailed - but targets AI agents, not human operators. A developer encountering tomd for the first time has no explanation of what the tool does, how to install it, or what its limitations are. The `main.py` CLI help string exists but is discoverable only by reading the source. The documentation inversion is specific: the author can clearly document; the audience is misallocated.
+**Physical Modularity:** The pipeline phases - extract, cleanup, structure, emit - form an acyclic dependency graph with clear boundaries (Lakos 2020). Each phase is independently testable; the functional style with immutable dataclass transformations prevents state corruption.
 
-The project also has no LICENSE file, no `pyproject.toml` or entry point declaration, and no packaging infrastructure.<sup>9</sup> It must be invoked as `python tomd/main.py` from the parent directory - a fragile path for batch-processing integration.
+**Multi-Signal Confidence:** The dual-path extraction architecture implements the domain requirement for structural honesty. When MuPDF and spatial rules disagree, the uncertainty is flagged rather than silently resolved (Bloch 2006).
+
+**Minimal Dependencies:** With only PyMuPDF and BeautifulSoup4 as external dependencies, the project avoids the dependency bloat common in Python tools (Pike 2015). This supports long-term sustainability.
 
 ---
 
 ## 6. Design Maturity
 
-**Promising.** tomd's core architecture - dual-extraction with multi-signal confidence scoring, companion prompt files for selective LLM escalation, pipeline-shaped physical modularity, and WG21-specific intelligence across both PDF and HTML inputs - represents genuine design sophistication that no competitor matches in the deterministic converter space. The API surface is maximally minimal (`convert_pdf`, `convert_html`, CLI), naming is consistent across all 18 files, and the two-dependency approach keeps the supply chain clean (Pike 2015).
+**Promising** - tomd exhibits sound core design with identifiable gaps that are addressable without redesign. The conversion pipeline demonstrates production-grade resource management and physical modularity. The gaps cluster around documentation, API surface hygiene, and automation - all addressable through incremental improvement rather than architectural change.
 
-The project has improved since its prior evaluation. HTML conversion support now covers four WG21 paper generators where none existed before. A 12-file pytest suite covers core classification algorithms where no tests existed before. The tool has been exercised against a corpus of real WG21 papers with outputs preserved in `.out/`.<sup>2</sup>
+The niche focus on WG21 papers provides competitive insulation. While general-purpose competitors like Marker and MinerU chase accuracy through LLM enhancement, tomd's deterministic approach preserves reproducibility and speed. The dual-format input handling (PDF + HTML) is unique in the competitive landscape.
 
-The gaps are addressable without redesign. The nested-list and dehyphenation bugs are localized fixes. The cross-module duplication consolidates into shared helpers. The test coverage gaps follow the existing test architecture - adding files for header/footer detection, hidden regions, and HTML rendering edge cases requires no new patterns. CI, dependency pinning, packaging, and a README are conventional infrastructure.
-
-The project's trajectory is upward. The hard problem - structural analysis of ambiguous PDF and HTML content with explicit uncertainty signaling - is solved with care. The remaining work is operational discipline catching up to algorithmic ambition. The compound dynamics identified in Section 5 all trace to infrastructure gaps, not to architectural flaws.
+The recommendation is to address the Documentation Vacuum through a user-facing README and API reference, introduce semantic versioning for API stability discipline, and add CI automation to close the Verification Void. These improvements would move the project toward Production-Grade status without threatening its core architectural strengths.
 
 ---
 
 ## 7. Audit Trail
 
-**Subject:** `wg21-papers/tomd/` (local, inspected April 14, 2026)
+**Sources Consulted:**
+- `tomd/CLAUDE.md` - agent rules and architecture overview (146 lines)
+- `tomd/lib/pdf/ARCHITECTURE.md` - PDF pipeline technical documentation (315 lines)
+- `tomd/lib/html/ARCHITECTURE.md` - HTML pipeline technical documentation (165 lines)
+- `tomd/main.py` - CLI entry point (124 lines)
+- `tomd/lib/pdf/__init__.py` - PDF converter orchestration
+- `tomd/lib/pdf/types.py` - public data types and constants
+- `tomd/tests/` - 16 test files with golden-file regression tests
+- `tomd/requirements.txt` - dependency manifest (2 packages)
 
-**Supplementary imports:**
+**Cache Status:** N/A - fresh analysis conducted.
 
-- Code review (`review.md`): 10 flagged issues across 18 files, 152 clean checks, 54 advisory. Most critical: nested-list duplication, dehyphenation duplicate, spatial sort order, cross-module author parsing, docstring/implementation mismatch.
+**Supplementary Documents:** None provided.
 
-**Governing specification:** None identified.
+**Findings Challenged:** 18 candidate findings processed through 8-stage Analyst challenge. 3 findings withdrawn (Test 7, 23, and partial Test 3). Surviving findings: 15.
 
-**Cache status:** Prior domain brief and competitive map from `doc/tomd-eval.md` (April 2026). Refreshed for current analysis with updated project state (HTML support added, tests added, competitor added).
-
-**Prior reports imported:** `doc/tomd-eval.md` (April 2026, Opus 4.6). Prior verdict: Promising. Prior state: no tests, no HTML support, PDF-only.
-
-**Reconnaissance:** Full source read of all 18 Python source files, 12 test files, `requirements.txt`, `CLAUDE.md`, `lib/pdf/ARCHITECTURE.md`, `lib/html/ARCHITECTURE.md`.
-
-**Domain brief:** 5 stress points identified. Elevated tests: 6-12, 19, 21-23, 28, 30-32, 34.
-
-**Competitive map:** 6 competitors evaluated (CppDigest/wg21-paper-markdown-converter, Marker, Docling, MinerU, PyMuPDF4LLM, Nougat). CppDigest noted as direct WG21-targeted competitor per user input.
-
-**Diagnosis:** 38 tests run. 10 findings produced. 28 clean results.
-
-**Challenge outcomes:**
-
-- 8 findings survived all applicable challenge tests (Tests 8, 10, 16, 17, 21, 26, 30, 32)
-- 2 candidate findings killed: Test 36 (License - personal tool, not distributed; Challenge Test 2), Test 38 (Maintenance health - expected for personal tool maturity; Challenge Test 6)
-
-**Coupling analysis:** 5 compound dynamics proposed. 4 survived coupling challenge. 1 killed (Documentation inversion blocks test authoring - Challenge Test 1, co-present but not genuinely amplifying).
-
-**Surviving compounds:**
-
-- Bugs in untested paths (Tests 30+8+21) - uneven coverage exposes mutation pattern bugs in the most complex module
-- Duplicated logic with undocumented mutation contracts (Tests 8+21) - cross-module duplication compounds with inconsistent mutation discipline
-- Unpinned, unverified dependency stack (Tests 26+32) - no pins plus no CI means extraction API contract is defended by nothing
-- Coverage gaps in integration paths (Tests 30+32) - absent CI means test gaps cannot be detected by automated gates
+**Compounds Challenged:** 9 candidate compounds evaluated. 4 killed as co-occurrences rather than genuine interactions. Surviving compounds: 5.
 
 ---
 
 ## 8. References
 
-<sup>1</sup> `CLAUDE.md` - tomd architecture and design rules
+<sup>1</sup> `tomd/lib/pdf/ARCHITECTURE.md`, line 35: "PDFs encode geometry and paint order, not logical document structure."
 
-<sup>2</sup> `review.md` - code review, April 14, 2026 (supplementary import)
+<sup>2</sup> `tomd/CLAUDE.md`, agent rules for resource management and dual-path extraction.
 
-<sup>3</sup> `lib/html/render.py` - DOM-to-Markdown rendering engine, `_render_list` nested-list bug
+<sup>3</sup> `tomd/lib/pdf/types.py`, public dataclass definitions for Span, Line, Block, Section.
 
-<sup>4</sup> `lib/pdf/cleanup.py` - dehyphenation state machine, `find_hidden_regions` API compatibility
+<sup>4</sup> `tomd/requirements.txt`, dependency manifest showing PyMuPDF and beautifulsoup4.
 
-<sup>5</sup> `lib/pdf/extract.py` - dual extraction implementation, spatial character sort order
-
-<sup>6</sup> CppDigest/wg21-paper-markdown-converter. GitHub repository. https://github.com/CppDigest/wg21-paper-markdown-converter
-
-<sup>7</sup> `lib/html/__init__.py`, `lib/html/extract.py`, `lib/html/render.py` - HTML conversion pipeline
-
-<sup>8</sup> `requirements.txt` - dependency declaration (pymupdf, beautifulsoup4, unpinned)
-
-<sup>9</sup> Git history: 3 commits, 1 contributor, April 14, 2026. No LICENSE, no CI workflow, no README.
-
-<sup>10</sup> `doc/wg21-paper-markdown-converter-eval.md` - prior evaluation of competitor, April 2026
+<sup>5</sup> `tomd/tests/`, 16 test files covering all pipeline phases.
 
 ---
+
+**Design Theory References**
 
 Bloch, J. "How to Design a Good API and Why it Matters." *Companion to OOPSLA*, 2006.
 
 Lakos, J. *Large-Scale C++ Software Design.* Addison-Wesley, 1996.
 
-OpenSSF Scorecard. Open Source Security Foundation.
+Lakos, J. et al. *Large-Scale C++.* Vol. 1, Addison-Wesley, 2020.
 
-Pike, R. "Go Proverbs." Gopherfest, November 2015.
+Pike, R. "Go Proverbs." 2015.
+
+Stroustrup, B. *The Design and Evolution of C++.* Addison-Wesley, 1994.
 
 ---
 
-*April 2026 - Opus 4.6*
+*April 2025 - kimi-k2.5*

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-tomd is a hybrid PDF-to-Markdown converter. It uses deterministic text extraction and multi-signal classification to produce Markdown, with optional LLM resolution for ambiguous sections. HTML conversion is planned as a second converter.
+tomd is a hybrid PDF-and-HTML-to-Markdown converter. It uses deterministic text extraction and multi-signal classification to produce Markdown, with optional LLM resolution for ambiguous sections. PDF conversion uses dual-path extraction with confidence scoring; HTML conversion uses DOM traversal with generator-specific metadata extraction.
 
 ## Architecture
 
@@ -47,11 +47,12 @@ Discard nothing. Use everything.
 
 Every PDF page is processed through two independent extraction paths:
 1. **MuPDF path** - `page.get_text("dict")` for MuPDF's block/line/span grouping
-2. **Spatial path** - `page.get_text("rawdict")` with four coordinate rules:
-   - Horizontal close -> same word
-   - Horizontal far -> word break
-   - Vertical close + left reset -> line continuation (same paragraph)
-   - Vertical far -> paragraph break
+2. **Spatial path** - `page.get_text("rawdict")` with four elif branches keyed on
+   font-size-relative thresholds (named constants from `types.py`):
+   - `dy > PARA_SPACING_RATIO * avg_fs` - flush block (paragraph break)
+   - `dy > LINE_SPACING_RATIO * avg_fs` - flush line (new line, same block)
+   - `dy > WORD_GAP_RATIO    * avg_fs` - flush line (large vertical gap)
+   - `dx > WORD_GAP_RATIO    * avg_fs` - flush word + insert space span
 
 Both produce the same intermediate format. Agreement = confident. Disagreement = uncertain. Never skip one path. The comparison is the confidence mechanism.
 
@@ -105,13 +106,16 @@ Auto-resolution via `--llm` flag is deferred to v2. For v1, the tool produces a 
 - `lib/pdf/__init__.py` - Exports `convert_pdf()`. Orchestrates the full pipeline in order. Includes monospace propagation, wording classification, and page 0 color extraction via space-color proxy.
 - `lib/pdf/wording.py` - Wording section detection via multi-signal HSV color + drawing decoration analysis. Detects ins/del markup. Confidence levels with prompts file for ambiguous cases.
 - `lib/pdf/types.py` - Data classes (`Block`, `Span`, `Line`, `Section`, `PageEdgeItem`), enums (`Confidence`, `SectionKind`), named constants (all public, no underscore prefix), precompiled regex, `is_readable()`.
-- `lib/pdf/extract.py` - Dual extraction: `extract_mupdf()` (dict API) and `extract_spatial()` (rawdict + four spatial rules). Link collection and attachment. Calls `classify_monospace` during span construction.
+- `lib/pdf/extract.py` - Dual extraction: `extract_mupdf()` (dict API) and `extract_spatial()` (rawdict + four spatial threshold branches). Link collection and attachment. Calls `classify_monospace` during span construction.
 - `lib/pdf/mono.py` - Triple-signal monospace detection. Font name decomposition (strip modifiers, split camelCase, check keywords), glyph width uniformity, glyph spacing uniformity.
 - `lib/pdf/cleanup.py` - Header/footer detection (edge items per page), repeating strip, span whitespace (NBSP, multi-space on non-mono), dehyphenation, cross-page join, hidden region detection.
 - `lib/pdf/spans.py` - Span normalization. Snaps bold/italic style boundaries to word edges. Monospace exempt.
 - `lib/pdf/table.py` - Table detection from MuPDF block/line positions. Detects columnar layout (x-gap between lines), extracts as high-confidence TABLE sections, excludes table regions from spatial path.
 - `lib/pdf/structure.py` - Dual-path comparison, metadata extraction, heading intelligence (multi-signal, `heading_confidence` public), position-based list detection (x-coordinates), paragraph merging, code block detection, language label detection, nesting validation.
 - `lib/pdf/emit.py` - Markdown generation (headings, paragraphs, code blocks, tables, nested lists) with span-level formatting (inline code, bold, italic, links). Prompts file generation for uncertain regions.
+- `lib/html/__init__.py` - Exports `convert_html()`. Six-step HTML pipeline: parse, detect generator, extract metadata, strip boilerplate, render DOM, assemble output.
+- `lib/html/extract.py` - Generator detection (mpark, bikeshed, hand-written, hackmd, unknown), per-generator metadata extraction, boilerplate stripping. Five generator families supported.
+- `lib/html/render.py` - Recursive DOM-to-Markdown traversal. Handles headings, paragraphs, lists, tables, code blocks, wording divs, blockquotes, and inline formatting.
 
 ## Header/Footer Stripping
 
@@ -137,5 +141,5 @@ These extend general rules in the root CLAUDE.md with project-specific instances
 
 - `fitz.open()` must always be paired with `doc.close()` in a `finally` block. Never rely on garbage collection.
 - Font metadata thresholds (what counts as "larger than body," "horizontal close," etc.) must be named constants, not magic numbers scattered in code.
-- The four spatial rules are the foundation. Changes to their thresholds affect everything downstream. Test thoroughly.
+- The four spatial threshold branches (PARA_SPACING, LINE_SPACING, WORD_GAP for dy, WORD_GAP for dx) are the foundation of `extract_spatial`. Changes to these constants affect everything downstream. Test thoroughly.
 - Regex patterns for section numbers, known section names, list markers, and metadata fields must be precompiled at module level and defined in one place.

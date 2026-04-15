@@ -179,11 +179,15 @@ _MULTI_SPACE_RE = re.compile(r"[ \t]{2,}")
 _NBSP = "\u00a0"
 
 
+def _collapse_spaces(text: str) -> str:
+    """Replace non-breaking spaces and collapse runs of spaces/tabs to one."""
+    return _MULTI_SPACE_RE.sub(" ", text.replace(_NBSP, " "))
+
+
 def normalize_whitespace(text: str) -> str:
     """Collapse runs of spaces, replace non-breaking spaces, strip trailing."""
     text = strip_format_chars(text)
-    text = text.replace(_NBSP, " ")
-    text = _MULTI_SPACE_RE.sub(" ", text)
+    text = _collapse_spaces(text)
     lines = [line.rstrip() for line in text.split("\n")]
     return "\n".join(lines)
 
@@ -271,9 +275,8 @@ def cleanup_text(blocks: list[Block]) -> list[Block]:
             cleaned_spans = []
             for span in line.spans:
                 new_text = strip_format_chars(span.text)
-                new_text = new_text.replace(_NBSP, " ")
                 if not span.monospace:
-                    new_text = _MULTI_SPACE_RE.sub(" ", new_text)
+                    new_text = _collapse_spaces(new_text)
                 cleaned_spans.append(replace(span, text=new_text))
             cleaned_lines.append(Line(
                 spans=cleaned_spans,

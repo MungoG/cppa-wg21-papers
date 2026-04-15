@@ -197,3 +197,21 @@ class TestBodySizeDetection:
         _, result = structure_sections(sections, has_title=True)
         headings = [s for s in result if s.kind == SectionKind.HEADING]
         assert len(headings) == 0
+
+
+class TestExtractMetadataKey:
+    def test_document_number_produces_document_key(self):
+        """Regression: _extract_metadata must write 'document', not 'doc-number'."""
+        sections = [
+            make_section("Document Number: P1234R0"),
+            make_section("Some body text here."),
+        ]
+        meta, _ = structure_sections(sections, has_title=True)
+        assert "document" in meta or meta == {}
+        assert "doc-number" not in meta
+
+    def test_document_key_not_doc_number(self):
+        """The merged front matter must never contain the legacy doc-number key."""
+        sec = make_section("Document Number: P9999R2")
+        meta, _ = structure_sections([sec], has_title=True)
+        assert "doc-number" not in meta

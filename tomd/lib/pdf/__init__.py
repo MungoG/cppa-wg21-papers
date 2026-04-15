@@ -170,6 +170,10 @@ def convert_pdf(path: Path) -> tuple[str, str | None]:
 
     has_title = "title" in wg21_metadata
     structure_metadata, sections = structure_sections(sections, has_title=has_title)
+    # Three metadata pathways, merged here in precedence order (last wins):
+    #   1. structure._extract_metadata  - PDF section line scan (lowest precedence)
+    #   2. wg21.extract_metadata_from_blocks - PDF block-level scan (wins on conflict)
+    # HTML conversion uses a third pathway: html.extract.extract_metadata (DOM scan).
     metadata = {**structure_metadata, **wg21_metadata}
 
     texts = [sec.text.split("\n")[0].strip() for sec in sections]

@@ -42,6 +42,64 @@ def _find_word_boundary_right(text: str) -> int:
     return i
 
 
+def _try_left_merge(result: list[Span], i: int) -> bool:
+    """Try to snap a right-side style boundary leftward to a word edge.
+
+    Moves trailing text of result[i-1] onto result[i] when the two spans
+    touch mid-word with different styles. Returns True if result was mutated
+    and the caller should NOT advance i (an element may have been removed).
+    """
+    prev = result[i - 1]
+    cur = result[i]
+
+    if prev.monospace or cur.monospace:
+        return False
+    if _is_style_span(prev) == _is_style_span(cur):
+        return False
+    if not _spans_touch(prev, cur):
+        return False
+
+    wb = _find_word_boundary_left(prev.text)
+    if wb < len(prev.text) and wb > 0:
+        fragment = prev.text[wb:]
+        result[i - 1] = replace(prev, text=prev.text[:wb])
+        result[i] = replace(cur, text=fragment + cur.text)
+        if not result[i - 1].text:
+            result.pop(i - 1)
+            return True
+
+    return False
+
+
+def _try_right_merge(result: list[Span], i: int) -> bool:
+    """Try to snap a left-side style boundary rightward to a word edge.
+
+    Moves leading text of result[i+1] onto result[i] when the two spans
+    touch mid-word with different styles. Returns True if result was mutated
+    and the caller should NOT advance i (an element may have been removed).
+    """
+    cur = result[i]
+    nxt = result[i + 1]
+
+    if cur.monospace or nxt.monospace:
+        return False
+    if _is_style_span(cur) == _is_style_span(nxt):
+        return False
+    if not _spans_touch(cur, nxt):
+        return False
+
+    wb = _find_word_boundary_right(nxt.text)
+    if wb > 0 and wb < len(nxt.text):
+        fragment = nxt.text[:wb]
+        result[i] = replace(cur, text=cur.text + fragment)
+        result[i + 1] = replace(nxt, text=nxt.text[wb:])
+        if not result[i + 1].text:
+            result.pop(i + 1)
+            return True
+
+    return False
+
+
 def _normalize_line_spans(spans: list[Span]) -> list[Span]:
     """Normalize style boundaries within a single line's spans.
 
@@ -56,65 +114,13 @@ def _normalize_line_spans(spans: list[Span]) -> list[Span]:
 
     i = 1
     while i < len(result):
-        prev = result[i - 1]
-        cur = result[i]
-
-        if prev.monospace or cur.monospace:
+        if not _try_left_merge(result, i):
             i += 1
-            continue
-
-        prev_style = _is_style_span(prev)
-        cur_style = _is_style_span(cur)
-
-        if prev_style == cur_style:
-            i += 1
-            continue
-
-        if not _spans_touch(prev, cur):
-            i += 1
-            continue
-
-        wb = _find_word_boundary_left(prev.text)
-        if wb < len(prev.text) and wb > 0:
-            fragment = prev.text[wb:]
-            result[i - 1] = replace(prev, text=prev.text[:wb])
-            result[i] = replace(cur, text=fragment + cur.text)
-            if not result[i - 1].text:
-                result.pop(i - 1)
-                continue
-
-        i += 1
 
     i = 0
     while i < len(result) - 1:
-        cur = result[i]
-        nxt = result[i + 1]
-
-        if cur.monospace or nxt.monospace:
+        if not _try_right_merge(result, i):
             i += 1
-            continue
-
-        cur_style = _is_style_span(cur)
-        nxt_style = _is_style_span(nxt)
-
-        if cur_style == nxt_style:
-            i += 1
-            continue
-
-        if not _spans_touch(cur, nxt):
-            i += 1
-            continue
-
-        wb = _find_word_boundary_right(nxt.text)
-        if wb > 0 and wb < len(nxt.text):
-            fragment = nxt.text[:wb]
-            result[i] = replace(cur, text=cur.text + fragment)
-            result[i + 1] = replace(nxt, text=nxt.text[wb:])
-            if not result[i + 1].text:
-                result.pop(i + 1)
-                continue
-
-        i += 1
 
     return result
 

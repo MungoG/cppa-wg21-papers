@@ -139,6 +139,9 @@ SECTION_NUM_RE = re.compile(
     r"^(\d+(?:\.\d+)*)\s+(.+)",
 )
 
+# Line-anchored pattern targeting "Document Number: PXXXXRN" field lines in
+# PDF block text. More restrictive than DOC_NUM_RE in lib/__init__.py, which
+# is a broad substring match used for header stripping and HTML contexts.
 DOC_FIELD_RE = re.compile(
     r"Document\s+(?:Number|#)[:\s]+([DPN]\d{3,5}(?:R\d+)?|N\d{3,5})",
     re.IGNORECASE,
