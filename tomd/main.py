@@ -4,10 +4,12 @@
 PDF: hybrid dual extraction (MuPDF + spatial rules) with confidence scoring.
 HTML: DOM traversal with generator-specific metadata extraction.
 
-Usage:
-    python tomd/main.py input.pdf                  # -> input.md + input.prompts.md
-    python tomd/main.py input.html                 # -> input.md
-    python tomd/main.py *.pdf *.html --outdir out/ # batch mode
+Usage (after `pip install -e tomd`):
+    tomd input.pdf                  # -> input.md + input.prompts.md
+    tomd input.html                 # -> input.md
+    tomd *.pdf *.html --outdir out/ # batch mode
+
+Also runnable as `python -m tomd.main ...`.
 """
 
 import argparse
@@ -83,10 +85,10 @@ def main():
         try:
             ext = input_file.suffix.lower()
             if ext in _HTML_EXTENSIONS:
-                from lib.html import convert_html
+                from .lib.html import convert_html
                 md_text, prompts_text = convert_html(input_file)
             elif ext in _PDF_EXTENSIONS:
-                from lib.pdf import convert_pdf
+                from .lib.pdf import convert_pdf
                 md_text, prompts_text = convert_pdf(input_file)
             else:
                 print(f"SKIP: {input_file} unsupported format", file=sys.stderr)
