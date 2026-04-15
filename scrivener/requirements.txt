@@ -5,6 +5,7 @@ Pillow
 fonttools
 svglib
 pygments
+beautifulsoup4
 flask
 watchdog
 pytest

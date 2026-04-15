@@ -23,6 +23,8 @@ from reportlab.platypus import (
     XPreformatted,
 )
 
+from bs4 import BeautifulSoup
+
 from . import escape_xml
 from .colors import parse_color
 from .config import sp
@@ -848,8 +850,6 @@ class ASTRenderer:
         return result
 
     def _render_table(self, tok):
-        tbl_cfg = self.style.get("table", {})
-        pad = tbl_cfg.get("cell_padding", {})
         hdr_fg = self.style.get("table_header_fg")
         rows = []
         headers = []
@@ -896,6 +896,14 @@ class ASTRenderer:
                         text = self._nobr_numbers(text)
                         cells.append(Paragraph(text, self.ps["body"]))
                     rows.append(cells)
+
+        return self._build_table_flowable(headers, rows)
+
+    def _build_table_flowable(self, headers, rows):
+        """Build a styled ReportLab Table from lists of header and body row
+        flowables. Shared by markdown table and HTML table rendering."""
+        tbl_cfg = self.style.get("table", {})
+        pad = tbl_cfg.get("cell_padding", {})
 
         all_rows = headers + rows
         if not all_rows:
@@ -960,6 +968,62 @@ class ASTRenderer:
             Spacer(1, self.ps["h1"].fontSize),
         ]
 
+    def _render_html_table(self, raw):
+        """Render an HTML <table> block using BeautifulSoup for DOM parsing
+        and the shared table styling helper for output."""
+        ensure_code_family()
+        soup = BeautifulSoup(raw, "html.parser")
+        table_el = soup.find("table")
+        if not table_el:
+            return []
+
+        hdr_fg = self.style.get("table_header_fg")
+        if hdr_fg and "table_header" not in self.ps:
+            self.ps["table_header"] = ParagraphStyle(
+                "table_header", parent=self.ps["body"],
+                textColor=parse_color(hdr_fg),
+                fontName="Body-Bold",
+                spaceBefore=0, spaceAfter=0)
+        hdr_style = self.ps.get("table_header", self.ps["body"])
+
+        headers = []
+        rows = []
+        for tr in table_el.find_all("tr", recursive=False):
+            th_cells = tr.find_all("th", recursive=False)
+            td_cells = tr.find_all("td", recursive=False)
+            if th_cells:
+                cells = []
+                for th in th_cells:
+                    text = escape_xml(th.get_text())
+                    if not hdr_fg:
+                        text = f"<b>{text}</b>"
+                    cells.append(Paragraph(text, hdr_style))
+                headers.append(cells)
+            elif td_cells:
+                cells = []
+                for td in td_cells:
+                    pre = td.find("pre")
+                    if pre and pre.find("code"):
+                        code_el = pre.find("code")
+                        markup = code_el.decode_contents()
+                        markup = re.sub(
+                            r'<ins>(.*?)</ins>',
+                            lambda m: (f'<u><font color="{self.ins_color}">'
+                                       f'{m.group(1)}</font></u>'),
+                            markup, flags=re.DOTALL)
+                        markup = re.sub(
+                            r'<del>(.*?)</del>',
+                            lambda m: (f'<strike><font color="{self.del_color}">'
+                                       f'{m.group(1)}</font></strike>'),
+                            markup, flags=re.DOTALL)
+                        cells.append(XPreformatted(markup, self.ps["code_block"]))
+                    else:
+                        text = escape_xml(td.get_text())
+                        cells.append(Paragraph(text, self.ps["body"]))
+                rows.append(cells)
+
+        return self._build_table_flowable(headers, rows)
+
     def _render_thematic_break(self, tok):
         return [HRFlowable(
             width="100%", thickness=1,
@@ -975,6 +1039,8 @@ class ASTRenderer:
         raw = tok.get("raw", "")
         if re.match(r'\s*<!--.*?-->\s*$', raw, re.DOTALL):
             return []
+        if raw.strip().startswith("<table"):
+            return self._render_html_table(raw)
         pre_m = re.match(
             r'<pre><code>(.*?)</code></pre>\s*$', raw, re.DOTALL)
         if pre_m:

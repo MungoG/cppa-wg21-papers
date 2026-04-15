@@ -456,6 +456,34 @@ This paragraph has <!-- an inline comment --> embedded within it. The surroundin
 
 This paragraph follows a multi-line comment.
 
-## 31. Final Section
+## 31. HTML Tables
+
+A simple HTML table with text cells:
+
+<table>
+<tr><th>Model</th><th>Property</th></tr>
+<tr><td>Awaitable</td><td>Type erasure via coroutine_handle</td></tr>
+<tr><td>Sender</td><td>Full pipeline visibility</td></tr>
+</table>
+
+An HTML table with code blocks in cells:
+
+<table>
+<tr><th>Before</th><th>After</th></tr>
+<tr>
+<td><pre><code>void process(int x)
+{
+    validate(x);
+}</code></pre></td>
+<td><pre><code>bool process(int x)
+{
+    if (!validate(x))
+        return false;
+    return true;
+}</code></pre></td>
+</tr>
+</table>
+
+## 32. Final Section
 
 This is the last section. It verifies that the document ends cleanly without trailing artifacts.
