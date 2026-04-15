@@ -325,12 +325,12 @@ def _extract_metadata(sections: list[Section]) -> tuple[dict, list[Section]]:
                         continue
                     leftover.append(lt)
                 if leftover:
-                    sec.text = "\n".join(leftover)
-                    remaining.append(sec)
+                    remaining.append(replace(sec, text="\n".join(leftover)))
                 continue
 
             alpha = [c for c in text if c.isalpha()]
             if alpha and all(c.isupper() for c in alpha) and len(text.split()) <= 3:
+                _log.debug("Consumed category label in metadata zone: %r", text)
                 continue
 
             if SECTION_NUM_RE.match(text.split("\n")[0]):

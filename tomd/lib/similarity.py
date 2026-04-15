@@ -52,6 +52,8 @@ def similar(a: str, b: str) -> bool:
     The per-string check is lenient because the caller (TOC detection)
     provides a second guard via the 3+ consecutive run requirement.
     """
+    if a == b:
+        return True
     if len(a) > _MAX_COMPARE_LENGTH or len(b) > _MAX_COMPARE_LENGTH:
         return False
     if _sequence_similarity(a, b) >= _SEQUENCE_THRESHOLD:

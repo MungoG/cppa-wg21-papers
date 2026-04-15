@@ -69,6 +69,16 @@ def test_cleanup_dehyphenates_joins():
     assert "implementation" in result[0].text
 
 
+def test_cleanup_dehyphenates_single_span_continuation():
+    span1 = make_span("imple-")
+    span2 = make_span("mentation")
+    block = Block(lines=[Line(spans=[span1]), Line(spans=[span2])])
+    result = cleanup_text([block])
+    full_text = result[0].text
+    assert "implementation" in full_text
+    assert "mentation" not in full_text.split("implementation")[-1]
+
+
 def test_cleanup_dehyphenates_skips_compound():
     span1 = make_span("self-")
     span2 = make_span("contained")

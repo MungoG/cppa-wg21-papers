@@ -34,6 +34,21 @@ class TestDetectGenerator:
         html = "<html><body><p>Hello</p></body></html>"
         assert detect_generator(parse_html(html)) == "unknown"
 
+    def test_meta_bikeshed_wins_over_address(self):
+        html = """
+        <meta name="generator" content="Bikeshed 1.0">
+        <address>Street</address>
+        """
+        assert detect_generator(parse_html(html)) == "bikeshed"
+
+    def test_link_without_hackmd_not_hackmd(self):
+        html = '<link href="https://example.com/favicon.ico" rel="icon">'
+        assert detect_generator(parse_html(html)) == "unknown"
+
+    def test_title_nested_hackmd_when_string_none(self):
+        html = "<title><b>HackMD</b> doc</title>"
+        assert detect_generator(parse_html(html)) == "hackmd"
+
 
 class TestExtractMparkMetadata:
     MPARK_HTML = """
@@ -77,6 +92,86 @@ class TestExtractMparkMetadata:
         assert any("Alice" in a and "alice@x.com" in a
                     for a in meta["reply-to"])
 
+    def test_no_header_empty_metadata(self):
+        soup = parse_html("<html><body><p>x</p></body></html>")
+        assert extract_metadata(soup, "mpark") == {}
+
+    def test_header_no_table_title_only(self):
+        html = """
+        <header id="title-block-header">
+        <h1 class="title">Only Title</h1>
+        </header>
+        """
+        meta = extract_metadata(parse_html(html), "mpark")
+        assert meta == {"title": "Only Title"}
+
+    def test_table_row_single_td_skipped(self):
+        html = """
+        <header id="title-block-header">
+        <h1 class="title">T</h1>
+        <table>
+        <tr><td>Solo cell</td></tr>
+        <tr><td>Document #:</td><td>P1111R0</td></tr>
+        </table>
+        </header>
+        """
+        meta = extract_metadata(parse_html(html), "mpark")
+        assert meta["document"] == "P1111R0"
+
+    def test_reply_to_email_only_line(self):
+        html = """
+        <header id="title-block-header">
+        <h1 class="title">E</h1>
+        <table>
+        <tr><td>Reply-to:</td><td>
+        orphan@x.com
+        </td></tr>
+        </table>
+        </header>
+        """
+        meta = extract_metadata(parse_html(html), "mpark")
+        assert "reply-to" in meta
+        assert any("orphan@x.com" in a for a in meta["reply-to"])
+
+
+class TestExtractHackmdAndGenericMetadata:
+    GENERIC_DOC_TABLE = """
+    <html><body>
+    <h1>GH1</h1>
+    <table>
+    <tr><td>Document number</td><td>P8888R1</td></tr>
+    <tr><td>Date</td><td>2026-03-15</td></tr>
+    <tr><td>Audience</td><td>EWG</td></tr>
+    </table>
+    </body></html>
+    """
+
+    def test_hackmd_uses_generic_extractor(self):
+        soup = parse_html(self.GENERIC_DOC_TABLE)
+        meta = extract_metadata(soup, "hackmd")
+        assert meta["title"] == "GH1"
+        assert meta["document"] == "P8888R1"
+        assert meta["date"] == "2026-03-15"
+        assert meta["audience"] == "EWG"
+
+    def test_generic_doc_label_variant(self):
+        html = """
+        <html><body><h1>H</h1>
+        <table><tr><td>Doc #</td><td>P7777R0</td></tr></table>
+        </body></html>
+        """
+        meta = extract_metadata(parse_html(html), "unknown")
+        assert meta["document"] == "P7777R0"
+
+    def test_generic_th_td_uses_last_cell(self):
+        html = """
+        <html><body><h1>X</h1>
+        <table><tr><th>Document</th><td>ignored</td><td>P6666R0</td></tr></table>
+        </body></html>
+        """
+        meta = extract_metadata(parse_html(html), "unknown")
+        assert meta["document"] == "P6666R0"
+
 
 class TestExtractBikeshedMetadata:
     BIKESHED_HTML = """
@@ -112,6 +207,34 @@ class TestExtractBikeshedMetadata:
         meta = extract_metadata(soup, "bikeshed")
         assert meta.get("audience") == "LEWG"
 
+    def test_reply_to_from_dl(self):
+        soup = parse_html(self.BIKESHED_HTML)
+        meta = extract_metadata(soup, "bikeshed")
+        assert "reply-to" in meta
+        assert any("Bob" in a and "bob@x.com" in a for a in meta["reply-to"])
+
+    def test_title_only_when_no_doc_prefix(self):
+        html = '<h1 class="p-name">Plain WG21 Title</h1>'
+        meta = extract_metadata(parse_html(html), "bikeshed")
+        assert meta.get("title") == "Plain WG21 Title"
+        assert "document" not in meta
+
+    def test_time_dt_updated_from_datetime_attr(self):
+        html = """
+        <h1 class="p-name">P3999R1 X</h1>
+        <time class="dt-updated" datetime="2024-06-01">ignored text</time>
+        """
+        meta = extract_metadata(parse_html(html), "bikeshed")
+        assert meta["date"] == "2024-06-01"
+
+    def test_time_dt_updated_from_text_when_no_attr(self):
+        html = """
+        <h1 class="p-name">P3999R1 X</h1>
+        <time class="dt-updated">2024-07-02</time>
+        """
+        meta = extract_metadata(parse_html(html), "bikeshed")
+        assert meta["date"] == "2024-07-02"
+
 
 class TestExtractHandwrittenMetadata:
     def test_address_block(self):
@@ -130,6 +253,24 @@ class TestExtractHandwrittenMetadata:
         assert meta["audience"] == "EWG"
         assert meta["date"] == "2026-02-02"
         assert meta["title"] == "Title Here"
+
+    def test_table_header_only(self):
+        html = """
+        <table class="header">
+        <tr><th>Document number</th><td>P5000R0</td></tr>
+        <tr><th>Date</th><td>2026-01-10</td></tr>
+        <tr><th>Audience</th><td>LEWG</td></tr>
+        <tr><th>Reply-to</th><td><a href="mailto:a@b.co">Ann A</a></td></tr>
+        </table>
+        <h1>Hdr Title</h1>
+        """
+        soup = parse_html(html)
+        meta = extract_metadata(soup, "hand-written")
+        assert meta["document"] == "P5000R0"
+        assert meta["date"] == "2026-01-10"
+        assert meta["audience"] == "LEWG"
+        assert meta["title"] == "Hdr Title"
+        assert any("Ann" in x and "a@b.co" in x for x in meta["reply-to"])
 
 
 class TestStripBoilerplate:
@@ -159,3 +300,52 @@ class TestStripBoilerplate:
         soup = parse_html(html)
         problems = strip_boilerplate(soup, "mpark")
         assert len(problems) == 0
+
+    def test_removes_lowercase_toc_id(self):
+        html = '<div id="toc"><p>x</p></div><p>Keep</p>'
+        soup = parse_html(html)
+        strip_boilerplate(soup, "mpark")
+        assert soup.find(id="toc") is None
+        assert soup.find("p").get_text() == "Keep"
+
+    def test_removes_nav_table_of_contents(self):
+        html = (
+            '<nav data-fill-with="table-of-contents"><ul><li>a</li></ul></nav>'
+            "<p>Body</p>"
+        )
+        soup = parse_html(html)
+        strip_boilerplate(soup, "mpark")
+        assert soup.find("nav") is None
+
+    def test_mpark_removes_title_block_header(self):
+        html = '<header id="title-block-header"><p>H</p></header><p>B</p>'
+        soup = parse_html(html)
+        strip_boilerplate(soup, "mpark")
+        assert soup.find("header", id="title-block-header") is None
+        assert soup.get_text().strip() == "B"
+
+    def test_bikeshed_removes_chrome(self):
+        html = """
+        <div data-fill-with="metadata">M</div>
+        <h1 class="p-name">T</h1>
+        <h2 id="profile-and-date">D</h2>
+        <p>Keep</p>
+        """
+        soup = parse_html(html)
+        strip_boilerplate(soup, "bikeshed")
+        assert soup.find("div", attrs={"data-fill-with": True}) is None
+        assert soup.find("h1", class_="p-name") is None
+        assert soup.find("h2", id="profile-and-date") is None
+        assert soup.find("p").get_text() == "Keep"
+
+    def test_hand_written_removes_address_and_header_table(self):
+        html = """
+        <address>A</address>
+        <table class="header"><tr><th>X</th><td>Y</td></tr></table>
+        <p>Body</p>
+        """
+        soup = parse_html(html)
+        strip_boilerplate(soup, "hand-written")
+        assert soup.find("address") is None
+        assert soup.find("table", class_="header") is None
+        assert soup.find("p").get_text() == "Body"

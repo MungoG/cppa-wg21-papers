@@ -107,7 +107,7 @@ def extract_spatial(page, page_num: int) -> list[Block]:
 
     avg_fs = sum(c[4] for c in chars) / len(chars)
     half_height = max(avg_fs * 0.5, 1.0)
-    chars.sort(key=lambda c: round(c[1][1] / half_height))
+    chars.sort(key=lambda c: (round(c[1][1] / half_height), c[1][0]))
 
     blocks: list[Block] = []
     cur_spans: list[Span] = []

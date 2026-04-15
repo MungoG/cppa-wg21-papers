@@ -203,7 +203,6 @@ def _render_list(el: Tag, marker: str, generator: str) -> str | None:
     items = []
     for i, li in enumerate(el.find_all("li", recursive=False)):
         prefix = f"{i + 1}." if marker == "1." else "-"
-        text = _collapse_whitespace(_inline_text(li))
         nested_parts = []
         for sub in li.find_all(["ul", "ol"], recursive=False):
             sub_rendered = _render_element(sub, generator)
@@ -212,6 +211,7 @@ def _render_list(el: Tag, marker: str, generator: str) -> str | None:
                 nested_parts.append(indented)
             sub.extract()
 
+        text = _collapse_whitespace(_inline_text(li))
         if text:
             items.append(f"{prefix} {text}")
         for np in nested_parts:
@@ -223,6 +223,8 @@ def _render_table(el: Tag) -> str | None:
     """Render a table as a Markdown pipe table."""
     rows: list[list[str]] = []
     for tr in el.find_all("tr"):
+        if tr.find_parent("table") != el:
+            continue
         cells = []
         for td in tr.find_all(["th", "td"]):
             cells.append(_inline_text(td).strip().replace("|", "\\|"))

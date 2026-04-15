@@ -208,7 +208,13 @@ def find_hidden_regions(page, body_fonts: set[str] | None = None,
     if body_fonts is None:
         return hidden_bboxes
 
-    for span in page.get_texttrace():
+    try:
+        trace = page.get_texttrace()
+    except AttributeError:
+        _log.debug("get_texttrace() not available; skipping hidden region detection")
+        return hidden_bboxes
+
+    for span in trace:
         if span.get("type") == 3:
             continue
 
@@ -296,6 +302,9 @@ def cleanup_text(blocks: list[Block]) -> list[Block]:
                     elif len(line.spans) > 1:
                         line = Line(spans=line.spans[1:],
                                     bbox=line.bbox, page_num=line.page_num)
+                    else:
+                        pending_trim = None
+                        continue
                     pending_trim = None
 
             if (i + 1 < len(block.lines)

@@ -8,7 +8,7 @@ table detection or structuring runs.
 import logging
 import re
 
-from .. import strip_format_chars, EMAIL_RE, DATE_RE
+from .. import strip_format_chars, EMAIL_RE, DATE_RE, parse_author_lines
 from .types import Block
 
 _log = logging.getLogger(__name__)
@@ -33,39 +33,14 @@ def _clean(text: str) -> str:
 
 def _parse_authors(lines: list[str]) -> list[str]:
     """Parse author name + email from lines into 'Name <email>' entries."""
-    authors = []
-    pending_name = None
+    def _clean_author(text):
+        return _PARENS_RE.sub("", _clean(text)).strip()
 
-    for raw in lines:
-        line = _clean(raw)
-        if not line:
-            continue
-
-        email_match = EMAIL_RE.search(line)
-        if email_match:
-            email = email_match.group(0)
-            name_part = line[:email_match.start()].strip()
-            name_part = _PARENS_RE.sub("", name_part).strip()
-
-            if name_part:
-                authors.append(f"{name_part} <{email}>")
-                pending_name = None
-            elif pending_name:
-                authors.append(f"{pending_name} <{email}>")
-                pending_name = None
-            else:
-                authors.append(f"<{email}>")
-        else:
-            line_clean = _PARENS_RE.sub("", line).strip()
-            if line_clean and not _LABEL_RE.match(line_clean):
-                if pending_name:
-                    authors.append(pending_name)
-                pending_name = line_clean
-
-    if pending_name:
-        authors.append(pending_name)
-
-    return authors
+    return parse_author_lines(
+        lines,
+        clean_line=_clean_author,
+        skip_line=lambda l: bool(_LABEL_RE.match(l)),
+    )
 
 
 def _store_field(metadata: dict, label: str, value_lines: list[str]) -> None:

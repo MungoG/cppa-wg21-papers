@@ -5,7 +5,7 @@ import re
 
 from bs4 import BeautifulSoup, Tag
 
-from .. import EMAIL_RE, DATE_RE, DOC_NUM_RE
+from .. import EMAIL_RE, DATE_RE, DOC_NUM_RE, parse_author_lines
 
 _log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def detect_generator(soup: BeautifulSoup) -> str:
     if soup.find("link", href=re.compile(r"hackmd")):
         return "hackmd"
     title_tag = soup.find("title")
-    if title_tag and "hackmd" in (title_tag.string or "").lower():
+    if title_tag and "hackmd" in title_tag.get_text().lower():
         return "hackmd"
     header = soup.find("header", id="title-block-header")
     if header:
@@ -103,41 +103,24 @@ def _extract_mpark_metadata(soup: BeautifulSoup) -> dict:
     return metadata
 
 
+_ANGLE_BRACKET_RE = re.compile(r"[<>]")
+
+
 def _parse_mpark_authors(cell: Tag) -> list[str]:
     """Parse 'Name<br>&lt;email&gt;' author entries from a table cell."""
-    authors = []
     text = str(cell)
     text = text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
     chunk_soup = BeautifulSoup(text, "html.parser")
     lines = chunk_soup.get_text().split("\n")
 
-    pending_name = None
-    for line in lines:
-        line = line.strip().strip("<>").strip()
-        if not line:
-            continue
-        email_match = EMAIL_RE.search(line)
-        if email_match:
-            email = email_match.group(0)
-            name_part = line[:email_match.start()].strip().strip("<>").strip()
-            name_part = re.sub(r"[<>]", "", name_part).strip()
-            if name_part:
-                authors.append(f"{name_part} <{email}>")
-                pending_name = None
-            elif pending_name:
-                authors.append(f"{pending_name} <{email}>")
-                pending_name = None
-            else:
-                authors.append(f"<{email}>")
-        else:
-            cleaned = re.sub(r"[<>]", "", line).strip()
-            if cleaned and not DOC_NUM_RE.match(cleaned):
-                if pending_name:
-                    authors.append(pending_name)
-                pending_name = cleaned
-    if pending_name:
-        authors.append(pending_name)
-    return authors
+    def _clean_author(text):
+        return _ANGLE_BRACKET_RE.sub("", text).strip()
+
+    return parse_author_lines(
+        lines,
+        clean_line=_clean_author,
+        skip_line=lambda l: bool(DOC_NUM_RE.match(l)),
+    )
 
 
 def _extract_bikeshed_metadata(soup: BeautifulSoup) -> dict:
@@ -206,8 +189,8 @@ def _extract_handwritten_metadata(soup: BeautifulSoup) -> dict:
                     metadata["document"] = m.group(0).upper()
             elif line.lower().startswith("audience"):
                 metadata["audience"] = line.split(":", 1)[-1].strip()
-            elif DATE_RE.search(line):
-                metadata["date"] = DATE_RE.search(line).group(0)
+            elif (m := DATE_RE.search(line)):
+                metadata["date"] = m.group(0)
 
         for a in addr.find_all("a"):
             href = a.get("href", "")

@@ -98,6 +98,55 @@ ALLOWED_LINK_SCHEMES = frozenset({"http", "https", "mailto"})
 
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 
+
+def parse_author_lines(lines, clean_line=None, skip_line=None):
+    """Parse author name + email from lines into 'Name <email>' entries.
+
+    @param lines Iterable of raw line strings.
+    @param clean_line Callable(str)->str to normalize each line before
+        processing.  Default: str.strip.
+    @param skip_line Callable(str)->bool returning True for lines that
+        are not author content (e.g. metadata labels).  Default: never skip.
+    @return List of 'Name <email>' or bare name strings.
+    """
+    if clean_line is None:
+        clean_line = str.strip
+    if skip_line is None:
+        skip_line = lambda _: False
+
+    authors = []
+    pending_name = None
+
+    for raw in lines:
+        line = clean_line(raw)
+        if not line:
+            continue
+
+        email_match = EMAIL_RE.search(line)
+        if email_match:
+            email = email_match.group(0)
+            name_part = clean_line(line[:email_match.start()])
+
+            if name_part:
+                authors.append(f"{name_part} <{email}>")
+                pending_name = None
+            elif pending_name:
+                authors.append(f"{pending_name} <{email}>")
+                pending_name = None
+            else:
+                authors.append(f"<{email}>")
+        else:
+            cleaned = clean_line(line)
+            if cleaned and not skip_line(cleaned):
+                if pending_name:
+                    authors.append(pending_name)
+                pending_name = cleaned
+
+    if pending_name:
+        authors.append(pending_name)
+
+    return authors
+
 DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 
 DOC_NUM_RE = re.compile(

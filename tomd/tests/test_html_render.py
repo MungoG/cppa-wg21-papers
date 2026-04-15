@@ -109,8 +109,30 @@ class TestList:
         </ul>
         """)
         md = render_body(soup, "mpark")
-        assert "- Parent" in md
+        lines = md.strip().splitlines()
+        parent_line = next(l for l in lines if "Parent" in l)
+        assert "Child" not in parent_line
         assert "  - Child" in md
+
+    def test_nested_multi_level(self):
+        soup = parse_html("""
+        <ul>
+          <li>A
+            <ul>
+              <li>B
+                <ol><li>C</li></ol>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        """)
+        md = render_body(soup, "mpark")
+        lines = md.strip().splitlines()
+        a_line = next(l for l in lines if "A" in l and l.strip().startswith("-"))
+        assert "B" not in a_line
+        assert "C" not in a_line
+        b_line = next(l for l in lines if "B" in l)
+        assert "C" not in b_line
 
 
 class TestWording:
@@ -185,3 +207,188 @@ class TestCollapseWhitespace:
     def test_strips_and_trims(self):
         md = render_body(parse_html("<p>  hi  </p>"), "mpark")
         assert md.strip() == "hi"
+
+
+class TestDocumentShell:
+    def test_fragment_without_body(self):
+        md = render_body(parse_html("<p>Frag</p>"), "mpark")
+        assert "Frag" in md
+
+    def test_full_document_with_body(self):
+        html = "<html><head></head><body><p>In body</p></body></html>"
+        md = render_body(parse_html(html), "mpark")
+        assert "In body" in md
+
+
+class TestStructuralTags:
+    def test_hr(self):
+        md = render_body(parse_html("<body><hr/><p>a</p></body>"), "mpark")
+        assert "---" in md
+        assert "a" in md
+
+    def test_section_flattens(self):
+        md = render_body(parse_html("<section><p>in</p></section>"), "mpark")
+        assert "in" in md
+
+    def test_main_article(self):
+        md = render_body(parse_html("<main><p>m</p></main><article><p>a</p></article>"), "mpark")
+        assert "m" in md and "a" in md
+
+
+class TestHeadingEdgeCases:
+    def test_secno_and_self_link_skipped(self):
+        html = """<h2><span class="secno">3</span>Sec
+        <a class="self-link" href="#x">#</a></h2>"""
+        md = render_body(parse_html(html), "mpark")
+        assert "## Sec" in md or "## Sec #" in md
+        assert "self-link" not in md
+
+    def test_heading_only_skipped_number_span_empty(self):
+        soup = parse_html('<h1><span class="header-section-number">1</span></h1>')
+        md = render_body(soup, "mpark")
+        assert "#" not in md.strip() or md.strip() == ""
+
+
+class TestCodeBlockExtended:
+    def test_pre_without_code(self):
+        md = render_body(parse_html("<pre>plain\nlines</pre>"), "mpark")
+        assert "```" in md
+        assert "plain" in md
+
+    def test_language_hyphen_class(self):
+        md = render_body(
+            parse_html('<pre><code class="language-rust">let x;</code></pre>'),
+            "mpark",
+        )
+        assert "```rust" in md
+
+    def test_source_code_python_camel_class(self):
+        md = render_body(
+            parse_html('<pre><code class="sourceCodePython">x=1</code></pre>'),
+            "mpark",
+        )
+        assert "```python" in md
+
+    def test_source_code_on_parent_pre(self):
+        md = render_body(
+            parse_html(
+                '<pre class="sourceCode cpp"><code>int y;</code></pre>'
+            ),
+            "mpark",
+        )
+        assert "```cpp" in md
+
+    def test_bikeshed_no_default_lang_without_class(self):
+        md = render_body(parse_html("<pre><code>x</code></pre>"), "bikeshed")
+        assert md.startswith("```\n") or "\n```\n" in md
+        assert "```cpp" not in md
+
+
+class TestDivDispatch:
+    def test_div_source_code_wraps_pre(self):
+        html = (
+            '<div class="sourceCode"><pre><code class="sourceCode cpp">z();'
+            "</code></pre></div>"
+        )
+        md = render_body(parse_html(html), "mpark")
+        assert "```cpp" in md
+
+    def test_div_note_blockquote_style(self):
+        md = render_body(
+            parse_html('<div class="note"><p>Line one</p><p>Two</p></div>'),
+            "mpark",
+        )
+        assert md.strip().startswith(">")
+        assert "Line one" in md
+
+    def test_div_example(self):
+        md = render_body(parse_html('<div class="example"><p>ex</p></div>'), "mpark")
+        assert "> ex" in md.replace("\n", " ") or "> ex" in md
+
+    def test_plain_div_transparent(self):
+        md = render_body(parse_html("<div><p>inner</p></div>"), "mpark")
+        assert "inner" in md
+
+
+class TestTableExtended:
+    def test_nested_table_not_in_outer_rows(self):
+        html = """
+        <table>
+        <tr><th>OuterA</th><th>OuterB</th></tr>
+        <tr><td>1</td><td><table><tr><td>Inner</td></tr></table></td></tr>
+        </table>
+        """
+        md = render_body(parse_html(html), "mpark")
+        lines = [ln for ln in md.splitlines() if ln.startswith("|")]
+        assert any("OuterA" in ln for ln in lines)
+        assert sum(1 for ln in lines if "Inner" in ln) == 1
+
+    def test_short_row_padding(self):
+        html = """
+        <table>
+        <tr><th>A</th><th>B</th><th>C</th></tr>
+        <tr><td>1</td><td>2</td></tr>
+        </table>
+        """
+        md = render_body(parse_html(html), "mpark")
+        assert "| 1 | 2 |" in md or "| 1 | 2 | |" in md
+
+
+class TestDefinitionList:
+    def test_dl_dt_dd(self):
+        html = "<dl><dt>Term</dt><dd>Def</dd></dl>"
+        md = render_body(parse_html(html), "mpark")
+        assert "**Term**" in md
+        assert ": Def" in md
+
+
+class TestLinksExtended:
+    def test_mailto_link(self):
+        md = render_body(
+            parse_html('<p><a href="mailto:a@b.co">Mail me</a></p>'),
+            "mpark",
+        )
+        assert "[Mail me](mailto:a@b.co)" in md
+
+    def test_disallowed_scheme_plain_text(self):
+        md = render_body(
+            parse_html('<p><a href="ftp://x.com">ftp</a></p>'),
+            "mpark",
+        )
+        assert "ftp" in md
+        assert "](" not in md
+
+    def test_anchor_no_href_text_only(self):
+        md = render_body(parse_html("<p><a>nohref</a></p>"), "mpark")
+        assert "nohref" in md
+
+
+class TestBlockquoteExtended:
+    def test_nested_paragraphs(self):
+        md = render_body(
+            parse_html("<blockquote><p>First</p><p>Second</p></blockquote>"),
+            "mpark",
+        )
+        assert "> First" in md
+        assert "Second" in md
+
+    def test_empty_blockquote_omitted(self):
+        md = render_body(parse_html("<blockquote></blockquote><p>x</p>"), "mpark")
+        assert md.strip() == "x"
+
+
+class TestListExtended:
+    def test_ol_with_nested_ul(self):
+        html = "<ol><li>Outer<ul><li>Inner</li></ul></li></ol>"
+        md = render_body(parse_html(html), "mpark")
+        assert "1. Outer" in md
+        assert "  - Inner" in md
+
+
+class TestTransparentInline:
+    def test_mark_kbd_passthrough(self):
+        md = render_body(
+            parse_html("<p><mark>m</mark> <kbd>k</kbd></p>"),
+            "mpark",
+        )
+        assert "m" in md and "k" in md

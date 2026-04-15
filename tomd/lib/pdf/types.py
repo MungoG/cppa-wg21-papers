@@ -68,7 +68,7 @@ class Block:
 
     @property
     def font_size(self) -> float:
-        """Most common font size among lines (by character count)."""
+        """Most common font size among lines (one vote per line)."""
         sizes = [ln.font_size for ln in self.lines if ln.text.strip()]
         if not sizes:
             return 0.0

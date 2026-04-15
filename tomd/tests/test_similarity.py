@@ -24,7 +24,11 @@ def test_similar_one_empty():
 
 
 def test_similar_circuit_breaker():
-    assert not similar("a" * 201, "a" * 201)
+    assert not similar("a" * 201, "b" * 201)
+
+
+def test_similar_long_identical():
+    assert similar("a" * 250, "a" * 250)
 
 
 def test_similar_short_identical():
