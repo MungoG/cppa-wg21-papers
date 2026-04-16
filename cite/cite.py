@@ -1,0 +1,1505 @@
+#!/usr/bin/env python3
+"""cite - Citation normalizer for WG21 papers.
+
+Reads WG21 papers in markdown format, checks citation integrity,
+renumbers citations to body-first-appearance order, removes orphan
+references, flags uncited links, canonicalizes wg21.link URLs to
+open-std.org, and optionally auto-fixes all detected issues.
+
+Usage:
+    python cite.py <papers...> [--fix] [--dry-run] [--check] [--config path]
+"""
+
+import argparse
+import html.entities
+import json
+import os
+import re
+import sys
+import tempfile
+from dataclasses import dataclass, field
+from fnmatch import fnmatch
+from pathlib import Path
+from typing import NamedTuple, Optional
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+CITE_RE = re.compile(r'<sup>\[(\d+)\]</sup>')
+COMPOUND_CITE_RE = re.compile(r'<sup>\[[\d,\s]+\]</sup>')
+LINK_RE = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+FENCE_RE = re.compile(r'^(`{3,})')
+REF_HEADING_RE = re.compile(r'^#{1,3}\s+References\s*$')
+HEADING_RE = re.compile(r'^(#{1,6})\s+(.*)')
+REF_FORMAT_A_RE = re.compile(r'^\s*-?\s*\[(\d+)\]\s+(.*)')
+REF_FORMAT_B_RE = re.compile(r'^(\d+)\.\s+(.*)')
+WG21_LINK_RE = re.compile(
+    r'https?://wg21\.link/([a-zA-Z]\d+(?:r\d+)?)', re.IGNORECASE)
+PAPER_NUM_RE = re.compile(r'\b([PD]\d{4})\b(?!R\d)')
+VERSIONED_PAPER_RE = re.compile(r'\b[PD]\d{4}R\d+\b')
+OPEN_STD_PAPER_RE = re.compile(
+    r'open-std\.org/jtc1/sc22/wg21/docs/papers/(\d{4})/([a-z]\d+(?:r\d+)?)',
+    re.IGNORECASE)
+TRAILING_URL_RE = re.compile(r'\s+https?://\S+\s*$')
+REVISION_RE = re.compile(r'^([A-Z]\d{4})(R(\d+))?$')
+
+HTTP_TIMEOUT = 10
+INDEX_URL = 'https://wg21.link/index.json'
+INDEX_FILENAME = 'index.json'
+
+VALID_CONFIG_KEYS = frozenset({
+    'exempt_sections', 'exempt_links', 'exempt_orphans',
+})
+
+
+class WG21Link(NamedTuple):
+    line_idx: int
+    url: str
+    slug: str
+
+
+class UncitedLink(NamedTuple):
+    line_idx: int
+    text: str
+    url: str
+
+
+@dataclass
+class RefEntry:
+    """A single entry in the References section."""
+    number: int
+    text: str
+    line_idx: int
+    format: str  # 'A' or 'B'
+
+
+@dataclass
+class Finding:
+    """A single finding from the audit."""
+    rule: str
+    line: int
+    message: str
+    severity: str = 'flag'  # 'auto', 'flag', 'error'
+
+
+@dataclass
+class AuditResult:
+    """Complete audit state for a paper."""
+    filepath: str = ''
+    lines: list[str] = field(default_factory=list)
+    excluded: set[int] = field(default_factory=set)
+    body_cites: list[tuple[int, int]] = field(default_factory=list)
+    first_appearance: list[int] = field(default_factory=list)
+    old_to_new: dict[int, int] = field(default_factory=dict)
+    refs: dict[int, RefEntry] = field(default_factory=dict)
+    refs_start: int = -1
+    refs_end: int = -1
+    orphans: list[int] = field(default_factory=list)
+    missing: list[int] = field(default_factory=list)
+    uncited_links: list[UncitedLink] = field(default_factory=list)
+    wg21_links: list[WG21Link] = field(default_factory=list)
+    unversioned: list[tuple[int, str]] = field(default_factory=list)
+    findings: list[Finding] = field(default_factory=list)
+    needs_renumber: bool = False
+    refs_heading_h1: bool = False
+
+
+@dataclass
+class PaperMetadata:
+    """Metadata for a WG21 paper from the mailing index."""
+    paper_id: str
+    title: str
+    authors: str
+    date: str
+    url: str
+
+
+@dataclass
+class ResolveResult:
+    """Results from pass 2 - URL resolution and metadata lookup."""
+    url_map: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, PaperMetadata] = field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# HTML entity encoding
+# ---------------------------------------------------------------------------
+
+def to_html_entities(text: str) -> str:
+    """Convert non-ASCII characters to HTML entities.
+
+    Uses named entities where available, decimal numeric otherwise.
+    """
+    result = []
+    for ch in text:
+        cp = ord(ch)
+        if cp < 128:
+            result.append(ch)
+        elif cp in html.entities.codepoint2name:
+            result.append(f'&{html.entities.codepoint2name[cp]};')
+        else:
+            result.append(f'&#{cp};')
+    return ''.join(result)
+
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+def load_config(path: Optional[str] = None) -> dict:
+    """Load YAML config, returning a validated dict.
+
+    Returns empty-default dict when path is None or file does not exist.
+    Raises ValueError on unknown keys.
+    """
+    defaults = {
+        'exempt_sections': [],
+        'exempt_links': [],
+        'exempt_orphans': [],
+    }
+    if path is None:
+        return dict(defaults)
+
+    p = Path(path)
+    if not p.exists():
+        return dict(defaults)
+
+    try:
+        import yaml
+    except ImportError:
+        print("warning: PyYAML not installed, ignoring config file",
+              file=sys.stderr)
+        return dict(defaults)
+
+    with open(p, encoding='utf-8') as f:
+        raw = yaml.safe_load(f)
+
+    if raw is None:
+        return dict(defaults)
+
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"config must be a YAML mapping, got {type(raw).__name__}")
+
+    unknown = set(raw.keys()) - VALID_CONFIG_KEYS
+    if unknown:
+        raise ValueError(
+            f"unknown config keys: {', '.join(sorted(unknown))}")
+
+    result = dict(defaults)
+    for k in VALID_CONFIG_KEYS:
+        if k in raw:
+            val = raw[k]
+            if val is None:
+                val = []
+            if not isinstance(val, list):
+                raise ValueError(
+                    f"config key '{k}' must be a list, "
+                    f"got {type(val).__name__}")
+            result[k] = val
+
+    return result
+
+
+def is_exempt_link(url: str, config: dict) -> bool:
+    """Check if a URL matches any exempt_links glob pattern."""
+    for pattern in config.get('exempt_links', []):
+        if fnmatch(url, pattern):
+            return True
+    return False
+
+
+def is_exempt_section(section_name: str, config: dict) -> bool:
+    """Check if a section heading matches any exempt_sections entry."""
+    name_lower = section_name.strip().lower()
+    for exempt in config.get('exempt_sections', []):
+        if exempt.strip().lower() == name_lower:
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Scan helpers
+# ---------------------------------------------------------------------------
+
+def build_exclusion_ranges(lines: list[str]) -> set[int]:
+    """Return set of line indices inside fenced code blocks."""
+    excluded = set()
+    in_fence = False
+    fence_marker = ''
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        m = FENCE_RE.match(stripped)
+        if m:
+            if not in_fence:
+                in_fence = True
+                fence_marker = m.group(1)
+                excluded.add(i)
+            elif (stripped.startswith(fence_marker)
+                  and stripped.strip() == fence_marker):
+                excluded.add(i)
+                in_fence = False
+                fence_marker = ''
+            else:
+                excluded.add(i)
+        elif in_fence:
+            excluded.add(i)
+    return excluded
+
+
+def find_refs_section(lines: list[str]) -> tuple[int, int]:
+    """Find the References section boundaries.
+
+    Returns (start_line, end_line) where start_line is the heading
+    and end_line is the last line of the section (or len(lines)).
+    """
+    refs_start = -1
+    for i, line in enumerate(lines):
+        if REF_HEADING_RE.match(line.strip()):
+            refs_start = i
+            break
+
+    if refs_start == -1:
+        return -1, -1
+
+    refs_end = len(lines)
+    hdr = lines[refs_start].strip()
+    heading_level = hdr.count(
+        '#', 0, hdr.index(' ') if ' ' in hdr else len(hdr))
+
+    for i in range(refs_start + 1, len(lines)):
+        m = HEADING_RE.match(lines[i].strip())
+        if m and len(m.group(1)) <= heading_level:
+            refs_end = i
+            break
+
+    return refs_start, refs_end
+
+
+def find_section_at_line(lines: list[str], line_idx: int) -> Optional[str]:
+    """Return the section heading name that contains the given line."""
+    for i in range(line_idx, -1, -1):
+        m = HEADING_RE.match(lines[i].strip())
+        if m:
+            text = m.group(2).strip()
+            text = re.sub(r'^\d+[\.\)]\s*', '', text)
+            return text
+    return None
+
+
+def extract_body_citations(
+    lines: list[str],
+    excluded: set[int],
+    refs_start: int,
+) -> tuple[list[tuple[int, int]], list[int], dict[int, int]]:
+    """Walk body top-to-bottom, extract citations in first-appearance order.
+
+    Returns:
+        body_cites: all (line_idx, citation_number) pairs
+        first_appearance: citation numbers in order of first appearance
+        old_to_new: mapping from old number to new consecutive number
+    """
+    body_cites = []
+    seen = set()
+    first_appearance = []
+    end = refs_start if refs_start >= 0 else len(lines)
+
+    for i in range(end):
+        if i in excluded:
+            continue
+        for m in CITE_RE.finditer(lines[i]):
+            n = int(m.group(1))
+            body_cites.append((i, n))
+            if n not in seen:
+                seen.add(n)
+                first_appearance.append(n)
+
+    old_to_new = {}
+    for new_num, old_num in enumerate(first_appearance, start=1):
+        old_to_new[old_num] = new_num
+
+    return body_cites, first_appearance, old_to_new
+
+
+def parse_references(
+    lines: list[str],
+    refs_start: int,
+    refs_end: int,
+) -> dict[int, RefEntry]:
+    """Parse the References section, handling both Format A and B.
+
+    Format A: `[N] description text` or `- [N] description text`
+    Format B: `N. description text`
+    """
+    refs = {}
+    has_subsections = False
+
+    for i in range(refs_start + 1, refs_end):
+        stripped = lines[i].strip()
+        if not stripped:
+            continue
+
+        sub_m = HEADING_RE.match(stripped)
+        if sub_m:
+            has_subsections = True
+            continue
+
+        m_a = REF_FORMAT_A_RE.match(stripped)
+        if m_a:
+            num = int(m_a.group(1))
+            refs[num] = RefEntry(
+                number=num, text=m_a.group(2),
+                line_idx=i, format='A',
+            )
+            continue
+
+        m_b = REF_FORMAT_B_RE.match(stripped)
+        if m_b:
+            num = int(m_b.group(1))
+            refs[num] = RefEntry(
+                number=num, text=m_b.group(2),
+                line_idx=i, format='B',
+            )
+            continue
+
+    if has_subsections:
+        print("warning: References section contains subsections; "
+              "renumbering across subsection boundaries may be ambiguous",
+              file=sys.stderr)
+
+    return refs
+
+
+def find_uncited_links(
+    lines: list[str],
+    excluded: set[int],
+    refs_start: int,
+    config: dict,
+) -> list[UncitedLink]:
+    """Find body hyperlinks not immediately followed by <sup>[N]</sup>.
+
+    Excludes: fenced code blocks, exempt sections, exempt URLs.
+    """
+    uncited: list[UncitedLink] = []
+    end = refs_start if refs_start >= 0 else len(lines)
+
+    for i in range(end):
+        if i in excluded:
+            continue
+
+        section = find_section_at_line(lines, i)
+        if section and is_exempt_section(section, config):
+            continue
+
+        line = lines[i]
+        for m in LINK_RE.finditer(line):
+            text = m.group(1)
+            url = m.group(2)
+
+            if is_exempt_link(url, config):
+                continue
+
+            after = line[m.end():]
+            after_stripped = after.lstrip()
+            if after_stripped.startswith('<sup>['):
+                continue
+            if (after.startswith(')')
+                    and after[1:].lstrip().startswith('<sup>[')):
+                continue
+
+            uncited.append(UncitedLink(i, text, url))
+
+    return uncited
+
+
+def find_wg21_links(
+    lines: list[str],
+    excluded: set[int],
+) -> list[WG21Link]:
+    """Find all wg21.link URLs in the file (body + references)."""
+    results: list[WG21Link] = []
+    for i, line in enumerate(lines):
+        if i in excluded:
+            continue
+        for m in WG21_LINK_RE.finditer(line):
+            results.append(WG21Link(i, m.group(0), m.group(1)))
+    return results
+
+
+def check_unversioned_refs(
+    lines: list[str],
+    excluded: set[int],
+    refs_start: int,
+) -> list[tuple[int, str]]:
+    """Find bare P/D numbers without revision suffix in body prose."""
+    results = []
+    end = refs_start if refs_start >= 0 else len(lines)
+
+    for i in range(end):
+        if i in excluded:
+            continue
+        for m in PAPER_NUM_RE.finditer(lines[i]):
+            start_pos = m.start()
+            before = lines[i][:start_pos]
+            if before.endswith('wg21.link/'):
+                continue
+            if before.endswith('/papers/'):
+                continue
+            results.append((i, m.group(1)))
+
+    return results
+
+
+def extract_paper_id_from_url(url: str) -> Optional[tuple[str, Optional[int]]]:
+    """Extract paper ID and year from an open-std.org or wg21.link URL.
+
+    Returns (paper_id, year) or None. Year may be None for wg21.link URLs.
+    """
+    m = OPEN_STD_PAPER_RE.search(url)
+    if m:
+        return m.group(2).upper(), int(m.group(1))
+
+    m = WG21_LINK_RE.search(url)
+    if m:
+        return m.group(1).upper(), None
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Pass 1: scan
+# ---------------------------------------------------------------------------
+
+def scan(filepath: str, config: dict) -> AuditResult:
+    """Run the full scan pipeline on a paper. Read-only, no network."""
+    r = AuditResult(filepath=filepath)
+
+    with open(filepath, encoding='utf-8') as f:
+        content = f.read()
+    r.lines = content.splitlines(keepends=True)
+
+    r.excluded = build_exclusion_ranges(r.lines)
+    r.refs_start, r.refs_end = find_refs_section(r.lines)
+
+    r.body_cites, r.first_appearance, r.old_to_new = (
+        extract_body_citations(r.lines, r.excluded, r.refs_start))
+
+    identity = all(old == new for old, new in r.old_to_new.items())
+    r.needs_renumber = not identity
+
+    if r.refs_start >= 0:
+        hdr = r.lines[r.refs_start].strip()
+        h_level = hdr.count('#', 0, hdr.index(' ') if ' ' in hdr else len(hdr))
+        if h_level == 1:
+            r.refs_heading_h1 = True
+            r.findings.append(Finding(
+                rule='h1-refs',
+                line=r.refs_start + 1,
+                message='References heading is # (should be ##)',
+                severity='flag',
+            ))
+        r.refs = parse_references(r.lines, r.refs_start, r.refs_end)
+
+    for _num, entry in r.refs.items():
+        if entry.format == 'B':
+            r.findings.append(Finding(
+                rule='format-b-ref',
+                line=entry.line_idx + 1,
+                message=f'Reference [{entry.number}] uses N. format, '
+                        f'should be [N]',
+                severity='flag',
+            ))
+
+    cited_nums = set(r.old_to_new.keys())
+    ref_nums = set(r.refs.keys())
+    raw_orphans = sorted(ref_nums - cited_nums)
+    exempt_orphan_pats = config.get('exempt_orphans', [])
+    r.orphans = []
+    for num in raw_orphans:
+        entry = r.refs[num]
+        if any(fnmatch(entry.text, pat) for pat in exempt_orphan_pats):
+            continue
+        r.orphans.append(num)
+
+    r.missing = sorted(cited_nums - ref_nums)
+
+    for num in r.orphans:
+        entry = r.refs[num]
+        r.findings.append(Finding(
+            rule='orphan-ref',
+            line=entry.line_idx + 1,
+            message=f'Reference [{num}] has no body citation',
+            severity='flag',
+        ))
+
+    for num in r.missing:
+        r.findings.append(Finding(
+            rule='missing-ref',
+            line=0,
+            message=f'Body cites [{num}] but no reference entry exists',
+            severity='error',
+        ))
+
+    r.uncited_links = find_uncited_links(
+        r.lines, r.excluded, r.refs_start, config)
+    for line_idx, text, url in r.uncited_links:
+        r.findings.append(Finding(
+            rule='uncited-link',
+            line=line_idx + 1,
+            message=f'Uncited link: [{text}]({url})',
+            severity='flag',
+        ))
+
+    r.wg21_links = find_wg21_links(r.lines, r.excluded)
+    for line_idx, url, slug in r.wg21_links:
+        r.findings.append(Finding(
+            rule='wg21-link',
+            line=line_idx + 1,
+            message=f'wg21.link URL must be replaced: {url}',
+            severity='auto',
+        ))
+
+    r.unversioned = check_unversioned_refs(
+        r.lines, r.excluded, r.refs_start)
+    for line_idx, paper in r.unversioned:
+        r.findings.append(Finding(
+            rule='unversioned-ref',
+            line=line_idx + 1,
+            message=f'Unversioned paper reference: {paper}',
+            severity='flag',
+        ))
+
+    for i, line in enumerate(r.lines):
+        if i in r.excluded:
+            continue
+        for m in COMPOUND_CITE_RE.finditer(line):
+            inner = m.group(0)
+            if not CITE_RE.match(inner):
+                r.findings.append(Finding(
+                    rule='malformed-cite',
+                    line=i + 1,
+                    message=f'Compound citation should be split: {inner}',
+                    severity='flag',
+                ))
+
+    return r
+
+
+# ---------------------------------------------------------------------------
+# Pass 2: resolve (network / cache)
+# ---------------------------------------------------------------------------
+
+def _resolve_via_http(url: str) -> Optional[str]:
+    """Resolve a wg21.link URL to its target via HTTP HEAD.
+
+    Returns the resolved URL, or None on failure.
+    Results are not persisted; caller caches in memory as needed.
+    """
+    try:
+        req = Request(url, method='HEAD')
+        req.add_header('User-Agent', 'cite/1.0')
+        with urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            return resp.url
+    except (HTTPError, URLError, TimeoutError) as e:
+        print(f"warning: failed to resolve {url}: {e}", file=sys.stderr)
+        return None
+
+
+def _find_latest_revision(
+    base: str,
+    index: dict[str, dict],
+) -> Optional[dict]:
+    """Find the highest-revision index entry for an unversioned paper ID.
+
+    E.g. 'P2300' -> scans for P2300R0..P2300RN, returns entry with max N.
+    """
+    best_rev = -1
+    best_entry = None
+    for key, entry in index.items():
+        m = REVISION_RE.match(key)
+        if m and m.group(1) == base:
+            rev = int(m.group(3)) if m.group(3) is not None else 0
+            if rev > best_rev:
+                best_rev = rev
+                best_entry = entry
+    return best_entry
+
+
+def load_paper_index(cache_dir: Path) -> dict[str, dict]:
+    """Load the wg21.link paper index, refreshing from network if stale.
+
+    Fetches https://wg21.link/index.json when the local cache is older
+    than the server copy (checked via HEAD Last-Modified). Falls back
+    to the local file silently when offline or on any network error.
+    Returns an empty dict if the file is missing and cannot be fetched.
+    """
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / INDEX_FILENAME
+
+    server_mtime: Optional[float] = None
+    if cache_file.exists():
+        try:
+            req = Request(INDEX_URL, method='HEAD')
+            req.add_header('User-Agent', 'cite/1.0')
+            with urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+                last_modified = resp.headers.get('Last-Modified')
+                if last_modified:
+                    import email.utils
+                    parsed = email.utils.parsedate_to_datetime(last_modified)
+                    server_mtime = parsed.timestamp()
+        except (HTTPError, URLError, TimeoutError):
+            pass
+
+        local_mtime = cache_file.stat().st_mtime
+        if server_mtime is None or local_mtime >= server_mtime:
+            with open(cache_file, encoding='utf-8') as f:
+                return json.load(f)
+
+    try:
+        req = Request(INDEX_URL)
+        req.add_header('User-Agent', 'cite/1.0')
+        with urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            last_modified = resp.headers.get('Last-Modified')
+            data = json.loads(resp.read().decode('utf-8'))
+    except (HTTPError, URLError, TimeoutError) as e:
+        print(f"warning: failed to fetch {INDEX_URL}: {e}", file=sys.stderr)
+        if cache_file.exists():
+            with open(cache_file, encoding='utf-8') as f:
+                return json.load(f)
+        return {}
+
+    fd, tmp = tempfile.mkstemp(dir=cache_dir, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        os.replace(tmp, cache_file)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+    if last_modified:
+        try:
+            import email.utils
+            parsed = email.utils.parsedate_to_datetime(last_modified)
+            mtime = parsed.timestamp()
+            os.utime(cache_file, (mtime, mtime))
+        except Exception:
+            pass
+
+    return data
+
+
+def lookup_paper_metadata(
+    paper_id: str,
+    index: dict[str, dict],
+) -> Optional[PaperMetadata]:
+    """Look up paper metadata from the wg21.link index.
+
+    Returns PaperMetadata or None if the paper is not in the index.
+    """
+    entry = index.get(paper_id.upper())
+    if entry and entry.get('type') == 'paper':
+        return PaperMetadata(
+            paper_id=paper_id.upper(),
+            title=entry.get('title', ''),
+            authors=entry.get('author', ''),
+            date=entry.get('date', ''),
+            url=entry.get('long_link', ''),
+        )
+    return None
+
+
+def resolve(
+    results: list[AuditResult],
+    cache_dir: Path,
+    skip_resolve: bool = False,
+) -> ResolveResult:
+    """Pass 2: resolve URLs and fetch metadata. Batched across all files."""
+    resolved = ResolveResult()
+
+    if skip_resolve:
+        return resolved
+
+    index = load_paper_index(cache_dir)
+
+    all_wg21_slugs = set()
+    all_paper_ids: set[str] = set()
+
+    for r in results:
+        for link in r.wg21_links:
+            all_wg21_slugs.add(link.slug.lower())
+
+        for _num, entry in r.refs.items():
+            urls_in_text = re.findall(r'https?://[^\s,]+', entry.text)
+            for url in urls_in_text:
+                info = extract_paper_id_from_url(url)
+                if info:
+                    pid, _year = info
+                    all_paper_ids.add(pid)
+
+    for slug in sorted(all_wg21_slugs):
+        wg21_url = f"https://wg21.link/{slug}"
+        slug_upper = slug.upper()
+
+        # Tier 1: direct versioned lookup
+        entry = index.get(slug_upper)
+        if entry and entry.get('type') == 'paper':
+            long_link = entry.get('long_link', '')
+            if long_link:
+                resolved.url_map[wg21_url] = long_link
+                info = extract_paper_id_from_url(long_link)
+                if info:
+                    all_paper_ids.add(info[0])
+                continue
+
+        # Tier 2: unversioned - find latest revision in index
+        if not REVISION_RE.match(slug_upper) or not re.search(r'R\d+$', slug_upper):
+            latest = _find_latest_revision(slug_upper, index)
+            if latest and latest.get('long_link'):
+                resolved.url_map[wg21_url] = latest['long_link']
+                info = extract_paper_id_from_url(latest['long_link'])
+                if info:
+                    all_paper_ids.add(info[0])
+                continue
+
+        # Tier 3: not in index (recent/draft papers) - HTTP fallback
+        result = _resolve_via_http(wg21_url)
+        if result:
+            resolved.url_map[wg21_url] = result
+            info = extract_paper_id_from_url(result)
+            if info:
+                all_paper_ids.add(info[0])
+
+    for pid in sorted(all_paper_ids):
+        if pid in resolved.metadata:
+            continue
+        meta = lookup_paper_metadata(pid, index)
+        if meta:
+            resolved.metadata[pid.upper()] = meta
+
+    return resolved
+
+
+# ---------------------------------------------------------------------------
+# Pass 3: write (pure transform)
+# ---------------------------------------------------------------------------
+
+def apply_wg21_replacements(
+    lines: list[str],
+    replacements: dict[str, str],
+    excluded: set[int],
+) -> list[str]:
+    """Replace wg21.link URLs with resolved open-std.org URLs.
+
+    Skips lines inside fenced code blocks (exclusion set).
+    """
+    result = list(lines)
+    for i, line in enumerate(result):
+        if i in excluded:
+            continue
+        for old_url, new_url in replacements.items():
+            if old_url in line:
+                result[i] = result[i].replace(old_url, new_url)
+    return result
+
+
+def renumber_content(
+    old_to_new: dict[int, int],
+    excluded_line_set: set[int],
+    lines: list[str],
+) -> str:
+    """Renumber all <sup>[N]</sup> citations.
+
+    Uses a sentinel strategy to avoid collisions:
+    Pass 1: all [N] -> [__N__] (every citation, not just those in old_to_new)
+    Pass 2: [__N__] -> [new_N] (using old_to_new, falling back to identity)
+    """
+    working_lines = list(lines)
+
+    for i, line in enumerate(working_lines):
+        if i in excluded_line_set:
+            continue
+        working_lines[i] = CITE_RE.sub(
+            lambda m: f'<sup>[__{m.group(1)}__]</sup>',
+            line,
+        )
+
+    result_lines = []
+    for i, line in enumerate(working_lines):
+        if i in excluded_line_set:
+            result_lines.append(line)
+            continue
+
+        def replace_sentinel(m):
+            old_n = int(m.group(1))
+            new_n = old_to_new.get(old_n, old_n)
+            return f'<sup>[{new_n}]</sup>'
+
+        result_lines.append(
+            re.sub(r'<sup>\[__(\d+)__\]</sup>', replace_sentinel, line)
+        )
+
+    return ''.join(result_lines)
+
+
+def reorder_refs(
+    lines: list[str],
+    refs: dict[int, RefEntry],
+    old_to_new: dict[int, int],
+) -> list[str]:
+    """Reorder reference entries by their new citation number.
+
+    Preserves non-entry lines (blank lines, subsection headings).
+    """
+    result = list(lines)
+
+    entries_by_new = {}
+    for old_num, entry in refs.items():
+        new_num = old_to_new.get(old_num)
+        if new_num is None:
+            continue
+        entries_by_new[new_num] = f'[{new_num}] {entry.text}\n'
+
+    entry_positions = sorted(
+        [e.line_idx for e in refs.values() if e.number in old_to_new]
+    )
+
+    sorted_entries = [
+        entries_by_new[k] for k in sorted(entries_by_new.keys())]
+
+    for pos, new_line in zip(entry_positions, sorted_entries):
+        result[pos] = new_line
+
+    return result
+
+
+def remove_orphan_refs(
+    lines: list[str],
+    orphans: list[int],
+    refs: dict[int, RefEntry],
+) -> list[str]:
+    """Blank out lines for orphan reference entries."""
+    result = list(lines)
+    for num in orphans:
+        if num in refs:
+            result[refs[num].line_idx] = '\n'
+    return result
+
+
+def add_missing_ref_entries(
+    lines: list[str],
+    missing: list[int],
+    body_cites: list[tuple[int, int]],
+    refs_end: int,
+    resolved: ResolveResult,
+) -> list[str]:
+    """Create reference entries for citations that have no ref entry."""
+    if not missing:
+        return list(lines)
+
+    result = list(lines)
+    cite_contexts = {}
+    for line_idx, num in body_cites:
+        if num not in cite_contexts:
+            cite_contexts[num] = line_idx
+
+    new_entries = []
+    for num in missing:
+        ctx_line = cite_contexts.get(num, -1)
+        entry_text = None
+
+        if ctx_line >= 0:
+            line = result[ctx_line]
+            for m in LINK_RE.finditer(line):
+                link_end = m.end()
+                after = line[link_end:]
+                if after.startswith(f'<sup>[{num}]</sup>'):
+                    url = m.group(2)
+                    text = m.group(1)
+                    info = extract_paper_id_from_url(url)
+                    if info:
+                        pid, _year = info
+                        meta = resolved.metadata.get(pid.upper())
+                        if meta:
+                            t = to_html_entities(meta.title)
+                            a = to_html_entities(meta.authors)
+                            entry_text = (
+                                f'{meta.paper_id}, "{t}," {a}, '
+                                f'{meta.url}')
+                            break
+                    entry_text = f'{text}, {url}'
+                    break
+
+        if entry_text is None:
+            entry_text = '[TODO: Add reference]'
+            print(f"  Stub:    [{num}] {entry_text} "
+                  f"(line {ctx_line + 1})", file=sys.stderr)
+        else:
+            print(f"  Created: [{num}] {entry_text}", file=sys.stderr)
+
+        new_entries.append(f'[{num}] {entry_text}\n')
+
+    if new_entries:
+        insert_pos = refs_end
+        for entry_line in new_entries:
+            result.insert(insert_pos, '\n')
+            result.insert(insert_pos + 1, entry_line)
+            insert_pos += 2
+
+    return result
+
+
+def add_citations_to_links(
+    lines: list[str],
+    uncited_links: list[tuple[int, str, str]],
+    refs: dict[int, RefEntry],
+    refs_end: int,
+    resolved: ResolveResult,
+) -> tuple[list[str], dict[int, RefEntry]]:
+    """Attach <sup>[N]</sup> to uncited links and create ref entries."""
+    result = list(lines)
+    new_refs = dict(refs)
+    next_num = (max(refs.keys()) + 1) if refs else 1
+
+    url_to_ref = {}
+    for num, entry in refs.items():
+        for m in re.finditer(r'https?://[^\s,]+', entry.text):
+            url_to_ref[m.group(0)] = num
+
+    inserts = []
+
+    for line_idx, text, url in uncited_links:
+        existing = url_to_ref.get(url)
+        if existing is not None:
+            ref_num = existing
+        else:
+            ref_num = next_num
+            next_num += 1
+            info = extract_paper_id_from_url(url)
+            meta = None
+            if info:
+                pid, _year = info
+                meta = resolved.metadata.get(pid.upper())
+
+            if meta:
+                t = to_html_entities(meta.title)
+                a = to_html_entities(meta.authors)
+                entry_text = (
+                    f'{meta.paper_id}, "{t}," {a}, {meta.url}')
+            else:
+                entry_text = f'{text}, {url}'
+
+            new_refs[ref_num] = RefEntry(
+                number=ref_num, text=entry_text,
+                line_idx=-1, format='A',
+            )
+            url_to_ref[url] = ref_num
+
+            inserts.append(f'[{ref_num}] {entry_text}\n')
+
+            print(f"  Created: [{ref_num}] {entry_text}", file=sys.stderr)
+
+        link_pattern = f'[{text}]({url})'
+        line = result[line_idx]
+        pos = line.find(link_pattern)
+        if pos >= 0:
+            insert_at = pos + len(link_pattern)
+            result[line_idx] = (
+                line[:insert_at]
+                + f'<sup>[{ref_num}]</sup>'
+                + line[insert_at:])
+
+    if inserts:
+        insert_pos = refs_end
+        for entry_line in inserts:
+            result.insert(insert_pos, '\n')
+            result.insert(insert_pos + 1, entry_line)
+            insert_pos += 2
+
+    return result, new_refs
+
+
+def fix_unversioned_refs(
+    lines: list[str],
+    unversioned: list[tuple[int, str]],
+    refs: dict[int, RefEntry],
+    resolved: ResolveResult,
+) -> list[str]:
+    """Replace bare paper numbers with versioned equivalents."""
+    result = list(lines)
+
+    ref_versions = {}
+    for _num, entry in refs.items():
+        for m in VERSIONED_PAPER_RE.finditer(entry.text):
+            base = m.group(0)[:5]
+            ref_versions[base] = m.group(0)
+
+    for line_idx, paper in unversioned:
+        versioned = ref_versions.get(paper)
+        if versioned is None:
+            for pid, meta in resolved.metadata.items():
+                if pid.startswith(paper):
+                    versioned = meta.paper_id
+                    break
+        if versioned:
+            result[line_idx] = result[line_idx].replace(paper, versioned, 1)
+            print(f"  Versioned: {paper} -> {versioned} "
+                  f"(line {line_idx + 1})", file=sys.stderr)
+
+    return result
+
+
+def normalize_title(text: str) -> str:
+    """Normalize a title for comparison."""
+    text = text.strip().strip('"').strip("'").strip('`')
+    text = text.rstrip(',').rstrip('.')
+    text = re.sub(r'\s+', ' ', text)
+    return text.lower()
+
+
+def fix_title_mismatches(
+    lines: list[str],
+    refs: dict[int, RefEntry],
+    resolved: ResolveResult,
+) -> list[str]:
+    """Update reference titles from mailing index metadata."""
+    result = list(lines)
+
+    for num, entry in refs.items():
+        urls_in_text = re.findall(r'https?://[^\s,]+', entry.text)
+        for url in urls_in_text:
+            info = extract_paper_id_from_url(url)
+            if not info:
+                continue
+            pid, _year = info
+            meta = resolved.metadata.get(pid.upper())
+            if not meta:
+                continue
+
+            ref_title = None
+            title_m = re.search(r'"([^"]+)"', entry.text)
+            if title_m:
+                ref_title = title_m.group(1)
+            else:
+                title_m = re.search(r',\s*([^,]+),', entry.text)
+                if title_m:
+                    ref_title = title_m.group(1).strip()
+
+            if ref_title is None:
+                continue
+
+            if (normalize_title(ref_title)
+                    != normalize_title(meta.title)):
+                print(
+                    f"  Title mismatch [{num}] {pid}:\n"
+                    f"    Reference: \"{ref_title}\"\n"
+                    f"    Index:     \"{meta.title}\"",
+                    file=sys.stderr)
+                new_title = to_html_entities(meta.title)
+                old_line = result[entry.line_idx]
+                new_line = old_line.replace(
+                    f'"{ref_title}"', f'"{new_title}"', 1)
+                if new_line == old_line and ref_title in old_line:
+                    new_line = old_line.replace(
+                        ref_title, new_title, 1)
+                result[entry.line_idx] = new_line
+            break
+
+    return result
+
+
+def demote_h1_refs(lines: list[str], refs_start: int) -> list[str]:
+    """Demote # References to ## References."""
+    result = list(lines)
+    new_line = re.sub(
+        r'^#(\s+)References', r'##\1References', result[refs_start])
+    if new_line != result[refs_start]:
+        result[refs_start] = new_line
+        print(f"  Demoted: # References -> ## References "
+              f"(line {refs_start + 1})", file=sys.stderr)
+    return result
+
+
+def normalize_ref_format(
+    lines: list[str],
+    refs_start: int,
+    refs_end: int,
+) -> list[str]:
+    """Convert Format B (N. text) to Format A ([N] text) in refs section."""
+    result = list(lines)
+    for i in range(refs_start + 1, refs_end):
+        m = REF_FORMAT_B_RE.match(result[i].strip())
+        if m:
+            num = m.group(1)
+            text = m.group(2)
+            leading = ''
+            stripped = result[i].lstrip()
+            if result[i] != stripped:
+                leading = result[i][:len(result[i]) - len(stripped)]
+            result[i] = f'{leading}[{num}] {text}\n'
+    return result
+
+
+def strip_trailing_urls(
+    lines: list[str],
+    refs_start: int,
+    refs_end: int,
+) -> list[str]:
+    """Remove redundant trailing bare URLs from ref lines.
+
+    If a line has [text](url) and ends with the same bare url, drop it.
+    If a line has a bare URL but no markdown link, wrap the descriptive
+    text before the URL as a link.
+    """
+    result = list(lines)
+    for i in range(refs_start + 1, refs_end):
+        line = result[i]
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        links = list(LINK_RE.finditer(stripped))
+        urls_in_line = re.findall(r'https?://\S+', stripped)
+
+        if not urls_in_line:
+            continue
+
+        if links:
+            link_urls = {m.group(2) for m in links}
+            trailing_m = TRAILING_URL_RE.search(line.rstrip('\n'))
+            if trailing_m:
+                trailing_url = trailing_m.group(0).strip()
+                if trailing_url in link_urls:
+                    new_line = line[:trailing_m.start()].rstrip()
+                    result[i] = new_line + '\n'
+        else:
+            if len(urls_in_line) == 1:
+                url = urls_in_line[0]
+                ref_m = REF_FORMAT_A_RE.match(stripped)
+                if ref_m:
+                    text = ref_m.group(2)
+                    url_pos = text.find(url)
+                    if url_pos > 0:
+                        desc = text[:url_pos].rstrip(', ')
+                        if desc:
+                            num = ref_m.group(1)
+                            result[i] = (
+                                f'[{num}] [{desc}]({url})\n')
+
+    return result
+
+
+def space_ref_entries(
+    lines: list[str],
+    refs_start: int,
+    refs_end: int,
+) -> list[str]:
+    """Ensure a blank line between consecutive reference entries."""
+    result = list(lines)
+    inserts = []
+    for i in range(refs_start + 1, refs_end):
+        stripped = result[i].strip()
+        if not REF_FORMAT_A_RE.match(stripped):
+            continue
+        if i > 0:
+            prev = result[i - 1].strip()
+            if prev and not prev.startswith('#'):
+                inserts.append(i)
+
+    for offset, pos in enumerate(inserts):
+        result.insert(pos + offset, '\n')
+
+    return result
+
+
+def write(
+    result: AuditResult,
+    resolved: ResolveResult,
+    fix: bool = False,
+) -> str:
+    """Pass 3: apply fixes and return the rewritten content."""
+    lines = list(result.lines)
+
+    if resolved.url_map and result.wg21_links:
+        replacements = {}
+        for _line_idx, url, _slug in result.wg21_links:
+            for old_url, new_url in resolved.url_map.items():
+                if old_url in url or url in old_url:
+                    replacements[url] = new_url
+        if replacements:
+            lines = apply_wg21_replacements(
+                lines, replacements, result.excluded)
+
+    refs = dict(result.refs)
+    refs_start = result.refs_start
+    refs_end = result.refs_end
+
+    if fix:
+        if result.refs_heading_h1 and refs_start >= 0:
+            lines = demote_h1_refs(lines, refs_start)
+
+        if refs_start >= 0:
+            lines = normalize_ref_format(lines, refs_start, refs_end)
+            refs = parse_references(lines, refs_start, refs_end)
+
+        if result.orphans:
+            lines = remove_orphan_refs(lines, result.orphans, refs)
+            for num in result.orphans:
+                refs.pop(num, None)
+
+        if result.missing:
+            lines = add_missing_ref_entries(
+                lines, result.missing, result.body_cites,
+                refs_end, resolved)
+            refs_end = len(lines)
+            _, new_refs_end = find_refs_section(lines)
+            if new_refs_end > 0:
+                refs_end = new_refs_end
+            refs = parse_references(
+                lines,
+                refs_start if refs_start >= 0 else 0,
+                refs_end)
+
+        if result.uncited_links:
+            lines, refs = add_citations_to_links(
+                lines, result.uncited_links, refs, refs_end,
+                resolved)
+            refs_start, refs_end = find_refs_section(lines)
+            if refs_start >= 0:
+                refs = parse_references(lines, refs_start, refs_end)
+
+        if result.unversioned:
+            lines = fix_unversioned_refs(
+                lines, result.unversioned, refs, resolved)
+
+        lines = fix_title_mismatches(lines, refs, resolved)
+
+        refs_start, refs_end = find_refs_section(lines)
+        if refs_start >= 0:
+            lines = strip_trailing_urls(lines, refs_start, refs_end)
+
+        refs_start, refs_end = find_refs_section(lines)
+        if refs_start >= 0:
+            lines = space_ref_entries(lines, refs_start, refs_end)
+
+    refs_start, refs_end = find_refs_section(lines)
+    if refs_start >= 0:
+        refs = parse_references(lines, refs_start, refs_end)
+
+    excluded = build_exclusion_ranges(lines)
+    _body_cites, _first_app, old_to_new = extract_body_citations(
+        lines, excluded, refs_start)
+
+    needs_renumber = any(old != new for old, new in old_to_new.items())
+
+    if needs_renumber and old_to_new:
+        content = renumber_content(old_to_new, excluded, lines)
+        lines = content.splitlines(keepends=True)
+
+        if refs_start >= 0 and refs:
+            lines = reorder_refs(lines, refs, old_to_new)
+
+    return ''.join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Reporting
+# ---------------------------------------------------------------------------
+
+def print_report(result: AuditResult) -> None:
+    """Print audit summary to stderr."""
+    name = os.path.basename(result.filepath)
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"  cite: {name}", file=sys.stderr)
+    print(f"{'='*60}", file=sys.stderr)
+
+    if result.needs_renumber:
+        print(f"\n  Renumbering: {len(result.old_to_new)} citations",
+              file=sys.stderr)
+        changes = [(old, new)
+                   for old, new in sorted(result.old_to_new.items())
+                   if old != new]
+        for old, new in changes[:20]:
+            print(f"    [{old}] -> [{new}]", file=sys.stderr)
+        if len(changes) > 20:
+            print(f"    ... and {len(changes) - 20} more",
+                  file=sys.stderr)
+    else:
+        print("\n  Citations already in order.", file=sys.stderr)
+
+    if result.orphans:
+        print(f"\n  Orphan references: {result.orphans}", file=sys.stderr)
+
+    if result.missing:
+        print(f"\n  Missing references: {result.missing}", file=sys.stderr)
+
+    by_rule = {}
+    for f in result.findings:
+        by_rule.setdefault(f.rule, []).append(f)
+
+    for rule in sorted(by_rule.keys()):
+        findings = by_rule[rule]
+        print(f"\n  {rule} ({len(findings)}):", file=sys.stderr)
+        for f in findings[:10]:
+            print(f"    L{f.line}: {f.message}", file=sys.stderr)
+        if len(findings) > 10:
+            print(f"    ... and {len(findings) - 10} more",
+                  file=sys.stderr)
+
+    total = len(result.findings)
+    if total == 0:
+        print("\n  Clean.", file=sys.stderr)
+    else:
+        print(f"\n  Total findings: {total}", file=sys.stderr)
+
+    print(file=sys.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Path expansion
+# ---------------------------------------------------------------------------
+
+_SKIP_DIRS = frozenset({
+    '.git', '.cache', '__pycache__', '.pytest_cache', 'node_modules',
+})
+
+
+def expand_paths(paths: list[str]) -> list[str]:
+    """Resolve directories to .md files, pass through files as-is."""
+    result = []
+    for p in paths:
+        path = Path(p)
+        if path.is_dir():
+            for md in sorted(path.rglob('*.md')):
+                skip = False
+                for part in md.parts:
+                    if part.startswith('.') or part in _SKIP_DIRS:
+                        skip = True
+                        break
+                if not skip:
+                    result.append(str(md))
+        elif path.is_file():
+            result.append(str(path))
+        else:
+            print(f"warning: skipping {p} (not a file or directory)",
+                  file=sys.stderr)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Citation normalizer for WG21 papers',
+    )
+    parser.add_argument('papers', nargs='+',
+                        help='Markdown files or directories to process')
+    parser.add_argument('--fix', action='store_true',
+                        help='Auto-fix all detectable issues')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Print rewritten content to stdout, '
+                             'no file write')
+    parser.add_argument('--check', action='store_true',
+                        help='Exit 1 if any changes needed (CI mode)')
+    parser.add_argument('--config', default=None,
+                        help='Path to YAML config')
+    parser.add_argument('--no-resolve', action='store_true',
+                        help='Skip HTTP URL resolution (offline mode)')
+
+    args = parser.parse_args()
+
+    if args.fix and args.check:
+        print("error: --fix and --check are mutually exclusive",
+              file=sys.stderr)
+        return 2
+
+    files = expand_paths(args.papers)
+    if not files:
+        print("error: no markdown files found", file=sys.stderr)
+        return 2
+
+    config_path = args.config
+    if config_path is None:
+        first_dir = Path(files[0]).resolve().parent
+        candidate = first_dir / 'cite.yaml'
+        if candidate.exists():
+            config_path = str(candidate)
+        else:
+            script_dir = Path(__file__).resolve().parent
+            candidate = script_dir / 'cite.yaml'
+            if candidate.exists():
+                config_path = str(candidate)
+
+    try:
+        config = load_config(config_path)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    # Pass 1: scan
+    results = []
+    for f in files:
+        r = scan(f, config)
+        if r.refs_start < 0:
+            continue
+        results.append(r)
+
+    if not results:
+        print("No papers with References section found.", file=sys.stderr)
+        return 0
+
+    # Pass 2: resolve
+    cache_dir = Path(__file__).resolve().parent / '.cache'
+    resolved = resolve(results, cache_dir, skip_resolve=args.no_resolve)
+
+    # Pass 3: write
+    any_changes = False
+    for r in results:
+        print_report(r)
+
+        if args.check:
+            output = write(r, resolved, fix=True)
+            original = ''.join(r.lines)
+            if output != original:
+                any_changes = True
+            continue
+
+        output = write(r, resolved, fix=args.fix)
+
+        if args.dry_run:
+            sys.stdout.buffer.write(output.encode('utf-8'))
+            continue
+
+        original = ''.join(r.lines)
+        if output == original:
+            continue
+
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=os.path.dirname(os.path.abspath(r.filepath)),
+            suffix='.tmp',
+        )
+        try:
+            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+                f.write(output)
+            os.replace(tmp_path, r.filepath)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+        print(f"  Wrote: {r.filepath}", file=sys.stderr)
+
+    if args.check:
+        return 1 if any_changes else 0
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,18 @@
+# cite.yaml - Configuration for cite.py citation normalizer.
+
+# Links in these sections are never flagged as uncited.
+exempt_sections:
+  - Disclosure
+  - Acknowledgements
+  - Acknowledgments
+
+# Body hyperlinks matching any of these patterns are never flagged
+# as uncited. Matched against the link URL. Shell-style globs.
+exempt_links:
+  - "https://github.com/cppalliance/corosio*"
+  - "https://github.com/cppalliance/capy*"
+  - "https://creativecommons.org/*"
+
+# Orphan references matching these patterns are never flagged.
+# Matched against the reference text (number stripped).
+exempt_orphans: []

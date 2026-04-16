@@ -1,6 +1,6 @@
 ---
 title: "A Minimal Coroutine Execution Model"
-document: P4003R1
+document: P4003R2
 date: 2026-04-05
 intent: ask
 audience: LEWG

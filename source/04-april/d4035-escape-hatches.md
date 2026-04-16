@@ -29,7 +29,7 @@ C++ should make the safe thing easy, and the unsafe thing possible.
 
 The author provides information and serves at the pleasure of the committee.
 
-The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[9]</sup> and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 The author has published Boost libraries and has a stake in the project's success.
 
@@ -56,7 +56,7 @@ The naming convention appears in the standard library, and the full pattern - na
 
 ## 3. Standard Precedent
 
-The standard library provides [`std::condition_variable`](https://eel.is/c++draft/thread.condition.condvar)<sup>[1]</sup>, which requires `std::unique_lock<std::mutex>`, and [`std::condition_variable_any`](https://eel.is/c++draft/thread.condition.condvarany)<sup>[1]</sup>, which works with any lockable type:
+The standard library provides [`std::condition_variable`](https://eel.is/c++draft/thread.condition.condvar)<sup>[2]</sup>, which requires `std::unique_lock<std::mutex>`, and [`std::condition_variable_any`](https://eel.is/c++draft/thread.condition.condvarany)<sup>[2]</sup>, which works with any lockable type:
 
 ```cpp
 std::mutex mtx;
@@ -75,7 +75,7 @@ cv_any.wait(slk);
 
 `condition_variable_any` is the broader, more general facility - the safe path that works with any lock type. `condition_variable` is the optimized path - a thin wrapper over `pthread_cond_t` that works with only one lock type. Under the escape-hatch principle, the broad facility should carry the default name and the optimized facility should carry the marked name.
 
-The naming went the other way. N2406<sup>[13]</sup> ("Mutex, Lock, Condition Variable Rationale") documents the design: `condition_variable` was intended as "as thin a wrapper as possible around that OS functionality," and `condition_variable_any` was the generalization built on top. The primary name followed the POSIX lineage, not the safety principle. The optimized primitive got the short name; the broader facility got the suffix.
+The naming went the other way. N2406<sup>[3]</sup> ("Mutex, Lock, Condition Variable Rationale") documents the design: `condition_variable` was intended as "as thin a wrapper as possible around that OS functionality," and `condition_variable_any` was the generalization built on top. The primary name followed the POSIX lineage, not the safety principle. The optimized primitive got the short name; the broader facility got the suffix.
 
 The standard library already has the naming convention. It got it backwards because the principle was not articulated at the time.
 
@@ -83,7 +83,7 @@ The standard library already has the naming convention. It got it backwards beca
 
 ## 4. Established Practice
 
-[Boost.URL](https://github.com/boostorg/url)<sup>[2]</sup> provides `pct_string_view`, a non-owning reference to a valid percent-encoded string. Construction from untrusted input validates the encoding and throws on failure:
+[Boost.URL](https://github.com/boostorg/url)<sup>[4]</sup> provides `pct_string_view`, a non-owning reference to a valid percent-encoded string. Construction from untrusted input validates the encoding and throws on failure:
 
 ```cpp
 // Safe default: validates percent-encoding.
@@ -98,13 +98,13 @@ Internally, the library's own parser has already validated the encoding before e
 pct_string_view s = make_pct_string_view_unsafe(data, size, decoded_size);
 ```
 
-Boost.URL has shipped this pattern with years of field experience: a validating default ([`pct_string_view`](https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp)<sup>[3]</sup>) and an escape hatch ([`make_pct_string_view_unsafe`](https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp)<sup>[3]</sup>) for trusted boundaries. Boost.Process ([`basic_cstring_ref`](https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp)<sup>[4]</sup>) and Boost.SQLite ([`cstring_ref`](https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp)<sup>[5]</sup>) independently implemented null-terminated string reference types, confirming the demand for the type that `cstring_view` proposes to standardize.
+Boost.URL has shipped this pattern with years of field experience: a validating default ([`pct_string_view`](https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp)<sup>[5]</sup>) and an escape hatch ([`make_pct_string_view_unsafe`](https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp)<sup>[5]</sup>) for trusted boundaries. Boost.Process ([`basic_cstring_ref`](https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp)<sup>[6]</sup>) and Boost.SQLite ([`cstring_ref`](https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp)<sup>[7]</sup>) independently implemented null-terminated string reference types, confirming the demand for the type that `cstring_view` proposes to standardize.
 
 ---
 
 ## 5. Application Level
 
-On BSD-derived systems, directory iteration exposes a filename pointer and a filename length via `dirent` (`d_name` and `d_namlen`) [FreeBSD `readdir(3)`](https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3)<sup>[6]</sup> and [FreeBSD `dirent.h`](https://cgit.freebsd.org/src/tree/sys/sys/dirent.h)<sup>[7]</sup>. POSIX requires that path components are null-terminated and contain no embedded null bytes [POSIX Base Definitions](https://pubs.opengroup.org/onlinepubs/9799919799/)<sup>[8]</sup>. Rescanning each name in a validating constructor repeats work the operating system already did.
+On BSD-derived systems, directory iteration exposes a filename pointer and a filename length via `dirent` (`d_name` and `d_namlen`) [FreeBSD `readdir(3)`](https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3)<sup>[8]</sup> and [FreeBSD `dirent.h`](https://cgit.freebsd.org/src/tree/sys/sys/dirent.h)<sup>[9]</sup>. POSIX requires that path components are null-terminated and contain no embedded null bytes [POSIX Base Definitions](https://pubs.opengroup.org/onlinepubs/9799919799/)<sup>[10]</sup>. Rescanning each name in a validating constructor repeats work the operating system already did.
 
 ```cpp
 void visit_directory(DIR* dir)
@@ -127,7 +127,7 @@ The safe path remains the default for untrusted input. The unsafe path exists fo
 
 ## 6. Structured Concurrency
 
-Structured concurrency enforces the same discipline for asynchronous lifetimes that structured control flow enforces for execution order: activations nest, scopes nest, a parent outlives its children, and RAII works. [Capy](https://github.com/cppalliance/capy)<sup>[9]</sup> provides `run` as the structured default and `run_async` as the explicit escape hatch:
+Structured concurrency enforces the same discipline for asynchronous lifetimes that structured control flow enforces for execution order: activations nest, scopes nest, a parent outlives its children, and RAII works. [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> provides `run` as the structured default and `run_async` as the explicit escape hatch:
 
 ```cpp
 recycling_frame_allocator alloc;
@@ -150,9 +150,9 @@ The consequences of misuse are higher in concurrency than in data validation - a
 
 ## 7. `cstring_view` Constructors
 
-[P3655R3](https://wg21.link/p3655r3)<sup>[10]</sup> ("cstring_view") proposes `std::cstring_view`, a non-owning view guaranteed to be null-terminated. The type fills a real gap: `std::string` owns and null-terminates, `std::string_view` does not own and does not null-terminate, and `cstring_view` does not own but does null-terminate. Over 2,100 independent implementations on GitHub confirm the demand. The `substr` split - one-argument returning `cstring_view`, two-argument returning `string_view` - and the deletion of `remove_suffix` show careful attention to the null-termination invariant.
+[P3655R3](https://wg21.link/p3655r3)<sup>[11]</sup> ("cstring_view") proposes `std::cstring_view`, a non-owning view guaranteed to be null-terminated. The type fills a real gap: `std::string` owns and null-terminates, `std::string_view` does not own and does not null-terminate, and `cstring_view` does not own but does null-terminate. Over 2,100 independent implementations on GitHub confirm the demand. The `substr` split - one-argument returning `cstring_view`, two-argument returning `string_view` - and the deletion of `remove_suffix` show careful attention to the null-termination invariant.
 
-[P3566R2](https://wg21.link/p3566r2)<sup>[11]</sup> ("You shall not pass `char*`") independently arrives at the same pattern for `string` and `string_view`: deprecate the `char const*` constructor as an unbounded-range operation, add a bounded `char[N]` constructor for arrays, and provide an explicitly tagged `unsafe_length_t` replacement for the deprecated path. The escape-hatch structure - safe default, explicit opt-in - is identical to the pattern documented in Sections 2-5.
+[P3566R2](https://wg21.link/p3566r2)<sup>[12]</sup> ("You shall not pass `char*`") independently arrives at the same pattern for `string` and `string_view`: deprecate the `char const*` constructor as an unbounded-range operation, add a bounded `char[N]` constructor for arrays, and provide an explicitly tagged `unsafe_length_t` replacement for the deprecated path. The escape-hatch structure - safe default, explicit opt-in - is identical to the pattern documented in Sections 2-5.
 
 The escape-hatch pattern from Sections 2-5 applies directly to the constructor set. P3655R3's pointer-and-length constructor has a narrow contract:
 
@@ -255,7 +255,7 @@ configure(cstring_view(               // under P3566
     std::getenv("HOME")));
 ```
 
-P3566R2 documents that certain language constructs force array-to-pointer decay - notably, the ternary operator and initializer lists<sup>[11]</sup>. Both operands in `cond ? "first" : "second"` are string literals. Both are arrays. The language decays them to `char*` before overload resolution. The `char[N]` constructor cannot intercept:
+P3566R2 documents that certain language constructs force array-to-pointer decay - notably, the ternary operator and initializer lists<sup>[12]</sup>. Both operands in `cond ? "first" : "second"` are string literals. Both are arrays. The language decays them to `char*` before overload resolution. The `char[N]` constructor cannot intercept:
 
 ```cpp
 void f(std::string_view s);
@@ -264,11 +264,11 @@ f(cond ? "first" : "second");         // today
 f(cond ? "first"sv : "second"sv);     // under P3566
 ```
 
-P3566R2's own migration data quantifies the scope. The Qt experiment reports that "all of Qt's runtime reflection APIs yield `const char*`, causing many warnings that one is unable to quickly address"<sup>[11]</sup>. The NVIDIA Omniverse migration required codebase-wide search and replace of `const char* x = "..."` declarations to `constexpr char x[] = "..."`<sup>[11]</sup>.
+P3566R2's own migration data quantifies the scope. The Qt experiment reports that "all of Qt's runtime reflection APIs yield `const char*`, causing many warnings that one is unable to quickly address"<sup>[12]</sup>. The NVIDIA Omniverse migration required codebase-wide search and replace of `const char* x = "..."` declarations to `constexpr char x[] = "..."`<sup>[12]</sup>.
 
 The `char[N]` constructor adds a bounded path for literals. The `char const*` constructor is the only implicit path for runtime string sources - `std::exception::what()`, `std::getenv()`, `std::strerror()`, stored `c_str()` results, ternary expressions. Adding a path is not the same as closing one.
 
-LEWG reviewed this evidence at Sofia (June 2025) and reached consensus against pursuing the full direction of P3566R1 for the standard library (SF/F/N/A/SA: 0/7/3/9/6)<sup>[12]</sup>. The committee did encourage further work in a profile context and on changing undefined behavior for NULL to erroneous behavior - directions that do not require closing the implicit constructor. The migration costs documented above explain the first outcome.
+LEWG reviewed this evidence at Sofia (June 2025) and reached consensus against pursuing the full direction of P3566R1 for the standard library (SF/F/N/A/SA: 0/7/3/9/6)<sup>[13]</sup>. The committee did encourage further work in a profile context and on changing undefined behavior for NULL to erroneous behavior - directions that do not require closing the implicit constructor. The migration costs documented above explain the first outcome.
 
 At Croydon (March 2026), LEWG polled P3655R3's constructor design directly<sup>[14]</sup>:
 
@@ -308,30 +308,30 @@ The author thanks Howard Hinnant for the `condition_variable` example and for th
 
 # References
 
-[1] C++ Working Draft, `condition_variable` https://eel.is/c++draft/thread.condition.condvar, `condition_variable_any` https://eel.is/c++draft/thread.condition.condvarany
+[1] Capy, https://github.com/cppalliance/capy
 
-[2] Boost.URL, https://github.com/boostorg/url
+[2] C++ Working Draft, `condition_variable` https://eel.is/c++draft/thread.condition.condvar, `condition_variable_any` https://eel.is/c++draft/thread.condition.condvarany
 
-[3] Boost.URL, `pct_string_view.hpp`, https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp
+[3] N2406, "Mutex, Lock, Condition Variable Rationale," Howard E. Hinnant, https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2406.html
 
-[4] Boost.Process, `cstring_ref.hpp`, https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp
+[4] Boost.URL, https://github.com/boostorg/url
 
-[5] Boost.SQLite, `cstring_ref.hpp`, https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp
+[5] Boost.URL, `pct_string_view.hpp`, https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp
 
-[6] FreeBSD `readdir(3)`, https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3
+[6] Boost.Process, `cstring_ref.hpp`, https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp
 
-[7] FreeBSD source, `sys/sys/dirent.h`, https://cgit.freebsd.org/src/tree/sys/sys/dirent.h
+[7] Boost.SQLite, `cstring_ref.hpp`, https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp
 
-[8] The Open Group Base Specifications Issue 8, https://pubs.opengroup.org/onlinepubs/9799919799/
+[8] FreeBSD `readdir(3)`, https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3
 
-[9] Capy, https://github.com/cppalliance/capy
+[9] FreeBSD source, `sys/sys/dirent.h`, https://cgit.freebsd.org/src/tree/sys/sys/dirent.h
 
-[10] P3655R3, "cstring_view," Peter Bindels, Hana Dusikova, Jeremy Rifkin, Marco Foco, Alexey Shevlyakov, https://wg21.link/p3655r3
+[10] The Open Group Base Specifications Issue 8, https://pubs.opengroup.org/onlinepubs/9799919799/
 
-[11] P3566R2, "You shall not pass `char*`," Marco Foco, Joshua Kriegshauser, Alexey Shevlyakov, Giuseppe D'Angelo, https://wg21.link/p3566r2
+[11] P3655R3, "cstring_view," Peter Bindels, Hana Dusikova, Jeremy Rifkin, Marco Foco, Alexey Shevlyakov, https://wg21.link/p3655r3
 
-[12] LEWG poll results for P3566R1, Sofia 2025, https://github.com/cplusplus/papers/issues/2210
+[12] P3566R2, "You shall not pass `char*`," Marco Foco, Joshua Kriegshauser, Alexey Shevlyakov, Giuseppe D'Angelo, https://wg21.link/p3566r2
 
-[13] N2406, "Mutex, Lock, Condition Variable Rationale," Howard E. Hinnant, https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2406.html
+[13] LEWG poll results for P3566R1, Sofia 2025, https://github.com/cplusplus/papers/issues/2210
 
 [14] LEWG poll results for P3655R3, Croydon 2026, https://github.com/cplusplus/papers/issues/2285

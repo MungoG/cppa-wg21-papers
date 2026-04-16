@@ -1,6 +1,6 @@
 ---
 title: "Open Issues in `std::execution::task`"
-document: P4007R1
+document: P4007R2
 date: 2026-04-08
 intent: info
 audience: LEWG

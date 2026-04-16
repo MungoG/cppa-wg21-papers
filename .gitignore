@@ -9,3 +9,5 @@ mermaid-filter.err
 .mermaid-config.json
 
 /reports
+.pytest_cache/
+__pycache__/
