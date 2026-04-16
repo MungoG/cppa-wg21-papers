@@ -1,5 +1,5 @@
 ---
-title: "Report: Coroutine-Native I/O at a Derivatives Exchange"
+title: "Coroutine-Native I/O at a Derivatives Exchange"
 document: P4125R0
 date: 2026-03-17
 intent: info

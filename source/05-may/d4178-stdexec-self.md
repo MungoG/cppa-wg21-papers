@@ -1,5 +1,5 @@
 ---
-title: "History: Trade-offs in Asynchronous Abstraction Design"
+title: "Trade-offs in Asynchronous Abstraction Design"
 document: P4178R0
 date: 2026-04-05
 intent: info

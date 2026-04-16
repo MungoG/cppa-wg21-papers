@@ -1,5 +1,5 @@
 ---
-title: "Info: What C++20 Coroutines Already Buy The Standard"
+title: "What C++20 Coroutines Already Buy The Standard"
 document: P4088R0
 date: 2026-03-29
 intent: info

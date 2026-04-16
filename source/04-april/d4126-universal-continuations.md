@@ -1,5 +1,5 @@
 ---
-title: "Info: A Universal Continuation Model"
+title: "A Universal Continuation Model"
 document: P4126R0
 date: 2026-03-18
 intent: info

@@ -1,5 +1,5 @@
 ---
-title: "History: The Twenty-One Year Networking Arc"
+title: "The Twenty-One Year Networking Arc"
 document: P4099R0
 date: 2026-03-16
 intent: info

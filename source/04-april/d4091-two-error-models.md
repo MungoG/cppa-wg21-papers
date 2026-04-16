@@ -1,5 +1,5 @@
 ---
-title: "Info: Error Models of Regular C++ and the Sender Sub-Language"
+title: "Error Models of Regular C++ and the Sender Sub-Language"
 document: P4091R0
 date: 2026-03-15
 intent: info

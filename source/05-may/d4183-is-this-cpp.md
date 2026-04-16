@@ -1,5 +1,5 @@
 ---
-title: "Tool: Is This C++?"
+title: "Is This C++?"
 document: P4183R0
 date: 2026-04-11
 intent: info

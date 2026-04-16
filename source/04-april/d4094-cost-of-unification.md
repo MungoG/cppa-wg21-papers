@@ -1,5 +1,5 @@
 ---
-title: "History: The Unification of Executors and P0443"
+title: "The Unification of Executors and P0443"
 document: P4094R0
 date: 2026-03-16
 intent: info

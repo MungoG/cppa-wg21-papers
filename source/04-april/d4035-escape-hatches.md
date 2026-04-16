@@ -1,5 +1,5 @@
 ---
-title: "Info: The Need for Escape Hatches"
+title: "The Need for Escape Hatches"
 document: P4035R0
 date: 2026-03-20
 intent: info

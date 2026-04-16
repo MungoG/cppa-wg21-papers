@@ -1,5 +1,5 @@
 ---
-title: "Tool: Prosecute Your Paper To Improve It"
+title: "Prosecute Your Paper To Improve It"
 document: P4170R0
 date: 2026-03-30
 intent: info

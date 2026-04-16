@@ -1,5 +1,5 @@
 ---
-title: "Info: Symmetric Transfer and Sender Composition"
+title: "Symmetric Transfer and Sender Composition"
 document: P2583R3
 date: 2026-03-10
 intent: info

@@ -1,5 +1,5 @@
 ---
-title: "Info: Generative Tools and the Social Contract of Consensus Standards"
+title: "Generative Tools and the Social Contract of Consensus Standards"
 document: P4177R0
 date: 2026-04-02
 intent: info

@@ -1,5 +1,5 @@
 ---
-title: "Info: Consuming Senders from Coroutine-Native Code"
+title: "Consuming Senders from Coroutine-Native Code"
 document: P4092R0
 date: 2026-04-10
 intent: info

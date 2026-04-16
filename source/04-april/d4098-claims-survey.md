@@ -1,5 +1,5 @@
 ---
-title: "History: Async Claims and Evidence"
+title: "Async Claims and Evidence"
 document: P4098R0
 date: 2026-03-16
 intent: info

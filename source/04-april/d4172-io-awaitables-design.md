@@ -1,5 +1,5 @@
 ---
-title: "Design: IoAwaitable for Coroutine-Native Byte-Oriented I/O"
+title: "IoAwaitable for Coroutine-Native Byte-Oriented I/O"
 document: P4172R0
 date: 2026-04-01
 intent: info

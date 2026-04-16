@@ -1,5 +1,5 @@
 ---
-title: "Info: Sender I/O: A Constructed Comparison"
+title: "Sender I/O: A Constructed Comparison"
 document: P4090R0
 date: 2026-03-15
 intent: info

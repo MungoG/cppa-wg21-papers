@@ -1,5 +1,5 @@
 ---
-title: "Info: Coroutine-Native I/O for C++29 (The Network Endeavor)"
+title: "Coroutine-Native I/O for C++29 (The Network Endeavor)"
 document: P4100R0
 date: 2026-03-09
 intent: info

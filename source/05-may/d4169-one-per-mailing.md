@@ -1,5 +1,5 @@
 ---
-title: "Ask: Allow Only One Mailing Per Revision"
+title: "Allow Only One Mailing Per Revision"
 document: P4169R0
 date: 2026-03-29
 intent: info

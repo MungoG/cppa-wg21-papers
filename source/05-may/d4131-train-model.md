@@ -1,5 +1,5 @@
 ---
-title: "Retrospective: Effects of the WG21 Train Model"
+title: "Effects of the WG21 Train Model"
 document: P4131R0
 date: 2026-03-21
 intent: info

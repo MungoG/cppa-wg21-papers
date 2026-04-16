@@ -1,5 +1,5 @@
 ---
-title: "Info: A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains"
+title: "A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains"
 document: P4182R0
 date: 2026-04-10
 intent: info

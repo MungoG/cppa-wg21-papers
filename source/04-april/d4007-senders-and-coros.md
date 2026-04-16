@@ -1,5 +1,5 @@
 ---
-title: "Info: Open Issues in `std::execution::task`"
+title: "Open Issues in `std::execution::task`"
 document: P4007R1
 date: 2026-04-08
 intent: info

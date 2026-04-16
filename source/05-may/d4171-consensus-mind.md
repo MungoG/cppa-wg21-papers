@@ -1,5 +1,5 @@
 ---
-title: "Info: Institutional-Theory Predictions About Standards Bodies"
+title: "Institutional-Theory Predictions About Standards Bodies"
 document: P4171R0
 date: 2026-03-30
 intent: info

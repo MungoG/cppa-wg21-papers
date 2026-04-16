@@ -1,5 +1,5 @@
 ---
-title: "Tutorial: The Sender Sub-Language For Beginners"
+title: "The Sender Sub-Language For Beginners"
 document: P4014R1
 date: 2026-04-08
 intent: info

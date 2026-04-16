@@ -1,5 +1,5 @@
 ---
-title: "History: Coroutine Executors and P2464R0"
+title: "Coroutine Executors and P2464R0"
 document: P4096R0
 date: 2026-03-14
 intent: info

@@ -1,5 +1,5 @@
 ---
-title: "History: The Basis Operation and P1525"
+title: "The Basis Operation and P1525"
 document: P4095R0
 date: 2026-03-16
 intent: info

@@ -1,5 +1,5 @@
 ---
-title: "Ask: A Minimal Coroutine Execution Model"
+title: "A Minimal Coroutine Execution Model"
 document: P4003R1
 date: 2026-04-05
 intent: ask

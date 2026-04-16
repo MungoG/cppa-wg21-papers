@@ -1,5 +1,5 @@
 ---
-title: "Info: Profile Analysis and Verification Evidence (PAVE)"
+title: "Profile Analysis and Verification Evidence (PAVE)"
 document: P4137R0
 date: 2026-03-15
 intent: info

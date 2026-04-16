@@ -1,5 +1,5 @@
 ---
-title: "Info: Producing Senders from Coroutine-Native Code"
+title: "Producing Senders from Coroutine-Native Code"
 document: P4093R0
 date: 2026-03-13
 intent: info
