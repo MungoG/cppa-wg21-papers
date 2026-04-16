@@ -83,6 +83,11 @@ def build_pdf(md_path, output_path, cli_cfg, style):
     tokens = md(body_text)
 
     has_fm_title = bool(fm.get("title"))
+    display_title = str(fm["title"]) if has_fm_title else ""
+    intent = fm.get("intent", "").strip().lower()
+    if intent in ("info", "ask") and display_title:
+        display_title = f"{intent.capitalize()}: {display_title}"
+
     renderer = ASTRenderer(cfg, body_cmap, fallback_chain, content_width,
                            md_dir, has_fm_title=has_fm_title,
                            page_geometry=page_geometry)
@@ -94,7 +99,7 @@ def build_pdf(md_path, output_path, cli_cfg, style):
     rest_flows = flowables
 
     if has_fm_title:
-        title_text = escape_xml(unescape(str(fm["title"])))
+        title_text = escape_xml(unescape(display_title))
         title_flows = renderer.title_block(title_text)
         if fm_flows:
             title_flows = [f for f in title_flows if not isinstance(f, HRFlowable)]
@@ -144,7 +149,7 @@ def build_pdf(md_path, output_path, cli_cfg, style):
         bottomMargin=bot_m,
         leftMargin=left_m,
         rightMargin=right_m,
-        title=fm.get("title", ""),
+        title=display_title,
         author=", ".join(fm.get("reply-to", []))
                if isinstance(fm.get("reply-to"), list)
                else str(fm.get("reply-to", "")),

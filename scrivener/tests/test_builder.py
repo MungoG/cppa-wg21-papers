@@ -40,6 +40,19 @@ def _assert_valid_pdf(path):
     assert header == b"%PDF-", f"Not a valid PDF: {path}"
 
 
+def _read_pdf_title(path):
+    """Extract the /Title string from a PDF's Info dictionary."""
+    import re
+    raw = path.read_bytes()
+    m = re.search(rb'/Title\s*\(([^)]*)\)', raw)
+    if m:
+        return m.group(1).decode("latin-1")
+    m = re.search(rb'/Title\s*<([0-9A-Fa-f]+)>', raw)
+    if m:
+        return bytes.fromhex(m.group(1).decode("ascii")).decode("utf-16-be")
+    return None
+
+
 def test_build_minimal(default_style, tmp_path):
     md = FIXTURES / "minimal.md"
     out = tmp_path / "minimal.pdf"
@@ -110,3 +123,35 @@ def test_build_no_toc(default_style, tmp_path):
     out = tmp_path / "headings-notoc.pdf"
     result = build_pdf(md, out, {"no_toc": True}, copy.deepcopy(default_style))
     _assert_valid_pdf(result)
+
+
+def test_build_intent_info(wg21_style, tmp_path):
+    md = FIXTURES / "intent-info.md"
+    out = tmp_path / "intent-info.pdf"
+    result = build_pdf(md, out, {}, copy.deepcopy(wg21_style))
+    _assert_valid_pdf(result)
+    title = _read_pdf_title(result)
+    assert title is not None, "Could not read PDF title metadata"
+    assert title.startswith("Info: "), f"Expected 'Info: ' prefix, got: {title!r}"
+    assert "Symmetric Transfer" in title
+
+
+def test_build_intent_ask(wg21_style, tmp_path):
+    md = FIXTURES / "intent-ask.md"
+    out = tmp_path / "intent-ask.pdf"
+    result = build_pdf(md, out, {}, copy.deepcopy(wg21_style))
+    _assert_valid_pdf(result)
+    title = _read_pdf_title(result)
+    assert title is not None, "Could not read PDF title metadata"
+    assert title.startswith("Ask: "), f"Expected 'Ask: ' prefix, got: {title!r}"
+    assert "Coroutine Execution Model" in title
+
+
+def test_build_no_intent_no_prefix(wg21_style, tmp_path):
+    md = FIXTURES / "front-matter.md"
+    out = tmp_path / "no-intent.pdf"
+    result = build_pdf(md, out, {}, copy.deepcopy(wg21_style))
+    _assert_valid_pdf(result)
+    title = _read_pdf_title(result)
+    assert title is not None, "Could not read PDF title metadata"
+    assert title == "Test Paper", f"Expected bare title, got: {title!r}"
