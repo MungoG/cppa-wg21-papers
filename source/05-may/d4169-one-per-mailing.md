@@ -2,9 +2,10 @@
 title: "Ask: Allow Only One Mailing Per Revision"
 document: P4169R0
 date: 2026-03-29
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

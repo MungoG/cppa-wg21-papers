@@ -2,10 +2,11 @@
 title: "History: The Networking Claim and P2453R0"
 document: P4097R0
 date: 2026-03-16
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: WG21
 ---
 
 ## Abstract

@@ -2,10 +2,11 @@
 title: "Report: Coroutine-Native I/O at a Derivatives Exchange"
 document: P4125R0
 date: 2026-03-17
+intent: info
+audience: SG14, LEWG
 reply-to:
   - "Mungo Gill <mungo.gill@me.com>"
   - "C++ Alliance Proposal Team"
-audience: SG14, LEWG
 ---
 
 ## Abstract

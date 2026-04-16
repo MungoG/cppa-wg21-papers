@@ -2,11 +2,12 @@
 title: "Info: Consuming Senders from Coroutine-Native Code"
 document: P4092R0
 date: 2026-04-10
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

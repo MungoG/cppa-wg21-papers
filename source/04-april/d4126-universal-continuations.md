@@ -2,11 +2,12 @@
 title: "Info: A Universal Continuation Model"
 document: P4126R0
 date: 2026-03-18
+intent: info
+audience: EWG, SG1, LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Klemens Morgenstern <klemens.d.morgenstern@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: EWG, SG1, LEWG
 ---
 
 ## Abstract

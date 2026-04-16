@@ -2,9 +2,10 @@
 title: "To boldly suggest an overall plan for C++29"
 document: P4162R0
 date: 2026-03-27
+intent: info
+audience: EWG, LEWG, DG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: EWG, LEWG, DG
 ---
 
 ## Abstract

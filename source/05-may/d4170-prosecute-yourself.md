@@ -2,9 +2,10 @@
 title: "Tool: Prosecute Your Paper To Improve It"
 document: P4170R0
 date: 2026-03-30
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

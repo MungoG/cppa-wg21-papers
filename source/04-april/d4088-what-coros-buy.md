@@ -2,10 +2,11 @@
 title: "Info: What C++20 Coroutines Already Buy The Standard"
 document: P4088R0
 date: 2026-03-29
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

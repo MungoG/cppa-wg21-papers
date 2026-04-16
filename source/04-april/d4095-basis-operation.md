@@ -2,10 +2,11 @@
 title: "History: The Basis Operation and P1525"
 document: P4095R0
 date: 2026-03-16
+intent: info
+audience: SG1, LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: SG1, LEWG
 ---
 
 ## Abstract

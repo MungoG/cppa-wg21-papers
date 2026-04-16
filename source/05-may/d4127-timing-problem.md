@@ -2,10 +2,11 @@
 title: "The Coroutine Frame Allocator Timing Problem"
 document: P4127R0
 date: 2026-03-18
+intent: info
+audience: SG1, LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: SG1, LEWG
 ---
 
 ## Abstract

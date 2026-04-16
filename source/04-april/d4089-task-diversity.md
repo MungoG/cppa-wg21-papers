@@ -2,10 +2,11 @@
 title: "Info: On the Diversity of Coroutine Task Types"
 document: P4089R0
 date: 2026-03-15
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

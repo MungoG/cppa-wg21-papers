@@ -2,9 +2,10 @@
 title: "A Better WG21"
 document: P4134R0
 date: 2026-03-21
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

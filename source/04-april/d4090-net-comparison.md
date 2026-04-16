@@ -2,11 +2,12 @@
 title: "Info: Sender I/O: A Constructed Comparison"
 document: P4090R0
 date: 2026-03-15
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

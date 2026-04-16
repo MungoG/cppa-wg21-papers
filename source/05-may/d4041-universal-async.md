@@ -2,9 +2,10 @@
 title: "Is `std::execution` a Universal Async Model?"
 document: P4041R0
 date: 2026-03-01
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: LEWG
 ---
 
 ## Abstract

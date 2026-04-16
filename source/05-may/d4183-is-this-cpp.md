@@ -2,10 +2,11 @@
 title: "Tool: Is This C++?"
 document: P4183R0
 date: 2026-04-11
+intent: info
+audience: WG21
 reply-to:
   - "Claude Opus 4.6"
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

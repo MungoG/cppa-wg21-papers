@@ -2,9 +2,10 @@
 title: "CRYSTAL BALL: Checking Predictions Against the Record"
 document: P4047R0
 date: 2026-03-08
+intent: info
+audience: All of WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: All of WG21
 ---
 
 # CRYSTAL BALL: Checking Predictions Against the Record

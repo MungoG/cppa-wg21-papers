@@ -2,9 +2,10 @@
 title: "History: Trade-offs in Asynchronous Abstraction Design"
 document: P4178R0
 date: 2026-04-05
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

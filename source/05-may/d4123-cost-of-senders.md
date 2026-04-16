@@ -2,10 +2,11 @@
 title: "The Cost of Senders for Coroutine I/O"
 document: P4123R0
 date: 2026-03-17
+intent: info
+audience: LEWG, SG1
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: LEWG, SG1
 ---
 
 ## Abstract

@@ -2,10 +2,11 @@
 title: "Appointment Is Policy"
 document: P4130R0
 date: 2026-03-21
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: WG21
 ---
 
 ## Abstract

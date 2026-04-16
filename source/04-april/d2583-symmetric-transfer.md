@@ -2,10 +2,11 @@
 title: "Info: Symmetric Transfer and Sender Composition"
 document: P2583R3
 date: 2026-03-10
+intent: info
+audience: LEWG
 reply-to:
   - "Mungo Gill <mungo.gill@me.com>"
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: LEWG
 ---
 
 ## Abstract

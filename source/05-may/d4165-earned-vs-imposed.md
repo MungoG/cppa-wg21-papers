@@ -2,10 +2,11 @@
 title: "Five Million Users, One Hundred Delegates"
 document: P4165R0
 date: 2026-03-28
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Harry Bott <haroldjbott@gmail.com>"
-audience: WG21
 ---
 
 ## Abstract

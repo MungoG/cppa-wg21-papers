@@ -2,10 +2,11 @@
 title: "Info: The Need for Escape Hatches"
 document: P4035R0
 date: 2026-03-20
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

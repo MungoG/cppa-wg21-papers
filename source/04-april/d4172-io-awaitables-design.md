@@ -2,11 +2,12 @@
 title: "Design: IoAwaitable for Coroutine-Native Byte-Oriented I/O"
 document: P4172R0
 date: 2026-04-01
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
   - "Mungo Gill <mungo.gill@me.com>"
-audience: LEWG
 ---
 
 ## Abstract

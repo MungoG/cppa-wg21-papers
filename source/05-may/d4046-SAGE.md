@@ -2,26 +2,11 @@
 title: "SAGE: Saving All Gathered Expertise"
 document: P4046R0
 date: 2026-02-25
+intent: info
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "C++ Alliance Proposal Team"
-audience: WG21
---- 
-
-# SAGE: Saving All Gathered Expertise
-
-## Abstract
-
-WG21 participants have accumulated deep expertise over three decades of C++ standardization. This expertise includes not just technical knowledge but judgment - the ability to evaluate proposals, recognize patterns, and make good decisions in novel situations. Much of this judgment is tacit: easier to demonstrate than to write down.
-
-[P4023R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4023r0.pdf)<sup>[18]</sup> (Directions Group, "Strategic Direction for AI in C++") identifies a critical gap in AI training data and calls on the ecosystem to build an "ImageNet for C++." That paper focuses on code quality. This paper addresses a complementary dimension: the institutional judgment that experienced practitioners apply when evaluating whether a proposal belongs in the standard at all.
-
-This paper presents a method for capturing expert judgment through structured interviews, AI-assisted transcription, and knowledge synthesis. We conducted interviews with experienced committee members and processed the results through an agentic workflow. The output is a structured collection of principles and experiences that can be shared, reviewed, and applied.
-
-The technology exists. The methodology is demonstrated. Participation is voluntary.
-
-**Call to action**: Join the paper authors by volunteering to be interviewed.
-
 ---
 
 ## Revision History

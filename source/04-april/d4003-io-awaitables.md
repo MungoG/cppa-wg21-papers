@@ -2,11 +2,12 @@
 title: "Ask: A Minimal Coroutine Execution Model"
 document: P4003R1
 date: 2026-04-05
+intent: ask
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
   - "Mungo Gill <mungo.gill@me.com>"
-audience: LEWG
 ---
 
 ## Abstract

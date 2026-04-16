@@ -2,9 +2,10 @@
 title: "On Universal Models"
 document: P4034R0
 date: 2026-03-08
+intent: info
+audience: All of WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: All of WG21
 ---
 
 ## Abstract

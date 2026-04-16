@@ -2,6 +2,8 @@
 title: "Info: Coroutine-Native I/O for C++29 (The Network Endeavor)"
 document: P4100R0
 date: 2026-03-09
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@cppalliance.org>"
@@ -9,7 +11,6 @@ reply-to:
   - "Mungo Gill <mungo@cppalliance.org>"
   - "Mohammad Nejati <mohammad@cppalliance.org>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

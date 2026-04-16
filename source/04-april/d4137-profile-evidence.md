@@ -2,9 +2,10 @@
 title: "Info: Profile Analysis and Verification Evidence (PAVE)"
 document: P4137R0
 date: 2026-03-15
+intent: info
+audience: SG12, SG23, EWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: SG12, SG23, EWG
 ---
 
 ## Abstract

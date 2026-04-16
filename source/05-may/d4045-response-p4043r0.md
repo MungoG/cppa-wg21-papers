@@ -2,9 +2,10 @@
 title: "Response to P4043R0"
 document: P4045R0
 date: 2026-03-09
+intent: info
+audience: EWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: EWG
 ---
 
 ## Abstract

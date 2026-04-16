@@ -2,11 +2,12 @@
 title: "Info: Producing Senders from Coroutine-Native Code"
 document: P4093R0
 date: 2026-03-13
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
   - "Steve Gerbino <steve@gerbino.co>"
   - "C++ Alliance Proposal Team"
-audience: LEWG
 ---
 
 ## Abstract

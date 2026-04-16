@@ -2,9 +2,10 @@
 title: "Why Span Is Not Enough"
 document: P4036R0
 date: 2026-02-28
+intent: info
+audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-audience: LEWG
 ---
 
 ## Abstract
