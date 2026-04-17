@@ -155,3 +155,10 @@ def test_build_no_intent_no_prefix(wg21_style, tmp_path):
     title = _read_pdf_title(result)
     assert title is not None, "Could not read PDF title metadata"
     assert title == "Test Paper", f"Expected bare title, got: {title!r}"
+
+
+def test_build_mermaid(default_style, tmp_path):
+    md = FIXTURES / "mermaid.md"
+    out = tmp_path / "mermaid.pdf"
+    result = build_pdf(md, out, {}, copy.deepcopy(default_style))
+    _assert_valid_pdf(result)

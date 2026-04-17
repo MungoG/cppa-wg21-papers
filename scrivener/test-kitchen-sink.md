@@ -324,14 +324,22 @@ flowchart TD
 ```
 
 ```mermaid
-gantt
-    title Paper Development
-    section Drafting
-    Research       :a1, 2026-01-01, 30d
-    First draft    :a2, after a1, 20d
-    section Review
-    Internal review :a3, after a2, 14d
-    Committee      :a4, after a3, 30d
+flowchart TD
+    subgraph review [Cross-Cutting Review]
+        VIT["Vision Team"]
+        SCT["Compat Team"]
+    end
+
+    subgraph pipeline [Production Pipeline]
+        IMP["Implementation"] --> DES["Design"]
+        DES --> WRD{Decision Point}
+        WRD --> TST((Test))
+    end
+
+    VIT -.->|reviews| DES
+    SCT -.->|reviews| WRD
+    TST -->|fixes| WRD
+    IMP -->|feeds| OUT["Output\nArtifacts"]
 ```
 
 ## 21. Page Break

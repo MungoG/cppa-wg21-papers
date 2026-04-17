@@ -508,30 +508,11 @@ def test_build_toc_with_headings(renderer):
 
 # -- _render_mermaid tempfile cleanup --
 
-def test_render_mermaid_cleanup_on_write_failure(renderer, monkeypatch):
-    """Temp file is cleaned up even when write() raises."""
-    import tempfile as tempfile_mod
-    import os
-
-    created_paths = []
-    real_ntf = tempfile_mod.NamedTemporaryFile
-
-    def tracking_ntf(**kwargs):
-        f = real_ntf(**kwargs)
-        created_paths.append(f.name)
-        original_write = f.write
-        def failing_write(data):
-            raise OSError("disk full")
-        f.write = failing_write
-        return f
-
-    monkeypatch.setattr(tempfile_mod, "NamedTemporaryFile", tracking_ntf)
-    monkeypatch.setattr(renderer, "_mermaid_svg", lambda code: "<svg></svg>")
-
-    result = renderer._render_mermaid("graph TD; A-->B")
-    assert result is None
-    for p in created_paths:
-        assert not os.path.exists(p), f"temp file leaked: {p}"
+def test_render_mermaid_returns_flowables(renderer):
+    """Valid mermaid code produces flowables via native renderer."""
+    result = renderer._render_mermaid("flowchart TD\n    A[Start] --> B[End]")
+    assert result is not None
+    assert len(result) >= 1
 
 
 # -- block_html rendering --
@@ -585,42 +566,14 @@ def test_render_pre_code_block_ins_del(renderer):
 
 # -- _render_mermaid coverage --
 
-def test_render_mermaid_returns_none_when_no_svg(renderer, monkeypatch):
-    monkeypatch.setattr(renderer, "_mermaid_svg", lambda code: None)
-    result = renderer._render_mermaid("graph TD; A-->B")
+def test_render_mermaid_returns_none_on_bad_input(renderer):
+    result = renderer._render_mermaid("not valid mermaid at all")
     assert result is None
 
 
-def test_render_mermaid_returns_drawing(renderer, monkeypatch):
-    from unittest.mock import MagicMock, patch
+def test_render_mermaid_contains_drawing(renderer):
     from reportlab.graphics.shapes import Drawing
-
-    drawing = Drawing(200, 100)
-    monkeypatch.setattr(renderer, "_mermaid_svg", lambda code: "<svg></svg>")
-
-    with patch("lib.renderer.svg2rlg", create=True) as mock_svg2rlg:
-        mock_svg2rlg.return_value = drawing
-        import lib.renderer as renderer_mod
-        original_render = renderer._render_mermaid
-
-        def patched_render(code):
-            import tempfile, os
-            svg = renderer._mermaid_svg(code)
-            if not svg:
-                return None
-            tmp = tempfile.NamedTemporaryFile(suffix=".svg", delete=False)
-            try:
-                tmp.write(svg.encode("utf-8"))
-                tmp.close()
-                d = mock_svg2rlg(tmp.name)
-            finally:
-                tmp.close()
-                os.unlink(tmp.name)
-            if d:
-                return [d]
-            return None
-
-        monkeypatch.setattr(renderer, "_render_mermaid", patched_render)
-        result = renderer._render_mermaid("graph TD; A-->B")
-        assert result is not None
-        assert isinstance(result[0], Drawing)
+    result = renderer._render_mermaid("flowchart TD\n    A[Start] --> B[End]")
+    assert result is not None
+    drawings = [f for f in result if isinstance(f, Drawing)]
+    assert len(drawings) == 1

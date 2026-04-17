@@ -568,48 +568,11 @@ class ASTRenderer:
         return [Paragraph(text, self.ps["body"])]
 
     def _render_mermaid(self, code):
-        """Render mermaid code to an SVG flowable."""
-        svg = self._mermaid_svg(code)
-        if not svg:
-            return None
-        try:
-            from svglib.svglib import svg2rlg
-            import tempfile, os
-            tmp = tempfile.NamedTemporaryFile(suffix=".svg", delete=False)
-            try:
-                tmp.write(svg.encode("utf-8"))
-                tmp.close()
-                drawing = svg2rlg(tmp.name)
-            finally:
-                tmp.close()
-                os.unlink(tmp.name)
-            if drawing:
-                max_h = self._page_h * self.style.get("mermaid_max_height_ratio", 0.8)
-                s = self.content_width / drawing.width
-                if drawing.height * s > max_h:
-                    s = max_h / drawing.height
-                drawing.width *= s
-                drawing.height *= s
-                drawing.scale(s, s)
-                return [Spacer(1, self.gap_sm), drawing,
-                        Spacer(1, self.ps["h1"].fontSize)]
-        except Exception as e:
-            log.warning("mermaid SVG conversion failed: %s", e)
-        return None
-
-    def _mermaid_svg(self, code):
-        """Try merm (pure Python), fall back to mermaido (official mermaid-cli)."""
-        try:
-            from merm import render_diagram
-            return render_diagram(code)
-        except Exception as e:
-            log.debug("merm render failed: %s", e)
-        try:
-            import mermaido
-            return mermaido.render_to_string(code)
-        except Exception as e:
-            log.debug("mermaido render failed: %s", e)
-        return None
+        """Render mermaid code to ReportLab flowables using native drawing."""
+        from .mermaid import draw_mermaid
+        return draw_mermaid(code, self.content_width, self._page_h,
+                            self.style, body_font="Body",
+                            gap_sm=self.gap_sm)
 
     def _render_block_code(self, tok):
         ensure_code_family()
@@ -622,6 +585,7 @@ class ASTRenderer:
             result = self._render_mermaid(raw)
             if result:
                 return result
+            raise RuntimeError("Mermaid diagram failed to render — is the 'merm' package installed?")
 
         if self._wording_context:
             ctx = self._wording_context
