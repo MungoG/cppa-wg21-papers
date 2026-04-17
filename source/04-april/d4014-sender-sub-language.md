@@ -13,7 +13,7 @@ reply-to:
 
 Every sender algorithm in C++26 - all thirty - explained, demonstrated, and mapped to its plain-C++ equivalent.
 
-This paper is a progressive tutorial. It introduces every sender algorithm in C++26<sup>[1]</sup>, one at a time, from the simplest to the most complex. Each algorithm is defined, demonstrated in a working example, and explained. After the explanation, the equivalent C++ program appears without commentary - the equivalents compute the same results but do not preserve concurrency or execution context semantics. The theoretical foundations are presented first - the lambda calculus, continuation-passing style, and monadic composition that give the Sub-Language its structure - followed by the algorithms themselves, grouped by function and ordered by escalating complexity. The final sections cover the `task` coroutine type ([P3552R3](https://wg21.link/p3552r3), "Add a Coroutine Task Type")<sup>[2]</sup> and the composition patterns that emerge when senders and coroutines interleave.
+This paper is a progressive tutorial. It introduces every sender algorithm in C++26<sup>[1]</sup>, one at a time, from the simplest to the most complex. Each algorithm is defined, demonstrated in a working example, and explained. After the explanation, the equivalent C++ program appears without commentary - the equivalents compute the same results but do not preserve concurrency or execution context semantics. The theoretical foundations are presented first - the lambda calculus, continuation-passing style, and monadic composition that give the Sub-Language its structure - followed by the algorithms themselves, grouped by function and ordered by escalating complexity. The final sections cover the `task` coroutine type ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html), "Add a Coroutine Task Type")<sup>[2]</sup> and the composition patterns that emerge when senders and coroutines interleave.
 
 The author dedicates all original content in this paper to the public domain under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). It may be freely reused as the basis of tutorials, documentation, and other teaching materials.
 
@@ -41,7 +41,7 @@ The author dedicates all original content in this paper to the public domain und
 
 The author provides information and serves at the pleasure of the committee.
 
-Falco developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[5]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+Falco developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
@@ -55,23 +55,23 @@ This paper asks for nothing.
 
 This section is optional. Readers who prefer to learn by example may skip to Section 3 and return here when the theoretical connections become interesting.
 
-The Sender Sub-Language is not merely a fluent API. It is continuation-passing style expressed as composable value types, drawing on techniques refined across four decades of programming language research<sup>[10]</sup><sup>[15]</sup>. Understanding where the pieces come from makes the tutorial that follows easier to absorb.
+The Sender Sub-Language is not merely a fluent API. It is continuation-passing style expressed as composable value types, drawing on techniques refined across four decades of programming language research<sup>[5]</sup><sup>[6]</sup>. Understanding where the pieces come from makes the tutorial that follows easier to absorb.
 
 ### 2.1 Continuations and CPS
 
-The [Lambda Papers](https://en.wikisource.org/wiki/Lambda_Papers)<sup>[10]</sup> (Steele and Sussman, 1975-1980) formalized continuation-passing style: every function receives an explicit continuation representing "what happens next." Instead of returning a value to its caller, a function passes its result forward into the continuation. The sender protocol works the same way. `connect(sndr, rcvr)` reifies the continuation - it binds a sender to its receiver, producing an operation state that holds the entire work graph as a concrete type. `start(op)` evaluates it.
+The [Lambda Papers](https://en.wikisource.org/wiki/Lambda_Papers)<sup>[5]</sup> (Steele and Sussman, 1975-1980) formalized continuation-passing style: every function receives an explicit continuation representing "what happens next." Instead of returning a value to its caller, a function passes its result forward into the continuation. The sender protocol works the same way. `connect(sndr, rcvr)` reifies the continuation - it binds a sender to its receiver, producing an operation state that holds the entire work graph as a concrete type. `start(op)` evaluates it.
 
-Gordon Plotkin's 1975 paper on [call-by-value lambda calculus](https://doi.org/10.1016/0304-3975(75)90017-1)<sup>[11]</sup> established that CPS makes evaluation order explicit in the term structure. This is why optimizing compilers - [SML/NJ](https://www.smlnj.org/)<sup>[12]</sup>, [Chicken Scheme](https://www.call-cc.org/)<sup>[14]</sup> - use CPS as their intermediate representation, why [GHC](https://www.haskell.org/ghc/)<sup>[13]</sup> uses a closely related continuation-based model in its STG machine, and why the Sender Sub-Language can build zero-allocation pipelines and compile-time work graphs.
+Gordon Plotkin's 1975 paper on [call-by-value lambda calculus](https://doi.org/10.1016/0304-3975(75)90017-1)<sup>[7]</sup> established that CPS makes evaluation order explicit in the term structure. This is why optimizing compilers - [SML/NJ](https://www.smlnj.org/)<sup>[8]</sup>, [Chicken Scheme](https://www.call-cc.org/)<sup>[9]</sup> - use CPS as their intermediate representation, why [GHC](https://www.haskell.org/ghc/)<sup>[10]</sup> uses a closely related continuation-based model in its STG machine, and why the Sender Sub-Language can build zero-allocation pipelines and compile-time work graphs.
 
 ### 2.2 Monads
 
-Eugenio Moggi's 1991 paper ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4)<sup>[15]</sup> showed that monads structure computation with effects (see also Milewski<sup>[23]</sup> for an accessible treatment). Two operations are sufficient: `return` (lift a value into the computational context) and `bind` (sequence one computation into the next). In the Sender Sub-Language, `just(x)` is monadic return and `let_value(f)` is monadic bind. `then(f)` is the functor lift - `fmap` - a specialization where the function returns a plain value rather than a new sender.
+Eugenio Moggi's 1991 paper ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4)<sup>[6]</sup> showed that monads structure computation with effects (see also Milewski<sup>[11]</sup> for an accessible treatment). Two operations are sufficient: `return` (lift a value into the computational context) and `bind` (sequence one computation into the next). In the Sender Sub-Language, `just(x)` is monadic return and `let_value(f)` is monadic bind. `then(f)` is the functor lift - `fmap` - a specialization where the function returns a plain value rather than a new sender.
 
 ### 2.3 Delimited Continuations and Algebraic Effects
 
-Olivier Danvy and Andrzej Filinski's 1990 paper ["Abstracting Control"](https://doi.org/10.1145/91556.91622)<sup>[16]</sup> introduced delimited continuations and the shift/reset operators, enabling multiple effect channels within a single computation. The sender three-channel model - `set_value`, `set_error`, `set_stopped` - applies the algebraic-effects pattern with a fixed channel set. Each channel carries a distinct semantic role, and the composition algebra dispatches on which channel a result arrives on.
+Olivier Danvy and Andrzej Filinski's 1990 paper ["Abstracting Control"](https://doi.org/10.1145/91556.91622)<sup>[12]</sup> introduced delimited continuations and the shift/reset operators, enabling multiple effect channels within a single computation. The sender three-channel model - `set_value`, `set_error`, `set_stopped` - applies the algebraic-effects pattern with a fixed channel set. Each channel carries a distinct semantic role, and the composition algebra dispatches on which channel a result arrives on.
 
-Timothy Griffin's 1990 paper ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714)<sup>[17]</sup> connected control operators to type systems. The sender completion signatures - the type-level declaration of which channels a sender may complete on and with what argument types - are this connection made concrete in C++.
+Timothy Griffin's 1990 paper ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714)<sup>[13]</sup> connected control operators to type systems. The sender completion signatures - the type-level declaration of which channels a sender may complete on and with what argument types - are this connection made concrete in C++.
 
 ### 2.4 The Mapping
 
@@ -91,7 +91,7 @@ Timothy Griffin's 1990 paper ["A Formulae-as-Types Notion of Control"](https://d
 | Async scopes                              | Region-based lifetimes                      |
 | `bulk` family                             | Data-parallel map                           |
 
-The names are not arbitrary. The P2300 authors chose them with care, and the choices reflect genuine scholarship. `just` echoes Haskell's<sup>[24]</sup> `Just`. `let_value` mirrors monadic bind. The three completion channels form a closed effect algebra. The framework is grounded in real theory, and the theory is worth knowing before the tutorial begins.
+The names are not arbitrary. The P2300R0 authors chose them with care, and the choices reflect genuine scholarship. `just` echoes Haskell's<sup>[14]</sup> `Just`. `let_value` mirrors monadic bind. The three completion channels form a closed effect algebra. The framework is grounded in real theory, and the theory is worth knowing before the tutorial begins.
 
 ---
 
@@ -99,7 +99,7 @@ The names are not arbitrary. The P2300 authors chose them with care, and the cho
 
 The simplest sender algorithms place a value into the pipeline and let it carry forward. Nothing is computed, nothing is fetched. The value is already known, and these algorithms welcome it into the sender world.
 
-**Theory:** In Moggi's framework<sup>[15]</sup>, this is the unit of the monad - the natural transformation eta : Id -> T that lifts a plain value into a computational context without performing any effect. The sender completion type is a three-way coproduct - Value + Error + Stopped - and each `just` variant is the monadic unit composed with a different coproduct injection. `just` injects into the value summand, `just_error` into the error summand, `just_stopped` into the stopped summand. The construction is the same; only the target channel differs.
+**Theory:** In Moggi's framework<sup>[6]</sup>, this is the unit of the monad - the natural transformation eta : Id -> T that lifts a plain value into a computational context without performing any effect. The sender completion type is a three-way coproduct - Value + Error + Stopped - and each `just` variant is the monadic unit composed with a different coproduct injection. `just` injects into the value summand, `just_error` into the error summand, `just_stopped` into the stopped summand. The construction is the same; only the target channel differs.
 
 ### 3.1 `just`
 
@@ -165,7 +165,7 @@ The reader has built a sender. Now they want the result. `sync_wait` is that mom
 
 `sync_wait` is the bridge between the Sender Sub-Language and regular C++. Everything upstream is lazy - a description of work, not the execution of it. `sync_wait` makes it real.
 
-**Theory:** In Moggi's framework<sup>[15]</sup>, `sync_wait` is the counit - the elimination form that collapses the monadic layer back to a plain value. The Lambda Papers<sup>[10]</sup> showed that CPS transforms every computation into a suspended form awaiting its continuation; `sync_wait` provides the final continuation and forces evaluation. The analogous boundaries in Haskell are `runST` and `unsafePerformIO` - the single point where the computational context yields a result to the world outside. There is only one such point in the sender algebra, and this is it.
+**Theory:** In Moggi's framework<sup>[6]</sup>, `sync_wait` is the counit - the elimination form that collapses the monadic layer back to a plain value. The Lambda Papers<sup>[5]</sup> showed that CPS transforms every computation into a suspended form awaiting its continuation; `sync_wait` provides the final continuation and forces evaluation. The analogous boundaries in Haskell are `runST` and `unsafePerformIO` - the single point where the computational context yields a result to the world outside. There is only one such point in the sender algebra, and this is it.
 
 The equivalent program:
 
@@ -179,7 +179,7 @@ int result = 42;
 
 Take what came before, apply a function, and carry the result forward. The transformation algorithms are the most natural thing a pipeline can do - they turn one value into another.
 
-**Theory:** These are the functorial action on morphisms<sup>[15]</sup> - Moggi's `fmap`, the lifting T(f) : T(A) -> T(B) for a function f : A -> B. The sender monad is a functor on the category of C++ types; the transformation algorithms are its action on arrows. Each variant applies the functor to a different component of the coproduct completion: `then` maps the value injection, `upon_error` maps the error injection, `upon_stopped` maps the stopped injection. The remaining components pass through as the identity natural transformation. Three algorithms, one construction - the same endofunctor action on different summands of the coproduct.
+**Theory:** These are the functorial action on morphisms<sup>[6]</sup> - Moggi's `fmap`, the lifting T(f) : T(A) -> T(B) for a function f : A -> B. The sender monad is a functor on the category of C++ types; the transformation algorithms are its action on arrows. Each variant applies the functor to a different component of the coproduct completion: `then` maps the value injection, `upon_error` maps the error injection, `upon_stopped` maps the stopped injection. The remaining components pass through as the identity natural transformation. Three algorithms, one construction - the same endofunctor action on different summands of the coproduct.
 
 ### 4.1 `then`
 
@@ -255,7 +255,7 @@ The cancellation counterpart. If the operation was stopped, provide a fallback v
 
 Sometimes the next step in a computation is itself a whole new computation. The `let_*` family handles that moment - when the function returns not just a value, but an entire pipeline.
 
-**Theory:** A Kleisli arrow<sup>[15]</sup><sup>[29]</sup> is a morphism A -> T(B) - a function from a plain value to a computation. Monadic bind takes a Kleisli arrow and extends it to T(A) -> T(B), composing the outer computation with the inner one through the monad's multiplication mu : T(T(A)) -> T(A). `let_value(f)` is precisely this extension. The Kleisli category of the sender monad is the category whose morphisms are sender-returning functions and whose composition is `let_value` chaining - the pipeline the programmer writes. `let_error` and `let_stopped` are the same Kleisli extension applied to the error and stopped injections of the coproduct. Three algorithms, one categorical construction.
+**Theory:** A Kleisli arrow<sup>[6]</sup><sup>[15]</sup> is a morphism A -> T(B) - a function from a plain value to a computation. Monadic bind takes a Kleisli arrow and extends it to T(A) -> T(B), composing the outer computation with the inner one through the monad's multiplication mu : T(T(A)) -> T(A). `let_value(f)` is precisely this extension. The Kleisli category of the sender monad is the category whose morphisms are sender-returning functions and whose composition is `let_value` chaining - the pipeline the programmer writes. `let_error` and `let_stopped` are the same Kleisli extension applied to the error and stopped injections of the coproduct. Three algorithms, one categorical construction.
 
 ### 5.1 `let_value`
 
@@ -336,7 +336,7 @@ And for cancellation. The replacement for a stopped operation is itself a sender
 
 Work has to run somewhere. These algorithms decide where - which thread, which I/O loop, which GPU stream owns the next step of the computation.
 
-**Theory:** Plotkin<sup>[11]</sup> showed that CPS makes evaluation order explicit in the term structure; the scheduler algorithms make the evaluation *context* - the execution resource - explicit as well. In the indexed-monad pattern, a grade or index tracks a resource annotation through a computation; here the index is the scheduler. `schedule` introduces the index. `continues_on` changes it. `on` brackets a sub-computation with a context switch and its inverse - a `reset`/`shift` pair in Danvy and Filinski's<sup>[16]</sup> framework that delimits the region where the alternate context applies. All six algorithms in this section are morphisms in the indexed category of execution contexts, composing context transitions the way CPS composes evaluation steps.
+**Theory:** Plotkin<sup>[7]</sup> showed that CPS makes evaluation order explicit in the term structure; the scheduler algorithms make the evaluation *context* - the execution resource - explicit as well. In the indexed-monad pattern, a grade or index tracks a resource annotation through a computation; here the index is the scheduler. `schedule` introduces the index. `continues_on` changes it. `on` brackets a sub-computation with a context switch and its inverse - a `reset`/`shift` pair in Danvy and Filinski's<sup>[12]</sup> framework that delimits the region where the alternate context applies. All six algorithms in this section are morphisms in the indexed category of execution contexts, composing context transitions the way CPS composes evaluation steps.
 
 ### 6.1 `schedule`
 
@@ -439,7 +439,7 @@ auto sndr = some_operation()
 
 The optimization the reader would hope for - if the sender already completes on the start scheduler, the transition is skipped entirely. No wasted work.
 
-`affine` is the scheduler affinity primitive, redesigned by [P3941R4](https://wg21.link/p3941r4) and renamed from `affine_on` by [P4151R1](https://wg21.link/p4151r1). It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the start scheduler. The scheduler is not passed as an argument - it comes from the receiver's environment. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine` around every `co_await`ed sender. We will return to this in Section 12.
+`affine` is the scheduler affinity primitive, redesigned by [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[16]</sup> and renamed from `affine_on` by [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[17]</sup>. It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the start scheduler. The scheduler is not passed as an argument - it comes from the receiver's environment. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine` around every `co_await`ed sender. We will return to this in Section 12.
 
 The equivalent program:
 
@@ -471,7 +471,7 @@ auto data = read(socket);
 
 A pipeline sometimes needs to ask its surroundings a question - what scheduler am I running on, what allocator should I use, has anyone asked me to stop? The environment carries those answers, and these algorithms read from it and write to it.
 
-**Theory:** In Wadler's formulation<sup>[29]</sup>, the Reader monad R(A) = E -> A threads an environment E through a computation without mentioning it in the function signature. `read_env` is `ask` - the projection that extracts a value from E. `write_env` is `local` - the combinator that applies a transformation to the environment before passing it to the inner computation. The sender environment - scheduler, allocator, stop token - is E. The receiver carries it. The receiver's `get_env` is the elimination form that opens E for inspection.
+**Theory:** In Wadler's formulation<sup>[15]</sup>, the Reader monad R(A) = E -> A threads an environment E through a computation without mentioning it in the function signature. `read_env` is `ask` - the projection that extracts a value from E. `write_env` is `local` - the combinator that applies a transformation to the environment before passing it to the inner computation. The sender environment - scheduler, allocator, stop token - is E. The receiver carries it. The receiver's `get_env` is the elimination form that opens E for inspection.
 
 ### 7.1 `read_env`
 
@@ -528,7 +528,7 @@ auto sndr = unstoppable(
 
 Some operations must not be interrupted. `unstoppable` shields a sender from cancellation - the operation runs to completion regardless of what the parent pipeline decides. Transaction commits, resource cleanup, finalization steps - these are the operations that earn this protection.
 
-**Theory:** This is effect masking in the algebraic-effects framework<sup>[16]</sup>. The stopped channel is removed from the effect signature of the inner computation - the handler that would intercept the cancellation `shift` is replaced by the identity, absorbing the effect and producing no observable consequence. The completion signatures of the wrapped sender lose `set_stopped_t()`; the type system records the masking.
+**Theory:** This is effect masking in the algebraic-effects framework<sup>[12]</sup>. The stopped channel is removed from the effect signature of the inner computation - the handler that would intercept the cancellation `shift` is replaced by the identity, absorbing the effect and producing no observable consequence. The completion signatures of the wrapped sender lose `set_stopped_t()`; the type system records the masking.
 
 The equivalent program:
 
@@ -542,7 +542,7 @@ commit_transaction(db, txn);
 
 Run things at the same time, wait for all of them, and know that nothing outlives its scope. These algorithms give C++ something its statements alone cannot express - concurrent execution with structured lifetime guarantees.
 
-**Theory:** In Milner's process algebra<sup>[30]</sup>, parallel composition P | Q runs two processes independently and synchronizes them at a rendezvous. `when_all(S1, S2, ..., Sn)` is the n-ary tensor product in a symmetric monoidal category of senders, with a synchronization barrier at the join. The structured-lifetime guarantee - no child sender outlives the join point - is a region discipline imposed on the tensor: the scope of the product is delimited, and deallocation occurs at the closing delimiter. `when_all_with_variant` is the same tensor product composed with a coproduct injection on each factor, accommodating heterogeneous value completions.
+**Theory:** In Milner's process algebra<sup>[18]</sup>, parallel composition P | Q runs two processes independently and synchronizes them at a rendezvous. `when_all(S1, S2, ..., Sn)` is the n-ary tensor product in a symmetric monoidal category of senders, with a synchronization barrier at the join. The structured-lifetime guarantee - no child sender outlives the join point - is a region discipline imposed on the tensor: the scope of the product is delimited, and deallocation occurs at the closing delimiter. `when_all_with_variant` is the same tensor product composed with a coproduct injection on each factor, accommodating heterogeneous value completions.
 
 ### 8.1 `when_all`
 
@@ -618,7 +618,7 @@ A sender's result, shared among multiple consumers. The sender runs once; everyo
 
 `split` allocates shared state - the sender's result is stored once and distributed to all consumers. This is the sender equivalent of binding a value to a local variable and using it in multiple expressions. The allocation is the cost; the sharing is the benefit.
 
-**Theory:** In Girard's linear logic<sup>[31]</sup>, a linear resource is consumed exactly once - and senders are linear by default, consumed by a single `connect`. `split` applies the contraction structural rule, Delta : A -> A (x) A, duplicating the resource at the cost of an allocation. In linear logic contraction is not free; it must be explicitly introduced. The allocation is the computational witness of that introduction - reference-counted shared state that permits multiple consumers where the type system otherwise forbids it.
+**Theory:** In Girard's linear logic<sup>[19]</sup>, a linear resource is consumed exactly once - and senders are linear by default, consumed by a single `connect`. `split` applies the contraction structural rule, Delta : A -> A (x) A, duplicating the resource at the cost of an allocation. In linear logic contraction is not free; it must be explicitly introduced. The allocation is the computational witness of that introduction - reference-counted shared state that permits multiple consumers where the type system otherwise forbids it.
 
 The equivalent program:
 
@@ -634,7 +634,7 @@ auto archived = archive(data);
 
 Sometimes the shape of a completion does not quite fit what the next stage expects. These algorithms reshape it - wrapping values, collapsing channels, making everything line up.
 
-**Theory:** The signal adaptation algorithms are natural transformations on the completion-signature functor<sup>[16]</sup>. The sender's completion type is a coproduct - Value + Error + Stopped - and the adaptation algorithms are morphisms in the category of coproducts that reshape the signature set. `into_variant` applies the universal property of the coproduct, mapping an n-ary sum into a single tagged union. `stopped_as_optional` and `stopped_as_error` collapse one summand into another, reducing the coproduct's arity. These are precisely the effect-handler signature transformations in the algebraic-effects literature - an outer handler that intercepts one effect and re-emits it on a different channel.
+**Theory:** The signal adaptation algorithms are natural transformations on the completion-signature functor<sup>[12]</sup>. The sender's completion type is a coproduct - Value + Error + Stopped - and the adaptation algorithms are morphisms in the category of coproducts that reshape the signature set. `into_variant` applies the universal property of the coproduct, mapping an n-ary sum into a single tagged union. `stopped_as_optional` and `stopped_as_error` collapse one summand into another, reducing the coproduct's arity. These are precisely the effect-handler signature transformations in the algebraic-effects literature - an outer handler that intercepts one effect and re-emits it on a different channel.
 
 ### 9.1 `into_variant`
 
@@ -712,7 +712,7 @@ if (!result)
 
 Do the same thing to every element. The `bulk` family is a parallel for-loop expressed as a sender - one function, applied uniformly across an index space.
 
-**Theory:** Hillis and Steele<sup>[33]</sup> showed that the foundational primitive of data-parallel computation is the uniform application of a function across a set of indices - the data-parallel `map`. The `bulk` family is this primitive realized as a sender algorithm, with the execution policy selecting the evaluation strategy (sequential fold, parallel map, SIMD broadcast) and the scheduler selecting the hardware. The three variants - `bulk`, `bulk_chunked`, `bulk_unchunked` - partition the index space at different granularities, but the algebraic structure is the same indexed traversal.
+**Theory:** Hillis and Steele<sup>[20]</sup> showed that the foundational primitive of data-parallel computation is the uniform application of a function across a set of indices - the data-parallel `map`. The `bulk` family is this primitive realized as a sender algorithm, with the execution policy selecting the evaluation strategy (sequential fold, parallel map, SIMD broadcast) and the scheduler selecting the hardware. The three variants - `bulk`, `bulk_chunked`, `bulk_unchunked` - partition the index space at different granularities, but the algebraic structure is the same indexed traversal.
 
 ### 10.1 `bulk`
 
@@ -729,7 +729,7 @@ auto sndr = just(records)
 
 A parallel for-loop. The function runs once per index, and the execution policy controls whether the invocations overlap.
 
-`bulk` is the data-parallel primitive. The execution policy controls whether the invocations may run concurrently. The `parallel_scheduler` ([P2079R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html), "Parallel Scheduler")<sup>[20]</sup> provides a customized implementation that executes the index space across the system thread pool. The design is remarkably expressive - a single algorithm covers sequential iteration, parallel map, and GPU-dispatched computation depending on the scheduler and policy.
+`bulk` is the data-parallel primitive. The execution policy controls whether the invocations may run concurrently. The `parallel_scheduler` ([P2079R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html), "Parallel Scheduler")<sup>[21]</sup> provides a customized implementation that executes the index space across the system thread pool. The design is remarkably expressive - a single algorithm covers sequential iteration, parallel map, and GPU-dispatched computation depending on the scheduler and policy.
 
 The equivalent program:
 
@@ -798,7 +798,7 @@ std::for_each(std::execution::par,
 
 When work is spawned dynamically, someone has to keep track of it. These algorithms tie each sender's lifetime to a scope, so that shutdown waits for everything to finish.
 
-**Theory:** In Tofte and Talpin's framework<sup>[32]</sup>, a region is a lexically delimited lifetime boundary that no allocation may outlive. A `counting_scope` is a region - the join operation is its closing delimiter. `associate` is allocation within the region: the sender's lifetime is bounded by the region's scope. `spawn_future` is the same region binding with a return channel - the continuation that delivers the result when the inner computation completes. The structured guarantee is enforced dynamically (the count reaches zero) rather than statically (a type-level region variable), but the invariant is identical: no child outlives its region.
+**Theory:** In Tofte and Talpin's framework<sup>[22]</sup>, a region is a lexically delimited lifetime boundary that no allocation may outlive. A `counting_scope` is a region - the join operation is its closing delimiter. `associate` is allocation within the region: the sender's lifetime is bounded by the region's scope. `spawn_future` is the same region binding with a return channel - the continuation that delivers the result when the inner computation completes. The structured guarantee is enforced dynamically (the count reaches zero) rather than statically (a type-level region variable), but the invariant is identical: no child outlives its region.
 
 ### 11.1 `associate`
 
@@ -861,7 +861,7 @@ auto result = process(future.get());
 
 ## 12. The `task` Coroutine Type
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[2]</sup> adds `execution::task<T, C>` to C++26 - a coroutine type that is also a sender. [P3796R1](https://wg21.link/p3796r1) ("Coroutine Task Issues")<sup>[18]</sup> catalogs open design concerns. The `task` is the bridge between coroutine-style `co_await` and the sender pipeline model. The integration between the two worlds is seamless: a `task` can `co_await` any sender, and a `task` can be used as a sender in any pipeline.
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[2]</sup> adds `execution::task<T, C>` to C++26 - a coroutine type that is also a sender. [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html) ("Coroutine Task Issues")<sup>[23]</sup> catalogs open design concerns. The `task` is the bridge between coroutine-style `co_await` and the sender pipeline model. The integration between the two worlds is seamless: a `task` can `co_await` any sender, and a `task` can be used as a sender in any pipeline.
 
 ### 12.1 `task<T>`
 
@@ -949,7 +949,7 @@ Scheduler affinity means the programmer can reason about execution context the s
 
 ### 12.6 Allocator Support
 
-The context parameter `C` declares the allocator type via `C::allocator_type`. Two allocator paths exist post-[P3980R1](https://wg21.link/p3980r1): the frame allocator is specified at the call site via `allocator_arg` (which must be the first parameter), and the environment allocator is obtained from `get_allocator(get_env(rcvr))` at `connect` time.
+The context parameter `C` declares the allocator type via `C::allocator_type`. Two allocator paths exist post-[P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[24]</sup>: the frame allocator is specified at the call site via `allocator_arg` (which must be the first parameter), and the environment allocator is obtained from `get_allocator(get_env(rcvr))` at `connect` time.
 
 ```cpp
 struct alloc_ctx {
@@ -1265,11 +1265,11 @@ task<actuator_result> safety_controller(
 
 ## 14. Real World Examples
 
-The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[8]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R5](https://wg21.link/p3826r5) ("Fix Sender Algorithm Customization")<sup>[19]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[21]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
+The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[25]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.pdf) ("Fix Sender Algorithm Customization")<sup>[26]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[27]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
 
 ### 14.1 The Backtracker
 
-A recursive tree search with continuation-passing failure recovery, drawn from [backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp)<sup>[25]</sup> in the sender-examples repository. The `search_tree` function traverses a binary tree looking for a node that satisfies a predicate. When a subtree yields no match, the failure continuation - itself a sender - takes over.
+A recursive tree search with continuation-passing failure recovery, drawn from [backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp)<sup>[28]</sup> in the sender-examples repository. The `search_tree` function traverses a binary tree looking for a node that satisfies a predicate. When a subtree yields no match, the failure continuation - itself a sender - takes over.
 
 ```cpp
 using any_node_sender = any_sender_of<
@@ -1310,7 +1310,7 @@ auto search_tree(
 }
 ```
 
-The function is recursive Kleisli composition with type-erased return. Each recursive call nests another `let_value` lambda that captures and moves the failure sender. The reader must trace the `fail` parameter through three levels of `std::move` to understand which path executes. The `any_sender_of<>` type alias uses a type-erased sender facility<sup>[27]</sup> from [stdexec](https://github.com/NVIDIA/stdexec)<sup>[8]</sup> - it is not part of C++26. Without type erasure, the recursive return type would be infinite.
+The function is recursive Kleisli composition with type-erased return. Each recursive call nests another `let_value` lambda that captures and moves the failure sender. The reader must trace the `fail` parameter through three levels of `std::move` to understand which path executes. The `any_sender_of<>` type alias uses a type-erased sender facility<sup>[29]</sup> from [stdexec](https://github.com/NVIDIA/stdexec)<sup>[25]</sup> - it is not part of C++26. Without type erasure, the recursive return type would be infinite.
 
 The equivalent program:
 
@@ -1332,7 +1332,7 @@ auto search_tree(auto test,
 
 ### 14.2 The `retry` Algorithm
 
-A complete sender algorithm implementation from [retry.hpp](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp)<sup>[26]</sup> in the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[8]</sup> examples. Where the preceding sections show how to *use* sender algorithms, this example shows how to *implement* one. The `retry` algorithm re-executes a sender whenever it completes with an error. The code uses stdexec extension types (`exec::receiver_adaptor`) and macros (`STDEXEC_TRY`, `STDEXEC_CATCH_ALL`) that are not part of the C++26 standard library. Some names appear unqualified because the original source uses `using namespace` directives omitted here for brevity.
+A complete sender algorithm implementation from [retry.hpp](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp)<sup>[30]</sup> in the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[25]</sup> examples. Where the preceding sections show how to *use* sender algorithms, this example shows how to *implement* one. The `retry` algorithm re-executes a sender whenever it completes with an error. The code uses stdexec extension types (`exec::receiver_adaptor`) and macros (`STDEXEC_TRY`, `STDEXEC_CATCH_ALL`) that are not part of the C++26 standard library. Some names appear unqualified because the original source uses `using namespace` directives omitted here for brevity.
 
 ```cpp
 template <class Fun>
@@ -1486,80 +1486,76 @@ This tutorial has progressed from the simplest sender algorithm - `just(42)` - t
 
 There is something to be said for one size fits all. Every C++ developer learns the same abstractions. Every codebase uses the same patterns. Every team shares the same vocabulary for asynchronous programming. The consistency is real, and the predictability is a gift. For the programmer whose domain would benefit from a different model?
 
-The ecosystem provides.<sup>[[28]](https://corosio.org)</sup>
+The ecosystem provides.<sup>[[31]](https://corosio.org)</sup>
 
 ---
 
 ## Acknowledgments
 
-The authors thank the P2300 authors - Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, and Bryce Adelstein Lelbach - for building `std::execution` and for the theoretical depth that informs this tutorial. The authors also thank Dietmar K&uuml;hl and Maikel Nadolski for the `task` coroutine type, Steve Downey for the sender-examples that informed our understanding, and Peter Dimov for editorial guidance.
+The authors thank the P2300R0 authors - Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, and Bryce Adelstein Lelbach - for building `std::execution` and for the theoretical depth that informs this tutorial. The authors also thank Dietmar K&uuml;hl and Maikel Nadolski for the `task` coroutine type, Steve Downey for the sender-examples that informed our understanding, and Peter Dimov for editorial guidance.
 
 ---
 
 ## References
 
-1. [N5014](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf). Thomas K&ouml;ppe (ed.). "Working Draft, Standard for Programming Language C++." 2025. https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf
+[1] [N5014](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf). Thomas K&ouml;ppe (ed.). "Working Draft, Standard for Programming Language C++." 2025.
 
-2. [P3552R3](https://wg21.link/p3552r3). Dietmar K&uuml;hl, Maikel Nadolski. "Add a Coroutine Task Type." 2025. https://wg21.link/p3552r3
+[2] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html). Dietmar K&uuml;hl, Maikel Nadolski. "Add a Coroutine Task Type." 2025.
 
-3. [Boost.Beast](https://github.com/boostorg/beast). Vinnie Falco. HTTP and WebSocket library. https://github.com/boostorg/beast
+[3] [Capy](https://github.com/cppalliance/capy). Vinnie Falco. Coroutine I/O primitives.
 
-4. [Corosio](https://github.com/cppalliance/corosio). Vinnie Falco. Coroutine-native networking library. https://github.com/cppalliance/corosio
+[4] [Corosio](https://github.com/cppalliance/corosio). Vinnie Falco. Coroutine-native networking library.
 
-5. [Capy](https://github.com/cppalliance/capy). Vinnie Falco. Coroutine I/O primitives. https://github.com/cppalliance/capy
+[5] Guy Steele and Gerald Sussman. [*The Lambda Papers*](https://en.wikisource.org/wiki/Lambda_Papers). MIT AI Memo series, 1975-1980.
 
-6. [P2300R10](https://wg21.link/p2300r10). Micha&lstrok; Dominiak, Georgy Evtushenko, Lewis Baker, Lucian Radu Teodorescu, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach. "std::execution." 2024. https://wg21.link/p2300r10
+[6] Eugenio Moggi. ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4). *Information and Computation*, 1991.
 
-7. Herb Sutter. ["Living in the Future: Using C++26 at Work"](https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work/). 2025. https://herbsutter.com/2025/04/23/living-in-the-future-using-c26-at-work/
+[7] Gordon Plotkin. ["Call-by-name, call-by-value and the lambda-calculus"](https://doi.org/10.1016/0304-3975(75)90017-1). *Theoretical Computer Science*, 1(2):125-159, 1975.
 
-8. [stdexec](https://github.com/NVIDIA/stdexec). NVIDIA's reference implementation of `std::execution`. https://github.com/NVIDIA/stdexec
+[8] [SML/NJ](https://www.smlnj.org/). Standard ML of New Jersey.
 
-9. ["New C++ Sender Library Enables Portable Asynchrony"](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/). HPC Wire, 2022. https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/
+[9] [Chicken Scheme](https://www.call-cc.org/). Scheme implementation using CPS compilation.
 
-10. Guy Steele and Gerald Sussman. [*The Lambda Papers*](https://en.wikisource.org/wiki/Lambda_Papers). MIT AI Memo series, 1975-1980. https://en.wikisource.org/wiki/Lambda_Papers
+[10] [GHC](https://www.haskell.org/ghc/). Glasgow Haskell Compiler.
 
-11. Gordon Plotkin. ["Call-by-name, call-by-value and the lambda-calculus"](https://doi.org/10.1016/0304-3975(75)90017-1). *Theoretical Computer Science*, 1(2):125-159, 1975. https://doi.org/10.1016/0304-3975(75)90017-1
+[11] Bartosz Milewski. [*Category Theory for Programmers*](https://github.com/hmemcpy/milewski-ctfp-pdf). 2019.
 
-12. [SML/NJ](https://www.smlnj.org/). Standard ML of New Jersey. https://www.smlnj.org/
+[12] Olivier Danvy and Andrzej Filinski. ["Abstracting Control"](https://doi.org/10.1145/91556.91622). *LFP*, 1990.
 
-13. [GHC](https://www.haskell.org/ghc/). Glasgow Haskell Compiler. https://www.haskell.org/ghc/
+[13] Timothy Griffin. ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714). *POPL*, 1990.
 
-14. [Chicken Scheme](https://www.call-cc.org/). Scheme implementation using CPS compilation. https://www.call-cc.org/
+[14] Simon Marlow (ed.). [*Haskell 2010 Language Report*](https://www.haskell.org/onlinereport/haskell2010/). 2010.
 
-15. Eugenio Moggi. ["Notions of Computation and Monads"](https://doi.org/10.1016/0890-5401(91)90052-4). *Information and Computation*, 1991. https://doi.org/10.1016/0890-5401(91)90052-4
+[15] Philip Wadler. ["The Essence of Functional Programming"](https://doi.org/10.1145/143165.143169). *POPL*, 1992.
 
-16. Olivier Danvy and Andrzej Filinski. ["Abstracting Control"](https://doi.org/10.1145/91556.91622). *LFP*, 1990. https://doi.org/10.1145/91556.91622
+[16] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)
 
-17. Timothy Griffin. ["A Formulae-as-Types Notion of Control"](https://doi.org/10.1145/96709.96714). *POPL*, 1990. https://doi.org/10.1145/96709.96714
+[17] [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)
 
-18. [P3796R1](https://wg21.link/p3796r1). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025. https://wg21.link/p3796r1
+[18] Robin Milner. *Communication and Concurrency*. Prentice Hall, 1989. ISBN 0-13-114984-9.
 
-19. [P3826R5](https://wg21.link/p3826r5). Eric Niebler. "Fix Sender Algorithm Customization." 2026. https://wg21.link/p3826r5
+[19] Jean-Yves Girard. ["Linear Logic"](https://doi.org/10.1016/0304-3975(87)90045-4). *Theoretical Computer Science*, 50(1):1-102, 1987.
 
-20. [P2079R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html). Lucian Radu Teodorescu, Ruslan Arutyunyan, Lee Howes, Michael Voss. "Parallel Scheduler." 2025. https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html
+[20] W. Daniel Hillis and Guy L. Steele Jr. ["Data Parallel Algorithms"](https://doi.org/10.1145/7902.7903). *Communications of the ACM*, 29(12):1170-1183, 1986.
 
-21. [sender-examples](https://github.com/steve-downey/sender-examples). Steve Downey. Example code for C++Now talk. https://github.com/steve-downey/sender-examples
+[21] [P2079R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2079r10.html). Lucian Radu Teodorescu, Ruslan Arutyunyan, Lee Howes, Michael Voss. "Parallel Scheduler." 2025.
 
-22. Bjarne Stroustrup. *The Design and Evolution of C++*. Addison-Wesley, 1994. ISBN 0-201-54330-3.
+[22] Mads Tofte and Jean-Pierre Talpin. ["Implementation of the Typed Call-by-Value &lambda;-calculus using a Stack of Regions"](https://doi.org/10.1145/174675.177855). *POPL*, 1994.
 
-23. Bartosz Milewski. [*Category Theory for Programmers*](https://github.com/hmemcpy/milewski-ctfp-pdf). 2019. https://github.com/hmemcpy/milewski-ctfp-pdf
+[23] [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025.
 
-24. Simon Marlow (ed.). [*Haskell 2010 Language Report*](https://www.haskell.org/onlinereport/haskell2010/). 2010. https://www.haskell.org/onlinereport/haskell2010/
+[24] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)
 
-25. [backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp). Backtracking search example in sender-examples. https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp
+[25] [stdexec](https://github.com/NVIDIA/stdexec). NVIDIA's reference implementation of `std::execution`.
 
-26. [retry.hpp](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp). Retry algorithm example in stdexec. https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp
+[26] [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.pdf). Eric Niebler. "Fix Sender Algorithm Customization." 2026.
 
-27. [any_sender_of.hpp](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp). Type-erased sender facility in stdexec (not part of C++26). https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp
+[27] [sender-examples](https://github.com/steve-downey/sender-examples). Steve Downey. Example code for C++Now talk.
 
-28. [Corosio](https://corosio.org). Coroutine-native networking for C++. https://corosio.org
+[28] [backtrack.cpp](https://github.com/steve-downey/sender-examples/blob/main/src/examples/backtrack.cpp). Backtracking search example in sender-examples.
 
-29. Philip Wadler. ["The Essence of Functional Programming"](https://doi.org/10.1145/143165.143169). *POPL*, 1992. https://doi.org/10.1145/143165.143169
+[29] [any_sender_of.hpp](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp). Type-erased sender facility in stdexec (not part of C++26).
 
-30. Robin Milner. *Communication and Concurrency*. Prentice Hall, 1989. ISBN 0-13-114984-9.
+[30] [retry.hpp](https://github.com/NVIDIA/stdexec/blob/main/examples/algorithms/retry.hpp). Retry algorithm example in stdexec.
 
-31. Jean-Yves Girard. ["Linear Logic"](https://doi.org/10.1016/0304-3975(87)90045-4). *Theoretical Computer Science*, 50(1):1-102, 1987. https://doi.org/10.1016/0304-3975(87)90045-4
-
-32. Mads Tofte and Jean-Pierre Talpin. ["Implementation of the Typed Call-by-Value &lambda;-calculus using a Stack of Regions"](https://doi.org/10.1145/174675.177855). *POPL*, 1994. https://doi.org/10.1145/174675.177855
-
-33. W. Daniel Hillis and Guy L. Steele Jr. ["Data Parallel Algorithms"](https://doi.org/10.1145/7902.7903). *Communications of the ACM*, 29(12):1170-1183, 1986. https://doi.org/10.1145/7902.7903
+[31] [Corosio](https://corosio.org). Coroutine-native networking for C++.

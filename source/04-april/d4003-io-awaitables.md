@@ -22,9 +22,9 @@ co_await f();
 
 For this to work, something must decide where the coroutine resumes, whether it should stop, and where its frame is allocated. The _IoAwaitable_ protocol provides exactly those three things - executor affinity, stop token propagation, and frame allocator delivery - and nothing more.
 
-A companion paper, [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup>, provides the design rationale, evidence framework, preemptive objections, and analysis of alternative approaches.
+A companion paper, [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup>, provides the design rationale, evidence framework, preemptive objections, and analysis of alternative approaches.
 
-Everything in this paper comes from a complete implementation on three platforms: [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> (protocol) and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>. A self-contained demonstration is available on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT)<sup>[8]</sup>.
+Everything in this paper comes from a complete implementation on three platforms: [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> (protocol) and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>. A self-contained demonstration is available on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT)<sup>[4]</sup>.
 
 ---
 
@@ -37,8 +37,8 @@ Everything in this paper comes from a complete implementation on three platforms
 * Section 2 replaced with "What We Get" table showing protocol vocabulary and what users can build on it.
 * Introduction section removed. Companion relationship with `std::execution` stated in Section 2.
 * Five straw polls replaced with one.
-* Networking quotes, Kona poll context, and SG14 position moved to [P4100R0](https://wg21.link/p4100r0)<sup>[12]</sup>.
-* Example wording removed. Design choices, rationale, post-adoption retrospectives moved to companion paper [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup>.
+* Networking quotes, Kona poll context, and SG14 position moved to [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[5]</sup>.
+* Example wording removed. Design choices, rationale, post-adoption retrospectives moved to companion paper [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup>.
 * References pruned and renumbered.
 
 ### R0: March 2026 (pre-Croydon mailing)
@@ -51,7 +51,7 @@ Everything in this paper comes from a complete implementation on three platforms
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100))<sup>[12]</sup>, a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf))<sup>[5]</sup>, a project to bring coroutine-native I/O to C++.
 
 Falco and Gerbino developed and maintain [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and believe coroutine-native I/O is a practical foundation for networking in C++.
 
@@ -76,7 +76,7 @@ If only this proposal ships and nothing else, we get:
 
 The left column is small. The right column is not. Small protocol, big rewards. It earns its keep.
 
-This protocol is a companion to [P2300R10](https://wg21.link/p2300r10)<sup>[4]</sup> `std::execution`. See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for design rationale and analysis of alternative approaches.
+This protocol is a companion to [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> `std::execution`. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for design rationale and analysis of alternative approaches.
 
 ---
 
@@ -139,7 +139,7 @@ One line to get the token. One check. Built on `std::stop_token`.
 
 ### 3.4 How to Launch
 
-A regular function cannot `co_await` (see [P4035R0](https://wg21.link/p4035r0)<sup>[5]</sup> for a discussion of coroutine escape hatches). To start a coroutine chain, you call a launch function:
+A regular function cannot `co_await` (see [P4035R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4035r0.pdf)<sup>[7]</sup> for a discussion of coroutine escape hatches). To start a coroutine chain, you call a launch function:
 
 ```cpp
 run_async( ex )( my_coroutine() );
@@ -206,7 +206,7 @@ concept IoAwaitable =
 
 The two-argument `await_suspend` is the mechanism. The caller's `await_transform` injects the environment as a pointer parameter - no templates, no type leakage. A `task` needs only one template parameter. The environment is passed as a pointer because the launch function owns the `io_env` and every coroutine in the chain borrows it - pointer semantics make the ownership model explicit.
 
-The two-argument signature is also a compile-time boundary check. A non-compliant awaitable fails to compile. A compliant awaitable in a non-compliant coroutine fails to compile. Both sides of every suspension point are statically verified. In a world with multiple coexisting async models, a coroutine that accidentally `co_await`s across model boundaries should fail at compile time, not silently misbehave at runtime. See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for the alternative design discussion and detailed analysis.
+The two-argument signature is also a compile-time boundary check. A non-compliant awaitable fails to compile. A compliant awaitable in a non-compliant coroutine fails to compile. Both sides of every suspension point are statically verified. In a world with multiple coexisting async models, a coroutine that accidentally `co_await`s across model boundaries should fail at compile time, not silently misbehave at runtime. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the alternative design discussion and detailed analysis.
 
 ### 4.3 _Executor_
 
@@ -254,7 +254,7 @@ public:
 };
 ```
 
-The `continuation` struct pairs a `coroutine_handle<>` with an intrusive `next` pointer, allowing executors to queue continuations without allocating a separate node - eliminating the last steady-state allocation in the hot path. `dispatch` returns a `coroutine_handle<>` for symmetric transfer: if the caller is already in the executor's context, it returns `c.h` directly for zero-overhead resumption. Otherwise it queues and returns `noop_coroutine()`. `post` always defers. The `executor_ref` type-erases any _Executor_ as two pointers - one indirection (~1-2 nanoseconds<sup>[6]</sup>) is negligible for I/O operations at 10,000+ nanoseconds. See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for detailed semantics.
+The `continuation` struct pairs a `coroutine_handle<>` with an intrusive `next` pointer, allowing executors to queue continuations without allocating a separate node - eliminating the last steady-state allocation in the hot path. `dispatch` returns a `coroutine_handle<>` for symmetric transfer: if the caller is already in the executor's context, it returns `c.h` directly for zero-overhead resumption. Otherwise it queues and returns `noop_coroutine()`. `post` always defers. The `executor_ref` type-erases any _Executor_ as two pointers - one indirection (~1-2 nanoseconds<sup>[8]</sup>) is negligible for I/O operations at 10,000+ nanoseconds. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed semantics.
 
 ### 4.4 `execution_context`
 
@@ -302,7 +302,7 @@ concept ExecutionContext =
     };
 ```
 
-An executor's `context()` returns the `execution_context` - the base class for anything that runs work. The platform reactor lives here. Services provide singletons with ordered shutdown. I/O objects hold a reference to their execution context, not to an executor. This design borrows from [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[7]</sup>.
+An executor's `context()` returns the `execution_context` - the base class for anything that runs work. The platform reactor lives here. Services provide singletons with ordered shutdown. I/O objects hold a reference to their execution context, not to an executor. This design borrows from [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[9]</sup>.
 
 The execution context holds the default frame allocator. The user can optionally override it, and every coroutine chain launched through that context uses it. This is how the "reasonable, customizable default" from Section 3.5 works in practice.
 
@@ -324,7 +324,7 @@ set_cached_frame_allocator(
     std::pmr::memory_resource* mr) noexcept;
 ```
 
-See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for the timing constraint analysis, execution window, `safe_resume` protocol, and responses to common concerns.
+See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the timing constraint analysis, execution window, `safe_resume` protocol, and responses to common concerns.
 
 ### 4.6 `IoRunnable` and Launch Functions
 
@@ -387,7 +387,7 @@ concept IoRunnable =
       });
 ```
 
-See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for detailed examples and implementation guidance.
+See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed examples and implementation guidance.
 
 ---
 
@@ -429,7 +429,7 @@ run_async( ex,
 ```
 
 Without handlers, the result is discarded and exceptions rethrow on the
-executor thread. This unstructured path is intentional - [P4035R0](https://wg21.link/p4035r0)<sup>[5]</sup>
+executor thread. This unstructured path is intentional - [P4035R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4035r0.pdf)<sup>[7]</sup>
 explains why launch functions cannot `co_await` and therefore need an escape
 hatch. The protocol provides structure when the caller uses it; it does not
 forbid escape when the caller needs it.
@@ -485,9 +485,9 @@ Under type erasure, `connect(sndr, rcvr)` produces a type-dependent `op_state` t
 
 The sender composition algebra does not apply to compound results - such as `[ec, n]` - without data loss or shared state; the sender three-channel model is in tension with `error_code` as a value-channel result.<sup>[10,11]</sup>
 
-See [P4172R0](https://wg21.link/p4172r0)<sup>[1]</sup> for detailed analysis.
+See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed analysis.
 
-[P3482R1](https://wg21.link/p3482r1)<sup>[9]</sup> ("Design for C++ networking based on IETF TAPS") defines a TAPS-shaped networking API surface. The _IoAwaitable_ protocol provides the coroutine execution model beneath it. A TAPS implementation needs coroutines that suspend, resume correctly, cancel, and allocate frames - exactly what this protocol provides. The two are not competing; TAPS is a consumer.
+[P3482R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3482r1.html)<sup>[12]</sup> ("Design for C++ networking based on IETF TAPS") defines a TAPS-shaped networking API surface. The _IoAwaitable_ protocol provides the coroutine execution model beneath it. A TAPS implementation needs coroutines that suspend, resume correctly, cancel, and allocate frames - exactly what this protocol provides. The two are not competing; TAPS is a consumer.
 
 ---
 
@@ -529,15 +529,26 @@ possible.
 
 ## References
 
-1. [P4172R0](https://wg21.link/p4172r0) - "Design: IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4172r0
-2. [Capy](https://github.com/cppalliance/capy/tree/bf080326659b2a9cc954763da702d15c32eb7085) - _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/capy/tree/bf080326659b2a9cc954763da702d15c32eb7085
-3. [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O library (Vinnie Falco, Steve Gerbino). https://github.com/cppalliance/corosio
-4. [P2300R10](https://wg21.link/p2300r10) - "`std::execution`" (Dominiak, Baker, Evtushenko, Teodorescu, Howes, Shoop, Garland, Niebler, Lelbach, 2024). https://wg21.link/p2300r10
-5. [P4035R0](https://wg21.link/p4035r0) - "Support: The Need for Escape Hatches" (Vinnie Falco, 2026). https://wg21.link/p4035r0
-6. [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw) - CppCon 2023 (Shachar Shemesh). https://www.youtube.com/watch?v=i5MAXAxp_Tw
-7. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Christopher Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
-8. [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT) - Self-contained _IoAwaitable_ demonstration. https://godbolt.org/z/Wzrb7McrT
-9. [P3482R1](https://wg21.link/p3482r1) - "Design for C++ networking based on IETF TAPS" (Thomas Rodgers, Dietmar K&uuml;hl, 2024). https://wg21.link/p3482r1
-10. [P4090R0](https://wg21.link/p4090r0) - "Info: Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4090r0
-11. [P4091R0](https://wg21.link/p4091r0) - "Info: Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026). https://wg21.link/p4091r0
-12. [P4100R0](https://wg21.link/p4100r0) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco et al., 2026). https://wg21.link/p4100r0
+[1] [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf) - "Design: IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+
+[2] [Capy](https://github.com/cppalliance/capy/tree/bf080326659b2a9cc954763da702d15c32eb7085) - _IoAwaitable_ protocol implementation (Vinnie Falco, Steve Gerbino).
+
+[3] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O library (Vinnie Falco, Steve Gerbino).
+
+[4] [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT) - Self-contained _IoAwaitable_ demonstration.
+
+[5] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco et al., 2026).
+
+[6] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "`std::execution`" (Dominiak, Baker, Evtushenko, Teodorescu, Howes, Shoop, Garland, Niebler, Lelbach, 2024).
+
+[7] [P4035R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4035r0.pdf) - "Support: The Need for Escape Hatches" (Vinnie Falco, 2026).
+
+[8] [Optimizing Away C++ Virtual Functions May Be Pointless](https://www.youtube.com/watch?v=i5MAXAxp_Tw) - CppCon 2023 (Shachar Shemesh).
+
+[9] [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Asynchronous I/O library (Christopher Kohlhoff).
+
+[10] [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf) - "Info: Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026).
+
+[11] [P4091R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r0.pdf) - "Info: Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026).
+
+[12] [P3482R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3482r1.html) - "Design for C++ networking based on IETF TAPS" (Thomas Rodgers, Dietmar K&uuml;hl, 2024).

@@ -12,7 +12,7 @@ reply-to:
 
 The paper offers a way to measure what the type-safety profile actually covers.
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> defines the rules. It does not measure how much of a real codebase those rules can verify. This paper proposes PAVE - Profile Analysis and Verification Evidence - a three-phase methodology that answers the question. Phase 1 classifies every function against the profile's rules using AST predicates. Phase 2 distinguishes true positives from false positives. Phase 3 infers annotations that expand the verifiable subset. The tools exist today.
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> defines the rules. It does not measure how much of a real codebase those rules can verify. This paper proposes PAVE - Profile Analysis and Verification Evidence - a three-phase methodology that answers the question. Phase 1 classifies every function against the profile's rules using AST predicates. Phase 2 distinguishes true positives from false positives. Phase 3 infers annotations that expand the verifiable subset. The tools exist today.
 
 ---
 
@@ -38,18 +38,18 @@ This paper asks for nothing.
 
 ## 2. The Evidence Gap
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> defines two profiles:
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> defines two profiles:
 
 - **Type safety**: Every object is used exclusively according to its definition.
 - **Resource safety**: No resource is leaked.
 
-The definitions are clear. The enforcement rules are enumerable. The paper describes what must be banned (pointer arithmetic, raw pointer subscripting, C-style casts, union access), what must be checked at run time (range errors, `nullptr` dereference, with hardened libraries per [P3471R4](https://wg21.link/p3471r4)<sup>[5]</sup>, "Standard library hardening"), and what must be analyzed statically (invalidation through dangling pointers). The profiles framework itself is specified in [P3589R2](https://wg21.link/p3589r2)<sup>[2]</sup>, "C++ Profiles: The Framework," with development guidance in [P3274R0](https://wg21.link/p3274r0)<sup>[6]</sup>, "A framework for Profiles development." The design is coherent.
+The definitions are clear. The enforcement rules are enumerable. The paper describes what must be banned (pointer arithmetic, raw pointer subscripting, C-style casts, union access), what must be checked at run time (range errors, `nullptr` dereference, with hardened libraries per [P3471R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3471r4.html)<sup>[2]</sup>, "Standard library hardening"), and what must be analyzed statically (invalidation through dangling pointers). The profiles framework itself is specified in [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf)<sup>[3]</sup>, "C++ Profiles: The Framework," with development guidance in [P3274R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3274r0.pdf)<sup>[4]</sup>, "A framework for Profiles development." The design is coherent.
 
-What the paper does not provide is a measurement. How much of a real codebase falls in the verifiable subset? [P3970R0](https://wg21.link/p3970r0)<sup>[8]</sup>, "Profiles and Safety: a call to action," urges implementers to coordinate and experiment. The paper's own design decisions answer the question partially - by exclusion.
+What the paper does not provide is a measurement. How much of a real codebase falls in the verifiable subset? [P3970R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf)<sup>[5]</sup>, "Profiles and Safety: a call to action," urges implementers to coordinate and experiment. The paper's own design decisions answer the question partially - by exclusion.
 
 ### 2.1 Trusted Constructors and Destructors
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> Section 2.3:
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> Section 2.3:
 
 > "We can ... Trust the definition of constructors and destructors to be correct (e.g., not leak)."
 
@@ -57,7 +57,7 @@ Every constructor and destructor is trusted. The profile does not verify that a 
 
 ### 2.2 Deferred Concurrency
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> Section 4:
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> Section 4:
 
 > "The type-and-resource profile assumes that there are no data races. To ensure that, a separate concurrency profile is needed. Specifying that is non-trivial and beyond the scope of this paper."
 
@@ -65,15 +65,15 @@ The type-safety guarantee holds only in single-threaded code or code that has be
 
 ### 2.3 Conservative Invalidation Analysis
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> Section 2.6 proposes a rule for portability:
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> Section 2.6 proposes a rule for portability:
 
 > "If a condition cannot be evaluated at compile time, whatever is guarded by that condition is assumed to be executed."
 
-The profile treats conditional use of banned constructs as unconditional. A function that returns a local pointer on one branch and a static pointer on the other is rejected even if the local-pointer branch is unreachable. A function that calls an invalidating function inside an `if` is treated as if the call always happens. The rule is sound - it produces no false negatives. It also rejects valid code whenever control flow is non-trivial. The invalidation analysis builds on the lifetime safety work in [P1179R1](https://wg21.link/p1179r1)<sup>[4]</sup>, "Lifetime safety: Preventing common dangling," and the dangling-pointer elimination described in [P3346R0](https://wg21.link/p3346r0)<sup>[7]</sup>, "Profile invalidation - eliminating dangling pointers."
+The profile treats conditional use of banned constructs as unconditional. A function that returns a local pointer on one branch and a static pointer on the other is rejected even if the local-pointer branch is unreachable. A function that calls an invalidating function inside an `if` is treated as if the call always happens. The rule is sound - it produces no false negatives. It also rejects valid code whenever control flow is non-trivial. The invalidation analysis builds on the lifetime safety work in [P1179R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1179r1.pdf)<sup>[6]</sup>, "Lifetime safety: Preventing common dangling," and the dangling-pointer elimination described in [P3346R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3346r0.pdf)<sup>[7]</sup>, "Profile invalidation - eliminating dangling pointers."
 
 ### 2.4 Abstraction Implementations Are Excluded
 
-[P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> Section 1:
+[P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> Section 1:
 
 > "Code that needs to violate that guarantee or can't be proven not to must be isolated. Examples of such necessary code include the implementation of key abstractions (e.g., vector)."
 
@@ -110,7 +110,7 @@ The output of the tool is a per-function classification:
 
 - **Clean**: no banned constructs detected.
 - **Rejected**: one or more banned constructs detected, with the specific rule(s) violated.
-- **Trusted**: the function is annotated as unverified (e.g., `[[suppress(profiles)]]` per [P3589R2](https://wg21.link/p3589r2)<sup>[2]</sup>).
+- **Trusted**: the function is annotated as unverified (e.g., `[[suppress(profiles)]]` per [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf)<sup>[3]</sup>).
 
 ---
 
@@ -142,7 +142,7 @@ For every function classified "rejected," a deeper analysis determines whether t
 
 - **True positive.** The construct is genuinely unsafe. The profile correctly rejects the function. Example: unbounded pointer arithmetic indexing past an allocation.
 
-- **False positive, annotatable.** The construct is safe, and a standard annotation would let the profile accept the function. Example: a non-const member function that does not invalidate iterators - adding `[[not_invalidating]]` resolves the rejection. [P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> introduces this attribute and notes that the compiler can verify it.
+- **False positive, annotatable.** The construct is safe, and a standard annotation would let the profile accept the function. Example: a non-const member function that does not invalidate iterators - adding `[[not_invalidating]]` resolves the rejection. [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> introduces this attribute and notes that the compiler can verify it.
 
 - **False positive, structural.** The construct is safe, but no annotation scheme would help. The profile's rules are fundamentally too conservative for the pattern. Example: pointer arithmetic that is bounded by a `static_assert` on the allocation size, or a `reinterpret_cast` for serialization where layout is guaranteed by the type definition.
 
@@ -187,7 +187,7 @@ The LLM does not replace the formal guarantee. It expands the code surface that 
 
 For every function classified as "false positive, annotatable" in Phase 2, the annotation that would resolve the rejection can be generated.
 
-`[[not_invalidating]]` is currently the only compiler-verifiable annotation that [P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> defines. It applies to one rejection category: invalidation with aliasing. Functions rejected for pointer arithmetic, casts, or union access resolve as either true positives or structural false positives - no annotation rescues them. The annotation dividend therefore measures a narrow but real lever. [P3984R0](https://wg21.link/p3984r0)<sup>[1]</sup> Section 2.6 introduces it as an optimization for the invalidation analysis:
+`[[not_invalidating]]` is currently the only compiler-verifiable annotation that [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> defines. It applies to one rejection category: invalidation with aliasing. Functions rejected for pointer arithmetic, casts, or union access resolve as either true positives or structural false positives - no annotation rescues them. The annotation dividend therefore measures a narrow but real lever. [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[1]</sup> Section 2.6 introduces it as an optimization for the invalidation analysis:
 
 > "Add a [[not_invalidating]] attribute to be used to speed up analysis by marking non-const functions and functions that take non-const pointer arguments that don't invalidate."
 
@@ -213,7 +213,7 @@ Four outcomes are possible. Each is useful.
 
 All four outcomes inform the committee's decision. None requires prejudging the result. The methodology is neutral - it measures what is there.
 
-The methodology is not limited to the type-safety profile. Any profile whose rules can be expressed as AST predicates - the initialization profile ([P3402R3](https://wg21.link/p3402r3)<sup>[3]</sup>, "A Safety Profile Verifying Initialization"), the casting profile, the ranges profile - can be measured the same way. PAVE is a general framework for empirical evaluation of profiles.
+The methodology is not limited to the type-safety profile. Any profile whose rules can be expressed as AST predicates - the initialization profile ([P3402R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3402r3.html)<sup>[8]</sup>, "A Safety Profile Verifying Initialization"), the casting profile, the ranges profile - can be measured the same way. PAVE is a general framework for empirical evaluation of profiles.
 
 ---
 
@@ -259,28 +259,28 @@ Implementers, profile proponents, and independent researchers are welcome to exe
 
 ## Acknowledgments
 
-Thanks to Bjarne Stroustrup for [P3984R0](https://wg21.link/p3984r0) and the profiles vision. Thanks to Gabriel Dos Reis for [P3589R2](https://wg21.link/p3589r2) and the framework specification. Thanks to Herb Sutter for the lifetime analysis that informed the invalidation rules.
+Thanks to Bjarne Stroustrup for [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf) and the profiles vision. Thanks to Gabriel Dos Reis for [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf) and the framework specification. Thanks to Herb Sutter for the lifetime analysis that informed the invalidation rules.
 
 ---
 
 ## References
 
-1. [P3984R0](https://wg21.link/p3984r0) - "A type-safety profile" (Bjarne Stroustrup, 2026). https://wg21.link/p3984r0
+[1] [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf) - "A type-safety profile" (Bjarne Stroustrup, 2026).
 
-2. [P3589R2](https://wg21.link/p3589r2) - "C++ Profiles: The Framework" (Gabriel Dos Reis, 2025). https://wg21.link/p3589r2
+[2] [P3471R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3471r4.html) - "Standard library hardening" (Konstantin Varlamov, Louis Dionne, 2025).
 
-3. [P3402R3](https://wg21.link/p3402r3) - "A Safety Profile Verifying Initialization" (Marc Laverdiere, Cody Lapkowski, Christof Gros, 2025). https://wg21.link/p3402r3
+[3] [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf) - "C++ Profiles: The Framework" (Gabriel Dos Reis, 2025).
 
-4. [P1179R1](https://wg21.link/p1179r1) - "Lifetime safety: Preventing common dangling" (Herb Sutter, 2019). https://wg21.link/p1179r1
+[4] [P3274R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3274r0.pdf) - "A framework for Profiles development" (Bjarne Stroustrup, 2024).
 
-5. [P3471R4](https://wg21.link/p3471r4) - "Standard library hardening" (Konstantin Varlamov, Louis Dionne, 2025). https://wg21.link/p3471r4
+[5] [P3970R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf) - "Profiles and Safety: a call to action" (Daveed Vandevoorde, Jody Garland, Paul E. McKenney, Roger Orr, Bjarne Stroustrup, Michael Wong, 2026).
 
-6. [P3274R0](https://wg21.link/p3274r0) - "A framework for Profiles development" (Bjarne Stroustrup, 2024). https://wg21.link/p3274r0
+[6] [P1179R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1179r1.pdf) - "Lifetime safety: Preventing common dangling" (Herb Sutter, 2019).
 
-7. [P3346R0](https://wg21.link/p3346r0) - "Profile invalidation - eliminating dangling pointers" (Bjarne Stroustrup, 2024). https://wg21.link/p3346r0
+[7] [P3346R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3346r0.pdf) - "Profile invalidation - eliminating dangling pointers" (Bjarne Stroustrup, 2024).
 
-8. [P3970R0](https://wg21.link/p3970r0) - "Profiles and Safety: a call to action" (Daveed Vandevoorde, Jody Garland, Paul E. McKenney, Roger Orr, Bjarne Stroustrup, Michael Wong, 2026). https://wg21.link/p3970r0
+[8] [P3402R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3402r3.html) - "A Safety Profile Verifying Initialization" (Marc Laverdiere, Cody Lapkowski, Christof Gros, 2025).
 
-9. C++ Core Guidelines. https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+[9] [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 
-10. clang-tidy C++ Core Guidelines checks. https://clang.llvm.org/extra/clang-tidy/checks/list.html
+[10] [clang-tidy C++ Core Guidelines checks](https://clang.llvm.org/extra/clang-tidy/checks/list.html)

@@ -29,9 +29,9 @@ The programmer writes `for`, `if`, structured bindings, and `co_await` - the idi
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)<sup>[17]</sup>), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>), a project to bring coroutine-native I/O to C++.
 
-The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[7]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
@@ -51,7 +51,7 @@ The coroutine "tutorial" is: write regular code, put `co_await` before async ope
 
 ### 2.2 Thirty Algorithms
 
-The sender model replaces these constructs with library equivalents: `let_value` for local variables, `then` for function calls, `upon_error` for `catch`, `when_all` for sequential statements, `repeat_effect_until` for `for`. [P4014](https://wg21.link/p4014)<sup>[20]</sup> is a progressive tutorial of all thirty sender algorithms in C++26. The `retry` algorithm requires approximately 120 lines of template machinery as a sender; the coroutine equivalent is seven lines. The four-layer composition example in [P4014](https://wg21.link/p4014)<sup>[20]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
+The sender model replaces these constructs with library equivalents: `let_value` for local variables, `then` for function calls, `upon_error` for `catch`, `when_all` for sequential statements, `repeat_effect_until` for `for`. [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> is a progressive tutorial of all thirty sender algorithms in C++26. The `retry` algorithm requires approximately 120 lines of template machinery as a sender; the coroutine equivalent is seven lines. The four-layer composition example in [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
 
 | Model      | New vocabulary                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -60,13 +60,13 @@ The sender model replaces these constructs with library equivalents: `let_value`
 
 ### 2.3 The Standard Ships Both
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[8]</sup> "Add a Coroutine Task Type" Section 9.4.1 [task.overview] defines the result:
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[5]</sup> "Add a Coroutine Task Type" Section 9.4.1 [task.overview] defines the result:
 
 > "The `task` class template represents a sender that can be used as the return type of coroutines."
 
 `std::execution::task` is a coroutine that is also a sender.
 
-On September 28, 2021, the Executors telecon polled ([P2453R0](https://wg21.link/p2453r0)<sup>[9]</sup> "2021 October Library Evolution Poll Outcomes"):
+On September 28, 2021, the Executors telecon polled ([P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[6]</sup> "2021 October Library Evolution Poll Outcomes"):
 
 > "We believe we need one grand unified model for asynchronous execution in the C++ Standard Library, that covers structured concurrency, event based programming, active patterns, etc."
 >
@@ -76,13 +76,13 @@ The "one model" premise did not achieve consensus. C++26 now ships two.
 
 ### 2.4 The Chronology
 
-C++20 was ratified in 2020 with coroutines as a language feature. Every major compiler implements them. Production codebases have used them for six years. `std::execution` was adopted into the working draft at St. Louis in June 2024<sup>[18]</sup> and ships in C++26. Networking is not in the C++ standard. Twenty-one years from [N1925](https://wg21.link/n1925)<sup>[15]</sup> "A Proposal to Add Networking Utilities to the C++ Standard Library."
+C++20 was ratified in 2020 with coroutines as a language feature. Every major compiler implements them. Production codebases have used them for six years. `std::execution` was adopted into the working draft at St. Louis in June 2024<sup>[7]</sup> and ships in C++26. Networking is not in the C++ standard. Twenty-one years from [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[8]</sup> "A Proposal to Add Networking Utilities to the C++ Standard Library."
 
 ### 2.5 The Incumbent
 
 Coroutines are the language's computation model for async. `std::execution` is the library's. Both are in the standard. Both must succeed. The question is what each one is for.
 
-Three execution models complement each other in the C++26 standard: parallel algorithms with execution policies, `std::execution` with sender/receiver composition, and coroutines with `co_await`. These three span different points on the abstraction spectrum - execution policies annotate synchronous calls with parallelism, senders compose asynchronous work graphs, coroutines suspend and resume sequential code. These three existed before [P0443R14](https://wg21.link/p0443r14)<sup>[22]</sup> "A Unified Executors Proposal for C++" tried to unify them. The unification never happened. `std::sort(std::execution::par, first, last)` does not use senders. [P2500R2](https://wg21.link/p2500r2)<sup>[25]</sup> "C++ parallel algorithms and P2300", the only paper that attempts the bridge, has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified. The existence of [P2500R2](https://wg21.link/p2500r2)<sup>[25]</sup> is itself the evidence: a universal execution model does not require a bridge paper to reach the execution model already in the standard. The parallel algorithms shipped in C++17. `std::execution` ships in C++26. Coroutines shipped in C++20. The committee accepted complementary execution models when it shipped all three.
+Three execution models complement each other in the C++26 standard: parallel algorithms with execution policies, `std::execution` with sender/receiver composition, and coroutines with `co_await`. These three span different points on the abstraction spectrum - execution policies annotate synchronous calls with parallelism, senders compose asynchronous work graphs, coroutines suspend and resume sequential code. These three existed before [P0443R14](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[9]</sup> "A Unified Executors Proposal for C++" tried to unify them. The unification never happened. `std::sort(std::execution::par, first, last)` does not use senders. [P2500R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html)<sup>[10]</sup> "C++ parallel algorithms and P2300", the only paper that attempts the bridge, has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified. The existence of [P2500R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html)<sup>[10]</sup> is itself the evidence: a universal execution model does not require a bridge paper to reach the execution model already in the standard. The parallel algorithms shipped in C++17. `std::execution` ships in C++26. Coroutines shipped in C++20. The committee accepted complementary execution models when it shipped all three.
 
 Coroutine-native I/O does not introduce a fourth model. It completes the third. C++20 gave the committee `co_await`, `coroutine_handle<>`, and `promise_type`. It did not give the committee standard I/O operations that use them. This paper documents what happens when you build I/O on the model the language already provides.
 
@@ -92,23 +92,23 @@ Coroutine-native I/O does not introduce a fourth model. It completes the third. 
 
 The sender/receiver model is an achievement.
 
-Eric Niebler described the philosophical foundation in 2020<sup>[10]</sup>:
+Eric Niebler described the philosophical foundation in 2020<sup>[11]</sup>:
 
 > "It brings the Modern C++ style to our async programs by making async lifetimes correspond to ordinary C++ lexical scopes, eliminating the need for reference counting to manage object lifetime."
 
 Child operations complete before their parents. Lexical scopes govern async lifetimes. The same discipline that makes synchronous C++ safe - RAII, deterministic destruction, nested scopes - extends to asynchronous code. This is the sender model's deepest conviction.
 
-The practical motivation is equally clear. Niebler wrote in 2024<sup>[11]</sup>:
+The practical motivation is equally clear. Niebler wrote in 2024<sup>[12]</sup>:
 
 > "There's nothing wrong with the callback API. What's wrong is that every library that exposes asynchrony uses a slightly different callback API. If you want to chain two async operations from two different libraries, you're going to need to write a bunch of glue code to map this async abstraction to that async abstraction. It's the Tower of Babel problem."
 
 One standard async abstraction solves the interoperability problem. Senders provide the common vocabulary.
 
-Senders and coroutines are not either/or. Niebler framed this directly<sup>[11]</sup>:
+Senders and coroutines are not either/or. Niebler framed this directly<sup>[12]</sup>:
 
 > "If your library exposes asynchrony, then returning a sender is a great choice: your users can await the sender in a coroutine if they like, or they can avoid the coroutine frame allocation and use the sender with a generic algorithm like `then()` or `when_all()`. The lack of allocations makes senders an especially good choice for embedded developers."
 
-The sender model provides zero-allocation pipelines through a specific design choice: `connect(sender, receiver)` produces an operation state that aggregates all data before `start()` is called. Niebler described the consequence<sup>[11]</sup>:
+The sender model provides zero-allocation pipelines through a specific design choice: `connect(sender, receiver)` produces an operation state that aggregates all data before `start()` is called. Niebler described the consequence<sup>[12]</sup>:
 
 > "That means we can launch lots of async work with complex dependencies with only a single dynamic allocation or, in some cases, no allocations at all."
 
@@ -116,7 +116,7 @@ Separating construction from launch lets the pipeline aggregate all state before
 
 Senders also provide completion signatures as type-level contracts. The sender declares how it can complete. A type mismatch between pipeline stages is a compile error. The three-channel model - `set_value`, `set_error`, `set_stopped` - routes results by channel, and generic algorithms like `retry`, `when_all`, and `upon_error` dispatch on the channel without knowing the concrete sender type.
 
-These are deployed at scale. [P2470R0](https://wg21.link/p2470r0)<sup>[12]</sup> "Slides for presentation of P2300R2" documented the deployments: Facebook ("monthly users number in the billions"), NVIDIA ("fully invested in P2300... we plan to ship in production"), and Bloomberg (experimentation). GPU dispatch, infrastructure, HPC - the domains where compile-time work graphs, zero-allocation pipelines, and heterogeneous composition deliver their full value.
+These are deployed at scale. [P2470R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2470r0.pdf)<sup>[13]</sup> "Slides for presentation of P2300R2" documented the deployments: Facebook ("monthly users number in the billions"), NVIDIA ("fully invested in P2300... we plan to ship in production"), and Bloomberg (experimentation). GPU dispatch, infrastructure, HPC - the domains where compile-time work graphs, zero-allocation pipelines, and heterogeneous composition deliver their full value.
 
 ---
 
@@ -124,13 +124,13 @@ These are deployed at scale. [P2470R0](https://wg21.link/p2470r0)<sup>[12]</sup>
 
 Coroutines are not free. Three costs are irreducible.
 
-**Frame allocation.** When a function becomes a coroutine, the compiler moves everything that would normally live on the stack - every local variable, every function parameter, the suspension point that records where execution left off, and the awaitable machinery that manages resumption - into a heap-allocated block called the coroutine frame. Every coroutine that suspends must allocate this frame through `operator new`. The frame size is determined by the compiler. The caller cannot `sizeof` it, cannot stack-allocate it, cannot embed it in a struct. HALO ([P0981R0](https://wg21.link/p0981r0)<sup>[13]</sup> "Halo: coroutine Heap Allocation eLision Optimization") can elide the allocation when the compiler proves the frame's lifetime is bounded by the caller's scope, but no compiler guarantees HALO. The recycling allocator ([recycling_memory_resource](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/ex/recycling_memory_resource.hpp)<sup>[7]</sup>) amortizes the cost to a thread-local pool lookup - nanoseconds instead of microseconds - but the allocation still happens. Senders do not pay this cost. Sender operation states can be stack-allocated or embedded in the parent's operation state.
+**Frame allocation.** When a function becomes a coroutine, the compiler moves everything that would normally live on the stack - every local variable, every function parameter, the suspension point that records where execution left off, and the awaitable machinery that manages resumption - into a heap-allocated block called the coroutine frame. Every coroutine that suspends must allocate this frame through `operator new`. The frame size is determined by the compiler. The caller cannot `sizeof` it, cannot stack-allocate it, cannot embed it in a struct. HALO ([P0981R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0981r0.html)<sup>[14]</sup> "Halo: coroutine Heap Allocation eLision Optimization") can elide the allocation when the compiler proves the frame's lifetime is bounded by the caller's scope, but no compiler guarantees HALO. The recycling allocator ([recycling_memory_resource](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/ex/recycling_memory_resource.hpp)<sup>[2]</sup>) amortizes the cost to a thread-local pool lookup - nanoseconds instead of microseconds - but the allocation still happens. Senders do not pay this cost. Sender operation states can be stack-allocated or embedded in the parent's operation state.
 
 **Opaque resume.** The compiler cannot see through `std::coroutine_handle<>::resume()`. Every suspension point is an optimization barrier. The optimizer cannot inline across it. In tight inner loops this is measurable. This is the fundamental cost of type erasure through the handle. Senders do not pay this cost. Sender operation states are fully visible to the optimizer within a pipeline.
 
-**Reference lifetime hazard.** Coroutine parameters are copied into the frame at the call site, but references are copied as references, not as values. A `const std::string&` parameter stores the reference in the frame. If the caller's string goes out of scope before the first suspension point, the reference dangles. Lambda captures by reference have the same hazard. This is a correctness cost, not a performance cost. Google built `Co<T>` as immovable and prvalue-only specifically to prevent it ([P3801R0](https://wg21.link/p3801r0)<sup>[14]</sup> "Concerns about the design of `std::execution::task`"). Senders do not share this hazard in the same way - the operation state owns copies of everything passed through `connect`.
+**Reference lifetime hazard.** Coroutine parameters are copied into the frame at the call site, but references are copied as references, not as values. A `const std::string&` parameter stores the reference in the frame. If the caller's string goes out of scope before the first suspension point, the reference dangles. Lambda captures by reference have the same hazard. This is a correctness cost, not a performance cost. Google built `Co<T>` as immovable and prvalue-only specifically to prevent it ([P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html)<sup>[15]</sup> "Concerns about the design of `std::execution::task`"). Senders do not share this hazard in the same way - the operation state owns copies of everything passed through `connect`.
 
-At the baseline, the price does not make coroutines slower. A [benchmark](https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman)<sup>[19]</sup> of 100,000,000 `read_some` calls on concrete streams measures both models at ~30-31 ns/op with zero allocations. The frame allocation is a cost that buys something. It is not a cost that slows you down.
+At the baseline, the price does not make coroutines slower. A [benchmark](https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman)<sup>[16]</sup> of 100,000,000 `read_some` calls on concrete streams measures both models at ~30-31 ns/op with zero allocations. The frame allocation is a cost that buys something. It is not a cost that slows you down.
 
 You pay the price once. A coroutine that does fifty reads pays one frame allocation and fifty zero-cost resumptions. The frame that you cannot avoid is the same frame that holds the operation state, the local variables, and the result. The type erasure that blocks inlining is the same type erasure that gives you `any_stream`, `task<T>` with one parameter, and non-template operation states.
 
@@ -140,11 +140,11 @@ The frame you cannot avoid is the frame that pays for everything in Section 7.
 
 ## 5. Twenty Years, Nine Lines
 
-The committee has been trying to standardize networking since [N1925](https://wg21.link/n1925)<sup>[15]</sup> (2005). The contract that every attempt has been built on comes from Asio.
+The committee has been trying to standardize networking since [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[8]</sup> (2005). The contract that every attempt has been built on comes from Asio.
 
 ### 5.1 Asio's `AsyncReadStream`
 
-The [Boost.Asio documentation](https://www.boost.org/doc/libs/1_87_0/doc/html/boost_asio/reference/AsyncReadStream.html)<sup>[16]</sup> defines `AsyncReadStream` as a named requirement with two operations:
+The [Boost.Asio documentation](https://www.boost.org/doc/libs/1_87_0/doc/html/boost_asio/reference/AsyncReadStream.html)<sup>[17]</sup> defines `AsyncReadStream` as a named requirement with two operations:
 
 | operation                  | type                                       | semantics                                            |
 | -------------------------- | ------------------------------------------ | ---------------------------------------------------- |
@@ -155,7 +155,7 @@ Two operations. Twenty years. The contract has not changed. The Networking TS fo
 
 ### 5.2 The C++20 Concept
 
-[ReadStream](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/concept/read_stream.hpp)<sup>[7]</sup> formalizes the same contract as a C++20 concept:
+[ReadStream](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/concept/read_stream.hpp)<sup>[2]</sup> formalizes the same contract as a C++20 concept:
 
 ```cpp
 template<typename T>
@@ -191,7 +191,7 @@ What stayed: `read_some` takes a buffer, returns `(error_code, size_t)`. The nam
 
 ## 6. Why Did It Take Twenty Years?
 
-Networking stalled because networking is not the hard problem. Asynchrony is the hard problem, and asynchrony has three domains: bulk-parallel execution, heterogeneous work-graph composition, and serial stream I/O. C++ already standardized the first two. The parallel algorithms in C++17 serve the bulk-parallel domain through execution policies. `std::execution` in C++26 serves the work-graph and heterogeneous domain through sender/receiver composition. The serial I/O domain - networking, files, pipes, TLS - has no standard facility. [P0443R14](https://wg21.link/p0443r14)<sup>[22]</sup> "A Unified Executors Proposal for C++" spent fourteen revisions from 2016 to 2020 trying to unify all three domains into a single executor model, reconciling a work-executor suited to bulk dispatch with a continuation-executor suited to I/O chaining (the retrospective series [P4094](https://wg21.link/p4094)<sup>[23]</sup> through [P4099](https://wg21.link/p4099)<sup>[24]</sup> documents the full history). The unification imperative - the unexamined assumption that one model must cover all three domains - was the obstacle. The answer was three models, each contributing what the others cannot.
+Networking stalled because networking is not the hard problem. Asynchrony is the hard problem, and asynchrony has three domains: bulk-parallel execution, heterogeneous work-graph composition, and serial stream I/O. C++ already standardized the first two. The parallel algorithms in C++17 serve the bulk-parallel domain through execution policies. `std::execution` in C++26 serves the work-graph and heterogeneous domain through sender/receiver composition. The serial I/O domain - networking, files, pipes, TLS - has no standard facility. [P0443R14](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[9]</sup> "A Unified Executors Proposal for C++" spent fourteen revisions from 2016 to 2020 trying to unify all three domains into a single executor model, reconciling a work-executor suited to bulk dispatch with a continuation-executor suited to I/O chaining (the retrospective series [P4094R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r0.pdf)<sup>[18]</sup> through [P4099R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r0.pdf)<sup>[19]</sup> documents the full history). The unification imperative - the unexamined assumption that one model must cover all three domains - was the obstacle. The answer was three models, each contributing what the others cannot.
 
 The domains that attracted institutional investment shipped. Bulk-parallel execution had compiler vendors. Heterogeneous dispatch had GPU manufacturers. Networking had one independent author without institutional backing. This is how volunteer-based standardization works when some volunteers are funded and some are not.
 
@@ -199,7 +199,7 @@ C++20 coroutines did not exist when the networking debate was at its peak. The N
 
 Asio supports every async model - callbacks, futures, coroutines, and completion tokens. That universality served users but created a standardization obstacle: the I/O operations must be templates, the operation states must be parameterized on the completion handler type, and the stream model cannot be type-erased without per-operation allocation. The coroutine-native approach succeeds by committing to one completion mechanism and giving up the rest. Nobody could demonstrate what that commitment produces until someone made it. Section 7 is that demonstration.
 
-The committee has heard networking proposals before. It would be reasonable to ask why this attempt should succeed where others have not. The answer is structural. `std::execution` shipping in C++26 resolves the parallel and heterogeneous domain, which means the serial I/O domain can now be addressed without reopening the parallel question. The Network Endeavor ([P4100](https://wg21.link/p4100)<sup>[17]</sup>) is backed by a non-profit with engineering resources - not a solo effort by an independent author. Two libraries ship today ([Capy](https://github.com/cppalliance/capy)<sup>[7]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup>) with a Boost review scheduled. The team has implementation experience across the stream model - the author built Boost.Beast on Asio's architecture. Thirteen papers document the technical case, the retrospective record, and the bridge to `std::execution`. If coroutine I/O ships, C++ arrives at three companions - each contributing what the others cannot. P0443 tried to unify three into one. The answer, it turns out, was three.
+The committee has heard networking proposals before. It would be reasonable to ask why this attempt should succeed where others have not. The answer is structural. `std::execution` shipping in C++26 resolves the parallel and heterogeneous domain, which means the serial I/O domain can now be addressed without reopening the parallel question. The Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>) is backed by a non-profit with engineering resources - not a solo effort by an independent author. Two libraries ship today ([Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>) with a Boost review scheduled. The team has implementation experience across the stream model - the author built Boost.Beast on Asio's architecture. Thirteen papers document the technical case, the retrospective record, and the bridge to `std::execution`. If coroutine I/O ships, C++ arrives at three companions - each contributing what the others cannot. P0443R0 tried to unify three into one. The answer, it turns out, was three.
 
 ---
 
@@ -253,7 +253,7 @@ From here forward, the paper walks the coroutine chain at zero per-operation cos
 
 ### 7.2 The Operation State Is Concrete
 
-Windows (IOCP). [overlapped_op](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_overlapped_op.hpp)<sup>[6]</sup> and [read_op](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_socket.hpp)<sup>[6]</sup>:
+Windows (IOCP). [overlapped_op](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_overlapped_op.hpp)<sup>[3]</sup> and [read_op](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_socket.hpp)<sup>[3]</sup>:
 
 ```cpp
 struct overlapped_op : OVERLAPPED
@@ -274,7 +274,7 @@ struct read_op : overlapped_op
 };
 ```
 
-Linux (epoll). [epoll_op.hpp](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/epoll/epoll_op.hpp)<sup>[6]</sup>:
+Linux (epoll). [epoll_op.hpp](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/epoll/epoll_op.hpp)<sup>[3]</sup>:
 
 ```cpp
 struct epoll_read_op final
@@ -289,7 +289,7 @@ Not templates. Not parameterized on the caller. Known at library-build time. The
 
 ### 7.3 The Operation State Lives in the Socket
 
-[win_socket_internal](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_socket.hpp)<sup>[6]</sup>:
+[win_socket_internal](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/detail/iocp/win_socket.hpp)<sup>[3]</sup>:
 
 ```cpp
 class win_socket_internal
@@ -306,7 +306,7 @@ Three operation states. Members of the socket. Pre-allocated when the socket is 
 
 ### 7.4 Zero Per-Operation Allocation
 
-[any_read_stream](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/io/any_read_stream.hpp)<sup>[7]</sup> type-erases any `ReadStream`. The erasure is on the awaitable, not the stream. The [vtable](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/io/any_read_stream.hpp)<sup>[7]</sup> dispatches `await_ready`, `await_suspend`, `await_resume` through function pointers:
+[any_read_stream](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/io/any_read_stream.hpp)<sup>[2]</sup> type-erases any `ReadStream`. The erasure is on the awaitable, not the stream. The [vtable](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/io/any_read_stream.hpp)<sup>[2]</sup> dispatches `await_ready`, `await_suspend`, `await_resume` through function pointers:
 
 ```cpp
 struct vtable
@@ -328,7 +328,7 @@ struct vtable
 
 The awaitable storage is pre-allocated at construction time and reused for every `read_some` call. `read_some` constructs the real awaitable into cached storage, dispatches through the vtable, and destroys it on resume. One allocation at construction. Zero per-operation.
 
-The [benchmark](https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman)<sup>[19]</sup> measures the cost. 100,000,000 `read_some` calls on a single thread, no-op stream, five runs per configuration:
+The [benchmark](https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman)<sup>[16]</sup> measures the cost. 100,000,000 `read_some` calls on a single thread, no-op stream, five runs per configuration:
 
 | Stream type  | capy IoAwaitable    |       | P2300 sender        |       |
 | ------------ | ------------------: | ----: | ------------------: | ----: |
@@ -373,9 +373,9 @@ capy::task<> dump(capy::any_read_stream& in)
 }
 ```
 
-The header includes only [Capy](https://github.com/cppalliance/capy)<sup>[7]</sup>. No platform headers. No [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup>. No sockets. The `.cpp` compiles once. Consumers include the header and link. The stream behind `any_read_stream` could be a TCP socket, a TLS session, a file, or a test mock. Nothing recompiles.
+The header includes only [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup>. No platform headers. No [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>. No sockets. The `.cpp` compiles once. Consumers include the header and link. The stream behind `any_read_stream` could be a TCP socket, a TLS session, a file, or a test mock. Nothing recompiles.
 
-This is also the [Capy](https://github.com/cppalliance/capy)<sup>[7]</sup>/[Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup> split point. Capy delivers the abstract layer: `task<T>`, `any_read_stream`, `any_write_stream`, `any_stream`, buffer concepts, stream concepts, `when_all`, `when_any`, the frame allocator. Pure C++20. No platform dependency. Corosio delivers the platform layer: `tcp_socket`, `tls_stream`, timers, DNS, signals. Capy delivers value on its own - sans-I/O protocols, buffered streams, test mocks, all compile against Capy without Corosio. The architecture that made separate compilation possible is the same architecture that made the library split possible. One frame. Two libraries. Zero recompilation.
+This is also the [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup>/[Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> split point. Capy delivers the abstract layer: `task<T>`, `any_read_stream`, `any_write_stream`, `any_stream`, buffer concepts, stream concepts, `when_all`, `when_any`, the frame allocator. Pure C++20. No platform dependency. Corosio delivers the platform layer: `tcp_socket`, `tls_stream`, timers, DNS, signals. Capy delivers value on its own - sans-I/O protocols, buffered streams, test mocks, all compile against Capy without Corosio. The architecture that made separate compilation possible is the same architecture that made the library split possible. One frame. Two libraries. Zero recompilation.
 
 ### 7.6 Both Modes, One Abstraction
 
@@ -408,7 +408,7 @@ The contract has survived POSIX, BSD sockets, IOCP, Asio, the Networking TS, io_
 
 ### 7.8 The User Chooses
 
-The user chooses the trade-off. [io_stream](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/io/io_stream.hpp)<sup>[6]</sup>, [tcp_socket](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/tcp_socket.hpp)<sup>[6]</sup>, [native_tcp_socket](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/native_tcp_socket.hpp)<sup>[6]</sup>:
+The user chooses the trade-off. [io_stream](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/io/io_stream.hpp)<sup>[3]</sup>, [tcp_socket](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/tcp_socket.hpp)<sup>[3]</sup>, [native_tcp_socket](https://github.com/cppalliance/corosio/blob/p4088r0/include/boost/corosio/native/native_tcp_socket.hpp)<sup>[3]</sup>:
 
 ```
 io_stream                        // abstract (Layer 3)
@@ -442,15 +442,15 @@ The frame you already paid for is the reason the other two rows are zero.
 
 Additional properties that ride on the same frame:
 
-- **Compile-time domain gate.** The two-argument `await_suspend(coroutine_handle<>, io_env const*)` is a deliberate trade-off. The alternative was a single-argument `await_suspend` that extracts the environment from the promise, costing one fewer parameter. The two-argument form was chosen because it buys compile-time enforcement: any awaitable that does not accept `io_env const*` is a type error inside an I/O task. Foreign awaitables that do not speak the I/O protocol are rejected by the compiler, not by a runtime mismatch. The pointer is the cost. The domain gate is the benefit. [IoAwaitable](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/concept/io_awaitable.hpp)<sup>[7]</sup>.
+- **Compile-time domain gate.** The two-argument `await_suspend(coroutine_handle<>, io_env const*)` is a deliberate trade-off. The alternative was a single-argument `await_suspend` that extracts the environment from the promise, costing one fewer parameter. The two-argument form was chosen because it buys compile-time enforcement: any awaitable that does not accept `io_env const*` is a type error inside an I/O task. Foreign awaitables that do not speak the I/O protocol are rejected by the compiler, not by a runtime mismatch. The pointer is the cost. The domain gate is the benefit. [IoAwaitable](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/concept/io_awaitable.hpp)<sup>[2]</sup>.
 
-- **Compound result preservation.** `auto [ec, n] = co_await sock.read_some(buf)`. Both values visible. No channel split. No data loss. The three-channel model routes results by channel. Compound results must choose a channel, losing data on the error path ([P4090](https://wg21.link/p4090)<sup>[2]</sup>, [P4091](https://wg21.link/p4091)<sup>[3]</sup>).
+- **Compound result preservation.** `auto [ec, n] = co_await sock.read_some(buf)`. Both values visible. No channel split. No data loss. The three-channel model routes results by channel. Compound results must choose a channel, losing data on the error path ([P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf)<sup>[20]</sup>, [P4091R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r0.pdf)<sup>[21]</sup>).
 
 - **Symmetric transfer.** `await_suspend` returns `coroutine_handle<>`. O(1) stack depth regardless of chain length.
 
-- **One-parameter `task<T>`.** [task.hpp](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/task.hpp)<sup>[7]</sup>: `template<typename T = void> struct task`. One parameter. No Environment. The promise carries the environment. [P4089](https://wg21.link/p4089)<sup>[1]</sup> documents why coroutine task type diversity is both inevitable and desirable.
+- **One-parameter `task<T>`.** [task.hpp](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/task.hpp)<sup>[2]</sup>: `template<typename T = void> struct task`. One parameter. No Environment. The promise carries the environment. [P4089R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4089r0.pdf)<sup>[22]</sup> documents why coroutine task type diversity is both inevitable and desirable.
 
-- **Structured concurrency.** [when_all](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/when_all.hpp)<sup>[7]</sup> and [when_any](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/when_any.hpp)<sup>[7]</sup>. Both return `task<>`. Stop tokens propagate through `io_env`. Children complete before the parent resumes.
+- **Structured concurrency.** [when_all](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/when_all.hpp)<sup>[2]</sup> and [when_any](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/when_any.hpp)<sup>[2]</sup>. Both return `task<>`. Stop tokens propagate through `io_env`. Children complete before the parent resumes.
 
 ---
 
@@ -476,11 +476,11 @@ A: `any_sender` type-erases the sender, not the receiver. `connect(any_sender, r
 
 **Q: Does `std::execution::task` not already bridge both models?**
 
-A: It does. `task` is a coroutine that is also a sender. But serving both models in one type is where the friction originates - two template parameters, open issues documented in [P4007](https://wg21.link/p4007)<sup>[26]</sup>, constraints that neither model alone requires. The companion approach accepts the design fork: each model does what it does best, and bridges connect them at ~10-14 ns with zero allocations. The question is whether the coroutine side carries I/O facilities that exploit the properties `coroutine_handle<>` provides: concrete operation states, type-erased streams, separate compilation, ABI stability. `task` bridges the models. It does not provide I/O.
+A: It does. `task` is a coroutine that is also a sender. But serving both models in one type is where the friction originates - two template parameters, open issues documented in [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[23]</sup>, constraints that neither model alone requires. The companion approach accepts the design fork: each model does what it does best, and bridges connect them at ~10-14 ns with zero allocations. The question is whether the coroutine side carries I/O facilities that exploit the properties `coroutine_handle<>` provides: concrete operation states, type-erased streams, separate compilation, ABI stability. `task` bridges the models. It does not provide I/O.
 
 **Q: Two async models are harder to teach.**
 
-A: C++ already teaches three execution models: parallel algorithms with execution policies, `std::execution` with sender algorithms, and coroutines with `co_await`. These three complement each other in C++26. The teachability cost was paid when the committee shipped all three. Coroutine-native I/O does not add a fourth model. It completes the third. The programmer already writes `co_await` - coroutines are the code they already know, with three keywords added. The sender model requires thirty algorithms, each replacing a language construct the programmer already knows. [P4014](https://wg21.link/p4014)<sup>[20]</sup> is a progressive tutorial of all thirty. The `retry` algorithm: approximately 120 lines as a sender, seven as a coroutine. The four-layer composition in [P4014](https://wg21.link/p4014)<sup>[20]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
+A: C++ already teaches three execution models: parallel algorithms with execution policies, `std::execution` with sender algorithms, and coroutines with `co_await`. These three complement each other in C++26. The teachability cost was paid when the committee shipped all three. Coroutine-native I/O does not add a fourth model. It completes the third. The programmer already writes `co_await` - coroutines are the code they already know, with three keywords added. The sender model requires thirty algorithms, each replacing a language construct the programmer already knows. [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> is a progressive tutorial of all thirty. The `retry` algorithm: approximately 120 lines as a sender, seven as a coroutine. The four-layer composition in [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
 
 **Q: Coroutines were not designed for I/O.**
 
@@ -488,31 +488,31 @@ A: Correct. The five properties were designed for generality - async patterns, l
 
 **Q: The fragmentation argument is revisionist history.**
 
-A: The chronology is a fact. C++20 ratified 2020. `std::execution` adopted June 2024<sup>[18]</sup>. The paper documents which model shipped first.
+A: The chronology is a fact. C++20 ratified 2020. `std::execution` adopted June 2024<sup>[7]</sup>. The paper documents which model shipped first.
 
 **Q: `std::execution` is a library, not a second computation model.**
 
-A: `std::execution::task` ([P3552R3](https://wg21.link/p3552r3)<sup>[8]</sup>) is a coroutine type. The library requires language coroutine support to function. Whether the second model is a "language model" or a "library model" does not change the chronology or the benchmark data.
+A: `std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[5]</sup>) is a coroutine type. The library requires language coroutine support to function. Whether the second model is a "language model" or a "library model" does not change the chronology or the benchmark data.
 
 **Q: This picks the coroutine model as the winner for I/O.**
 
-A: The `IoAwaitable` concept ([P4003](https://wg21.link/p4003)<sup>[21]</sup>) requires one function: `await_suspend(coroutine_handle<>, io_env const*)`. The protocol is two concepts, one type-erased executor, and a frame allocator cache. The specification fits in six pages. It says nothing about sockets, streams, TCP, TLS, or HTTP. Remove `await_ready` and you lose the synchronous fast path. Remove `io_env` and you lose the executor and stop token. Nothing is removable. This is the narrowest enabler. What gets built on top is the committee's decision.
+A: The `IoAwaitable` concept ([P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[24]</sup>) requires one function: `await_suspend(coroutine_handle<>, io_env const*)`. The protocol is two concepts, one type-erased executor, and a frame allocator cache. The specification fits in six pages. It says nothing about sockets, streams, TCP, TLS, or HTTP. Remove `await_ready` and you lose the synchronous fast path. Remove `io_env` and you lose the executor and stop token. Nothing is removable. This is the narrowest enabler. What gets built on top is the committee's decision.
 
 **Q: The domain split is artificial. Senders compose across domains.**
 
-A: C++26 ships three complementary execution models. [P2500R2](https://wg21.link/p2500r2)<sup>[25]</sup> "C++ parallel algorithms and P2300" has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified. `std::sort(std::execution::par, first, last)` does not use senders and no paper proposes that it should. The design fork (Section 10) is structural: `coroutine_handle<>` erases the caller, `connect(sender, receiver)` stamps the caller into the operation state, and the resulting property sets are mutually exclusive at zero per-operation cost. The bridges ([P4092](https://wg21.link/p4092)<sup>[4]</sup>, [P4093](https://wg21.link/p4093)<sup>[5]</sup>) are how the companions connect - the same role `extern "C"` serves between C and C++. The complementary specializations follow from the design fork the committee already made.
+A: C++26 ships three complementary execution models. [P2500R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html)<sup>[10]</sup> "C++ parallel algorithms and P2300" has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified. `std::sort(std::execution::par, first, last)` does not use senders and no paper proposes that it should. The design fork (Section 10) is structural: `coroutine_handle<>` erases the caller, `connect(sender, receiver)` stamps the caller into the operation state, and the resulting property sets are mutually exclusive at zero per-operation cost. The bridges ([P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf)<sup>[25]</sup>, [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[26]</sup>) are how the companions connect - the same role `extern "C"` serves between C and C++. The complementary specializations follow from the design fork the committee already made.
 
 **Q: If the domains are separate, why do you need bridges?**
 
-A: Different computation models must interact at boundaries. C and C++ interact through `extern "C"`. CPU and GPU interact through memory copies. The bridges ([P4092](https://wg21.link/p4092)<sup>[4]</sup>, [P4093](https://wg21.link/p4093)<sup>[5]</sup>) are how sender composition and coroutine I/O connect. They are evidence of a clean interface between models. The crossing has a cost, and it is the right tradeoff. Each model becomes first class.
+A: Different computation models must interact at boundaries. C and C++ interact through `extern "C"`. CPU and GPU interact through memory copies. The bridges ([P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf)<sup>[25]</sup>, [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[26]</sup>) are how sender composition and coroutine I/O connect. They are evidence of a clean interface between models. The crossing has a cost, and it is the right tradeoff. Each model becomes first class.
 
 **Q: The prerequisite has not shipped - `task` is still being iterated.**
 
-A: `std::execution` shipped: the scheduler abstraction, the sender composition algebra, the three-channel completion model, and the structured concurrency guarantees are in the C++26 working draft. `task`'s open issues are classified in [P4007](https://wg21.link/p4007)<sup>[26]</sup> Section 2 as fixable post-ship - the `promise_type` is a class template instantiated in user code, so its allocation strategy, error handling, and environment forwarding can change between standard revisions without binary incompatibility. The prerequisite is the execution vocabulary, not one coroutine task type.
+A: `std::execution` shipped: the scheduler abstraction, the sender composition algebra, the three-channel completion model, and the structured concurrency guarantees are in the C++26 working draft. `task`'s open issues are classified in [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[23]</sup> Section 2 as fixable post-ship - the `promise_type` is a class template instantiated in user code, so its allocation strategy, error handling, and environment forwarding can change between standard revisions without binary incompatibility. The prerequisite is the execution vocabulary, not one coroutine task type.
 
 **Q: P2300 was designed to serve I/O too. Its motivating example is a TCP server.**
 
-A: The motivating example demonstrates the gap. [P2300R10](https://wg21.link/p2300r10)<sup>[27]</sup> "`std::execution`" Section 1.4.1.3 is analyzed in [P4007](https://wg21.link/p4007)<sup>[26]</sup> Section 3 and [P4090](https://wg21.link/p4090)<sup>[2]</sup>. The echo server loses the byte count on the error path. The I/O types cannot be type-erased without per-operation allocation. The stream cannot be separately compiled. The design intent included I/O. The design properties serve parallel and heterogeneous dispatch. This paper documents the difference between intent and outcome.
+A: The motivating example demonstrates the gap. [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[27]</sup> "`std::execution`" Section 1.4.1.3 is analyzed in [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[23]</sup> Section 3 and [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf)<sup>[20]</sup>. The echo server loses the byte count on the error path. The I/O types cannot be type-erased without per-operation allocation. The stream cannot be separately compiled. The design intent included I/O. The design properties serve parallel and heterogeneous dispatch. This paper documents the difference between intent and outcome.
 
 **Q: io_uring's batch submission model favors senders.**
 
@@ -520,7 +520,7 @@ A: The coroutine model does not submit one syscall per `co_await`. The event loo
 
 **Q: This is too much scope for C++29.**
 
-A: [P4003](https://wg21.link/p4003)<sup>[21]</sup> is two concepts, one executor, and a frame allocator cache. Six pages. The Network Endeavor ([P4100](https://wg21.link/p4100)<sup>[17]</sup>) is modular - each paper stands independently. If one paper ships, that is progress. If four ship, that is a foundation. The team's target is pencils down by December 2028: reviewed, stable proposals with implementation experience.
+A: [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[24]</sup> is two concepts, one executor, and a frame allocator cache. Six pages. The Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>) is modular - each paper stands independently. If one paper ships, that is progress. If four ship, that is a foundation. The team's target is pencils down by December 2028: reviewed, stable proposals with implementation experience.
 
 ---
 
@@ -557,7 +557,7 @@ void await_suspend(                 template<class Receiver>
 | Heterogeneous child composition          | ABI stability across transport changes      |
 | Generic composition algebra              | Compound result preservation (ec + n)       |
 
-Both companions provide structured concurrency (`when_all`, `when_any`), stop token propagation, non-exception error channels, and production deployment at scale. The bridge crossing cost is ~10-14 ns with zero allocations ([P4092](https://wg21.link/p4092)<sup>[4]</sup>, [P4093](https://wg21.link/p4093)<sup>[5]</sup>).
+Both companions provide structured concurrency (`when_all`, `when_any`), stop token propagation, non-exception error channels, and production deployment at scale. The bridge crossing cost is ~10-14 ns with zero allocations ([P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf)<sup>[25]</sup>, [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[26]</sup>).
 
 At zero per-operation cost, the two property sets are mutually exclusive consequences of the design fork. Senders can achieve type erasure by heap-allocating the operation state. Coroutines can achieve partial pipeline visibility when HALO fires. Neither achieves both property sets without cost. That is the structural constraint. The sender strengths cluster around parallel and heterogeneous dispatch - compile-time work graphs, full pipeline optimization, and zero-allocation composition. The coroutine strengths cluster around serial stream I/O - type erasure, separate compilation, and ABI stability. The complementary specializations are not imposed by this paper. They are a consequence of the design fork and the standard the committee already shipped.
 
@@ -575,62 +575,62 @@ C++20 shipped the language. The programmer already knows how to use it. This pap
 
 ## Acknowledgments
 
-The author thanks Chris Kohlhoff for Asio's stream model, buffer sequences, and executor architecture - twenty years of production deployment is the foundation this work builds on; Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution`; Gor Nishanov for the coroutine model's explicit support for task type diversity; Dietmar K&uuml;hl for `beman::execution` and [P3552R3](https://wg21.link/p3552r3); Ian Petersen for identifying an asymmetry in an earlier draft and for confirming the equivalence between sender and coroutine dispatch; Ville Voutilainen for broadening the compound-result problem beyond I/O and for [P2464R0](https://wg21.link/p2464r0); Jens Maurer for framing the design spectrum; Herb Sutter for identifying the need for tutorials and documentation; Jonathan M&uuml;ller for confirming the symmetric transfer gap in [P3801R0](https://wg21.link/p3801r0); Peter Dimov for the refined channel mapping; Klemens Morgenstern for Boost.Cobalt and the cross-library bridges; Steve Gerbino for co-developing the constructed comparison, bridge implementations, and Corosio; and Mungo Gill, Mohammad Nejati, and Michael Vandeberg for feedback.
+The author thanks Chris Kohlhoff for Asio's stream model, buffer sequences, and executor architecture - twenty years of production deployment is the foundation this work builds on; Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution`; Gor Nishanov for the coroutine model's explicit support for task type diversity; Dietmar K&uuml;hl for `beman::execution` and [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html); Ian Petersen for identifying an asymmetry in an earlier draft and for confirming the equivalence between sender and coroutine dispatch; Ville Voutilainen for broadening the compound-result problem beyond I/O and for [P2464R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html); Jens Maurer for framing the design spectrum; Herb Sutter for identifying the need for tutorials and documentation; Jonathan M&uuml;ller for confirming the symmetric transfer gap in [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html); Peter Dimov for the refined channel mapping; Klemens Morgenstern for Boost.Cobalt and the cross-library bridges; Steve Gerbino for co-developing the constructed comparison, bridge implementations, and Corosio; and Mungo Gill, Mohammad Nejati, and Michael Vandeberg for feedback.
 
 ---
 
 ## References
 
-1. [P4089](https://wg21.link/p4089) - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026). https://wg21.link/p4089
+[1] [P4100](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
-2. [P4090](https://wg21.link/p4090) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4090
+[2] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-3. [P4091](https://wg21.link/p4091) - "Two Error Models" (Vinnie Falco, 2026). https://wg21.link/p4091
+[3] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-4. [P4092](https://wg21.link/p4092) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4092
+[4] [P4014](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf) - "The Sender Sub-Language" (Vinnie Falco, Mungo Gill, 2026).
 
-5. [P4093](https://wg21.link/p4093) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4093
+[5] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-6. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[6] [P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html) - "2021 October Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, Fabio Fracassi, Ben Craig, 2022).
 
-7. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[7] [Herb Sutter, "Trip report: Summer ISO C++ standards meeting (St Louis, MO, USA)," 2024](https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa/)
 
-8. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
+[8] [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf) - "Networking proposal for TR2 (rev. 1)" (Gerhard Wesp, 2005).
 
-9. [P2453R0](https://wg21.link/p2453r0) - "2021 October Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, Fabio Fracassi, Ben Craig, 2022). https://wg21.link/p2453r0
+[9] [P0443R14](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html) - "A Unified Executors Proposal for C++" (Jared Hoberock, Michael Garland, Chris Kohlhoff, Chris Mysen, Carter Edwards, Gordon Brown, Michael Wong, 2020).
 
-10. Eric Niebler, "Structured Concurrency," 2020. https://ericniebler.com/2020/11/08/structured-concurrency/
+[10] [P2500R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html) - "C++ parallel algorithms and P2300" (Ruslan Arutyunyan, Alexey Kukanov, 2023).
 
-11. Eric Niebler, "What are Senders Good For, Anyway?" 2024. https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/
+[11] [Eric Niebler, "Structured Concurrency," 2020](https://ericniebler.com/2020/11/08/structured-concurrency/)
 
-12. [P2470R0](https://wg21.link/p2470r0) - "Slides for presentation of P2300R2" (Eric Niebler, 2021). https://wg21.link/p2470r0
+[12] [Eric Niebler, "What are Senders Good For, Anyway?" 2024](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/)
 
-13. [P0981R0](https://wg21.link/p0981r0) - "Halo: coroutine Heap Allocation eLision Optimization" (Gor Nishanov, 2018). https://wg21.link/p0981r0
+[13] [P2470R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2470r0.pdf) - "Slides for presentation of P2300R2" (Eric Niebler, 2021).
 
-14. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of `std::execution::task`" (Jonathan M&uuml;ller, 2025). https://wg21.link/p3801r0
+[14] [P0981R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0981r0.html) - "Halo: coroutine Heap Allocation eLision Optimization" (Gor Nishanov, 2018).
 
-15. [N1925](https://wg21.link/n1925) - "Networking proposal for TR2 (rev. 1)" (Gerhard Wesp, 2005). https://wg21.link/n1925
+[15] [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html) - "Concerns about the design of `std::execution::task`" (Jonathan M&uuml;ller, 2025).
 
-16. Boost.Asio AsyncReadStream requirements. https://www.boost.org/doc/libs/1_87_0/doc/html/boost_asio/reference/AsyncReadStream.html
+[16] [I/O Read Stream Benchmark](https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman)
 
-17. [P4100](https://wg21.link/p4100) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026). https://wg21.link/p4100
+[17] [Boost.Asio AsyncReadStream requirements](https://www.boost.org/doc/libs/1_87_0/doc/html/boost_asio/reference/AsyncReadStream.html)
 
-18. Herb Sutter, "Trip report: Summer ISO C++ standards meeting (St Louis, MO, USA)," 2024. https://herbsutter.com/2024/07/02/trip-report-summer-iso-c-standards-meeting-st-louis-mo-usa/
+[18] [P4094](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r0.pdf) - "Retrospective: The Unification of Executors and P0443" (Vinnie Falco, 2026).
 
-19. I/O Read Stream Benchmark. https://github.com/sgerbino/capy/tree/pr/beman-bench/bench/beman
+[19] [P4099](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r0.pdf) - "Twenty-One Years: The Arc of Networking in C++" (Vinnie Falco, 2026).
 
-20. [P4014](https://wg21.link/p4014) - "The Sender Sub-Language" (Vinnie Falco, Mungo Gill, 2026). https://wg21.link/p4014
+[20] [P4090](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026).
 
-21. [P4003](https://wg21.link/p4003) - "The Narrowest Execution Model for Networking" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003
+[21] [P4091](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r0.pdf) - "Two Error Models" (Vinnie Falco, 2026).
 
-22. [P0443R14](https://wg21.link/p0443r14) - "A Unified Executors Proposal for C++" (Jared Hoberock, Michael Garland, Chris Kohlhoff, Chris Mysen, Carter Edwards, Gordon Brown, Michael Wong, 2020). https://wg21.link/p0443r14
+[22] [P4089](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4089r0.pdf) - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026).
 
-23. [P4094](https://wg21.link/p4094) - "Retrospective: The Unification of Executors and P0443" (Vinnie Falco, 2026). https://wg21.link/p4094
+[23] [P4007](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf) - "Senders and Coroutines" (Vinnie Falco, 2026).
 
-24. [P4099](https://wg21.link/p4099) - "Twenty-One Years: The Arc of Networking in C++" (Vinnie Falco, 2026). https://wg21.link/p4099
+[24] [P4003](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-25. [P2500R2](https://wg21.link/p2500r2) - "C++ parallel algorithms and P2300" (Ruslan Arutyunyan, Alexey Kukanov, 2023). https://wg21.link/p2500r2
+[25] [P4092](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-26. [P4007](https://wg21.link/p4007) - "Senders and Coroutines" (Vinnie Falco, 2026). https://wg21.link/p4007
+[26] [P4093](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-27. [P2300R10](https://wg21.link/p2300r10) - "`std::execution`" (Eric Niebler, Micha&lstrok; Dominiak, Lewis Baker, Kirk Shoop, Lucian Radu Teodorescu, Lee Howes, 2024). https://wg21.link/p2300r10
+[27] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "`std::execution`" (Eric Niebler, Micha&lstrok; Dominiak, Lewis Baker, Kirk Shoop, Lucian Radu Teodorescu, Lee Howes, 2024).

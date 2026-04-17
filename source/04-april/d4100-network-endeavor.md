@@ -33,7 +33,7 @@ Two libraries - Capy and Corosio - use those mechanisms directly to deliver type
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)), a project to bring coroutine-native I/O to C++.
 
 The author developed and maintains [Capy](https://github.com/cppalliance/capy) and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
 
@@ -77,7 +77,7 @@ These libraries are maintained by other Boost authors:
 | Boost.Redis    | Marcelo Zimbres Silva | Experimental port completed; conversion reports published on the Boost Developers Mailing List  |
 | Boost.Postgres | (upcoming)            | Building on Corosio from day one                                                               |
 
-A production trading infrastructure company is evaluating Corosio for high-performance networking. This is money on the wire. [P4125R0](https://wg21.link/p4125r0)<sup>[8]</sup> documents qualitative findings from a derivatives exchange porting from Asio callbacks to coroutine-native I/O.
+A production trading infrastructure company is evaluating Corosio for high-performance networking. This is money on the wire. [P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf)<sup>[1]</sup> documents qualitative findings from a derivatives exchange porting from Asio callbacks to coroutine-native I/O.
 
 ---
 
@@ -85,7 +85,7 @@ A production trading infrastructure company is evaluating Corosio for high-perfo
 
 Asio got many things right. We built on its stream model, its buffer sequences, its executor architecture. We started from C++20.
 
-C++20 coroutines were designed for generality: async patterns, lazy evaluation, generators. We used them directly for I/O. Five properties combine into a substrate suited to I/O. [P4088R0](https://wg21.link/p4088r0)<sup>[6]</sup> traces the full causal chain from mechanism to library:
+C++20 coroutines were designed for generality: async patterns, lazy evaluation, generators. We used them directly for I/O. Five properties combine into a substrate suited to I/O. [P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf)<sup>[2]</sup> traces the full causal chain from mechanism to library:
 
 1. **Type erasure is structural.** `coroutine_handle<>` erases the coroutine's type. The frame is the erasure. `task<T>` has one template parameter. `any_stream` works without per-operation allocation. The compiler provides the type erasure that template-based designs must build by hand.
 
@@ -134,7 +134,7 @@ Pure C++20. No language extensions. No compiler intrinsics. Works with every con
 
 ### 4.5 Production deployment
 
-Cross-platform: IOCP, epoll, kqueue. Three independent Boost library adopters (MySQL, Redis, Postgres). One institutional evaluation in production trading infrastructure ([P4125R0](https://wg21.link/p4125r0)<sup>[8]</sup>).
+Cross-platform: IOCP, epoll, kqueue. Three independent Boost library adopters (MySQL, Redis, Postgres). One institutional evaluation in production trading infrastructure ([P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf)<sup>[1]</sup>).
 
 ### 4.6 Modularity
 
@@ -180,7 +180,7 @@ Three gains:
 
 3. **Backend insulation.** Swap Asio for Corosio by recompiling one `.cpp` file. Consumers never recompile. Headers do not change.
 
-Frame allocator propagation works through the adapter. Recycling allocators on MSVC yield a 3.1x throughput improvement ([P4007R0](https://wg21.link/p4007r0)<sup>[3]</sup> Section 5).
+Frame allocator propagation works through the adapter. Recycling allocators on MSVC yield a 3.1x throughput improvement ([P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[3]</sup> Section 5).
 
 ### 5.2 The Migration Path
 
@@ -277,13 +277,13 @@ The ABI stability of Stage One provides the boundary. `any_stream` is the contra
 
 ### 8.1 Paper 1: IoAwaitable Protocol
 
-[P4003R1](https://wg21.link/p4003r1)<sup>[2]</sup> published. [P4172R0](https://wg21.link/p4172r0) provides design rationale. Targeting first LEWG review at Brno (June 2026).
+[P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup> published. [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[5]</sup> provides design rationale. Targeting first LEWG review at Brno (June 2026).
 
 The coroutine execution model for I/O. Depends on nothing.
 
 **Key types.** `IoAwaitable` concept, `IoRunnable` concept, `Executor` concept (`dispatch`, `post`, `context`), `execution_context` with service registry and frame allocator ownership, `executor_ref` (two-pointer type-erased executor), `io_env` (bundles executor, stop token, frame allocator).
 
-**What coroutines provide.** The IoAwaitable protocol solves frame allocator timing through forward propagation via TLS. The frame allocator is available before `operator new` executes. No language extensions required. 3.1x throughput improvement using recycling allocators on MSVC ([P4007R0](https://wg21.link/p4007r0)<sup>[3]</sup> Section 5).
+**What coroutines provide.** The IoAwaitable protocol solves frame allocator timing through forward propagation via TLS. The frame allocator is available before `operator new` executes. No language extensions required. 3.1x throughput improvement using recycling allocators on MSVC ([P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[3]</sup> Section 5).
 
 **Shipping status.** Capy implements the full protocol. Corosio builds a complete networking stack on it. Shipping today on Windows, Linux, and macOS.
 
@@ -365,7 +365,7 @@ Structured concurrency primitives for coroutine-native code. Depends on Paper 2.
 
 ### 8.8 Papers 10-12: TCP, DNS, UDP
 
-**Paper 10: TCP.** `tcp_socket`, `tcp_acceptor`, `endpoint`, `ipv4_address`, `ipv6_address`. A `tcp_socket` satisfies `Stream`. This delivers what the committee has been trying to standardize since [N1925](https://wg21.link/n1925)<sup>[5]</sup> (2005). Shipping in Corosio. Used by other Boost libraries and users.
+**Paper 10: TCP.** `tcp_socket`, `tcp_acceptor`, `endpoint`, `ipv4_address`, `ipv6_address`. A `tcp_socket` satisfies `Stream`. This delivers what the committee has been trying to standardize since [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[6]</sup> (2005). Shipping in Corosio. Used by other Boost libraries and users.
 
 **Paper 11: DNS.** `resolver` with `resolve(host, service)` for forward resolution and `resolve(endpoint)` for reverse resolution. Without DNS, TCP sockets can only connect to hardcoded IP addresses. Shipping in Corosio.
 
@@ -401,7 +401,7 @@ Sender algorithms compose at compile time with full type information. The optimi
 
 The question is whether byte-oriented I/O benefits from the same model.
 
-The properties in Section 3 - type erasure, frame allocation, symmetric transfer - work because coroutines are used directly. A sender layer between the coroutine and the platform loses them. [P4007R0](https://wg21.link/p4007r0)<sup>[3]</sup> documents four structural gaps where `std::execution` meets coroutines: three at the boundary - error reporting, error returns, and frame allocator propagation - and one inside the composition mechanism: the symmetric transfer gap (documented in [P2583R0](https://wg21.link/p2583r0)).
+The properties in Section 3 - type erasure, frame allocation, symmetric transfer - work because coroutines are used directly. A sender layer between the coroutine and the platform loses them. [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[3]</sup> documents four structural gaps where `std::execution` meets coroutines: three at the boundary - error reporting, error returns, and frame allocator propagation - and one inside the composition mechanism: the symmetric transfer gap (documented in [P2583R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r0.pdf)<sup>[7]</sup>).
 
 Domain specialization is not fragmentation. GPU compute got `nvexec` with CUDA extensions and a separate namespace. C++ has multiple container types, multiple string types, multiple smart pointer types. Two async models for two distinct domains is the same principle.
 
@@ -518,14 +518,19 @@ We built this. It works. We are reporting what we found.
 
 ## References
 
-1. [P2300R10](https://wg21.link/p2300r10) - "`std::execution`" (Micha&#322; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
-2. [P4003R1](https://wg21.link/p4003r1) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r1
-3. [P4007R0](https://wg21.link/p4007r0) - "Senders and Coroutines" (Vinnie Falco, Mungo Gill, 2026). https://wg21.link/p4007r0
-4. [P4014R0](https://wg21.link/p4014r0) - "The Sender Sub-Language" (Vinnie Falco, 2026). https://wg21.link/p4014r0
-5. [N1925](https://wg21.link/n1925) - "A Proposal to Add Networking Utilities to the C++ Standard Library" (Chris Kohlhoff, 2005). https://wg21.link/n1925
-6. [P4088R0](https://wg21.link/p4088r0) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026). https://wg21.link/p4088r0
-7. [P4090R0](https://wg21.link/p4090r0) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, 2026). https://wg21.link/p4090r0
-8. [P4125R0](https://wg21.link/p4125r0) - "Field Report: Coroutine-Native I/O at a Derivatives Exchange" (Vinnie Falco, 2026). https://wg21.link/p4125r0
+[1] [P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf) - "Field Report: Coroutine-Native I/O at a Derivatives Exchange" (Vinnie Falco, 2026).
+
+[2] [P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
+
+[3] [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf) - "Senders and Coroutines" (Vinnie Falco, Mungo Gill, 2026).
+
+[4] [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+
+[5] [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)
+
+[6] [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf) - "Networking proposal for TR2 (rev. 1)" (Gerhard Wesp, 2005).
+
+[7] [P2583R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r0.pdf) - "Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026).
 
 ---
 
@@ -537,6 +542,6 @@ The authors of `std::execution` - Eric Niebler, Kirk Shoop, Lewis Baker, and the
 
 The committee designed C++20 coroutines. Gor Nishanov, Lewis Baker, and their collaborators gave C++ the language mechanisms that make this I/O design possible.
 
-Dietmar K&uuml;hl's feedback on [P4007R0](https://wg21.link/p4007r0) and [P4014R0](https://wg21.link/p4014r0) improved the technical quality of both papers.
+Dietmar K&uuml;hl's feedback on [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf) and [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf) improved the technical quality of both papers.
 
 Ruben Perez, Marcelo Zimbres Silva, and the Boost.Postgres team adopted Capy and Corosio independently. Their experience is evidence we could not manufacture ourselves.

@@ -14,7 +14,7 @@ reply-to:
 
 Senders pay a frame allocation to enter the awaitable protocol. They do not have to.
 
-The IoAwaitable protocol ([P4003R1](https://wg21.link/p4003r1)<sup>[1]</sup>) defines a contract between a coroutine and an I/O reactor: the coroutine suspends, the reactor performs the operation, and the executor resumes the coroutine when the result is ready. The only way to obtain a `coroutine_handle<>` today is from a coroutine, and a coroutine requires a frame allocation. A sender pipeline that wants to invoke an IoAwaitable must allocate a coroutine frame to get a handle - even though the sender already has its own operation state and does not need a frame.
+The IoAwaitable protocol ([P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[1]</sup>) defines a contract between a coroutine and an I/O reactor: the coroutine suspends, the reactor performs the operation, and the executor resumes the coroutine when the result is ready. The only way to obtain a `coroutine_handle<>` today is from a coroutine, and a coroutine requires a frame allocation. A sender pipeline that wants to invoke an IoAwaitable must allocate a coroutine frame to get a handle - even though the sender already has its own operation state and does not need a frame.
 
 This paper is additive. It does not take anything away from senders, from coroutines, or from any existing design. It gives senders something they do not have today: zero-allocation access to every IoAwaitable ever written - timers, channels, semaphores, I/O operations, and anything else the ecosystem produces. A general bridge to standard awaitables would also need to handle the `void`-returning and `bool`-returning variants of `await_suspend`. It gives awaitable authors a new consumer base without modifying a single line of their code.
 
@@ -34,9 +34,9 @@ This paper traces the history of alternative coroutine designs that explored the
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)<sup>[2]</sup>), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[2]</sup>), a project to bring coroutine-native I/O to C++.
 
-The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
@@ -54,7 +54,7 @@ One I/O implementation. Both coroutines and senders consume it. Zero allocation 
 
 ### 2.1 The Executor
 
-The coroutine executor ([P4003R1](https://wg21.link/p4003r1)<sup>[1]</sup>) has two operations:
+The coroutine executor ([P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[1]</sup>) has two operations:
 
 ```cpp
 coroutine_handle<>
@@ -116,9 +116,9 @@ The handle is the only thing the executor sees. It calls `.resume()`. It does no
 
 ## 3. The Problem
 
-The only way to obtain a `coroutine_handle<>` today is from a coroutine. A coroutine requires a frame allocation. The awaitable-to-sender bridge in [P4093R0](https://wg21.link/p4093r0)<sup>[5]</sup> demonstrates this: the bridge creates a coroutine whose sole purpose is to hold a handle that the reactor can resume. The coroutine frame is the tax.
+The only way to obtain a `coroutine_handle<>` today is from a coroutine. A coroutine requires a frame allocation. The awaitable-to-sender bridge in [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[5]</sup> demonstrates this: the bridge creates a coroutine whose sole purpose is to hold a handle that the reactor can resume. The coroutine frame is the tax.
 
-[P4093R0](https://wg21.link/p4093r0)<sup>[5]</sup> Appendix A shows the bridge implementation. The `bridge_task` coroutine exists to produce a `coroutine_handle<>`. The coroutine body calls `co_await` on the IoAwaitable, and the `await_suspend` receives the handle from the compiler. The bridge works. It allocates a coroutine frame per I/O operation.
+[P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[5]</sup> Appendix A shows the bridge implementation. The `bridge_task` coroutine exists to produce a `coroutine_handle<>`. The coroutine body calls `co_await` on the IoAwaitable, and the `await_suspend` receives the handle from the compiler. The bridge works. It allocates a coroutine frame per I/O operation.
 
 For a coroutine user, the frame allocation is the cost of doing business - the frame holds the coroutine's local variables, its suspension-point state, and its promise. The frame earns its allocation. For a sender pipeline, the frame holds nothing the sender needs. The sender already has its own operation state. The frame is overhead.
 
@@ -130,7 +130,7 @@ One allocation per I/O operation. For high-throughput networking - millions of o
 
 An I/O operation can take one of two shapes: a sender or an awaitable. The choice determines which consumption model pays a tax and which runs at zero cost.
 
-**If the I/O operation is a sender,** coroutines consume it through `co_await` on the sender. The sender's `connect` produces an operation state. The coroutine must store that operation state somewhere - typically in the coroutine frame or in a bridge object. The sender's completion calls `set_value` on a receiver, which must resume the coroutine. The machinery to connect a sender to a coroutine - `execution::task`, or a bridge like the one in [P4093R0](https://wg21.link/p4093r0)<sup>[5]</sup> - is the tax coroutines pay. [P3552R3](https://wg21.link/p3552r3)<sup>[22]</sup>, "Add a Coroutine Task Type," is this tax made standard: it type-erases the operation state, allocates, and converts an `error_code` to `exception_ptr` through the execution framework's error-conversion machinery ([P2300R10](https://wg21.link/p2300r10)<sup>[20]</sup>).
+**If the I/O operation is a sender,** coroutines consume it through `co_await` on the sender. The sender's `connect` produces an operation state. The coroutine must store that operation state somewhere - typically in the coroutine frame or in a bridge object. The sender's completion calls `set_value` on a receiver, which must resume the coroutine. The machinery to connect a sender to a coroutine - `execution::task`, or a bridge like the one in [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[5]</sup> - is the tax coroutines pay. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[6]</sup>, "Add a Coroutine Task Type," is this tax made standard: it type-erases the operation state, allocates, and converts an `error_code` to `exception_ptr` through the execution framework's error-conversion machinery ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[7]</sup>).
 
 **If the I/O operation is an awaitable,** coroutines consume it directly. `co_await stream.read_some(buf)` is the language feature working as designed. The compiler provides the handle. The awaitable suspends the coroutine. The reactor completes the operation. The executor resumes the coroutine. No bridge. No type erasure. No allocation beyond the coroutine frame that the coroutine already needs for its own state.
 
@@ -148,20 +148,20 @@ The tension between "frame hidden from the caller" and "frame visible to the cal
 
 | Year | Paper                                                             | Author(s)                          | Design                                                                                  |
 | ---- | ----------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
-| 2015 | [N4453](https://wg21.link/n4453)<sup>[6]</sup>                   | Kohlhoff                           | Resumable Expressions. Single `resumable` keyword, "suspend down."                      |
-| 2015 | [P0114R0](https://wg21.link/p0114r0)<sup>[7]</sup>               | Kohlhoff                           | Resumable Expressions (revised).                                                        |
-| 2015 | [P0158R0](https://wg21.link/p0158r0)<sup>[8]</sup>               | Allsop et al.                      | Coroutines belong in a TS. Argued for more time.                                        |
-| 2018 | [P0057R8](https://wg21.link/p0057r8)<sup>[9]</sup>               | Nishanov                           | Coroutines TS. Frame-erased. The design that shipped.                                   |
-| 2018 | [P0973R0](https://wg21.link/p0973r0)<sup>[10]</sup>              | Romer, Dennett                     | Coroutines TS Use Cases and Design Issues. Critique: implicit allocation, hidden frame.  |
-| 2018 | [P1063R0](https://wg21.link/p1063r0)<sup>[11]</sup>              | Romer, Dennett, Carruth            | Core Coroutines. Frame-visible alternative. Expose minimal primitives.                   |
-| 2018 | [P1134R0](https://vinniefalco.github.io/papers/drafts/d1134r0.html)<sup>[12]</sup> | Falco                   | An Elegant Coroutine Abstraction. Library-only stackless coroutines.                     |
-| 2018 | [P1342R0](https://wg21.link/p1342r0)<sup>[13]</sup>              | Baker                              | Unifying Coroutines TS and Core Coroutines. Attempted compromise.                        |
-| 2018 | [P1362R0](https://wg21.link/p1362r0)<sup>[14]</sup>              | Nishanov                           | Incremental Approach: Coroutine TS + Core Coroutines.                                    |
-| 2019 | [P1492R0](https://wg21.link/p1492r0)<sup>[15]</sup>              | Smith, Vandevoorde et al.          | Language and implementation impact of coroutine proposals.                                |
-| 2019 | [P1493R0](https://wg21.link/p1493r0)<sup>[16]</sup>              | Romer, Nishanov, Baker, Mihailov   | Coroutines: Use-cases and Trade-offs.                                                    |
-| 2019 | [P0912R5](https://wg21.link/p0912r5)<sup>[17]</sup>              | Nishanov                           | Merge Coroutines TS into C++20. The frame-erased model ships.                            |
-| 2024 | [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup>              | Morgenstern                        | Implementation defined coroutine extensions. Legalizes `coroutine_handle` specialization. |
-| 2026 | [P0876R22](https://wg21.link/p0876r22)<sup>[18]</sup>            | Kowalke, Goodspeed                 | `fiber_context`. Stackful coroutines. Complementary, not competing.                      |
+| 2015 | [N4453](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4453.pdf)<sup>[8]</sup>                   | Kohlhoff                           | Resumable Expressions. Single `resumable` keyword, "suspend down."                      |
+| 2015 | [P0114R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0114r0.pdf)<sup>[9]</sup>               | Kohlhoff                           | Resumable Expressions (revised).                                                        |
+| 2015 | [P0158R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0158r0.html)<sup>[10]</sup>               | Allsop et al.                      | Coroutines belong in a TS. Argued for more time.                                        |
+| 2018 | [P0057R8](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0057r8.pdf)<sup>[11]</sup>               | Nishanov                           | Coroutines TS. Frame-erased. The design that shipped.                                   |
+| 2018 | [P0973R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0973r0.pdf)<sup>[12]</sup>              | Romer, Dennett                     | Coroutines TS Use Cases and Design Issues. Critique: implicit allocation, hidden frame.  |
+| 2018 | [P1063R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1063r0.pdf)<sup>[13]</sup>              | Romer, Dennett, Carruth            | Core Coroutines. Frame-visible alternative. Expose minimal primitives.                   |
+| 2018 | [P1134R0](https://vinniefalco.github.io/papers/drafts/d1134r0.html)<sup>[14]</sup> | Falco                   | An Elegant Coroutine Abstraction. Library-only stackless coroutines.                     |
+| 2018 | [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[15]</sup>              | Baker                              | Unifying Coroutines TS and Core Coroutines. Attempted compromise.                        |
+| 2018 | [P1362R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1362r0.pdf)<sup>[16]</sup>              | Nishanov                           | Incremental Approach: Coroutine TS + Core Coroutines.                                    |
+| 2019 | [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[17]</sup>              | Smith, Vandevoorde et al.          | Language and implementation impact of coroutine proposals.                                |
+| 2019 | [P1493R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1493r0.pdf)<sup>[18]</sup>              | Romer, Nishanov, Baker, Mihailov   | Coroutines: Use-cases and Trade-offs.                                                    |
+| 2019 | [P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html)<sup>[19]</sup>              | Nishanov                           | Merge Coroutines TS into C++20. The frame-erased model ships.                            |
+| 2024 | [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup>              | Morgenstern                        | Implementation defined coroutine extensions. Legalizes `coroutine_handle` specialization. |
+| 2026 | [P0876R22](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p0876r22.pdf)<sup>[21]</sup>            | Kowalke, Goodspeed                 | `fiber_context`. Stackful coroutines. Complementary, not competing.                      |
 
 The committee explored both frame-erased and frame-visible designs. It chose frame-erased. That was the right choice for I/O - type erasure through `coroutine_handle<>` gives type-erased streams, split compilation, and ABI stability. The I/O library compiles once.
 
@@ -173,23 +173,23 @@ The two needs are not in conflict.
 
 ## 6. Three Kinds of Coroutines
 
-C++ has shipped multiple models for parallel execution (`std::execution_policy` and [P2300R10](https://wg21.link/p2300r10)<sup>[20]</sup> senders with `bulk`), multiple models for formatted output (`iostream` and `std::format`), and multiple models for error handling (exceptions and `error_code`). Multiple coroutine models serving different domains is consistent with the committee's practice. Unlike `iostream` and `std::format`, which overlap significantly, the three coroutine models serve non-overlapping domains: stackful coroutines serve deep suspension through coroutine-unaware APIs, frame-erased coroutines serve type-erased I/O with split compilation and ABI stability, and frame-visible coroutines (if they ever exist) serve compile-time work graphs that need the frame in the type system. Each addresses a use case the others structurally cannot.
+C++ has shipped multiple models for parallel execution (`std::execution_policy` and [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[7]</sup> senders with `bulk`), multiple models for formatted output (`iostream` and `std::format`), and multiple models for error handling (exceptions and `error_code`). Multiple coroutine models serving different domains is consistent with the committee's practice. Unlike `iostream` and `std::format`, which overlap significantly, the three coroutine models serve non-overlapping domains: stackful coroutines serve deep suspension through coroutine-unaware APIs, frame-erased coroutines serve type-erased I/O with split compilation and ABI stability, and frame-visible coroutines (if they ever exist) serve compile-time work graphs that need the frame in the type system. Each addresses a use case the others structurally cannot.
 
 ### 6.1 Stackful (fibers)
 
-[P0876R22](https://wg21.link/p0876r22)<sup>[18]</sup> (Kowalke) proposes `fiber_context` - stackful coroutines that maintain a separate stack and support deep suspension. Stackful coroutines address a different set of use cases than stackless coroutines: interacting with coroutine-unaware APIs, deep call chains that suspend at arbitrary depth, and integration with legacy code. The committee has been working on this for over a decade. It is complementary, not competing.
+[P0876R22](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p0876r22.pdf)<sup>[21]</sup> (Kowalke) proposes `fiber_context` - stackful coroutines that maintain a separate stack and support deep suspension. Stackful coroutines address a different set of use cases than stackless coroutines: interacting with coroutine-unaware APIs, deep call chains that suspend at arbitrary depth, and integration with legacy code. The committee has been working on this for over a decade. It is complementary, not competing.
 
 ### 6.2 Stackless, frame-erased (C++20 coroutines)
 
 C++20 coroutines type-erase the frame through `coroutine_handle<>`. The promise type is invisible to the caller. The caller sees only a handle. This is ideal for I/O: type erasure gives type-erased streams, split compilation, and ABI stability. The I/O library compiles once. Transport changes do not break the ABI.
 
-`std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[20]</sup>) provides compile-time sender composition, structured concurrency guarantees, and a customization point model that enables heterogeneous dispatch. These are real achievements. The sender model serves GPU dispatch, parallel algorithms, and infrastructure well.
+`std::execution` ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[7]</sup>) provides compile-time sender composition, structured concurrency guarantees, and a customization point model that enables heterogeneous dispatch. These are real achievements. The sender model serves GPU dispatch, parallel algorithms, and infrastructure well.
 
 ### 6.3 Stackless, frame-visible
 
 Senders want to see everything in the type system. The frame is part of the operation state. The sender pipeline owns the frame, knows its size, and can inline it.
 
-Romer, Dennett, and Carruth identified this need in [P1063R0](https://wg21.link/p1063r0)<sup>[11]</sup>, "Core Coroutines." Their proposal sought to expose minimal coroutine primitives that map directly to the underlying implementation, giving the caller direct access to the coroutine frame in the C++ type system. Baker attempted to unify the two models in [P1342R0](https://wg21.link/p1342r0)<sup>[13]</sup>.
+Romer, Dennett, and Carruth identified this need in [P1063R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1063r0.pdf)<sup>[13]</sup>, "Core Coroutines." Their proposal sought to expose minimal coroutine primitives that map directly to the underlying implementation, giving the caller direct access to the coroutine frame in the C++ type system. Baker attempted to unify the two models in [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[15]</sup>.
 
 If C++ had frame-visible stackless coroutines, senders could invoke IoAwaitables by constructing the frame inline in their operation state. No allocation. The frame is part of the sender's storage.
 
@@ -231,7 +231,7 @@ When the reactor completes an I/O operation and calls `executor.dispatch(h)`, th
 
 ### 7.2 The Sender Path
 
-A sender pipeline would use a callback handle like this. The following code works on all three major compilers today but relies on the de facto coroutine frame ABI documented by [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> - it is not guaranteed by the current standard. Sections 8 and 9 discuss the standardisation path.
+A sender pipeline would use a callback handle like this. The following code works on all three major compilers today but relies on the de facto coroutine frame ABI documented by [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> - it is not guaranteed by the current standard. Sections 8 and 9 discuss the standardisation path.
 
 ```cpp
 struct callback_frame {
@@ -293,9 +293,9 @@ The `io_env` carries the sender's executor. The awaitable submits the operation 
 
 ## 8. Prior Art: P3203R0
 
-[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> (Morgenstern, 2024), "Implementation defined coroutine extensions," was presented at Sofia (June 2025) by Niall Douglas on behalf of the author. The paper proposes changing the standard's prohibition on specializing `coroutine_handle` from undefined behavior to implementation defined behavior. The EWG poll to forward the paper was not consensus (SF 0 / F 9 / N 8 / A 2 / SA 1). Committee feedback indicated the paper needed a more complete design with constraints on specialisations, and that the change from undefined to implementation-defined may have no practical effect on implementations. The interest - nine in favour - suggests the use case resonates; the concerns point to the design space this paper explores.
+[P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> (Morgenstern, 2024), "Implementation defined coroutine extensions," was presented at Sofia (June 2025) by Niall Douglas on behalf of the author. The paper proposes changing the standard's prohibition on specializing `coroutine_handle` from undefined behavior to implementation defined behavior. The EWG poll to forward the paper was not consensus (SF 0 / F 9 / N 8 / A 2 / SA 1). Committee feedback indicated the paper needed a more complete design with constraints on specialisations, and that the change from undefined to implementation-defined may have no practical effect on implementations. The interest - nine in favour - suggests the use case resonates; the concerns point to the design space this paper explores.
 
-[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> documents that all three major compilers (MSVC, GCC, Clang) use the same coroutine frame layout:
+[P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> documents that all three major compilers (MSVC, GCC, Clang) use the same coroutine frame layout:
 
 ```cpp
 struct coroutine_frame {
@@ -307,9 +307,9 @@ struct coroutine_frame {
 
 The `.resume()` member function of `coroutine_handle<>` calls the function pointer at offset 0. A user-provided struct with the same two-pointer prefix works on every compiler today.
 
-[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> identifies the same use case this paper describes: allowing non-coroutine code to provide a `coroutine_handle` that participates in the awaitable protocol. Morgenstern demonstrates this in Boost.Cobalt for Python bindings and stackful coroutine integration.
+[P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> identifies the same use case this paper describes: allowing non-coroutine code to provide a `coroutine_handle` that participates in the awaitable protocol. Morgenstern demonstrates this in Boost.Cobalt for Python bindings and stackful coroutine integration.
 
-The wording change in [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> is the legal prerequisite for the callback handle approach described in Section 9.
+The wording change in [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> is the legal prerequisite for the callback handle approach described in Section 9.
 
 ---
 
@@ -329,7 +329,7 @@ struct callback_frame {
 };
 ```
 
-The struct's first two members match the coroutine frame layout documented by [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup>. `coroutine_handle<>::from_address(&cb)` produces a `coroutine_handle<>` that, when `.resume()` is called, calls the function pointer at offset 0. The awaitable receives this handle. It cannot tell the difference between this handle and one from a real coroutine.
+The struct's first two members match the coroutine frame layout documented by [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup>. `coroutine_handle<>::from_address(&cb)` produces a `coroutine_handle<>` that, when `.resume()` is called, calls the function pointer at offset 0. The awaitable receives this handle. It cannot tell the difference between this handle and one from a real coroutine.
 
 The `destroy` pointer is a no-op - the sender owns its own lifetime. If a component calls `destroy()` on the callback handle - for example, during shutdown - the no-op means the sender's operation completes without calling `set_value` or `set_stopped`. In the IoAwaitable protocol, the reactor and executor call only `resume()`, never `destroy()`. If cancellation support is needed, the `destroy` pointer can map to a function that calls `set_stopped` on the receiver. The `data` pointer points back to the operation state. Three pointers. Twenty-four bytes on a 64-bit platform. No heap allocation.
 
@@ -343,7 +343,7 @@ This means the standard would need to mandate the two-pointer prefix layout - `r
 
 ### 9.3 What the Standard Would Need
 
-[P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> formalizes what all three major compilers already do. The coroutine frame layout with two function pointers at the front is not an implementation accident - it is the layout every compiler chose independently, and it is the layout that makes `coroutine_handle<>::from_address` work. The question is whether the committee will mandate it.
+[P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> formalizes what all three major compilers already do. The coroutine frame layout with two function pointers at the front is not an implementation accident - it is the layout every compiler chose independently, and it is the layout that makes `coroutine_handle<>::from_address` work. The question is whether the committee will mandate it.
 
 The standard could also provide convenience wrappers on top of the mandated layout - a standard `callback_frame` type, a factory function that fills in the pointers, or a named concept that constrains the prefix. These are API sugar. The layout mandate is the prerequisite. Without it, none of them can produce a zero-allocation `coroutine_handle<>` from user-owned storage.
 
@@ -357,7 +357,7 @@ A callback handle gives senders a zero-allocation entry into the awaitable proto
 
 - **One I/O implementation.** The I/O library implements each operation once as an IoAwaitable. Coroutine users `co_await` it. Sender users invoke `await_suspend` with a callback handle. Both go through the same reactor, the same executor, the same platform implementation.
 
-- **Zero-allocation bridge.** The awaitable-to-sender bridge in [P4093R0](https://wg21.link/p4093r0)<sup>[5]</sup> currently allocates a coroutine frame. With a callback handle, the bridge is three pointers.
+- **Zero-allocation bridge.** The awaitable-to-sender bridge in [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[5]</sup> currently allocates a coroutine frame. With a callback handle, the bridge is three pointers.
 
 - **Type-erased streams.** Streams are type-erasable because the executor is type-erased and the handle is type-erased. Both coroutines and senders see the same stream type.
 
@@ -395,52 +395,52 @@ A: C++ has multiple models for parallel execution, formatted output, and error h
 
 ## Acknowledgments
 
-The author thanks Gor Nishanov for the C++20 coroutine model and its explicit support for task type diversity; Christopher Kohlhoff for the original continuation framing in [P0113R0](https://wg21.link/p0113r0)<sup>[21]</sup> and for Resumable Expressions, which explored the boundary between type erasure and type visibility before most of the committee was thinking about it; Geoff Romer, James Dennett, and Chandler Carruth for [P1063R0](https://wg21.link/p1063r0)<sup>[11]</sup>, which identified the frame-visibility need with precision; Lewis Baker for [P1342R0](https://wg21.link/p1342r0)<sup>[13]</sup>, which attempted to unify the two models; Klemens Morgenstern for [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup>, which removes the legal barrier and documents the ABI reality; Niall Douglas for presenting [P3203R0](https://wg21.link/p3203r0)<sup>[19]</sup> at Sofia; Oliver Kowalke and Nat Goodspeed for a decade of work on stackful coroutines; and Steve Gerbino and Mungo Gill for [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> implementation work.
+The author thanks Gor Nishanov for the C++20 coroutine model and its explicit support for task type diversity; Christopher Kohlhoff for the original continuation framing in [P0113R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0113r0.html)<sup>[22]</sup> and for Resumable Expressions, which explored the boundary between type erasure and type visibility before most of the committee was thinking about it; Geoff Romer, James Dennett, and Chandler Carruth for [P1063R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1063r0.pdf)<sup>[13]</sup>, which identified the frame-visibility need with precision; Lewis Baker for [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[15]</sup>, which attempted to unify the two models; Klemens Morgenstern for [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup>, which removes the legal barrier and documents the ABI reality; Niall Douglas for presenting [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html)<sup>[20]</sup> at Sofia; Oliver Kowalke and Nat Goodspeed for a decade of work on stackful coroutines; and Steve Gerbino and Mungo Gill for [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> implementation work.
 
 ---
 
 ## References
 
-1. [P4003R1](https://wg21.link/p4003r1) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r1
+[1] [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-2. [P4100R0](https://wg21.link/p4100r0) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026). https://wg21.link/p4100r0
+[2] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
-3. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[3] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-4. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[4] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-5. [P4093R0](https://wg21.link/p4093r0) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4093r0
+[5] [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-6. [N4453](https://wg21.link/n4453) - "Resumable Expressions" (Christopher Kohlhoff, 2015). https://wg21.link/n4453
+[6] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-7. [P0114R0](https://wg21.link/p0114r0) - "Resumable Expressions" (Christopher Kohlhoff, 2015). https://wg21.link/p0114r0
+[7] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024).
 
-8. [P0158R0](https://wg21.link/p0158r0) - "Coroutines belong in a TS" (Jamie Allsop, Jonathan Wakely, Christopher Kohlhoff, Anthony Williams, Roger Orr, Andy Sawyer, Jonathan Coe, Arash Partow, 2015). https://wg21.link/p0158r0
+[8] [N4453](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4453.pdf) - "Resumable Expressions" (Christopher Kohlhoff, 2015).
 
-9. [P0057R8](https://wg21.link/p0057r8) - "Working Draft, C++ Extensions for Coroutines" (Gor Nishanov, 2018). https://wg21.link/p0057r8
+[9] [P0114R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0114r0.pdf) - "Resumable Expressions" (Christopher Kohlhoff, 2015).
 
-10. [P0973R0](https://wg21.link/p0973r0) - "Coroutines TS Use Cases and Design Issues" (Geoff Romer, James Dennett, 2018). https://wg21.link/p0973r0
+[10] [P0158R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0158r0.html) - "Coroutines belong in a TS" (Jamie Allsop, Jonathan Wakely, Christopher Kohlhoff, Anthony Williams, Roger Orr, Andy Sawyer, Jonathan Coe, Arash Partow, 2015).
 
-11. [P1063R0](https://wg21.link/p1063r0) - "Core Coroutines" (Geoff Romer, James Dennett, Chandler Carruth, 2018). https://wg21.link/p1063r0
+[11] [P0057R8](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0057r8.pdf) - "Working Draft, C++ Extensions for Coroutines" (Gor Nishanov, 2018).
 
-12. [P1134R0](https://vinniefalco.github.io/papers/drafts/d1134r0.html) - "An Elegant Coroutine Abstraction" (Vinnie Falco, 2018). https://vinniefalco.github.io/papers/drafts/d1134r0.html
+[12] [P0973R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0973r0.pdf) - "Coroutines TS Use Cases and Design Issues" (Geoff Romer, James Dennett, 2018).
 
-13. [P1342R0](https://wg21.link/p1342r0) - "Unifying Coroutines TS and Core Coroutines" (Lewis Baker, 2018). https://wg21.link/p1342r0
+[13] [P1063R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1063r0.pdf) - "Core Coroutines" (Geoff Romer, James Dennett, Chandler Carruth, 2018).
 
-14. [P1362R0](https://wg21.link/p1362r0) - "Incremental Approach: Coroutine TS + Core Coroutines" (Gor Nishanov, 2018). https://wg21.link/p1362r0
+[14] [P1134R0](https://vinniefalco.github.io/papers/drafts/d1134r0.html) - "An Elegant Coroutine Abstraction" (Vinnie Falco, 2018).
 
-15. [P1492R0](https://wg21.link/p1492r0) - "Language and implementation impact of coroutine proposals" (Richard Smith, Daveed Vandevoorde et al., 2019). https://wg21.link/p1492r0
+[15] [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf) - "Unifying Coroutines TS and Core Coroutines" (Lewis Baker, 2018).
 
-16. [P1493R0](https://wg21.link/p1493r0) - "Coroutines: Use-cases and Trade-offs" (Geoffrey Romer, Gor Nishanov, Lewis Baker, Mihail Mihailov, 2019). https://wg21.link/p1493r0
+[16] [P1362R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1362r0.pdf) - "Incremental Approach: Coroutine TS + Core Coroutines" (Gor Nishanov, 2018).
 
-17. [P0912R5](https://wg21.link/p0912r5) - "Merge Coroutines TS into C++20 working draft" (Gor Nishanov, 2019). https://wg21.link/p0912r5
+[17] [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf) - "Language and implementation impact of coroutine proposals" (Richard Smith, Daveed Vandevoorde et al., 2019).
 
-18. [P0876R22](https://wg21.link/p0876r22) - "fiber_context - fibers without scheduler" (Oliver Kowalke, Nat Goodspeed, 2026). https://wg21.link/p0876r22
+[18] [P1493R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1493r0.pdf) - "Coroutines: Use-cases and Trade-offs" (Geoffrey Romer, Gor Nishanov, Lewis Baker, Mihail Mihailov, 2019).
 
-19. [P3203R0](https://wg21.link/p3203r0) - "Implementation defined coroutine extensions" (Klemens Morgenstern, 2024). https://wg21.link/p3203r0
+[19] [P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html) - "Merge Coroutines TS into C++20 working draft" (Gor Nishanov, 2019).
 
-20. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
+[20] [P3203R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3203r0.html) - "Implementation defined coroutine extensions" (Klemens Morgenstern, 2024).
 
-21. [P0113R0](https://wg21.link/p0113r0) - "Executors and Asynchronous Operations, Revision 2" (Christopher Kohlhoff, 2015). https://wg21.link/p0113r0
+[21] [P0876R22](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p0876r22.pdf) - "fiber_context - fibers without scheduler" (Oliver Kowalke, Nat Goodspeed, 2026).
 
-22. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
+[22] [P0113R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0113r0.html) - "Executors and Asynchronous Operations, Revision 2" (Christopher Kohlhoff, 2015).

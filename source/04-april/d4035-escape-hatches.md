@@ -150,9 +150,9 @@ The consequences of misuse are higher in concurrency than in data validation - a
 
 ## 7. `cstring_view` Constructors
 
-[P3655R3](https://wg21.link/p3655r3)<sup>[11]</sup> ("cstring_view") proposes `std::cstring_view`, a non-owning view guaranteed to be null-terminated. The type fills a real gap: `std::string` owns and null-terminates, `std::string_view` does not own and does not null-terminate, and `cstring_view` does not own but does null-terminate. Over 2,100 independent implementations on GitHub confirm the demand. The `substr` split - one-argument returning `cstring_view`, two-argument returning `string_view` - and the deletion of `remove_suffix` show careful attention to the null-termination invariant.
+[P3655R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3655r3.html)<sup>[11]</sup> ("cstring_view") proposes `std::cstring_view`, a non-owning view guaranteed to be null-terminated. The type fills a real gap: `std::string` owns and null-terminates, `std::string_view` does not own and does not null-terminate, and `cstring_view` does not own but does null-terminate. Over 2,100 independent implementations on GitHub confirm the demand. The `substr` split - one-argument returning `cstring_view`, two-argument returning `string_view` - and the deletion of `remove_suffix` show careful attention to the null-termination invariant.
 
-[P3566R2](https://wg21.link/p3566r2)<sup>[12]</sup> ("You shall not pass `char*`") independently arrives at the same pattern for `string` and `string_view`: deprecate the `char const*` constructor as an unbounded-range operation, add a bounded `char[N]` constructor for arrays, and provide an explicitly tagged `unsafe_length_t` replacement for the deprecated path. The escape-hatch structure - safe default, explicit opt-in - is identical to the pattern documented in Sections 2-5.
+[P3566R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3566r2.pdf)<sup>[12]</sup> ("You shall not pass `char*`") independently arrives at the same pattern for `string` and `string_view`: deprecate the `char const*` constructor as an unbounded-range operation, add a bounded `char[N]` constructor for arrays, and provide an explicitly tagged `unsafe_length_t` replacement for the deprecated path. The escape-hatch structure - safe default, explicit opt-in - is identical to the pattern documented in Sections 2-5.
 
 The escape-hatch pattern from Sections 2-5 applies directly to the constructor set. P3655R3's pointer-and-length constructor has a narrow contract:
 
@@ -306,32 +306,32 @@ The author thanks Howard Hinnant for the `condition_variable` example and for th
 
 ---
 
-# References
+## References
 
-[1] Capy, https://github.com/cppalliance/capy
+[1] [Capy](https://github.com/cppalliance/capy)
 
 [2] C++ Working Draft, `condition_variable` https://eel.is/c++draft/thread.condition.condvar, `condition_variable_any` https://eel.is/c++draft/thread.condition.condvarany
 
-[3] N2406, "Mutex, Lock, Condition Variable Rationale," Howard E. Hinnant, https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2406.html
+[3] [N2406, "Mutex, Lock, Condition Variable Rationale," Howard E. Hinnant](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2406.html)
 
-[4] Boost.URL, https://github.com/boostorg/url
+[4] [Boost.URL](https://github.com/boostorg/url)
 
-[5] Boost.URL, `pct_string_view.hpp`, https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp
+[5] [Boost.URL, `pct_string_view.hpp`](https://github.com/boostorg/url/blob/develop/include/boost/url/pct_string_view.hpp)
 
-[6] Boost.Process, `cstring_ref.hpp`, https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp
+[6] [Boost.Process, `cstring_ref.hpp`](https://github.com/boostorg/process/blob/develop/include/boost/process/v2/cstring_ref.hpp)
 
-[7] Boost.SQLite, `cstring_ref.hpp`, https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp
+[7] [Boost.SQLite, `cstring_ref.hpp`](https://github.com/klemens-morgenstern/sqlite/blob/develop/include/boost/sqlite/cstring_ref.hpp)
 
-[8] FreeBSD `readdir(3)`, https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3
+[8] [FreeBSD `readdir(3)`](https://man.freebsd.org/cgi/man.cgi?query=readdir&sektion=3)
 
-[9] FreeBSD source, `sys/sys/dirent.h`, https://cgit.freebsd.org/src/tree/sys/sys/dirent.h
+[9] [FreeBSD source, `sys/sys/dirent.h`](https://cgit.freebsd.org/src/tree/sys/sys/dirent.h)
 
-[10] The Open Group Base Specifications Issue 8, https://pubs.opengroup.org/onlinepubs/9799919799/
+[10] [The Open Group Base Specifications Issue 8](https://pubs.opengroup.org/onlinepubs/9799919799/)
 
-[11] P3655R3, "cstring_view," Peter Bindels, Hana Dusikova, Jeremy Rifkin, Marco Foco, Alexey Shevlyakov, https://wg21.link/p3655r3
+[11] [P3655R3, "cstring_view," Peter Bindels, Hana Dusikova, Jeremy Rifkin, Marco Foco, Alexey Shevlyakov](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3655r3.html)
 
-[12] P3566R2, "You shall not pass `char*`," Marco Foco, Joshua Kriegshauser, Alexey Shevlyakov, Giuseppe D'Angelo, https://wg21.link/p3566r2
+[12] [P3566R2, "You shall not pass `char*` - Safety concerns working with unbounded null-terminated strings" Marco Foco, Joshua Kriegshauser, Alexey Shevlyakov, Giuseppe D'Angelo](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3566r2.pdf)
 
-[13] LEWG poll results for P3566R1, Sofia 2025, https://github.com/cplusplus/papers/issues/2210
+[13] [LEWG poll results for P3566R1, Sofia 2025](https://github.com/cplusplus/papers/issues/2210)
 
-[14] LEWG poll results for P3655R3, Croydon 2026, https://github.com/cplusplus/papers/issues/2285
+[14] [LEWG poll results for P3655R3, Croydon 2026](https://github.com/cplusplus/papers/issues/2285)

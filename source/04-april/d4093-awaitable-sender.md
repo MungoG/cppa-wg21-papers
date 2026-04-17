@@ -14,7 +14,7 @@ reply-to:
 
 Coroutine-native awaitables can be wrapped as senders, but compound I/O results must be reduced to an error code before crossing the bridge.
 
-An `IoAwaitable` ([P4003R1](https://wg21.link/p4003r1)<sup>[2]</sup>) can be wrapped as a `std::execution` sender. Awaitables returning `void` or a single value map to `set_value`. Awaitables returning `error_code` map to `set_value()` on success and `set_error(ec)` on failure - no exceptions. Awaitables returning compound I/O results - any tuple-like whose first element is `error_code` with additional elements - are rejected at compile time. The coroutine body is the translation layer: it inspects the compound result, reduces it to an `error_code`, and returns that. The bridge routes the `error_code` through the three channels without exceptions.
+An `IoAwaitable` ([P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[1]</sup>) can be wrapped as a `std::execution` sender. Awaitables returning `void` or a single value map to `set_value`. Awaitables returning `error_code` map to `set_value()` on success and `set_error(ec)` on failure - no exceptions. Awaitables returning compound I/O results - any tuple-like whose first element is `error_code` with additional elements - are rejected at compile time. The coroutine body is the translation layer: it inspects the compound result, reduces it to an `error_code`, and returns that. The bridge routes the `error_code` through the three channels without exceptions.
 
 ---
 
@@ -30,13 +30,13 @@ An `IoAwaitable` ([P4003R1](https://wg21.link/p4003r1)<sup>[2]</sup>) can be wra
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)), a project to bring coroutine-native I/O to C++.
 
-The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[5]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
-[P4092R0](https://isocpp.org/files/papers/P4092R0.pdf)<sup>[6]</sup> showed the sender-to-awaitable direction. This paper shows the reverse. The bridge depends on [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and `beman::execution`<sup>[4]</sup>, a community implementation of `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>). The complete implementation is in Appendix A.
+[P4092R0](https://isocpp.org/files/papers/P4092R0.pdf)<sup>[4]</sup> showed the sender-to-awaitable direction. This paper shows the reverse. The bridge depends on [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and `beman::execution`<sup>[5]</sup>, a community implementation of `std::execution` ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup>). The complete implementation is in Appendix A.
 
 This paper asks for nothing.
 
@@ -167,7 +167,7 @@ Cost: one coroutine frame per I/O operation that crosses the sender boundary. `a
 
 ## 7. P3552R3 Analysis
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[12]</sup> defines `std::execution::task<T>`, a coroutine type that is also a sender. Its completion signature is `set_value_t(T)`. When `T` is `std::pair<error_code, size_t>`, the compound result lands on the value channel. This is "just use `set_value`" ([P4090R0](https://isocpp.org/files/papers/P4090R0.pdf)<sup>[7]</sup> Section 5): `upon_error` is unreachable, `when_all` does not cancel siblings on I/O failure, `retry` does not fire. The programmer who writes `task<std::pair<error_code, size_t>>` has silently opted into "just use `set_value`":
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[8]</sup> defines `std::execution::task<T>`, a coroutine type that is also a sender. Its completion signature is `set_value_t(T)`. When `T` is `std::pair<error_code, size_t>`, the compound result lands on the value channel. This is "just use `set_value`" ([P4090R0](https://isocpp.org/files/papers/P4090R0.pdf)<sup>[7]</sup> Section 5): `upon_error` is unreachable, `when_all` does not cancel siblings on I/O failure, `retry` does not fire. The programmer who writes `task<std::pair<error_code, size_t>>` has silently opted into "just use `set_value`":
 
 ```cpp
 std::execution::task<
@@ -188,7 +188,7 @@ auto sndr = read_some_task(stream, buf)
 
 `task` is general-purpose. A `static_assert` rejecting compound `error_code` results would be too broad. The constraint belongs at a bridge point with I/O intent, not on the general-purpose coroutine type. A programmer who uses `task<pair<error_code, size_t>>` directly gets the value-channel behavior documented in [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf)<sup>[7]</sup> Section 5 - both values preserved, composition algebra bypassed.
 
-[P3552R3](https://wg21.link/p3552r3)<sup>[12]</sup> converts unhandled `set_error` to an exception via `AS-EXCEPT-PTR`. The observation is architectural: `as_sender` enforces the abstraction floor at the IoAwaitable-to-sender boundary. `task` does not enforce it. The programmer chooses where the floor lives.
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[8]</sup> converts unhandled `set_error` to an exception via `AS-EXCEPT-PTR`. The observation is architectural: `as_sender` enforces the abstraction floor at the IoAwaitable-to-sender boundary. `task` does not enforce it. The programmer chooses where the floor lives.
 
 ---
 
@@ -207,7 +207,7 @@ do_read(sock, buf)           // sender completing with
         });
 ```
 
-`split_ec` advertises both `set_value_t()` and `set_error_t(std::error_code)` and selects between them at runtime. The implementation is a receiver adapter - no type erasure, no variant sender, no allocation. The complete implementation is in [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup>.
+`split_ec` advertises both `set_value_t()` and `set_error_t(std::error_code)` and selects between them at runtime. The implementation is a receiver adapter - no type erasure, no variant sender, no allocation. The complete implementation is in [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup>.
 
 Three enforcement points, one abstraction floor. `as_sender` enforces it at the IoAwaitable-to-sender boundary. `split_ec` enforces it inside the pipeline. `task` does not enforce it. The programmer chooses where the floor lives.
 
@@ -221,41 +221,35 @@ The compound result stays below the floor. The binary outcome crosses above it. 
 
 ## 10. Acknowledgments
 
-The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[4]</sup> and for the channel-routing enumeration in [P2762R2](https://wg21.link/p2762r2)<sup>[8]</sup>, Micha&lstrok; Dominiak, Eric Niebler, and Lewis Baker for `std::execution`, Chris Kohlhoff for identifying the partial-success problem in [P2430R0](https://wg21.link/p2430r0)<sup>[9]</sup>, Kirk Shoop for the completion-token heuristic analysis in [P2471R1](https://wg21.link/p2471r1)<sup>[10]</sup>, Fabio Fracassi for [P3570R2](https://wg21.link/p3570r2)<sup>[11]</sup>, Peter Dimov for the refined channel mapping, and Ville Voutilainen for reflector discussion on the abstraction floor.
+The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[5]</sup> and for the channel-routing enumeration in [P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf)<sup>[9]</sup>, Micha&lstrok; Dominiak, Eric Niebler, and Lewis Baker for `std::execution`, Chris Kohlhoff for identifying the partial-success problem in [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf)<sup>[10]</sup>, Kirk Shoop for the completion-token heuristic analysis in [P2471R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2471r1.pdf)<sup>[11]</sup>, Fabio Fracassi for [P3570R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3570r2.html)<sup>[12]</sup>, Peter Dimov for the refined channel mapping, and Ville Voutilainen for reflector discussion on the abstraction floor.
 
 ---
 
 ## References
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak et al., 2024). https://wg21.link/p2300r10
+[1] [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-2. [P4003R1](https://wg21.link/p4003r1) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r1
+[2] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine primitives library.
 
-3. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine primitives library. https://github.com/cppalliance/capy
+[3] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-4. [bemanproject/execution](https://github.com/bemanproject/execution) - Community implementation of `std::execution`. https://github.com/bemanproject/execution
+[4] [P4092R0](https://isocpp.org/files/papers/P4092R0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-5. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[5] [bemanproject/execution](https://github.com/bemanproject/execution) - Community implementation of `std::execution`.
 
-6. [P4092R0](https://isocpp.org/files/papers/P4092R0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4092R0.pdf
+[6] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak et al., 2024).
 
-7. [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4090R0.pdf
+[7] [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026).
 
-8. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r2
+[8] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-9. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
+[9] [P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023).
 
-10. [P2471R1](https://wg21.link/p2471r1) - "NetTS, ASIO and Sender Library Design Comparison" (Kirk Shoop, 2021). https://wg21.link/p2471r1
+[10] [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Slides: Partial success scenarios with P2300" (Chris Kohlhoff, 2021).
 
-11. [P3570R2](https://wg21.link/p3570r2) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025). https://wg21.link/p3570r2
+[11] [P2471R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2471r1.pdf) - "NetTS, ASIO and Sender Library Design Comparison" (Kirk Shoop, 2021).
 
-12. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
-
-13. [P4091R0](https://isocpp.org/files/papers/P4091R0.pdf) - "Two Error Models" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4091R0.pdf
-
-14. [P4089R0](https://isocpp.org/files/papers/P4089R0.pdf) - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4089R0.pdf
-
-15. [P4088R0](https://isocpp.org/files/papers/P4088R0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4088R0.pdf
+[12] [P3570R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3570r2.html) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025).
 
 ---
 

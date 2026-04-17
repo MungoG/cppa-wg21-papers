@@ -12,7 +12,7 @@ reply-to:
 
 Every mailing repeats the same deployment background. This paper puts one citeable inventory in the record.
 
-It consolidates platform categories, operating-system and runtime context, and representative compiler families so authors can cite a single WG21 paper instead of rehearsing the same background in every proposal. The platform survey extends the capability table in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> with additional columns aimed at SG14 readers. The compiler survey adds matching rows for toolchain families. The document is a **working reference**. Later revisions may extend the schema and add rows. Proposals with sources may reach the author through the addresses in the front matter.
+It consolidates platform categories, operating-system and runtime context, and representative compiler families so authors can cite a single WG21 paper instead of rehearsing the same background in every proposal. The platform survey extends the capability table in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> with additional columns aimed at SG14 readers. The compiler survey adds matching rows for toolchain families. The document is a **working reference**. Later revisions may extend the schema and add rows. Proposals with sources may reach the author through the addresses in the front matter.
 
 ---
 
@@ -26,7 +26,7 @@ It consolidates platform categories, operating-system and runtime context, and r
 
 ## 1. Disclosure
 
-The author is a contributor to the Network Endeavour ([P4100R0](https://wg21.link/p4100r0)<sup>[2]</sup>) and maintains tooling in that programme. This paper is reference material. It requests no poll and no feature adoption. It exists so other authors have a stable citation for deployment and toolchain facts.
+The author is a contributor to the Network Endeavour ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[2]</sup>) and maintains tooling in that programme. This paper is reference material. It requests no poll and no feature adoption. It exists so other authors have a stable citation for deployment and toolchain facts.
 
 ---
 
@@ -38,7 +38,7 @@ This paper consolidates a single, citeable inventory of **platform categories**,
 
 The inventory is a **living document**. Later revisions may add schema columns, platform rows, and compiler rows as the record improves. Propose additions or corrections by contacting the author at the address in the front matter. Include sources the editors can verify.
 
-The platform half of the inventory extends the capability survey used in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 ("Platforms Without Thread-Local Storage") for a different question - deployment and toolchain context for authors, not the coroutine frame allocator timing argument itself. The compiler half fills the second table on the same footing: reference material, maintained over time.
+The platform half of the inventory extends the capability survey used in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 ("Platforms Without Thread-Local Storage") for a different question - deployment and toolchain context for authors, not the coroutine frame allocator timing argument itself. The compiler half fills the second table on the same footing: reference material, maintained over time.
 
 ---
 
@@ -46,7 +46,7 @@ The platform half of the inventory extends the capability survey used in [P4127R
 
 ### 3.1 Platform schema
 
-The table states baseline capabilities from [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1, plus additional columns for SG14 readers.
+The table states baseline capabilities from [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1, plus additional columns for SG14 readers.
 
 | Category | Coro | TLS | PMR | Heap | Hosted | Exc | Alloc | RT | TLSctx |
 | -------- | ---- | --- | --- | ---- | ------ | --- | ----- | -- | ------ |
@@ -92,9 +92,9 @@ Desktop operating systems deliver full hosted implementations, C++20 coroutines 
 | Exceptions in typical shipping builds | Typically on. Most shipping desktop binaries leave exceptions enabled unless a product or studio policy turns them off |
 | Hot-path allocation style | Heap plus PMR |
 | Scheduling class | Best effort. General-purpose OS scheduling (not a hard real-time kernel guarantee) |
-| Thread-local storage access pattern | Static TLS. Thread-local objects live in the loader-managed TLS block for the process or main modules. On Windows, DLLs can still pay an extra indirection as discussed in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2 |
+| Thread-local storage access pattern | Static TLS. Thread-local objects live in the loader-managed TLS block for the process or main modules. On Windows, DLLs can still pay an extra indirection as discussed in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.2 |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 groups this row with the same top-tier capability set as other full-hosted platforms in that survey.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 groups this row with the same top-tier capability set as other full-hosted platforms in that survey.
 
 ---
 
@@ -119,7 +119,7 @@ Mobile stacks are full hosted environments on ARM64 for mainstream C++ toolchain
 | Scheduling class | Best effort |
 | Thread-local storage access pattern | Static TLS |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 lists this row alongside desktop. Store rules and battery targets change optimisation pressure, but hosted builds keep the core facilities in the table.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 lists this row alongside desktop. Store rules and battery targets change optimisation pressure, but hosted builds keep the core facilities in the table.
 
 ---
 
@@ -144,7 +144,7 @@ Vendor SDKs supply hosted C++ with coroutine support and TLS for titles that opt
 | Scheduling class | Best effort |
 | Thread-local storage access pattern | Static or vendor. Access path can be the usual static TLS block or a vendor-specific runtime detail not visible in public documentation |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 includes this row in the top group. Treat vendor guidance as the authority for a specific title target.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 includes this row in the top group. Treat vendor guidance as the authority for a specific title target.
 
 ---
 
@@ -161,7 +161,7 @@ These kernels support threaded C++ with TLS in configurations that ship coroutin
 | Platform category | Full RTOS (QNX, Zephyr, VxWorks) |
 | C++20 coroutines (in practice) | Yes |
 | `thread_local` available | Yes |
-| Hosted `<memory_resource>` | Hosted PMR (platform-supplied). May appear as part of the platform-provided hosted subset, not necessarily a full desktop-class library layout. [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 records the PMR column as **Hosted** for this row |
+| Hosted `<memory_resource>` | Hosted PMR (platform-supplied). May appear as part of the platform-provided hosted subset, not necessarily a full desktop-class library layout. [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 records the PMR column as **Hosted** for this row |
 | General-purpose heap worth customising | Yes |
 | Hosted standard-library profile | Partial to full. From slim RTOS images through near-desktop library surface |
 | Exceptions in typical shipping builds | Varies. Automotive and industrial certification: some builds forbid exceptions entirely, others allow them in non-safety paths |
@@ -192,7 +192,7 @@ Many microcontroller-focused RTOS images lack `thread_local` and lack hosted PMR
 | Scheduling class | Soft real-time. Typical RTOS latency goals without claiming a single certification level |
 | Thread-local storage access pattern | Not applicable |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 gives **Partial** for coroutines and **No** for `thread_local` and PMR. The Raspberry Pi Pico (RP2040) example in that section notes community coroutine support, incomplete `thread_local` in the SDK at the time of writing, and newlib in freestanding mode without `<memory_resource>`<sup>[1]</sup>. Pigweed provides C++20 coroutines with an allocator passed per coroutine (`CoroContext`) because PMR is not available in those environments<sup>[4]</sup>.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 gives **Partial** for coroutines and **No** for `thread_local` and PMR. The Raspberry Pi Pico (RP2040) example in that section notes community coroutine support, incomplete `thread_local` in the SDK at the time of writing, and newlib in freestanding mode without `<memory_resource>`<sup>[1]</sup>. Pigweed provides C++20 coroutines with an allocator passed per coroutine (`CoroContext`) because PMR is not available in those environments<sup>[4]</sup>.
 
 ---
 
@@ -217,7 +217,7 @@ Firmware without an OS may still use a constrained heap. Coroutines are partial 
 | Scheduling class | Hard real-time or none. Strict cycle-bound firmware is one case; bring-up or lab setups where no RTOS schedule applies are the other |
 | Thread-local storage access pattern | Not applicable |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 marks heap as **Rare** for this row. The intersection of hosted PMR and absence of TLS remains empty in that paper's survey.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 marks heap as **Rare** for this row. The intersection of hosted PMR and absence of TLS remains empty in that paper's survey.
 
 ---
 
@@ -242,7 +242,7 @@ Device compilation targets are not general hosted C++ environments. Coroutines, 
 | Scheduling class | SIMT. Device-side parallel execution model (contrast with host preemption and threading) |
 | Thread-local storage access pattern | Not applicable |
 
-[P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.1 places this row in the bottom group. This row is the **device** environment; host compilation for the same program follows Sections 4.2-4.4.
+[P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.1 places this row in the bottom group. This row is the **device** environment; host compilation for the same program follows Sections 4.2-4.4.
 
 ---
 
@@ -275,7 +275,7 @@ Legend:
 
 **Executive summary**
 
-GCC is the reference open-source toolchain for many Linux distributions and embedded GNU triples. cppreference lists **GCC 10** as the first release in its C++20 matrix for coroutines ([P0912R5](https://wg21.link/p0912r5))<sup>[7]</sup>.
+GCC is the reference open-source toolchain for many Linux distributions and embedded GNU triples. cppreference lists **GCC 10** as the first release in its C++20 matrix for coroutines ([P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html))<sup>[5]</sup>.
 
 **Schema**
 
@@ -286,7 +286,7 @@ GCC is the reference open-source toolchain for many Linux distributions and embe
 | `thread_local` code generation | Platform ABI. Follows the psABI for the selected target (ELF static TLS, PE TLS slots, and so on), not a vendor-specific scheme |
 | Hosted versus freestanding profile | Both hosted and freestanding. One front end with different runtimes: the same `g++` can target a full Linux rootfs or a bare-metal link where only freestanding headers apply |
 | Exceptions (typical default) | Typically on (hosted). Many embedded builds add `-fno-exceptions` explicitly |
-| PMR in shipped standard library | Yes (hosted libstdc++). Complete `<memory_resource>` support from **GCC 9.1** onward<sup>[8]</sup> |
+| PMR in shipped standard library | Yes (hosted libstdc++). Complete `<memory_resource>` support from **GCC 9.1** onward<sup>[6]</sup> |
 
 Cross GCC for bare-metal uses the same front end with a runtime link that does not supply hosted libstdc++ for that image (see Section 4.5).
 
@@ -298,7 +298,7 @@ Cross GCC for bare-metal uses the same front end with a runtime link that does n
 
 Clang is widely used on Darwin, Linux, and Windows. Apple ships a fork tied to Xcode releases.
 
-cppreference lists **Clang 8** as the first column entry for C++20 coroutines ([P0912R5](https://wg21.link/p0912r5)), with partial support in early releases<sup>[7]</sup>. For **libc++**, polymorphic memory resources ([P0220R1](https://wg21.link/p0220r1)) appear from **Clang 16** in that table<sup>[8]</sup>.
+cppreference lists **Clang 8** as the first column entry for C++20 coroutines ([P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html)<sup>[7]</sup>), with partial support in early releases<sup>[5]</sup>. For **libc++**, polymorphic memory resources ([P0220R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0220r1.html)<sup>[8]</sup>) appear from **Clang 16** in that table<sup>[6]</sup>.
 
 **Schema**
 
@@ -309,7 +309,7 @@ cppreference lists **Clang 8** as the first column entry for C++20 coroutines ([
 | `thread_local` code generation | Platform ABI. Same meaning as for GCC: TLS lowering follows the platform binary interface |
 | Hosted versus freestanding profile | Both hosted and freestanding. Also used for bare-metal and kernel targets |
 | Exceptions (typical default) | Typically on (hosted) |
-| PMR in shipped standard library | Yes (libc++ or libstdc++, link-time choice). `<memory_resource>` floors are **Clang 16** with libc++ and **GCC 9.1** libstdc++ in cppreference's table<sup>[8]</sup> |
+| PMR in shipped standard library | Yes (libc++ or libstdc++, link-time choice). `<memory_resource>` floors are **Clang 16** with libc++ and **GCC 9.1** libstdc++ in cppreference's table<sup>[6]</sup> |
 
 ---
 
@@ -317,9 +317,9 @@ cppreference lists **Clang 8** as the first column entry for C++20 coroutines ([
 
 **Executive summary**
 
-Microsoft documents C++20 coroutines ([P0912R5](https://wg21.link/p0912r5)) from **Visual Studio 2019 version 16.8** onward (toolset **19.28**)<sup>[5]</sup>. The Microsoft STL ships `<memory_resource>` ([P0220R1](https://wg21.link/p0220r1)) from **Visual Studio 2017 version 15.6** onward<sup>[5]</sup>.
+Microsoft documents C++20 coroutines ([P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html)<sup>[7]</sup>) from **Visual Studio 2019 version 16.8** onward (toolset **19.28**)<sup>[9]</sup>. The Microsoft STL ships `<memory_resource>` ([P0220R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0220r1.html)<sup>[8]</sup>) from **Visual Studio 2017 version 15.6** onward<sup>[9]</sup>.
 
-TLS access patterns for DLLs differ from ELF static TLS as summarised in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2.
+TLS access patterns for DLLs differ from ELF static TLS as summarised in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.2.
 
 **Schema**
 
@@ -327,7 +327,7 @@ TLS access patterns for DLLs differ from ELF static TLS as summarised in [P4127R
 | ----- | ----- |
 | Toolchain family | MSVC |
 | C++20 coroutine support | Yes |
-| `thread_local` code generation | Windows TLS model. `thread_local` in DLLs can use the slow path described in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> Section 9.2, unlike a single static link |
+| `thread_local` code generation | Windows TLS model. `thread_local` in DLLs can use the slow path described in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> Section 9.2, unlike a single static link |
 | Hosted versus freestanding profile | Hosted Windows primary. Targets user-mode Windows toolchains with the full CRT, not every experimental or kernel target MSVC can be aimed at |
 | Exceptions (typical default) | Typically on |
 | PMR in shipped standard library | Yes |
@@ -345,7 +345,7 @@ The Arm GNU bare-metal distribution (`arm-none-eabi-gcc`) targets Cortex-M and s
 | Field | Value |
 | ----- | ----- |
 | Toolchain family | Arm GNU Toolchain (bare-metal) |
-| C++20 coroutine support | Yes with `-fcoroutines` where available. Same floor as upstream GCC (**GCC 10** for P0912R5<sup>[7]</sup>). Some triples still need `-fcoroutines` or a newer GCC build; depends on multilib and whether the feature is exposed for that triple |
+| C++20 coroutine support | Yes with `-fcoroutines` where available. Same floor as upstream GCC (**GCC 10** for P0912R5<sup>[5]</sup>). Some triples still need `-fcoroutines` or a newer GCC build; depends on multilib and whether the feature is exposed for that triple |
 | `thread_local` code generation | No TLS on typical MCU. Cortex-M images usually omit thread-local storage because there is no threads model in the same sense as POSIX |
 | Hosted versus freestanding profile | Freestanding |
 | Exceptions (typical default) | Typically off in embedded. The usual `-fno-exceptions` default or project policy for size |
@@ -370,7 +370,7 @@ CUDA compilation splits host code (compiled with a host compiler: GCC, Clang, or
 | Exceptions (typical default) | Determined by host toolchain |
 | PMR in shipped standard library | Determined by host standard library |
 
-The build selects a host GCC, Clang, or MSVC for host translation units; version floors follow Sections 4.2-4.4 and cppreference<sup>[7]</sup><sup>[8]</sup>.
+The build selects a host GCC, Clang, or MSVC for host translation units; version floors follow Sections 4.2-4.4 and cppreference<sup>[5]</sup><sup>[6]</sup>.
 
 ---
 
@@ -378,7 +378,7 @@ The build selects a host GCC, Clang, or MSVC for host translation units; version
 
 **Executive summary**
 
-Edison Design Group supplies a commercial C++ **front end** (parser and semantic analysis) that compiler vendors embed in their own products<sup>[6]</sup>. Coroutine support, TLS code generation, exceptions, and PMR are fixed only after the integrator's back end and runtime are chosen. The EDG front end appears in conformance discussions because it tracks the ISO C++ rules closely and is used behind several shipping toolchains.
+Edison Design Group supplies a commercial C++ **front end** (parser and semantic analysis) that compiler vendors embed in their own products<sup>[10]</sup>. Coroutine support, TLS code generation, exceptions, and PMR are fixed only after the integrator's back end and runtime are chosen. The EDG front end appears in conformance discussions because it tracks the ISO C++ rules closely and is used behind several shipping toolchains.
 
 **Schema**
 
@@ -397,24 +397,28 @@ The integrator supplies object layout, TLS lowering, exception machinery, and ru
 
 ## Acknowledgments
 
-The author thanks Vinnie Falco and the C++ Alliance proposal authors whose platform survey in [P4127R0](https://wg21.link/p4127r0)<sup>[1]</sup> seeded Section 3.
+The author thanks Vinnie Falco and the C++ Alliance proposal authors whose platform survey in [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf)<sup>[1]</sup> seeded Section 3.
 
 ---
 
 ## References
 
-1. [P4127R0](https://wg21.link/p4127r0) - "The Coroutine Frame Allocator Timing Problem" (Vinnie Falco, C++ Alliance Proposal Team, 2026). https://wg21.link/p4127r0
+[1] [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf) - "The Coroutine Frame Allocator Timing Problem" (Vinnie Falco, C++ Alliance Proposal Team, 2026).
 
-2. [P4100R0](https://wg21.link/p4100r0) - "The Network Endeavour: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026). https://wg21.link/p4100r0
+[2] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "The Network Endeavour: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
-3. [Freestanding and hosted implementations](https://en.cppreference.com/w/cpp/freestanding) - cppreference.com overview. https://en.cppreference.com/w/cpp/freestanding
+[3] [Freestanding and hosted implementations](https://en.cppreference.com/w/cpp/freestanding) - cppreference.com overview.
 
-4. [Pigweed pw_async2: Coroutines](https://pigweed.dev/pw_async2/coroutines.html) - Google's embedded C++20 coroutine framework. https://pigweed.dev/pw_async2/coroutines.html
+[4] [Pigweed pw_async2: Coroutines](https://pigweed.dev/pw_async2/coroutines.html) - Google's embedded C++20 coroutine framework.
 
-5. [Microsoft C++ language conformance](https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance) - Microsoft Learn. https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance
+[5] [Compiler support for C++20](https://en.cppreference.com/w/cpp/compiler_support/20) - cppreference.com (per-feature minimum compiler versions, including P0912R5 coroutines).
 
-6. [Edison Design Group](https://www.edg.com/) - Provider of the EDG C++ front end for compiler and tool vendors. https://www.edg.com/
+[6] [Compiler support for C++17](https://en.cppreference.com/w/cpp/compiler_support/17) - cppreference.com (per-library minimum versions, including P0220R1 `<memory_resource>`).
 
-7. [Compiler support for C++20](https://en.cppreference.com/w/cpp/compiler_support/20) - cppreference.com (per-feature minimum compiler versions, including P0912R5 coroutines). https://en.cppreference.com/w/cpp/compiler_support/20
+[7] [P0912R5](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0912r5.html) - "Merge Coroutines TS into C++20 working draft" (Gor Nishanov, 2019).
 
-8. [Compiler support for C++17](https://en.cppreference.com/w/cpp/compiler_support/17) - cppreference.com (per-library minimum versions, including P0220R1 `<memory_resource>`). https://en.cppreference.com/w/cpp/compiler_support/17
+[8] [P0220R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0220r1.html) - "Adopt Library Fundamentals V1 TS Components for C++17 (R1)" (Beman Dawes, 2016).
+
+[9] [Microsoft C++ language conformance](https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance) - Microsoft Learn.
+
+[10] [Edison Design Group](https://www.edg.com/) - Provider of the EDG C++ front end for compiler and tool vendors.

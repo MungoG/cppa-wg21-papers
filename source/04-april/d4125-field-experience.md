@@ -29,7 +29,7 @@ The paper reports qualitative findings from three structured interviews with the
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)), a project to bring coroutine-native I/O to C++.
 
 Falco developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
@@ -51,7 +51,7 @@ The primary codebase comprises numerous repositories (primarily C++), with Boost
 
 ### 2.2 The Libraries Under Test
 
-Capy is a C++ library providing async/coroutine building blocks and executor models. Corosio is a networking library built on Capy, providing async socket operations. Both are designed with C++20 coroutines as first-class citizens and are described in detail in [P4003R0](https://wg21.link/p4003r0)<sup>[3]</sup>. The key design commitment is: coroutines only. No callbacks, futures, or sender/receiver interfaces. Every I/O operation returns an awaitable.
+Capy is a C++ library providing async/coroutine building blocks and executor models. Corosio is a networking library built on Capy, providing async socket operations. Both are designed with C++20 coroutines as first-class citizens and are described in detail in [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[3]</sup>. The key design commitment is: coroutines only. No callbacks, futures, or sender/receiver interfaces. Every I/O operation returns an awaitable.
 
 ### 2.3 Scope and Limitations of the Integration
 
@@ -219,8 +219,8 @@ Thanks to Vinnie Falco for developing Capy and Corosio and for supporting this e
 
 ## References
 
-1. [Capy](https://github.com/cppalliance/capy) - C++ async/coroutine building blocks. https://github.com/cppalliance/capy
+[1] [Capy](https://github.com/cppalliance/capy) - C++ async/coroutine building blocks.
 
-2. [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[2] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-3. [P4003R0](https://wg21.link/p4003r0) - "Coroutines for I/O" (Vinnie Falco, 2026). https://wg21.link/p4003r0
+[3] [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, 2026).

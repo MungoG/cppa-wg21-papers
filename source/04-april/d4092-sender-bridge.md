@@ -14,7 +14,7 @@ reply-to:
 
 A single class template bridges sender-based code into coroutine-native I/O with inline operation state, correct stop propagation, and automatic dispatch-back.
 
-An `IoAwaitable` bridge ([P4003R0](https://wg21.link/p4003r0)<sup>[3]</sup>) consumes `std::execution` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup>) senders with inline operation state, correct stop token propagation, and automatic executor dispatch-back. The bridge is one class template. The complete implementation is in Appendix A.
+An `IoAwaitable` bridge ([P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[1]</sup>) consumes `std::execution` ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>) senders with inline operation state, correct stop token propagation, and automatic executor dispatch-back. The bridge is one class template. The complete implementation is in Appendix A.
 
 ---
 
@@ -30,13 +30,13 @@ An `IoAwaitable` bridge ([P4003R0](https://wg21.link/p4003r0)<sup>[3]</sup>) con
 
 The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the [Network Endeavor](https://wg21.link/p4100) ([P4100](https://wg21.link/p4100)), a project to bring coroutine-native I/O to C++.
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)), a project to bring coroutine-native I/O to C++.
 
-The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
-The bridge depends on [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> (coroutine primitives, no sockets, no platform I/O) and `beman::execution`<sup>[5]</sup>.
+The bridge depends on [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> (coroutine primitives, no sockets, no platform I/O) and `beman::execution`<sup>[5]</sup>.
 
 This paper asks for nothing.
 
@@ -67,13 +67,13 @@ capy::task<int> compute(auto sched)
 }
 ```
 
-`await_sender` returns a `sender_awaitable` satisfying `IoAwaitable` ([P4003R0](https://wg21.link/p4003r0)<sup>[3]</sup>). Any coroutine type that propagates `io_env` through `await_suspend(h, io_env const*)` can use it. The two-argument form is deliberate: the compiler rejects any coroutine type that does not propagate `io_env`, enforcing the sandbox boundary at compile time. Complete implementation in Appendix A.
+`await_sender` returns a `sender_awaitable` satisfying `IoAwaitable` ([P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[1]</sup>). Any coroutine type that propagates `io_env` through `await_suspend(h, io_env const*)` can use it. The two-argument form is deliberate: the compiler rejects any coroutine type that does not propagate `io_env`, enforcing the sandbox boundary at compile time. Complete implementation in Appendix A.
 
 ---
 
 ## 3. Demonstration
 
-Output from the example in Section 2, compiled with MSVC 19.43 against [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and `beman::execution`<sup>[5]</sup> (a community implementation of `std::execution`):
+Output from the example in Section 2, compiled with MSVC 19.43 against [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and `beman::execution`<sup>[5]</sup> (a community implementation of `std::execution`):
 
 ```
 main thread: 32208
@@ -98,7 +98,7 @@ auto [ec, val] = co_await await_sender(sndr);
 
 No exceptions for `error_code`. Otherwise `await_resume` returns `T` directly; genuine exceptions are rethrown and cancellation is surfaced as an exception. Static dispatch, zero runtime cost. The `operation_cancelled` type in Appendix A is illustrative; a production implementation would use a project-appropriate cancellation exception.
 
-The error-code dispatch is the consuming side of the **abstraction floor** ([P4093R0](https://isocpp.org/files/papers/P4093R0.pdf)<sup>[12]</sup> Section 4):
+The error-code dispatch is the consuming side of the **abstraction floor** ([P4093R0](https://isocpp.org/files/papers/P4093R0.pdf)<sup>[6]</sup> Section 4):
 
 | Region          | What the code sees                           |
 | --------------- | -------------------------------------------- |
@@ -113,7 +113,7 @@ Does not use `execution::task`.
 
 ## 5. What the Bridge Does Not Require
 
-`std::execution::task` ([P3552R3](https://wg21.link/p3552r3)<sup>[15]</sup>, revised at Croydon by [P3980R1](https://wg21.link/p3980r1)<sup>[16]</sup>, [P3941R4](https://wg21.link/p3941r4)<sup>[17]</sup>, [P3927R2](https://wg21.link/p3927r2)<sup>[18]</sup>, [P4151R1](https://wg21.link/p4151r1)<sup>[19]</sup>) is a sender-returning coroutine type. Its promise type-erases the downstream receiver, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. None of the Croydon revisions changed these properties. The bridge avoids both mechanisms:
+`std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[7]</sup>, revised at Croydon by [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[8]</sup>, [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[9]</sup>, [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.pdf)<sup>[10]</sup>, [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[11]</sup>) is a sender-returning coroutine type. Its promise type-erases the downstream receiver, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. None of the Croydon revisions changed these properties. The bridge avoids both mechanisms:
 
 | Property                             | `execution::task`              | Bridge |
 | ------------------------------------ | ------------------------------ | ------ |
@@ -128,9 +128,9 @@ The bridge consumes senders without `std::execution::task`.
 
 ## 6. The Narrowest Abstraction
 
-The bridge depends on two things: [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> (coroutine primitives) and `std::execution` (sender/receiver protocol). No platform I/O. No networking headers. No additional coroutine type. The implementation in Appendix A uses `beman::execution`<sup>[5]</sup>, a community implementation of `std::execution`, but the bridge requires only the standard sender/receiver concepts.
+The bridge depends on two things: [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> (coroutine primitives) and `std::execution` (sender/receiver protocol). No platform I/O. No networking headers. No additional coroutine type. The implementation in Appendix A uses `beman::execution`<sup>[5]</sup>, a community implementation of `std::execution`, but the bridge requires only the standard sender/receiver concepts.
 
-Narrower than `execution::task`: the bridge does not type-erase, does not allocate, and does not impose an `Environment` parameter. Narrower than a completion-token adapter: the bridge does not require Asio or any I/O service. Narrower than `with_awaitable_senders` ([P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> Section 4.17): the bridge uses the IoAwaitable two-argument `await_suspend` to receive the environment, uses `post()` for guaranteed executor dispatch-back rather than relying on scheduler affinity or atomic synchronization for synchronous completions, and separates `error_code` from `exception_ptr` at compile time rather than converting through `unhandled_stopped()`. The coroutine type the programmer already uses does not change when the bridge is added.
+Narrower than `execution::task`: the bridge does not type-erase, does not allocate, and does not impose an `Environment` parameter. Narrower than a completion-token adapter: the bridge does not require Asio or any I/O service. Narrower than `with_awaitable_senders` ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> Section 4.17): the bridge uses the IoAwaitable two-argument `await_suspend` to receive the environment, uses `post()` for guaranteed executor dispatch-back rather than relying on scheduler affinity or atomic synchronization for synchronous completions, and separates `error_code` from `exception_ptr` at compile time rather than converting through `unhandled_stopped()`. The coroutine type the programmer already uses does not change when the bridge is added.
 
 The bridge is the proof that coexistence works. Senders compose. Coroutines do I/O. One class template connects them.
 
@@ -138,49 +138,41 @@ The bridge is the proof that coexistence works. Senders compose. Coroutines do I
 
 ## 7. Acknowledgments
 
-The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[5]</sup> and for the channel-routing enumeration in [P2762R2](https://wg21.link/p2762r2)<sup>[7]</sup>, Micha&lstrok; Dominiak, Eric Niebler, and Lewis Baker for `std::execution`, Chris Kohlhoff for identifying the partial-success problem in [P2430R0](https://wg21.link/p2430r0)<sup>[8]</sup>, Kirk Shoop for the completion-token heuristic analysis in [P2471R1](https://wg21.link/p2471r1)<sup>[9]</sup>, Fabio Fracassi for [P3570R2](https://wg21.link/p3570r2)<sup>[10]</sup>, Ville Voutilainen and Jens Maurer for reflector discussion on dispatch patterns, Herb Sutter for identifying the need for tutorials and documentation, Mark Hoemmen for insights on `std::linalg` and the layered abstraction model, and Peter Dimov for the refined channel mapping.
+The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[5]</sup> and for the channel-routing enumeration in [P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf)<sup>[12]</sup>, Micha&lstrok; Dominiak, Eric Niebler, and Lewis Baker for `std::execution`, Chris Kohlhoff for identifying the partial-success problem in [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf)<sup>[13]</sup>, Kirk Shoop for the completion-token heuristic analysis in [P2471R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2471r1.pdf)<sup>[14]</sup>, Fabio Fracassi for [P3570R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3570r2.html)<sup>[15]</sup>, Ville Voutilainen and Jens Maurer for reflector discussion on dispatch patterns, Herb Sutter for identifying the need for tutorials and documentation, Mark Hoemmen for insights on `std::linalg` and the layered abstraction model, and Peter Dimov for the refined channel mapping.
 
 ---
 
 ## References
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak et al., 2024). https://wg21.link/p2300r10
+[1] [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-2. [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4090R0.pdf
+[2] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak et al., 2024).
 
-3. [P4003R0](https://wg21.link/p4003r0) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r0
+[3] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine primitives library.
 
-4. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine primitives library. https://github.com/cppalliance/capy
+[4] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-5. [bemanproject/execution](https://github.com/bemanproject/execution) - Community implementation of `std::execution`. https://github.com/bemanproject/execution
+[5] [bemanproject/execution](https://github.com/bemanproject/execution) - Community implementation of `std::execution`.
 
-6. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[6] [P4093R0](https://isocpp.org/files/papers/P4093R0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-7. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r2
+[7] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-8. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
+[8] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
-9. [P2471R1](https://wg21.link/p2471r1) - "NetTS, ASIO and Sender Library Design Comparison" (Kirk Shoop, 2021). https://wg21.link/p2471r1
+[9] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
 
-10. [P3570R2](https://wg21.link/p3570r2) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025). https://wg21.link/p3570r2
+[10] [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.pdf) - "`task_scheduler` Bulk Execution" (Eric Niebler, 2026).
 
-11. [P4091R0](https://isocpp.org/files/papers/P4091R0.pdf) - "Two Error Models" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4091R0.pdf
+[11] [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf) - "Rename `affine_on`" (Robert Leahy, 2026).
 
-12. [P4093R0](https://isocpp.org/files/papers/P4093R0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4093R0.pdf
+[12] [P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023).
 
-13. [P4089R0](https://isocpp.org/files/papers/P4089R0.pdf) - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4089R0.pdf
+[13] [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Slides: Partial success scenarios with P2300" (Chris Kohlhoff, 2021).
 
-14. [P4088R0](https://isocpp.org/files/papers/P4088R0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4088R0.pdf
+[14] [P2471R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2471r1.pdf) - "NetTS, ASIO and Sender Library Design Comparison" (Kirk Shoop, 2021).
 
-15. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
-
-16. [P3980R1](https://wg21.link/p3980r1) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3980r1
-
-17. [P3941R4](https://wg21.link/p3941r4) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3941r4
-
-18. [P3927R2](https://wg21.link/p3927r2) - "`task_scheduler` Bulk Execution" (Eric Niebler, 2026). https://wg21.link/p3927r2
-
-19. [P4151R1](https://wg21.link/p4151r1) - "Rename `affine_on`" (Robert Leahy, 2026). https://wg21.link/p4151r1
+[15] [P3570R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3570r2.html) - "Optional variants in sender/receiver" (Fabio Fracassi, 2025).
 
 ---
 
