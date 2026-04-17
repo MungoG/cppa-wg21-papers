@@ -1,6 +1,6 @@
 # WG21 Paper Style Rules - Ambient Guardrails
 
-Rules that must fire during writing, not just during audit. For mechanical verification (citations, formatting, structure, prose hygiene), invoke the Auditor: `situation-room/tools/auditor.md`
+Rules that must fire during writing, not just during audit. For mechanical verification (citations, formatting, structure, prose hygiene), invoke the Auditor: `situation-room/tools/auditor.md`. For citation and reference verification, run `cite/cite.py --fix`.
 
 ## Formatting
 
@@ -106,3 +106,30 @@ Rules that must fire during writing, not just during audit. For mechanical verif
     - "Three deployed executor models were replaced by one that was never deployed."
     - "The committee voted that sender/receiver covers networking. No sender-based networking has shipped."
     For ask-papers, "This paper asks [specific request]" on its own line satisfies the rule - the ask IS the brutal summary. The rest of the abstract follows after a blank line
+
+## Citations and References
+
+26. Inline citations use HTML superscripts: `<sup>[N]</sup>`. One number per superscript - do not combine multiple numbers into a single superscript like `<sup>[1, 2]</sup>`; use adjacent superscripts `<sup>[1]</sup><sup>[2]</sup>` instead
+27. Every markdown link to a WG21 paper in body text must have a superscript citation immediately after the closing parenthesis, e.g. `[P2300R10](url)<sup>[N]</sup>`
+28. Paper numbers in prose must include the revision suffix (e.g. `P2300R10` not `P2300`), except when referring to a paper series generically rather than a specific revision. The cite tool flags bare `P####` / `D####` without `R` as unversioned
+29. The references section heading is `## References` (H2). Subsection headings (H3 or deeper) within References are permitted for grouping
+30. References are numbered sequentially by body first-appearance order, forming a single contiguous sequence [1], [2], [3], ... across the entire References section. When subsection headings are used for grouping, numbering continues across subsection boundaries - it does not restart at [1] in each subsection. The cite tool renumbers automatically; authors should follow this convention when writing by hand
+31. Each reference entry occupies one line, separated from adjacent entries by a blank line. The canonical format is:
+
+    `[N] [PaperID](url) - "Title" (Authors, Year).`
+
+    Components:
+    - `[N]` - square-bracketed number, not `N.` (the latter is a legacy format that the cite tool rewrites)
+    - `[PaperID](url)` - versioned paper number as a markdown link to the canonical `open-std.org` URL
+    - ` - ` - space, single dash, space as separator
+    - `"Title"` - title in double quotes, exactly as it appears on the paper itself
+    - `(Authors, Year)` - parenthesised, comma-separated list of full author names (first name then surname, not surname-only), followed by a comma and the four-digit publication year. Diacritics use HTML entities per rule 2
+    - `.` - trailing period
+
+    For non-WG21 references (GitHub repositories, books, ISO standards, etc.), follow the same structure where applicable: `[N] [Display Text](url) - "Title" (Authors, Year).` If there is no distinct title (e.g. a GitHub repo where the link text is the project name), omit the ` - "Title"` portion
+
+32. When adding or editing reference entries, verify each component against the source paper itself - do not guess titles, abbreviate author names, or omit the year
+33. Use canonical `open-std.org` URLs for WG21 papers, not `wg21.link` short URLs. The cite tool replaces `wg21.link` URLs automatically
+34. Every body citation `<sup>[N]</sup>` must have a corresponding reference entry `[N]`, and every reference entry must be cited at least once in the body. Do not leave orphan entries or missing entries for the tool to clean up
+35. Each referenced paper appears exactly once in the References section. Do not create a second entry for a paper already listed - reuse the existing citation number
+36. When adding a reference entry, look up the paper's title, authors, and date. Trust the source paper's own front matter over the wg21 index when they disagree. For papers in this repo, read the YAML front matter directly. For external papers, check the paper itself at its canonical URL
