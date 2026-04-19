@@ -806,6 +806,9 @@ class ASTRenderer:
             scale = self.content_width / total_natural
             return [w * scale for w in natural]
 
+        tbl_pad = self.style["table"]["cell_padding"]
+        min_w = tbl_pad["left"] + tbl_pad["right"] + 4
+
         threshold = self.content_width / ncols
         fixed = [(i, w) for i, w in enumerate(natural) if w <= threshold]
         flex = [(i, w) for i, w in enumerate(natural) if w > threshold]
@@ -819,6 +822,11 @@ class ASTRenderer:
             result[i] = w
         for i, w in flex:
             result[i] = remaining * (w / flex_total) if flex_total > 0 else remaining / len(flex)
+
+        for i in range(ncols):
+            if result[i] < min_w:
+                result[i] = min_w
+
         return result
 
     def _render_table(self, tok):
@@ -890,7 +898,7 @@ class ASTRenderer:
             col_widths = self._smart_col_widths(all_rows, ncols)
         else:
             col_widths = [self.content_width / ncols] * ncols
-        tbl = Table(all_rows, colWidths=col_widths)
+        tbl = Table(all_rows, colWidths=col_widths, splitInRow=1)
 
         rule_color = parse_color(self.style["table_rule_color"])
         nhead = len(headers)

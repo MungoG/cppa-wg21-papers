@@ -42,7 +42,7 @@ All JTC 1 working groups, including WG21, are bound by the ISO/IEC Directives Pa
 
 Both documents are publicly available. The comparison below is mechanical.
 
-**What the current system produces.** Four consecutive on-time releases from C++14 through C++23. Major compiler implementations tracking the standard within months of publication. A volunteer workforce that has produced modules, concepts, ranges, coroutines, `std::expected`, `std::print`, and `std::mdspan`. The procedural deviations documented below purchased something - speed, decisiveness, simplified administration. The cost is measured in Directive compliance.
+**What the current system produces.** Four consecutive on-time releases from C++14 through C++23. Major compiler implementations tracking the standard within months of publication. A volunteer workforce that has produced modules, concepts, ranges, coroutines, `std::expected`, `std::print`, and `std::mdspan`. WG21's subgroup structure is an adaptation to a scale the Directives did not anticipate. The procedural deviations documented below purchased something - speed, decisiveness, simplified administration. The cost is measured in Directive compliance.
 
 ---
 
@@ -167,13 +167,19 @@ The comparison had not been made. Both documents are public. The deviations docu
 
 ---
 
-## 7. How Deviations Are Reported
+## 7. Available Processes
 
-Directive 1.4<sup>[2]</sup> states:
+The Directives provide two mechanisms.
+
+**Formalization.** Directive 1.4<sup>[2]</sup> provides a path for committees whose practices necessarily differ from the Directives' defaults:
 
 > "Deviations from the procedures set out in the present document shall not be made without the authorization of the Chief Executive Officers of ISO or IEC or the technical management boards for deviations in the respective organizations."
 
-Directive 5.1.2<sup>[2]</sup> states that a P-member of a committee may appeal against any action or inaction "not in accordance with" the ISO/IEC Directives.
+**Objection.** Directive 5.1.2<sup>[2]</sup> provides a path for National Bodies to align the committee's practices with the Directives:
+
+> A P-member of a committee may appeal against any action or inaction "not in accordance with" the Statutes and Rules of Procedure or the ISO/IEC Directives.
+
+A committee that knows when to exercise either mechanism is in control of its own governance.
 
 ---
 
