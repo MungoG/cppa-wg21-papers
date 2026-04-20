@@ -132,7 +132,7 @@ def test_build_intent_info(wg21_style, tmp_path):
     _assert_valid_pdf(result)
     title = _read_pdf_title(result)
     assert title is not None, "Could not read PDF title metadata"
-    assert title.startswith("Info: "), f"Expected 'Info: ' prefix, got: {title!r}"
+    assert not title.startswith("Info: "), f"PDF title should not have 'Info: ' prefix, got: {title!r}"
     assert "Symmetric Transfer" in title
 
 
@@ -143,7 +143,7 @@ def test_build_intent_ask(wg21_style, tmp_path):
     _assert_valid_pdf(result)
     title = _read_pdf_title(result)
     assert title is not None, "Could not read PDF title metadata"
-    assert title.startswith("Ask: "), f"Expected 'Ask: ' prefix, got: {title!r}"
+    assert not title.startswith("Ask: "), f"PDF title should not have 'Ask: ' prefix, got: {title!r}"
     assert "Coroutine Execution Model" in title
 
 

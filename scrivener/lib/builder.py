@@ -84,9 +84,6 @@ def build_pdf(md_path, output_path, cli_cfg, style):
 
     has_fm_title = bool(fm.get("title"))
     display_title = str(fm["title"]) if has_fm_title else ""
-    intent = fm.get("intent", "").strip().lower()
-    if intent in ("info", "ask") and display_title:
-        display_title = f"{intent.capitalize()}: {display_title}"
 
     renderer = ASTRenderer(cfg, body_cmap, fallback_chain, content_width,
                            md_dir, has_fm_title=has_fm_title,
