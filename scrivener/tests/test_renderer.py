@@ -577,3 +577,129 @@ def test_render_mermaid_contains_drawing(renderer):
     assert result is not None
     drawings = [f for f in result if isinstance(f, Drawing)]
     assert len(drawings) == 1
+
+
+# -- Table word-wrap and shrink-retry --
+
+def _make_table_tok(headers, rows):
+    """Build a mistune AST table token from lists of strings."""
+    head_cells = [
+        {"type": "table_cell", "children": [{"type": "text", "raw": h}]}
+        for h in headers
+    ]
+    body_rows = []
+    for row in rows:
+        cells = [
+            {"type": "table_cell", "children": [{"type": "text", "raw": c}]}
+            for c in row
+        ]
+        body_rows.append({"type": "table_row", "children": cells})
+    return {
+        "type": "table",
+        "children": [
+            {"type": "table_head", "children": head_cells},
+            {"type": "table_body", "children": body_rows},
+        ],
+    }
+
+
+def _extract_table(flows):
+    """Return the first Table flowable from a list."""
+    for f in flows:
+        if isinstance(f, Table):
+            return f
+    return None
+
+
+
+def test_table_cells_no_split_long_words(renderer):
+    """Table cell paragraphs must have splitLongWords disabled."""
+    tok = _make_table_tok(
+        ["Header"],
+        [["AutomatedEvaluation"]],
+    )
+    flows = renderer._render_token(tok)
+    tbl = _extract_table(flows)
+    assert tbl is not None
+    for row in tbl._cellvalues:
+        for cell in row:
+            if isinstance(cell, Paragraph):
+                assert cell.style.splitLongWords == 0
+
+
+def test_smart_col_widths_returns_min_word_widths(renderer):
+    """_smart_col_widths returns min-word-width floors alongside column widths."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    tok = _make_table_tok(
+        ["Short", "LongHeaderWord"],
+        [["a", "Extremely"]],
+    )
+    flows = renderer._render_token(tok)
+    tbl = _extract_table(flows)
+    assert tbl is not None
+    # Build rows the same way _build_table_flowable does
+    hdr = [
+        Paragraph("Short", renderer.ps["table_body"]),
+        Paragraph("LongHeaderWord", renderer.ps["table_body"]),
+    ]
+    body = [
+        Paragraph("a", renderer.ps["table_body"]),
+        Paragraph("Extremely", renderer.ps["table_body"]),
+    ]
+    col_widths, min_word = renderer._smart_col_widths([hdr, body], 2)
+    assert len(min_word) == 2
+    pad = renderer.style["table"]["cell_padding"]
+    h_pad = pad["left"] + pad["right"] + 2
+    fs = renderer.style["body_size"]
+    expected_min = stringWidth("LongHeaderWord", "Body", fs) + h_pad
+    assert min_word[1] >= expected_min - 1
+
+
+def test_table_shrink_retry(font_registered, min_style, tmp_path):
+    """When columns are too narrow for their words, font size shrinks."""
+    import copy
+    style = copy.deepcopy(min_style)
+    r = ASTRenderer(
+        style, body_cmap={}, fallback_chain=[],
+        content_width=120, md_dir=tmp_path, has_fm_title=True)
+    tok = _make_table_tok(
+        ["Date", "Move", "Register", "Description"],
+        [["July 2026", "Agora21 Launch", "Automated Evaluation",
+          "An AI-generated analysis of every paper"]],
+    )
+    flows = r._render_token(tok)
+    tbl = _extract_table(flows)
+    assert tbl is not None
+    base_fs = style["body_size"] * style.get("table", {}).get("font_scale", 1.0)
+    cmds = getattr(tbl, '_cmds', [])
+    if not cmds and hasattr(tbl, 'style') and hasattr(tbl.style, '_cmds'):
+        cmds = tbl.style._cmds
+    for cmd in cmds:
+        if cmd[0] == 'FONTSIZE':
+            assert cmd[3] < base_fs
+
+
+def test_table_shrink_caps_at_three_retries(font_registered, min_style, tmp_path):
+    """Font size never shrinks below base * SHRINK_FACTOR^MAX_SHRINK_RETRIES."""
+    import copy
+    style = copy.deepcopy(min_style)
+    r = ASTRenderer(
+        style, body_cmap={}, fallback_chain=[],
+        content_width=60, md_dir=tmp_path, has_fm_title=True)
+    tok = _make_table_tok(
+        ["A", "B", "C", "D", "E", "F"],
+        [["Incomprehensibilities", "Supercalifragilistic",
+          "Extraordinarily", "Internationalization",
+          "Counterrevolutionary", "Deinstitutionalization"]],
+    )
+    flows = r._render_token(tok)
+    tbl = _extract_table(flows)
+    assert tbl is not None
+    base_fs = style["body_size"] * style.get("table", {}).get("font_scale", 1.0)
+    min_allowed = base_fs * (ASTRenderer.SHRINK_FACTOR ** ASTRenderer.MAX_SHRINK_RETRIES)
+    cmds = getattr(tbl, '_cmds', [])
+    if not cmds and hasattr(tbl, 'style') and hasattr(tbl.style, '_cmds'):
+        cmds = tbl.style._cmds
+    for cmd in cmds:
+        if cmd[0] == 'FONTSIZE':
+            assert cmd[3] >= min_allowed - 0.01

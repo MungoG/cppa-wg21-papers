@@ -91,6 +91,9 @@ class ASTRenderer:
         self.ps["list_item"] = ParagraphStyle(
             "list_item", parent=self.ps["body"],
             spaceAfter=0, spaceBefore=0)
+        self.ps["table_body"] = ParagraphStyle(
+            "table_body", parent=self.ps["body"],
+            splitLongWords=0, spaceBefore=0, spaceAfter=0)
 
         for level in range(1, 7):
             key = f"h{level}"
@@ -764,13 +767,33 @@ class ASTRenderer:
 
         return [ListFlowable(items, **kwargs)]
 
-    def _smart_col_widths(self, all_rows, ncols):
-        """Two-pass column sizing: measure minimum width per column,
-        give short columns their natural width and share the rest
-        proportionally among wide columns."""
+    def _smart_col_widths(self, all_rows, ncols, font_size=None):
+        """Two-pass column sizing with per-word minimum widths.
+
+        Measures each column's natural width (full cell text) and its
+        minimum width (longest single word plus padding). Short columns
+        keep their natural width; wide columns share remaining space
+        proportionally. No column is narrower than its longest word.
+
+        Args:
+            all_rows: list of row lists (each cell a Paragraph or str).
+            ncols: number of columns.
+            font_size: override font size for measurement. When None,
+                uses each cell's own style fontSize.
+
+        Returns:
+            (col_widths, min_word_widths) - col_widths is the allocated
+            list; min_word_widths is the per-column floor based on the
+            longest single word.
+        """
         from reportlab.pdfbase.pdfmetrics import stringWidth
 
+        tbl_cfg = self.style["table"]
+        pad = tbl_cfg["cell_padding"]
+        h_pad = pad["left"] + pad["right"] + 2
+
         natural = [0.0] * ncols
+        min_word = [0.0] * ncols
         for row in all_rows:
             for i, cell in enumerate(row):
                 if i >= ncols:
@@ -778,21 +801,23 @@ class ASTRenderer:
                 if hasattr(cell, 'text'):
                     txt = re.sub(r'<[^>]+>', '', cell.text)
                     fn = cell.style.fontName if hasattr(cell, 'style') else "Body"
-                    fs = cell.style.fontSize if hasattr(cell, 'style') else 10
+                    fs = font_size or (cell.style.fontSize if hasattr(cell, 'style') else 10)
                 else:
                     txt = str(cell)
                     fn = "Body"
-                    fs = self.style["body_size"]
-                w = stringWidth(txt, fn, fs)
-                tbl_cfg = self.style["table"]
-                pad = tbl_cfg["cell_padding"]
-                w += pad["left"] + pad["right"] + 2
+                    fs = font_size or self.style["body_size"]
+                w = stringWidth(txt, fn, fs) + h_pad
                 if w > natural[i]:
                     natural[i] = w
+                for word in txt.split():
+                    ww = stringWidth(word, fn, fs) + h_pad
+                    if ww > min_word[i]:
+                        min_word[i] = ww
 
         total_natural = sum(natural)
         if total_natural == 0:
-            return [self.content_width / ncols] * ncols
+            even = [self.content_width / ncols] * ncols
+            return even, min_word
         if total_natural <= self.content_width:
             surplus = self.content_width - total_natural
             flex_nat = [w for w in natural if w > self.content_width / ncols]
@@ -802,12 +827,9 @@ class ASTRenderer:
                 for i in range(ncols):
                     if natural[i] > self.content_width / ncols:
                         result[i] += surplus * (natural[i] / flex_total)
-                return result
+                return result, min_word
             scale = self.content_width / total_natural
-            return [w * scale for w in natural]
-
-        tbl_pad = self.style["table"]["cell_padding"]
-        min_w = tbl_pad["left"] + tbl_pad["right"] + 4
+            return [w * scale for w in natural], min_word
 
         threshold = self.content_width / ncols
         fixed = [(i, w) for i, w in enumerate(natural) if w <= threshold]
@@ -827,10 +849,10 @@ class ASTRenderer:
             result[i] = remaining * (w / capped_total) if capped_total > 0 else remaining / len(capped)
 
         for i in range(ncols):
-            if result[i] < min_w:
-                result[i] = min_w
+            if result[i] < min_word[i]:
+                result[i] = min_word[i]
 
-        return result
+        return result, min_word
 
     def _render_table(self, tok):
         hdr_fg = self.style.get("table_header_fg")
@@ -840,11 +862,11 @@ class ASTRenderer:
             if child.get("type") == "table_head":
                 if hdr_fg and "table_header" not in self.ps:
                     self.ps["table_header"] = ParagraphStyle(
-                        "table_header", parent=self.ps["body"],
+                        "table_header", parent=self.ps["table_body"],
                         textColor=parse_color(hdr_fg),
                         fontName="Body-Bold",
                         spaceBefore=0, spaceAfter=0)
-                hdr_style = self.ps.get("table_header", self.ps["body"])
+                hdr_style = self.ps.get("table_header", self.ps["table_body"])
                 head_children = child.get("children", [])
                 self._in_table_header = True
                 if head_children and head_children[0].get("type") == "table_cell":
@@ -877,14 +899,22 @@ class ASTRenderer:
                         text = self._inline_children(cell.get("children", []))
                         text = self._inject_fallback_fonts(text)
                         text = self._nobr_numbers(text)
-                        cells.append(Paragraph(text, self.ps["body"]))
+                        cells.append(Paragraph(text, self.ps["table_body"]))
                     rows.append(cells)
 
         return self._build_table_flowable(headers, rows)
 
+    SHRINK_FACTOR = 0.95
+    MAX_SHRINK_RETRIES = 3
+
     def _build_table_flowable(self, headers, rows):
-        """Build a styled ReportLab Table from lists of header and body row
-        flowables. Shared by markdown table and HTML table rendering."""
+        """Build a styled ReportLab Table from header and body row flowables.
+
+        Shared by markdown table and HTML table rendering. When
+        smart_columns is enabled the method measures per-word minimum
+        widths and, if any column is too narrow to hold its longest
+        word, retries with a 5 % smaller font size up to three times.
+        """
         tbl_cfg = self.style.get("table", {})
         pad = tbl_cfg.get("cell_padding", {})
 
@@ -895,10 +925,19 @@ class ASTRenderer:
         ncols = max(len(r) for r in all_rows)
         for r in all_rows:
             while len(r) < ncols:
-                r.append(Paragraph("", self.ps["body"]))
+                r.append(Paragraph("", self.ps["table_body"]))
+
+        tbl_fs = self.style["body_size"] * tbl_cfg.get("font_scale", 1.0)
 
         if tbl_cfg.get("smart_columns", True):
-            col_widths = self._smart_col_widths(all_rows, ncols)
+            col_widths, min_word = self._smart_col_widths(
+                all_rows, ncols, font_size=tbl_fs)
+            for _ in range(self.MAX_SHRINK_RETRIES):
+                if all(col_widths[i] >= min_word[i] for i in range(ncols)):
+                    break
+                tbl_fs *= self.SHRINK_FACTOR
+                col_widths, min_word = self._smart_col_widths(
+                    all_rows, ncols, font_size=tbl_fs)
         else:
             col_widths = [self.content_width / ncols] * ncols
         tbl = Table(all_rows, colWidths=col_widths, splitInRow=1)
@@ -918,7 +957,6 @@ class ASTRenderer:
                 if (i - nhead) % 2 == 1:
                     style_cmds.append(("BACKGROUND", (0, i), (-1, i), sc))
 
-        tbl_fs = self.style["body_size"] * tbl_cfg.get("font_scale", 1.0)
         top_pad = pad["top"] + self.cap_shift
         bot_pad = pad["bottom"] - self.cap_shift
         style_cmds.extend([
@@ -963,11 +1001,11 @@ class ASTRenderer:
         hdr_fg = self.style.get("table_header_fg")
         if hdr_fg and "table_header" not in self.ps:
             self.ps["table_header"] = ParagraphStyle(
-                "table_header", parent=self.ps["body"],
+                "table_header", parent=self.ps["table_body"],
                 textColor=parse_color(hdr_fg),
                 fontName="Body-Bold",
                 spaceBefore=0, spaceAfter=0)
-        hdr_style = self.ps.get("table_header", self.ps["body"])
+        hdr_style = self.ps.get("table_header", self.ps["table_body"])
 
         headers = []
         rows = []
@@ -1002,7 +1040,7 @@ class ASTRenderer:
                         cells.append(XPreformatted(markup, self.ps["code_block"]))
                     else:
                         text = escape_xml(td.get_text())
-                        cells.append(Paragraph(text, self.ps["body"]))
+                        cells.append(Paragraph(text, self.ps["table_body"]))
                 rows.append(cells)
 
         return self._build_table_flowable(headers, rows)

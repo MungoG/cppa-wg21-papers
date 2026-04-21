@@ -43,7 +43,8 @@ output.
   heading, code, list, table, blockquote, wording divs),
   inline rendering (emphasis, strong, codespan, link,
   strikethrough, ins/del), front-matter and TOC flowable
-  generation
+  generation, table word-wrap prevention (splitLongWords),
+  min-word-width column floors, font-size shrink-retry
 
 ### Layer 3 - Builder integration tests
 
