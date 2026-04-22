@@ -11,9 +11,9 @@ reply-to:
 
 ## Abstract
 
-Twenty-one questions from *The Design and Evolution of C++* tell you whether a proposal belongs in the language.
+Twenty-four questions from *The Design and Evolution of C++* tell you whether a proposal belongs in the language.
 
-This paper presents a checklist distilled from Bjarne Stroustrup's documented design principles. Twenty questions come from D&E. One comes from Howard Hinnant. Point the checklist at any proposal, language feature, library, or blog post. Answer each question yes or no. Count the yeses. Read the verdict.
+This paper presents a checklist distilled from Bjarne Stroustrup's documented design principles. Twenty-three questions come from D&E. One comes from Howard Hinnant. Point the checklist at any proposal, language feature, library, or blog post. Answer each question yes, no, or not applicable. Count the yeses as a fraction of applicable questions. Read the verdict.
 
 The author dedicates all original content in this paper to the public domain under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). It may be freely reused as the basis of tutorials, documentation, and other teaching materials.
 
@@ -43,9 +43,11 @@ Everything that follows is a structured prompt for use in a Large Language Model
 
 # Tool: Is This C++?
 
-Point this at any proposal, language, library, or blog post. Answer each question yes or no. Count the yeses. Read the verdict.
+Point this at any proposal, language, library, or blog post. Answer each question yes, no, or not applicable. Count the yeses as a fraction of applicable questions. Read the verdict.
 
-Every question comes from Bjarne Stroustrup, *The Design and Evolution of C++* (Addison-Wesley, 1994).
+Questions 1-20 and 22-24 come from Bjarne Stroustrup, *The Design and Evolution of C++* (Addison-Wesley, 1994). Question 21 comes from Howard Hinnant.
+
+---
 
 **1. Does the subject avoid imposing cost on programs that do not use it?**
 
@@ -131,23 +133,49 @@ Every question comes from Bjarne Stroustrup, *The Design and Evolution of C++* (
 
 > "Any good tool is dangerous. I am a big fan of pocket knives and kitchen knives and all that sort of stuff, but they can really help in the kitchen or they can chop your fingers off. You just [have to] know how to use them." - Howard Hinnant
 
-Count the yes answers.
+**22. Does the subject avoid depending on or encouraging preprocessor macros?**
 
-| Yes   | Verdict |
-|-------|---------|
-| 19-21 | **This is C++.** |
-| 15-18 | **This is not C++.** |
-| 11-14 | **This is certainly not C++.** |
-| 6-10  | **This is not even close to C++.** |
-| 0-5   | **This is another matter entirely.** |
+> "Preprocessor usage should be eliminated." (S4.4)
+
+**23. Can the subject's properties be verified by local inspection?**
+
+> "Locality is good. When writing a piece of code, one would prefer it to be self-contained except where it needs a service from elsewhere." (S4.4)
+
+**24. Does the subject integrate with existing C++ features rather than creating an isolated sub-language?**
+
+> "Features accepted into C++ must work in combination, must support each other, must compensate for serious real problems in C++ as it stood without them, must fit syntactically and semantically into the language." (S6.4.4)
+
+---
+
+Count the yes answers. Divide by the number of applicable questions. Read the verdict.
+
+| Score         | Verdict |
+|---------------|---------|
+| 90-100%       | **This is C++.** |
+| 71-89%        | **This is not C++.** |
+| 52-70%        | **This is certainly not C++.** |
+| 29-51%        | **This is not even close to C++.** |
+| 0-28%         | **This is another matter entirely.** |
+
+---
 
 ## Execution Protocol
 
-Each of the 21 questions is evaluated in two phases. A subagent extracts evidence from the subject. The main context verifies every piece and renders the yes/no.
+Each of the 24 questions is evaluated in three phases. A subagent assesses applicability and extracts evidence from the subject. The main context verifies every piece and renders the yes/no/N/A.
+
+### Phase 0 - Applicability Assessment (subagent)
+
+Before extracting evidence, the subagent first assesses whether the question is **applicable** to the subject.
+
+**Applicability rule:** A question is applicable if the subject's design space intersects with the principle. A question is not applicable only when the subject has no conceivable bearing on the principle - not merely when the subject does not address it (that is the "No evidence" case, which remains a valid No answer).
+
+**Locality uncertainty rule (question 23 only):** If the subject proposes annotations or features where local verifiability is genuinely ambiguous - where reasonable experts could disagree on whether the properties can be verified at the point of use - mark this question N/A with a note explaining the ambiguity. Question 23 should only produce a Yes or No when the evidence clearly supports one answer.
+
+If a question is not applicable, the subagent returns `NOT APPLICABLE: [one sentence reason]` and skips evidence extraction. The main context records the N/A answer and moves to the next question.
 
 ### Phase 1 - Evidence Extraction (subagent)
 
-For each question (1 through 21, sequentially), launch a subagent. Pass it:
+For each applicable question (1 through 24, sequentially), launch a subagent. Pass it:
 
 - The question text and its Stroustrup quote
 - The full body of the subject document
@@ -180,6 +208,8 @@ After each subagent returns:
    - Only if **every** piece of evidence (after verification) supports-yes: answer is **Yes**
 4. **Write the answer.** One sentence citing the decisive evidence. If No, cite the specific piece that fails. If Yes, cite the strongest piece.
 
+---
+
 ## Output Format
 
 Begin with title, then subject identification block:
@@ -192,14 +222,19 @@ Begin with title, then subject identification block:
 * **Date:** [publication or revision date if known; otherwise "N/A"]
 * **Model:** [ai-model identifier that performed the eval]
 
-Then for each question, produce the evidence trail and answer:
+Then for each question, produce the answer followed by the evidence trail:
 
 **N. [question text]**
 
-- [source reference]: [direct quote or tight paraphrase] - supports-yes/supports-no [verified/overturned]
-- [source reference]: [direct quote or tight paraphrase] - supports-yes/supports-no [verified/overturned]
-
 **Answer:** Yes/No. [One sentence citing the decisive evidence.]
+
+- **[source reference]:** "[direct quote or tight paraphrase]"
+  - Tag: supports-yes/supports-no [verified/overturned]
+  - Reasoning: [one sentence]
+
+- **[source reference]:** "[direct quote or tight paraphrase]"
+  - Tag: supports-yes/supports-no [verified/overturned]
+  - Reasoning: [one sentence]
 
 If no evidence was found for a question:
 
@@ -207,8 +242,14 @@ If no evidence was found for a question:
 
 **Answer:** No. No evidence of compliance in the subject.
 
-After all 21 answers, produce the summary:
+If a question is not applicable to the subject:
 
-**Score:** X / 21
+**N. [question text]**
+
+**Answer:** N/A. [One sentence explaining why the question does not apply to this subject.]
+
+After all 24 answers, produce the summary:
+
+**Score:** X / Y applicable (Z skipped)
 
 **Verdict:** [verdict sentence from the table above]
