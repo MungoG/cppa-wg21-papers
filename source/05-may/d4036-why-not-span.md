@@ -22,17 +22,17 @@ C++ has bytes. A contiguous region of bytes needs a type. A sequence of such reg
 
 ---
 
-## Disclosure
+## 1. Disclosure
 
-The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[7]</sup>, a published HTTP and WebSocket library built on [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[1]</sup>'s buffer model, and develops [Capy, Corosio, Http, Beast2, and Burl](https://github.com/cppalliance)<sup>[10]</sup> - libraries that define or consume buffer abstractions. The author published [P4003R0](https://wg21.link/p4003r0)<sup>[8]</sup>. The author holds a neutral position on the Networking TS (changed from positive). This body of work creates a bias toward dedicated buffer types. Such types have costs: one more vocabulary type to learn, and interoperability friction with code that uses raw `span<byte>`.
+The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[1]</sup>, a published HTTP and WebSocket library built on [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[2]</sup>'s buffer model, and develops [Capy, Corosio, Http, Beast2, and Burl](https://github.com/cppalliance)<sup>[3]</sup> - libraries that define or consume buffer abstractions. The author published [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[4]</sup>. The author holds a neutral position on the Networking TS (changed from positive). This body of work creates a bias toward dedicated buffer types. Such types have costs: one more vocabulary type to learn, and interoperability friction with code that uses raw `span<byte>`.
 
-## Credit Where Due
+## 2. Credit Where Due
 
 `std::span` is a well-established vocabulary type. It turns a pointer and a size into a single thing. Perfectly. The vocabulary need is profound and this paper does not propose to diminish it.
 
 The question is whether `span` is also the right vocabulary for I/O buffer descriptors.
 
-## 1. `span<byte>`
+## 3. `span<byte>`
 
 Question. How do we represent a contiguous region of bytes?
 
@@ -52,7 +52,7 @@ Platform I/O requires an array, not one region:
 
 `span<byte>` can describe one region. Wrap it in a one-element array and `readv()` accepts it. But I/O rarely involves a single contiguous region. A message has a header and a body. A protocol has framing and payload. Sending two regions with `write()` means two syscalls. Sending them with `writev()` means one - this is scatter/gather I/O. `span<byte>` is an insufficient type for representing an array of buffers.
 
-## 2. `span<span<byte>>`
+## 4. `span<span<byte>>`
 
 Question. How do we represent several such regions?
 
@@ -79,7 +79,7 @@ void start_send(socket& s, span<byte> hdr, span<byte> body) {
 }
 ```
 
-## 3. `range<span<byte>>`
+## 5. `range<span<byte>>`
 
 Question. How do we own a collection of byte regions?
 
@@ -107,7 +107,7 @@ The parse boundary (26 bytes) does not align with the buffer boundary (100 bytes
 
 Incremental parsers with this need - JSON, XML, CSV, protobuf - go unserved.
 
-## 4. `byte`
+## 6. `byte`
 
 Question. What if we add byte-level algorithms to a range of `span<byte>`?
 
@@ -119,7 +119,7 @@ Answer. The range is fine for ownership and iteration. The element type is not.
 
 A separate type enables run-time safety checks:
 
-| Capability                         | Asio `mutable_buffer`<sup>[1]</sup>  | `span<byte>` |
+| Capability                         | Asio `mutable_buffer`<sup>[2]</sup>  | `span<byte>` |
 | ---------------------------------- | ------------------------------------ | ------------ |
 | Implementation-defined members     | Possible                             | Closed       |
 | Detect dangling after reallocation | Possible                             | No           |
@@ -128,7 +128,7 @@ A separate type enables run-time safety checks:
 
 Each time `span<byte>` appears in a function signature, it loses the safety capability.
 
-## 5. Six Ecosystems Already Arrived Here
+## 7. Six Ecosystems Already Arrived Here
 
 Six I/O ecosystems, designed independently, all arrived at similar solutions:
 
@@ -136,22 +136,22 @@ Six I/O ecosystems, designed independently, all arrived at similar solutions:
 | --------- | --------------------------------- | --------------------------------------------------------------- |
 | POSIX     | `iovec`                           | `void*` + `size_t`                                              |
 | Windows   | `WSABUF`                          | `ULONG` + `char*`                                               |
-| Asio      | `const_buffer` / `mutable_buffer` | `void const*` + `size_t`, with range concepts<sup>[1]</sup>     |
-| libuv     | `uv_buf_t`                        | `char*` + `size_t`<sup>[2]</sup>                                |
-| Go        | `net.Buffers`                     | scatter/gather over `[][]byte`<sup>[3]</sup>                    |
-| .NET      | `ReadOnlySequence<T>`             | linked list of discontiguous `Memory<T>` segments<sup>[4]</sup> |
+| Asio      | `const_buffer` / `mutable_buffer` | `void const*` + `size_t`, with range concepts<sup>[2]</sup>     |
+| libuv     | `uv_buf_t`                        | `char*` + `size_t`<sup>[6]</sup>                                |
+| Go        | `net.Buffers`                     | scatter/gather over `[][]byte`<sup>[7]</sup>                    |
+| .NET      | `ReadOnlySequence<T>`             | linked list of discontiguous `Memory<T>` segments<sup>[8]</sup> |
 
 Everybody converged on custom types independently.
 
-## 6. The Final Straw
+## 8. The Final Straw
 
 The committee already endorsed this principle.
 
-[P0298R3](https://wg21.link/p0298r3)<sup>[6]</sup> introduced `std::byte` because `unsigned char` performed triple duty. Neil MacIntosh wrote:
+[P0298R3](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0298r3.pdf)<sup>[9]</sup> introduced `std::byte` because `unsigned char` performed triple duty. Neil MacIntosh wrote:
 
-> "these types perform a 'triple duty'. Not only are they used for byte addressing, but also as arithmetic types, and as character types. This multiplicity of roles opens the door for programmer error"<sup>[6]</sup>
+> "these types perform a 'triple duty'. Not only are they used for byte addressing, but also as arithmetic types, and as character types. This multiplicity of roles opens the door for programmer error"<sup>[9]</sup>
 
-> "The key motivation here is to make byte a distinct type - to improve program safety by leveraging the type system."<sup>[6]</sup>
+> "The key motivation here is to make byte a distinct type - to improve program safety by leveraging the type system."<sup>[9]</sup>
 
 `unsigned char` had the right size and alignment. The committee added `std::byte` anyway - same size, same alignment, but no arithmetic, no implicit conversions. The generic type's operations did not match the domain. The committee restricted the interface.
 
@@ -163,7 +163,7 @@ The committee already endorsed this principle.
 
 `std::byte` kept the shift operators despite the stated goal of removing arithmetic. The principle was right. The execution left a gap.
 
-## 7. Finally Correct
+## 9. Finally Correct
 
 New buffer types give us the principled option. Only what we need: `data()` and `size()`.
 
@@ -224,9 +224,9 @@ public:
 };
 ```
 
-These are the [Networking TS](https://wg21.link/n4771)<sup>[9]</sup> types.
+These are the [Networking TS](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4771.pdf)<sup>[10]</sup> types.
 
-## 8. Side by Side
+## 10. Side by Side
 
 | Task                  | `span<byte>`                                         | `mutable_buffer`                     |
 | --------------------- | ---------------------------------------------------- | ------------------------------------ |
@@ -249,7 +249,7 @@ public:
 
 Smaller to write, safer to use, open to diagnostics.
 
-## 9. But
+## 11. But
 
 ### But this is standardizing Asio's types
 
@@ -277,7 +277,7 @@ Even if `span<void>` were possible, what remains after removing the impossible i
 
 ---
 
-# Acknowledgements
+## Acknowledgments
 
 The buffer model described here draws on twenty years of Asio's buffer sequence abstractions, due to Chris Kohlhoff.
 
@@ -285,13 +285,22 @@ The buffer model described here draws on twenty years of Asio's buffer sequence 
 
 ## References
 
-1. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Buffer types and buffer sequence requirements (Chris Kohlhoff). https://www.boost.org/doc/libs/release/doc/html/boost_asio.html
-2. [libuv](https://docs.libuv.org/en/v1.x/) - `uv_buf_t` buffer type. https://docs.libuv.org/en/v1.x/
-3. [Go standard library](https://pkg.go.dev/) - `net.Buffers` (https://pkg.go.dev/net#Buffers). https://pkg.go.dev/
-4. [.NET System.IO.Pipelines](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipelines) - `ReadOnlySequence<T>`. https://learn.microsoft.com/en-us/dotnet/api/system.io.pipelines
-5. [C++ Working Draft](https://eel.is/c++draft/) - `span` ([span.overview](https://eel.is/c++draft/span.overview)), `mdspan` ([mdspan.overview](https://eel.is/c++draft/mdspan.overview)), ranges ([ranges](https://eel.is/c++draft/ranges)). https://eel.is/c++draft/
-6. [P0298R3](https://wg21.link/p0298r3) - A byte type definition (Neil MacIntosh). https://wg21.link/p0298r3
-7. [Boost.Beast](https://github.com/boostorg/beast) - HTTP and WebSocket built on Boost.Asio (Vinnie Falco). https://github.com/boostorg/beast
-8. [P4003R0](https://wg21.link/p4003r0) - (Vinnie Falco). https://wg21.link/p4003r0
-9. [N4771](https://wg21.link/n4771) - Working Draft, C++ Extensions for Networking. https://wg21.link/n4771
-10. [C++ Alliance](https://github.com/cppalliance) - Capy, Corosio, Http, Beast2, Burl (Vinnie Falco). https://github.com/cppalliance
+[1] [Boost.Beast](https://github.com/boostorg/beast) - HTTP and WebSocket built on Boost.Asio (Vinnie Falco).
+
+[2] [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html) - Buffer types and buffer sequence requirements (Chris Kohlhoff).
+
+[3] [C++ Alliance](https://github.com/cppalliance) - Capy, Corosio, Http, Beast2, Burl (Vinnie Falco).
+
+[4] [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+
+[5] [C++ Working Draft](https://eel.is/c++draft/) - `span`, `mdspan`, ranges.
+
+[6] [libuv](https://docs.libuv.org/en/v1.x/) - `uv_buf_t` buffer type.
+
+[7] [Go standard library: net.Buffers](https://pkg.go.dev/net#Buffers).
+
+[8] [.NET System.IO.Pipelines](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipelines) - `ReadOnlySequence<T>`.
+
+[9] [P0298R3](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0298r3.pdf) - "A byte type definition" (Neil MacIntosh, 2017).
+
+[10] [N4771](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4771.pdf) - "Working Draft, C++ Extensions for Networking" (2018).

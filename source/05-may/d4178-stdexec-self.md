@@ -12,7 +12,7 @@ reply-to:
 
 Sections of P2300R10 are compared to other sections of P2300R10 and entered into the historical record.
 
-This paper reviews [P2300R10](https://wg21.link/p2300r10) for internal consistency using only the specification's own text. Each finding pairs two passages from the same paper that appear to be in tension. Four recurring patterns organize the findings. Where a charitable reading resolves the tension, it is noted. No external sources are cited.
+This paper reviews [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) for internal consistency using only the specification's own text. Each finding pairs two passages from the same paper that appear to be in tension. Four recurring patterns organize the findings. Where a charitable reading resolves the tension, it is noted. No external sources are cited.
 
 ---
 
@@ -43,7 +43,7 @@ This paper asks for nothing.
 
 Four consecutive sections about the coroutine/sender interface follow the same structure.
 
-| | [P2300R10](https://wg21.link/p2300r10) Section 4.14 |
+| | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.14 |
 | --- | --- |
 | **Yes** | "it is sensible to pass both the error code and the result (if any) through the value channel" |
 | **But** | "In other cases, the partial success is more of a partial failure." |
@@ -51,7 +51,7 @@ Four consecutive sections about the coroutine/sender interface follow the same s
 
 The section may be exploring a genuine design tension rather than contradicting itself - partial success genuinely admits two reasonable framings.
 
-| | [P2300R10](https://wg21.link/p2300r10) Section 4.16 |
+| | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.16 |
 | --- | --- |
 | **Yes** | "Many senders can be trivially made awaitable" |
 | **But** | "If the coroutine type opts in to sender support" |
@@ -59,7 +59,7 @@ The section may be exploring a genuine design tension rather than contradicting 
 
 The progression from "many" to "only some" may reflect an honest narrowing of scope as the section develops the details.
 
-| | [P2300R10](https://wg21.link/p2300r10) Section 4.15 |
+| | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.15 |
 | --- | --- |
 | **Yes** | "In truth there will be no problem" |
 | **But** | "By 'generally awaitable' we mean types that don't require custom `await_transform` trickery" |
@@ -67,7 +67,7 @@ The progression from "many" to "only some" may reflect an honest narrowing of sc
 
 The intended audience for Section 4.15 may be users who have already accepted these costs for the convenience of general awaitability. Section 1.9.2 calls these same allocations and indirections a "deal-breaker."
 
-| | [P2300R10](https://wg21.link/p2300r10) Section 4.17 |
+| | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.17 |
 | --- | --- |
 | **Yes** | "Cancellation of a sender can unwind a stack of coroutines" |
 | **But** | "Provided that the promise types of the calling coroutines also inherit from `with_awaitable_senders`" |
@@ -79,25 +79,25 @@ The capability is real for promise types that opt in. The failure mode affects p
 
 ### This Way, Then That Way
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 (paragraph 2) | [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 (paragraph 4) |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 (paragraph 2) | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 (paragraph 4) |
 | --- | --- |
 | "coroutine frames require an unavoidable dynamic allocation" | "the HALO optimization...completely eliminating the runtime overhead" |
 
 The authors may view HALO as too unreliable to change the fundamental cost model, even while acknowledging its existence as a compiler optimization.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 | [P2300R10](https://wg21.link/p2300r10) Section 4.9.4 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.9.4 |
 | --- | --- |
 | "the extra allocations and indirections are a deal-breaker" | "concerns related to runtime overhead of the design in single-threaded scenarios and these concerns are still being investigated" |
 
 Coroutine allocation costs are well-characterized from years of field deployment. Sender overhead in single-threaded scenarios is a newer area of study. The different treatment may reflect different levels of maturity.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 | [P2300R10](https://wg21.link/p2300r10) Section 5.6 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 5.6 |
 | --- | --- |
 | "HALO requires a sophisticated compiler, and a fair number of stars need to align" | "the compiler is able to see a chain of work described using senders as a tree of tail calls, allowing for inlining and removal of most of the sender machinery" |
 
 Sender optimization relies on inlining statically dispatched calls - a simpler class of optimization than the alias analysis HALO requires. The different confidence levels may reflect this structural difference.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 (conclusion) | [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 (sole evidence) |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 (conclusion) | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 (sole evidence) |
 | --- | --- |
 | "the extra allocations and indirections are a deal-breaker" | "In our experience, more often than not" |
 
@@ -107,31 +107,31 @@ The authors' extensive production experience - documented in Section 1.10.1 - ma
 
 ### Dismiss, Then Adopt
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.3 | The receiver concept |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.3 | The receiver concept |
 | --- | --- |
 | "The lack of a standard callback shape obstructs generic design" | `set_value`, `set_error`, `set_stopped` - a standardized callback shape with cancellation support |
 
 Defining a standard callback shape is arguably the thesis of the receiver concept, not a contradiction of the prior-art critique.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.1 | [P2300R10](https://wg21.link/p2300r10) Section 4.8 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.1 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.8 |
 | --- | --- |
 | "Futures, as traditionally realized, require the dynamic allocation and management of a shared state, synchronization, and typically type-erasure of work and continuation... These expenses rule out the future abstraction for many uses" | `split` converts single-shot to multi-shot using shared state, synchronization, and dynamic allocation |
 
 Unlike futures, where these costs are mandatory, `split` makes them opt-in. Users who do not fork do not pay.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 | [P2300R10](https://wg21.link/p2300r10) Section 1.10.1 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.10.1 |
 | --- | --- |
 | "we consider coroutines a poor choice for a basis of all standard async" | "In all the cases mentioned above, developers mix-and-match between the sender algorithms in Unifex and Unifex's coroutine type, `unifex::task`." |
 
 This mix-and-match usage may reflect the intended design - senders as the composable foundation, coroutines as the ergonomic layer.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 | [P2300R10](https://wg21.link/p2300r10) Section 1.10.1 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.10.1 |
 | --- | --- |
 | "we consider coroutines a poor choice for a basis of all standard async" | "Coroutines are easier to understand than chained futures so the team was able to meet requirements for certain constrained environments that would have been too complicated to maintain with futures." |
 
 The authors likely intend a distinction between coroutines as a basis abstraction and coroutines as a user-facing tool. Production use of coroutines alongside senders is consistent with this layered view.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.9.2 | [P2300R10](https://wg21.link/p2300r10) Section 4.15 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.9.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.15 |
 | --- | --- |
 | "we consider coroutines a poor choice for a basis of all standard async" | "we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code" |
 
@@ -141,31 +141,31 @@ If coroutines are understood as a consumer of the sender abstraction rather than
 
 ### First Yes, Then No
 
-| [P2300R10](https://wg21.link/p2300r10) Section 4.9.4 | Context |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.9.4 | Context |
 | --- | --- |
 | "these concerns are still being investigated" / "This paper will be updated in the future with any changes that arise from the investigations into P2175R0." | This is R10, the revision that became C++26. |
 
 All shipped standards contain open questions. The committee may have judged the specification ready despite these items, with investigation continuing in parallel.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.2 | [P2300R10](https://wg21.link/p2300r10) Section 4.20.11 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.20.11 |
 | --- | --- |
 | "Have clear and concise answers for where things execute." | "It completes inline on the execution resource on which the last input sender completes" |
 
 The answer may be clear at a different level of abstraction - the last child to complete determines the execution context, which is a well-defined rule even if the result varies at runtime.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.2 | [P2300R10](https://wg21.link/p2300r10) Section 4.17 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.17 |
 | --- | --- |
 | "Support cancellation, which is not an error." | "the coroutine behaves as if an uncatchable exception had been thrown from the `co_await` expression" |
 
 Implementing cancellation through an exception-like mechanism in coroutines may be the least-bad option given the constraints of the coroutine specification, even if it blurs the conceptual boundary.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 1.2 | [P2300R10](https://wg21.link/p2300r10) Section 4.9.3 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 1.2 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.9.3 |
 | --- | --- |
 | "Make it easy to be correct by construction." | "A stop-request can be issued concurrently from another thread. This means the implementation of `execution::start()` needs to be careful to ensure that, once a stop callback has been registered, that there are no data-races" |
 
 Cancellation in concurrent systems is inherently difficult. The tension between correctness by construction and the practical complexity of stop-request handling may be an honest acknowledgment of a hard problem rather than a design failure.
 
-| [P2300R10](https://wg21.link/p2300r10) Section 4.8 | [P2300R10](https://wg21.link/p2300r10) Section 4.7 |
+| [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.8 | [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) Section 4.7 |
 | --- | --- |
 | "Senders are forkable" | "A single-shot sender can only be connected to a receiver at most once." |
 
@@ -175,7 +175,7 @@ The design may intend single-shot as the zero-overhead default, with `split` as 
 
 ## 4. Example Code
 
-The following code is from [P2300R10](https://wg21.link/p2300r10). No external code is shown.
+The following code is from [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html). No external code is shown.
 
 ### The `retry` algorithm
 
@@ -246,4 +246,4 @@ The author thanks Alexander Stepanov for participating in the Boost documentary 
 
 ## References
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak et al., 2024). https://wg21.link/p2300r10
+[1] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak et al., 2024).

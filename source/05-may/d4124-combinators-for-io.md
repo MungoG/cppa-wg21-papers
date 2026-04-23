@@ -13,7 +13,7 @@ reply-to:
 
 `std::execution::when_all` dispatches on channels. I/O errors arrive on the value channel. The combinator does not see them.
 
-This paper traces the `when_all` completion handler through the [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> specification, examines three strategies for routing I/O compound results through the three-channel model, shows that all three fail to achieve correct error-driven cancellation, and proposes domain-aware combinators - a compile-time dispatch that selects the I/O-aware path when the children are I/O awaitables and delegates to `std::execution::when_all` when the children are senders.
+This paper traces the `when_all` completion handler through the [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> specification, examines three strategies for routing I/O compound results through the three-channel model, shows that all three fail to achieve correct error-driven cancellation, and proposes domain-aware combinators - a compile-time dispatch that selects the I/O-aware path when the children are I/O awaitables and delegates to `std::execution::when_all` when the children are senders.
 
 ---
 
@@ -53,7 +53,7 @@ An I/O-aware `when_all` follows the same principle. The combinator knows the res
 auto [ec, n] = co_await sock.async_read_some(buf);
 ```
 
-`ec` is always present. `!ec` means success; the remaining elements are meaningful. `ec` means failure; the remaining elements are present but not guaranteed meaningful. `io_result` is defined in [P4003R0](https://wg21.link/p4003r0)<sup>[8]</sup>.
+`ec` is always present. `!ec` means success; the remaining elements are meaningful. `ec` means failure; the remaining elements are present but not guaranteed meaningful. `io_result` is defined in [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[4]</sup>.
 
 ### 2.2 Behavior
 
@@ -76,7 +76,7 @@ The combinator inspects the **value** - the `error_code` in the first position o
 
 ### 2.3 Return Type
 
-Peter Dimov's design<sup>[4]</sup>: the return type lifts the `error_code` out of each child's result into a single outer `io_result`. Child value types are collected as parameters.
+Peter Dimov's design<sup>[5]</sup>: the return type lifts the `error_code` out of each child's result into a single outer `io_result`. Child value types are collected as parameters.
 
 Given children returning `io_result<T1>`, `io_result<T2>`, ..., `io_result<Tn>`:
 
@@ -102,7 +102,7 @@ One `ec`. Flat destructuring. On success, all three byte counts are meaningful. 
 
 ### 3.1 The Specification
 
-[P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> specifies `when_all`'s completion logic in `impls-for<when_all_t>::complete`. The handler dispatches on the completion channel tag:
+[P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> specifies `when_all`'s completion logic in `impls-for<when_all_t>::complete`. The handler dispatches on the completion channel tag:
 
 ```cpp
 []<class Index, class State, class Rcvr,
@@ -288,7 +288,7 @@ Every call site must wrap every child in `io_adapt`. The "write it once" argumen
 
 ### 5.3 Code Size
 
-Chuanqi Xu (Alibaba) reported on the LEWG reflector (March 2026) that replacing `future.then().then()` chains with coroutines reduced binary size because every `then` clause creates a new symbol<sup>[5]</sup>. `io_adapt` has the same property: each instantiation at each call site creates a new template specialization and a new symbol. Code size scales with the number of `when_all` call sites.
+Chuanqi Xu (Alibaba) reported on the LEWG reflector (March 2026) that replacing `future.then().then()` chains with coroutines reduced binary size because every `then` clause creates a new symbol<sup>[6]</sup>. `io_adapt` has the same property: each instantiation at each call site creates a new template specialization and a new symbol. Code size scales with the number of `when_all` call sites.
 
 ### 5.4 The "Write It Once" Inversion
 
@@ -317,7 +317,7 @@ No channel routing. No adapter. No extra allocations. The combinator has the val
 
 ### 6.2 Sender Children
 
-When the children are senders, the combinator delegates to `std::execution::when_all`. Channel-based dispatch. The existing [P2300R10](https://wg21.link/p2300r10)<sup>[1]</sup> implementation. No change.
+When the children are senders, the combinator delegates to `std::execution::when_all`. Channel-based dispatch. The existing [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[1]</sup> implementation. No change.
 
 ### 6.3 Dispatch
 
@@ -363,7 +363,7 @@ The compiler selects the sender overload. Delegates to `std::execution::when_all
 
 The pattern applies to all concurrency combinators. `when_any`, `parallel_for_each`, `map_reduce` - each can have an IoAwaitable overload and a sender overload. This paper focuses on `when_all`. The pattern is the same for all of them.
 
-Dietmar K&uuml;hl identified the irreplaceable sender algorithms inside a coroutine body as `when_all`, the scheduling algorithms, `bulk`, and the scoping algorithms<sup>[6]</sup>. Chuanqi Xu (Alibaba) independently confirmed that the concurrency combinators genuinely useful in production are all variants of `when_all`<sup>[5]</sup>. Sequential composition - `then`, `let_value`, `upon_error` - is better expressed with `co_await` and C++ statements.
+Dietmar K&uuml;hl identified the irreplaceable sender algorithms inside a coroutine body as `when_all`, the scheduling algorithms, `bulk`, and the scoping algorithms<sup>[7]</sup>. Chuanqi Xu (Alibaba) independently confirmed that the concurrency combinators genuinely useful in production are all variants of `when_all`<sup>[6]</sup>. Sequential composition - `then`, `let_value`, `upon_error` - is better expressed with `co_await` and C++ statements.
 
 ---
 
@@ -394,26 +394,25 @@ Domain-aware combinators resolve this. A single `when_all` dispatches at compile
 
 ## Acknowledgments
 
-The author thanks Peter Dimov for the `io_result` return type design and the `set_error(tuple(ec, T...))` routing analysis; Dietmar K&uuml;hl for identifying the irreplaceable sender algorithms inside a coroutine body; Chuanqi Xu for production experience confirming that concurrency combinators are the irreplaceable set and for the code size observation; Ian Petersen for confirming that four sender implementations of channel dispatch are equivalent to `auto [ec, buf] = co_await read(socket, buffer); switch (ec) { ... }`; Ville Voutilainen for the `dispatch` sender adapter sketch and for working through the channel ping-pong construction; Chris Kohlhoff for identifying the partial-success routing problem in [P2430R0](https://wg21.link/p2430r0)<sup>[7]</sup>; and Andrzej Krzemie&nacute;ski for the independent reflector question.
+The author thanks Peter Dimov for the `io_result` return type design and the `set_error(tuple(ec, T...))` routing analysis; Dietmar K&uuml;hl for identifying the irreplaceable sender algorithms inside a coroutine body; Chuanqi Xu for production experience confirming that concurrency combinators are the irreplaceable set and for the code size observation; Ian Petersen for confirming that four sender implementations of channel dispatch are equivalent to `auto [ec, buf] = co_await read(socket, buffer); switch (ec) { ... }`; Ville Voutilainen for the `dispatch` sender adapter sketch and for working through the channel ping-pong construction; Chris Kohlhoff for identifying the partial-success routing problem in [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf)<sup>[8]</sup>; and Andrzej Krzemie&nacute;ski for the independent reflector question.
 
 ---
 
 ## References
 
-1. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
+[1] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024).
 
-2. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[2] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-3. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[3] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-4. Peter Dimov - `io_result` return type design and routing analysis (LEWG reflector, March 2026; beast2 Slack, February-March 2026).
+[4] [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-5. Chuanqi Xu - Production experience with `when_all` variants and code size reduction (LEWG reflector, March 18, 2026).
+[5] Peter Dimov - `io_result` return type design and routing analysis (LEWG reflector, March 2026; beast2 Slack, February-March 2026).
 
-6. Dietmar K&uuml;hl - Irreplaceable sender algorithms inside a coroutine body (LEWG reflector, March 18, 2026).
+[6] Chuanqi Xu - Production experience with `when_all` variants and code size reduction (LEWG reflector, March 18, 2026).
 
-7. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
+[7] Dietmar K&uuml;hl - Irreplaceable sender algorithms inside a coroutine body (LEWG reflector, March 18, 2026).
 
-8. [P4003R0](https://wg21.link/p4003r0) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r0
+[8] [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021).
 
-9. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3

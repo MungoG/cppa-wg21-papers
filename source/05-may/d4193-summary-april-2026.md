@@ -108,7 +108,7 @@ In October 2021, LEWG voted that sender/receiver is "a good basis" for networkin
 
 ### 3.16. P4098R0 - Async Claims and Evidence
 
-A decade of committee decisions on executors, networking, and async programming rested on published claims — this paper asks what published evidence actually supported them. P4098R0 constructs a structured table of verbatim claims drawn from the causal chain of executor and networking papers (P0443, P1525, P2464, P2300, P2469, and others), paired against the published evidence found for each. The survey spans six thematic sections — unification, basis operations, networking dependency, the P2464 diagnosis, P2300 deployment scope, and Networking TS readiness — and applies a deliberately low evidence bar: a code snippet, a prototype, or a small user survey suffices. Where deployment data exists (notably Facebook and NVIDIA for GPU dispatch and infrastructure), the paper documents it; where the published record is empty, the cell is left blank. The result is a reference artifact that lets readers evaluate which decisions were grounded in published evidence and which were grounded in unpublished judgment.
+A decade of committee decisions on executors, networking, and async programming rested on published claims — this paper asks what published evidence actually supported them. P4098R0 constructs a structured table of verbatim claims drawn from the causal chain of executor and networking papers (P0443, P1525, P2464, P2300R10, P2469, and others), paired against the published evidence found for each. The survey spans six thematic sections — unification, basis operations, networking dependency, the P2464 diagnosis, P2300R10 deployment scope, and Networking TS readiness — and applies a deliberately low evidence bar: a code snippet, a prototype, or a small user survey suffices. Where deployment data exists (notably Facebook and NVIDIA for GPU dispatch and infrastructure), the paper documents it; where the published record is empty, the cell is left blank. The result is a reference artifact that lets readers evaluate which decisions were grounded in published evidence and which were grounded in unpublished judgment.
 
 ### 3.17. P4099R0 - The Twenty-One Year Networking Arc
 
@@ -148,49 +148,48 @@ This reading guide covers 23 papers from the April 2026 mailing. The author hope
 
 ## References
 
-[1] P2583R3 - "Symmetric Transfer and Sender Composition" (Vinnie Falco, 2026).
+[1] [P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf) - "Symmetric Transfer and Sender Composition" (Vinnie Falco, 2026).
 
-[2] P4003R2 - "A Minimal Coroutine Execution Model" (Vinnie Falco, 2026).
+[2] [P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, 2026).
 
-[3] P4007R2 - "Open Issues in `std::execution::task`" (Vinnie Falco, 2026).
+[3] [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf) - "Open Issues in `std::execution::task`" (Vinnie Falco, 2026).
 
-[4] P4014R1 - "The Sender Sub-Language For Beginners" (Vinnie Falco, 2026).
+[4] [P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf) - "The Sender Sub-Language For Beginners" (Vinnie Falco, 2026).
 
-[5] P4035R0 - "The Need for Escape Hatches" (Vinnie Falco, 2026).
+[5] [P4035R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4035r0.pdf) - "The Need for Escape Hatches" (Vinnie Falco, 2026).
 
-[6] P4088R0 - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
+[6] [P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
 
-[7] P4089R0 - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026).
+[7] [P4089R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4089r0.pdf) - "On the Diversity of Coroutine Task Types" (Vinnie Falco, 2026).
 
-[8] P4090R0 - "Sender I/O: A Constructed Comparison" (Vinnie Falco, 2026).
+[8] [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf) - "Sender I/O: A Constructed Comparison" (Vinnie Falco, 2026).
 
-[9] P4091R0 - "Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026).
+[9] [P4091R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r0.pdf) - "Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026).
 
-[10] P4092R0 - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, 2026).
+[10] [P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, 2026).
 
-[11] P4093R0 - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, 2026).
+[11] [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, 2026).
 
-[12] P4094R0 - "The Unification of Executors and P0443" (Vinnie Falco, 2026).
+[12] [P4094R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r0.pdf) - "The Unification of Executors and P0443" (Vinnie Falco, 2026).
 
-[13] P4095R0 - "The Basis Operation and P1525" (Vinnie Falco, 2026).
+[13] [P4095R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r0.pdf) - "The Basis Operation and P1525" (Vinnie Falco, 2026).
 
-[14] P4096R0 - "Coroutine Executors and P2464R0" (Vinnie Falco, 2026).
+[14] [P4096R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r0.pdf) - "Coroutine Executors and P2464R0" (Vinnie Falco, 2026).
 
-[15] P4097R0 - "The Networking Claim and P2453R0" (Vinnie Falco, 2026).
+[15] [P4097R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4097r0.pdf) - "The Networking Claim and P2453R0" (Vinnie Falco, 2026).
 
-[16] P4098R0 - "Async Claims and Evidence" (Vinnie Falco, 2026).
+[16] [P4098R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4098r0.pdf) - "Async Claims and Evidence" (Vinnie Falco, 2026).
 
-[17] P4099R0 - "The Twenty-One Year Networking Arc" (Vinnie Falco, 2026).
+[17] [P4099R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r0.pdf) - "The Twenty-One Year Networking Arc" (Vinnie Falco, 2026).
 
-[18] P4100R0 - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, 2026).
+[18] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, 2026).
 
-[19] P4125R0 - "Coroutine-Native I/O at a Derivatives Exchange" (Vinnie Falco, 2026).
+[19] [P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf) - "Coroutine-Native I/O at a Derivatives Exchange" (Vinnie Falco, 2026).
 
-[20] P4126R0 - "A Universal Continuation Model" (Vinnie Falco, 2026).
+[20] [P4126R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r0.pdf) - "A Universal Continuation Model" (Vinnie Falco, 2026).
 
-[21] P4137R0 - "Profile Analysis and Verification Evidence (PAVE)" (Vinnie Falco, 2026).
+[21] [P4137R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4137r0.pdf) - "Profile Analysis and Verification Evidence (PAVE)" (Vinnie Falco, 2026).
 
-[22] P4172R0 - "IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, 2026).
+[22] [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf) - "IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, 2026).
 
-[23] P4182R0 - "A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains" (Mungo Gill, 2026).
-
+[23] [P4182R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4182r0.pdf) - "A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains" (Mungo Gill, 2026).

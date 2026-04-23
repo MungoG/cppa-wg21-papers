@@ -41,7 +41,7 @@ Everything that follows is a structured prompt for use in a Large Language Model
 
 \newpage
 
-# Tool: Is This C++?
+## Tool: Is This C++?
 
 Point this at any proposal, language, library, or blog post. Answer each question yes, no, or not applicable. Count the yeses as a fraction of applicable questions. Read the verdict.
 

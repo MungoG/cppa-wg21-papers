@@ -13,7 +13,7 @@ reply-to:
 
 Frame-visible coroutines would eliminate `std::execution::task`'s heap allocation and give sender-based coroutine algorithms full optimizer visibility.
 
-The sender three-channel completion model is a genuine achievement: compile-time verification of async completion paths and generic algorithms that dispatch on completion disposition without knowing the concrete sender type. A structural constraint exists - compound I/O results cannot round-trip through three mutually exclusive channels - and two of the three properties that senders currently provide beyond the coroutine model trace to one language choice: the coroutine frame is opaque. [P1492R0](https://wg21.link/p1492r0)<sup>[1]</sup> documented a Known-Layout Type model where the frame becomes a first-class type with `constexpr` size and alignment. If C++ added frame-visible coroutines alongside the existing opaque-frame model, `std::execution::task` eliminates its heap allocation, coroutine-based sender algorithms gain full optimizer visibility, and both async models that C++26 ships improve. Compile-time work graphs - the type-level encoding of dependency topology - remain the unique sender contribution.
+The sender three-channel completion model is a genuine achievement: compile-time verification of async completion paths and generic algorithms that dispatch on completion disposition without knowing the concrete sender type. A structural constraint exists - compound I/O results cannot round-trip through three mutually exclusive channels - and two of the three properties that senders currently provide beyond the coroutine model trace to one language choice: the coroutine frame is opaque. [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> documented a Known-Layout Type model where the frame becomes a first-class type with `constexpr` size and alignment. If C++ added frame-visible coroutines alongside the existing opaque-frame model, `std::execution::task` eliminates its heap allocation, coroutine-based sender algorithms gain full optimizer visibility, and both async models that C++26 ships improve. Compile-time work graphs - the type-level encoding of dependency topology - remain the unique sender contribution.
 
 ---
 
@@ -29,11 +29,11 @@ The sender three-channel completion model is a genuine achievement: compile-time
 
 The author provides information and serves at the pleasure of the chair.
 
-This paper is part of the Network Endeavor ([P4100R0](https://wg21.link/p4100r0)<sup>[2]</sup> "The Network Endeavor: Coroutine-Native I/O for C++29"). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++.
+This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[2]</sup> "The Network Endeavor: Coroutine-Native I/O for C++29"). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++.
 
 The author regards `std::execution` as an important contribution to C++ and supports its standardization for the domains it serves well - GPU dispatch, heterogeneous execution, and compile-time work-graph composition among them. The three-channel completion model enables generic algorithms that dispatch on completion disposition without knowing the concrete sender type. Compile-time work graphs - the type-level encoding of dependency topology in the sender operation state - are a sender property the coroutine model does not replicate.
 
-The author believes that C++ would benefit from having all three coroutine models in the language simultaneously: fibers (stackful), frame-opaque coroutines (C++20), and frame-visible coroutines (previously proposed in [P1492R0](https://wg21.link/p1492r0)<sup>[1]</sup> and [P1342R0](https://wg21.link/p1342r0)<sup>[6]</sup>). Each covers non-overlapping use cases, and users are better served by having access to all of them. Frame-visible coroutines would benefit both async models that C++26 ships.
+The author believes that C++ would benefit from having all three coroutine models in the language simultaneously: fibers (stackful), frame-opaque coroutines (C++20), and frame-visible coroutines (previously proposed in [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> and [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[5]</sup>). Each covers non-overlapping use cases, and users are better served by having access to all of them. Frame-visible coroutines would benefit both async models that C++26 ships.
 
 The author asks for nothing.
 
@@ -41,7 +41,7 @@ The author asks for nothing.
 
 ## 2. The Three-Channel Achievement
 
-The sender model provides a universal completion protocol. Every sender completes through exactly one of three channels ([P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup> Section 5.1):
+The sender model provides a universal completion protocol. Every sender completes through exactly one of three channels ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> Section 5.1):
 
 - `set_value(Ts...)` signals successful completion with zero or more result values.
 - `set_error(E)` signals that an error occurred during scheduling, execution, or at an earlier point in the sender chain.
@@ -87,13 +87,13 @@ P2300R10 also proposes a third workaround - returning a *range* of senders:
 
 Two senders for one I/O operation.
 
-The normative text ([P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup> Section 34.2) defines the constraint:
+The normative text ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> Section 34.2) defines the constraint:
 
 > "once started, eventually completes exactly once with a (possibly empty) set of result datums and in exactly one of three dispositions: success, failure, or cancellation."
 
 A socket read that transfers 500 bytes and then encounters `ECONNRESET` has both an error condition and a byte count. Both are produced. Both are meaningful. One disposition does not describe the completion.
 
-The C++26 working draft ships `stopped_as_error` ([P2300R10](https://wg21.link/p2300r10)<sup>[5]</sup> Section 4.20.8), an adaptor that collapses the stopped channel into the error channel. The standard provides a mechanism to reduce three channels to two.
+The C++26 working draft ships `stopped_as_error` ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> Section 4.20.8), an adaptor that collapses the stopped channel into the error channel. The standard provides a mechanism to reduce three channels to two.
 
 ---
 
@@ -192,7 +192,7 @@ The sender model currently provides three properties that coroutines do not:
 
 - **Full pipeline visibility to the optimizer.** The sender operation state is parameterized on the receiver type. The compiler sees the full pipeline before `start()` is called. It can inline across operation boundaries, eliminate dead code, and propagate constants. The coroutine frame is opaque behind `coroutine_handle<>`. The optimizer cannot see through `resume()`.
 
-- **Zero-allocation composition.** The sender operation state can be stack-allocated or embedded in the parent's operation state because its type is fully known at compile time. The coroutine frame must be heap-allocated because its size is determined after inlining and optimization passes. No compiler guarantees HALO. [P3552R3](https://wg21.link/p3552r3)<sup>[7]</sup> `std::execution::task` heap-allocates for this reason - the sender operation state cannot embed a coroutine frame whose size is unknown at compile time.
+- **Zero-allocation composition.** The sender operation state can be stack-allocated or embedded in the parent's operation state because its type is fully known at compile time. The coroutine frame must be heap-allocated because its size is determined after inlining and optimization passes. No compiler guarantees HALO. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[7]</sup> `std::execution::task` heap-allocates for this reason - the sender operation state cannot embed a coroutine frame whose size is unknown at compile time.
 
 - **Compile-time work graphs.** The sender pipeline type encodes the dependency topology at the type level. `when_all(s1, s2) | then(f)` produces a type from which a scheduler can determine at compile time that `s1` and `s2` run concurrently and `f` depends on both. A coroutine's internal control flow is imperative. No type-level inspection can recover the dependency structure from sequential `co_await` statements.
 
@@ -204,11 +204,11 @@ The third property traces to the composition model itself. Sender composition is
 
 ## 7. Frame-Visible Coroutines
 
-[P1492R0](https://wg21.link/p1492r0)<sup>[1]</sup> "Coroutines: Language and Implementation Impact" (Smith, Vandevoorde, Romer, Nishanov, Sidwell, Sandoe, Baker, 2019) documented three competing coroutine frame models during the C++20 standardization. The committee chose the opaque-frame model. The Known-Layout Type model was documented but not adopted. It provides:
+[P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> "Coroutines: Language and Implementation Impact" (Smith, Vandevoorde, Romer, Nishanov, Sidwell, Sandoe, Baker, 2019) documented three competing coroutine frame models during the C++20 standardization. The committee chose the opaque-frame model. The Known-Layout Type model was documented but not adopted. It provides:
 
 > "`sizeof(T)`, `alignof(T)` and `offsetof(T, member)` are all `constexpr`. ... Allows stable ABI/layout for inline coroutine functions. Can allow coroutine frame objects to be passed between TUs."
 
-[P1342R0](https://wg21.link/p1342r0)<sup>[6]</sup> "Unifying Coroutines TS and Core Coroutines" (Baker, 2018) described the concrete mechanism: a coroutine lambda whose frame is a first-class type in the type system, allowing the caller to `sizeof` it, stack-allocate it, or embed it in a struct.
+[P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[5]</sup> "Unifying Coroutines TS and Core Coroutines" (Baker, 2018) described the concrete mechanism: a coroutine lambda whose frame is a first-class type in the type system, allowing the caller to `sizeof` it, stack-allocate it, or embed it in a struct.
 
 If C++ added a frame-visible coroutine type alongside the existing opaque-frame coroutines, `std::execution::task` would no longer need to heap-allocate. The sender operation state could embed the coroutine frame directly, because `sizeof(frame)` is now `constexpr`. The compiler sees through the coroutine boundary - the same optimizer visibility that sender pipelines provide today. Both models improve:
 
@@ -240,28 +240,28 @@ The sender column gains two properties it currently lacks when coroutine-based s
 
 ## 9. Conclusion
 
-Frame-visible coroutines would eliminate `std::execution::task`'s heap allocation and give both async models optimizer visibility. The forward mapping (Section 4) and reverse mapping (Section 5) identify a structural constraint in the three-channel model - compound results cannot round-trip through mutually exclusive channels - that frame-visible coroutines help bridge by allowing coroutine-based sender algorithms to preserve compound results while retaining the performance properties of sender composition. Compile-time work graphs remain unique to senders and define the sender model's irreducible contribution. [P1492R0](https://wg21.link/p1492r0)<sup>[1]</sup> deserves renewed attention because the language addition it documented would improve both async models that C++26 ships.
+Frame-visible coroutines would eliminate `std::execution::task`'s heap allocation and give both async models optimizer visibility. The forward mapping (Section 4) and reverse mapping (Section 5) identify a structural constraint in the three-channel model - compound results cannot round-trip through mutually exclusive channels - that frame-visible coroutines help bridge by allowing coroutine-based sender algorithms to preserve compound results while retaining the performance properties of sender composition. Compile-time work graphs remain unique to senders and define the sender model's irreducible contribution. [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> deserves renewed attention because the language addition it documented would improve both async models that C++26 ships.
 
 ---
 
 ## Acknowledgments
 
-The author thanks Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution` and the three-channel completion model; Andrzej Krzemie&nacute;ski for identifying compound success as a general programming problem; Ville Voutilainen for confirming the dispatch gap on the LEWG reflector; Peter Dimov for the refined channel mapping; Gor Nishanov for the coroutine model's explicit support for task type diversity; and the authors of [P1492R0](https://wg21.link/p1492r0)<sup>[1]</sup> for documenting the design space that includes frame-visible coroutines.
+The author thanks Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution` and the three-channel completion model; Andrzej Krzemie&nacute;ski for identifying compound success as a general programming problem; Ville Voutilainen for confirming the dispatch gap on the LEWG reflector; Peter Dimov for the refined channel mapping; Gor Nishanov for the coroutine model's explicit support for task type diversity; and the authors of [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> for documenting the design space that includes frame-visible coroutines.
 
 ---
 
 ## References
 
-1. [P1492R0](https://wg21.link/p1492r0) - "Coroutines: Language and Implementation Impact" (Richard Smith, Daveed Vandevoorde, Geoffrey Romer, Gor Nishanov, Nathan Sidwell, Iain Sandoe, Lewis Baker, 2019). https://wg21.link/p1492r0
+[1] [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf) - "Coroutines: Language and Implementation Impact" (Richard Smith, Daveed Vandevoorde, Geoffrey Romer, Gor Nishanov, Nathan Sidwell, Iain Sandoe, Lewis Baker, 2019).
 
-2. [P4100R0](https://wg21.link/p4100r0) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026). https://wg21.link/p4100r0
+[2] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
-3. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[3] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-4. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[4] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-5. [P2300R10](https://wg21.link/p2300r10) - "`std::execution`" (Eric Niebler, Micha&lstrok; Dominiak, Lewis Baker, Kirk Shoop, Lucian Radu Teodorescu, Lee Howes, 2024). https://wg21.link/p2300r10
+[5] [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf) - "Unifying Coroutines TS and Core Coroutines" (Lewis Baker, 2018).
 
-6. [P1342R0](https://wg21.link/p1342r0) - "Unifying Coroutines TS and Core Coroutines" (Lewis Baker, 2018). https://wg21.link/p1342r0
+[6] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "`std::execution`" (Eric Niebler, Micha&lstrok; Dominiak, Lewis Baker, Kirk Shoop, Lucian Radu Teodorescu, Lee Howes, 2024).
 
-7. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Lewis Baker, 2025). https://wg21.link/p3552r3
+[7] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Lewis Baker, 2025).

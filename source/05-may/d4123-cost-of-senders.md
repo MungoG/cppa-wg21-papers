@@ -13,7 +13,7 @@ reply-to:
 
 Every concession granted. The gap remains. I/O users pay for what they do not need.
 
-This paper grants [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> every engineering fix that has been proposed or discussed, assumes they all ship, and compares against the best possible conforming implementation of `std::execution::task` - one that eliminates every cost not mandated by [exec.task]. Two cases are examined. Case A: I/O operations return awaitables. The gap is in the task-to-task suspend path - `state<Rcvr>` construction and scheduler extraction per child task, spec-mandated. Case B: I/O operations return senders, the stated direction for networking. The gap extends to every I/O operation - every read, every write, every timer, every DNS lookup pays `connect`/`start`/`state<Rcvr>` overhead that does not exist in the coroutine-native model.
+This paper grants [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> every engineering fix that has been proposed or discussed, assumes they all ship, and compares against the best possible conforming implementation of `std::execution::task` - one that eliminates every cost not mandated by [exec.task]. Two cases are examined. Case A: I/O operations return awaitables. The gap is in the task-to-task suspend path - `state<Rcvr>` construction and scheduler extraction per child task, spec-mandated. Case B: I/O operations return senders, the stated direction for networking. The gap extends to every I/O operation - every read, every write, every timer, every DNS lookup pays `connect`/`start`/`state<Rcvr>` overhead that does not exist in the coroutine-native model.
 
 ---
 
@@ -27,7 +27,7 @@ This paper grants [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> every engin
 
 ## 1. Disclosure
 
-The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++. The author provides information, asks nothing, and serves at the pleasure of the chair.
+The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++. The author provides information, asks nothing, and serves at the pleasure of the chair.
 
 The author regards `std::execution` as an important contribution to C++ and supports its standardization for the domains it serves well - GPU dispatch, heterogeneous execution, and compile-time work-graph composition among them. Nothing in this paper argues for removing, delaying, or diminishing `std::execution`.
 
@@ -37,13 +37,13 @@ The author regards `std::execution` as an important contribution to C++ and supp
 
 This paper grants `std::execution::task` every engineering fix that has been proposed, discussed, or implied. The following are assumed to ship:
 
-- **Case A (concession):** I/O operations return awaitables, not senders. The template operation state problem ([P4088R0](https://isocpp.org/files/papers/P4088R0.pdf)<sup>[5]</sup> Section 6.1) does not arise. This is the generous case.
-- **Case B (stated direction):** I/O operations return senders. LEWG polled in October 2021 that "the sender/receiver model (P2300) is a good basis for most asynchronous use cases, including networking" ([P2453R0](https://wg21.link/p2453r0)<sup>[20]</sup>); SG4 polled at Kona (November 2023) that networking must use the sender model. Under Case B, every `co_await` of an I/O sender inside a `task<T, IoEnv>` goes through `connect`/`start`/`state<Rcvr>`. The `state<Rcvr>` lives on the coroutine frame (no separate allocation), but the CPU cost of construction and environment extraction is per I/O operation. The narrow task-to-task fix (LWG4348) does not apply because the I/O operation is not a task.
-- Symmetric transfer works task-to-task. The stack overflow vulnerability ([P3801R0](https://wg21.link/p3801r0)<sup>[7]</sup>) is resolved.
-- Frame allocator timing is fixed. The rework in [P3980R0](https://wg21.link/p3980r0)<sup>[8]</sup> ships. The allocator reaches `promise_type::operator new` before the frame is allocated.
+- **Case A (concession):** I/O operations return awaitables, not senders. The template operation state problem ([P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf)<sup>[4]</sup> Section 6.1) does not arise. This is the generous case.
+- **Case B (stated direction):** I/O operations return senders. LEWG polled in October 2021 that "the sender/receiver model (P2300) is a good basis for most asynchronous use cases, including networking" ([P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[5]</sup>); SG4 polled at Kona (November 2023) that networking must use the sender model. Under Case B, every `co_await` of an I/O sender inside a `task<T, IoEnv>` goes through `connect`/`start`/`state<Rcvr>`. The `state<Rcvr>` lives on the coroutine frame (no separate allocation), but the CPU cost of construction and environment extraction is per I/O operation. The narrow task-to-task fix (LWG4348) does not apply because the I/O operation is not a task.
+- Symmetric transfer works task-to-task. The stack overflow vulnerability ([P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html)<sup>[6]</sup>) is resolved.
+- Frame allocator timing is fixed. The rework in [P3980R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r0.html)<sup>[7]</sup> ships. The allocator reaches `promise_type::operator new` before the frame is allocated.
 - `AS-EXCEPT-PTR` does not convert an `error_code` to `exception_ptr`. I/O errors do not become exceptions.
 - Compound results are handled inside the coroutine body via structured bindings. `auto [ec, n] = co_await sock.read_some(buf)` works.
-- `co_yield with_error` is unnecessary. Compound results stay in the coroutine body. The mechanism that [P3801R0](https://wg21.link/p3801r0)<sup>[7]</sup> identified as blocking symmetric transfer is not needed.
+- `co_yield with_error` is unnecessary. Compound results stay in the coroutine body. The mechanism that [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html)<sup>[6]</sup> identified as blocking symmetric transfer is not needed.
 - `IoEnv` is standardized as the networking environment, carrying a type-erased executor and a stop token.
 - The promise delivers `IoEnv` to I/O awaitables through `await_transform`.
 - Type-erased streams work under both models under Case A. Zero per-operation allocation. Under Case B, type-erased streams returning senders require `any_sender`, which allocates per operation - see Section 5.7.
@@ -52,9 +52,9 @@ This paper grants `std::execution::task` every engineering fix that has been pro
 - `when_all` and `when_any` provide structured concurrency under both models. Children complete before the parent resumes. Stop tokens propagate.
 - Predicate-based combinators are achievable under both models. A custom `when_all` that inspects `set_value` arguments through a predicate can cancel siblings on I/O errors. Both models can build this.
 - No performance gap on the I/O hot path. The awaitable, the syscall, the resumption, and the frame allocation are identical.
-- Cross-domain bridges work. [P4092R0](https://isocpp.org/files/papers/P4092R0.pdf)<sup>[9]</sup> and [P4093R0](https://isocpp.org/files/papers/P4093R0.pdf)<sup>[10]</sup> demonstrate sender-to-coroutine and coroutine-to-sender interoperation.
+- Cross-domain bridges work. [P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf)<sup>[8]</sup> and [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[9]</sup> demonstrate sender-to-coroutine and coroutine-to-sender interoperation.
 - Compound I/O results are routed through `set_error(tuple(ec, T...))` on failure and `set_value(T...)` on success. The standard `when_all` cancels siblings on I/O error under this routing. Both values are preserved in the error payload. Downstream composition costs are examined in Section 5.5.3.
-- The reference implementation of [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> is a work in progress. It introduces costs beyond what [exec.task] mandates. This paper does not compare against any existing implementation. It compares against the best possible conforming implementation - one that eliminates every cost not mandated by the normative text of [exec.task]. This paper analyzes the normative text and identifies operations that no conforming implementation can skip. Implementers who believe a conforming implementation can eliminate any of these operations are invited to demonstrate which normative requirement is not binding.
+- The reference implementation of [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> is a work in progress. It introduces costs beyond what [exec.task] mandates. This paper does not compare against any existing implementation. It compares against the best possible conforming implementation - one that eliminates every cost not mandated by the normative text of [exec.task]. This paper analyzes the normative text and identifies operations that no conforming implementation can skip. Implementers who believe a conforming implementation can eliminate any of these operations are invited to demonstrate which normative requirement is not binding.
 
 Everything above is granted without reservation.
 
@@ -62,7 +62,7 @@ Everything above is granted without reservation.
 
 ## 3. Three Paths
 
-Both models require an I/O environment - a bundle of state that every I/O operation needs: a type-erased executor (to submit work to the reactor), a stop token (for cancellation), and optionally a frame allocator. [P4003R0](https://wg21.link/p4003r0)<sup>[16]</sup> defines this as `io_env` and specifies the `IoAwaitable` concept that consumes it. In the coroutine-native model, the promise carries `io_env` directly. In the sender model, the `Environment` template parameter of `std::execution::task` serves this role; this paper uses `IoEnv` to denote an `Environment` specialized for I/O.
+Both models require an I/O environment - a bundle of state that every I/O operation needs: a type-erased executor (to submit work to the reactor), a stop token (for cancellation), and optionally a frame allocator. [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[10]</sup> defines this as `io_env` and specifies the `IoAwaitable` concept that consumes it. In the coroutine-native model, the promise carries `io_env` directly. In the sender model, the `Environment` template parameter of `std::execution::task` serves this role; this paper uses `IoEnv` to denote an `Environment` specialized for I/O.
 
 The same I/O operation. The same user code. Three paths: the coroutine-native model, `task<T, IoEnv>` with I/O awaitables (Case A), and `task<T, IoEnv>` with I/O senders (Case B).
 
@@ -183,7 +183,7 @@ Every `task<T, IoEnv>` satisfies the `sender` concept ([task.class] paragraph 1)
 
 In a five-coroutine chain, five task types are instantiated, each carrying this machinery. None of the intermediate coroutines use this machinery - they pass results via `co_await`, not via `connect`/`start`.
 
-In the coroutine-native model, zero sender instantiations occur inside the chain. One bridge at the edge ([P4093R0](https://isocpp.org/files/papers/P4093R0.pdf)<sup>[10]</sup>) connects the chain to the sender world.
+In the coroutine-native model, zero sender instantiations occur inside the chain. One bridge at the edge ([P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[9]</sup>) connects the chain to the sender world.
 
 ### 5.3 Task-to-Task `co_await` Cost
 
@@ -221,7 +221,7 @@ A purported benefit of the unified sender model is that combinator algorithms li
 
 #### 5.5.1 The `when_all` Completion Handler
 
-[P2300R10](https://wg21.link/p2300r10)<sup>[14]</sup> specifies `when_all`'s completion logic in `impls-for<when_all_t>::complete`. The handler dispatches on the completion channel tag:
+[P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[11]</sup> specifies `when_all`'s completion logic in `impls-for<when_all_t>::complete`. The handler dispatches on the completion channel tag:
 
 ```cpp
 []<class Index, class State, class Rcvr,
@@ -288,7 +288,7 @@ The `set_value` branch unconditionally stores values and calls `state.arrive(rcv
 
 An I/O read returns `(error_code, size_t)`. Kohlhoff identified the routing problem in 2021:
 
-> "Due to the limitations of the `set_error` channel (which has a single 'error' argument) and `set_done` channel (which takes no arguments), partial results must be communicated down the `set_value` channel." ([P2430R0](https://wg21.link/p2430r0)<sup>[15]</sup>)
+> "Due to the limitations of the `set_error` channel (which has a single 'error' argument) and `set_done` channel (which takes no arguments), partial results must be communicated down the `set_value` channel." ([P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf)<sup>[12]</sup>)
 
 A fourth routing option addresses the `when_all` problem: `set_error(tuple(ec, T...))` on failure, `set_value(T...)` on success. The full compound result - including the byte count - goes into the error channel as a tuple. The standard `when_all` sees `set_error`, cancels siblings, and stores the error. Both values are preserved inside the tuple.
 
@@ -303,7 +303,7 @@ With the fourth routing, the standard `when_all` cancels siblings on I/O error. 
 
 #### 5.5.3 The Remaining Difference
 
-The fourth routing makes `when_all` cancel siblings on I/O error. It does not make the composition clean. Downstream algorithms - `upon_error`, `let_error`, `retry` - now receive `tuple<error_code, size_t>` instead of `error_code`. Every handler must branch on the error type with `if constexpr`. Partial transfer data (bytes read before the error) is semantically misplaced inside the error channel. `retry` sees the tuple and retries the whole operation; the byte count is lost. [P4124R0](https://isocpp.org/files/papers/P4124R0.pdf)<sup>[19]</sup> examines these problems in detail and shows that the first three routing strategies fail to achieve correct I/O error handling, and that the fourth corrupts downstream composition, without a domain-aware combinator.
+The fourth routing makes `when_all` cancel siblings on I/O error. It does not make the composition clean. Downstream algorithms - `upon_error`, `let_error`, `retry` - now receive `tuple<error_code, size_t>` instead of `error_code`. Every handler must branch on the error type with `if constexpr`. Partial transfer data (bytes read before the error) is semantically misplaced inside the error channel. `retry` sees the tuple and retries the whole operation; the byte count is lost. [P4124R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4124r0.pdf)<sup>[13]</sup> examines these problems in detail and shows that the first three routing strategies fail to achieve correct I/O error handling, and that the fourth corrupts downstream composition, without a domain-aware combinator.
 
 The coroutine-native model's combinator has direct access to the result value after `co_await`:
 
@@ -355,13 +355,13 @@ Three properties of Case B deserve attention.
 
 The coroutine frame itself is already allocated. The sender machinery adds CPU overhead on top of the same allocation profile. The "no allocation" benefit does not materialize for the I/O user because the coroutine frame provides the storage regardless of whether the I/O operation is a sender or an awaitable.
 
-**No symmetric transfer.** `set_value` is void-returning ([D2583R3](https://isocpp.org/files/papers/D2583R3.pdf)<sup>[19]</sup> documents this gap). The `awaitable-receiver` calls `continuation.resume()` as a function call. In the coroutine-native model, `await_suspend` returns `coroutine_handle<>` and the compiler arranges a tail call. The symmetric transfer gap documented in [D2583R3](https://isocpp.org/files/papers/D2583R3.pdf)<sup>[19]</sup> applies to every I/O completion under Case B.
+**No symmetric transfer.** `set_value` is void-returning ([D2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf)<sup>[14]</sup> documents this gap). The `awaitable-receiver` calls `continuation.resume()` as a function call. In the coroutine-native model, `await_suspend` returns `coroutine_handle<>` and the compiler arranges a tail call. The symmetric transfer gap documented in [D2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf)<sup>[14]</sup> applies to every I/O completion under Case B.
 
 **Type-erased streams allocate per operation.** When the I/O operation is an awaitable, the awaitable returned by a type-erased stream has a fixed, compile-time-known size - a pointer to the vtable and a pointer to the buffer. The compiler places it on the coroutine frame. No heap allocation.
 
 When the I/O operation is a sender, type-erasing the stream requires `any_sender<completion_signatures<...>>`. The `connect` call on `any_sender` must produce an operation state whose size depends on the concrete sender type that was erased - a size unknown at compile time. The coroutine frame layout is fixed before the `co_await`; it cannot absorb a dynamically-sized operation state. The operation state must be heap-allocated inside `any_sender::connect`. This is a per-I/O-operation allocation that does not exist in the coroutine-native model or under Case A.
 
-This is the allocator timing problem from [P4088R0](https://isocpp.org/files/papers/P4088R0.pdf)<sup>[6]</sup> Section 6.1 manifesting in a form that cannot be resolved by frame allocator fixes. The frame allocator rework in [P3980R0](https://wg21.link/p3980r0)<sup>[8]</sup> ensures the allocator reaches `promise_type::operator new` before the frame is allocated. It does not help here because the allocation is not the coroutine frame - it is the type-erased operation state inside `any_sender::connect`, which occurs after the frame is already allocated. Note that, although a small-buffer optimisation in `any_sender` can avoid the heap allocation when the concrete operation state fits within the buffer, the buffer size is a compile-time guess about a runtime-determined type - too small and the allocation returns, too large and every coroutine frame pays for unused storage.
+This is the allocator timing problem from [P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf)<sup>[4]</sup> Section 6.1 manifesting in a form that cannot be resolved by frame allocator fixes. The frame allocator rework in [P3980R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r0.html)<sup>[7]</sup> ensures the allocator reaches `promise_type::operator new` before the frame is allocated. It does not help here because the allocation is not the coroutine frame - it is the type-erased operation state inside `any_sender::connect`, which occurs after the frame is already allocated. Note that, although a small-buffer optimisation in `any_sender` can avoid the heap allocation when the concrete operation state fits within the buffer, the buffer size is a compile-time guess about a runtime-determined type - too small and the allocation returns, too large and every coroutine frame pays for unused storage.
 
 **The multiplier.** Under Case A, the sender protocol overhead is per task-to-task transition. A five-coroutine session chain has five transitions. Under Case B, the overhead is per task-to-task transition plus per I/O operation. Every `co_await` of a socket read, a socket write, a timer wait, a DNS lookup, a TLS handshake step pays `state<Rcvr>` construction and scheduler extraction that the coroutine-native model does not pay. A minimal HTTP request-response - accept, TLS handshake (multiple round trips), read headers, read body, write headers, write body - is 6-15 I/O operations. A WebSocket session with streaming: hundreds. A long-lived connection with keep-alive: thousands over its lifetime. Per session. Multiplied by the number of concurrent sessions.
 
@@ -369,24 +369,24 @@ This is the allocator timing problem from [P4088R0](https://isocpp.org/files/pap
 
 ## 6. The Shipping Schedule Risk
 
-The concessions in Section 2 assume several engineering fixes ship. [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> is the vehicle. The C++26 cycle is closing. The following fixes are not in [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> today:
+The concessions in Section 2 assume several engineering fixes ship. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> is the vehicle. The C++26 cycle is closing. The following fixes are not in [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> today:
 
-- Symmetric transfer: [P3801R0](https://wg21.link/p3801r0)<sup>[7]</sup> identified the vulnerability. Trampolines are being explored ([P3796R1](https://wg21.link/p3796r1)<sup>[11]</sup>). Not landed.
-- Frame allocator timing: [P3980R0](https://wg21.link/p3980r0)<sup>[8]</sup> is in progress. Not landed.
+- Symmetric transfer: [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html)<sup>[6]</sup> identified the vulnerability. Trampolines are being explored ([P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html)<sup>[15]</sup>). Not landed.
+- Frame allocator timing: [P3980R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r0.html)<sup>[7]</sup> is in progress. Not landed.
 - `IoEnv`: does not exist in any proposal.
 - Error delivery: `AS-EXCEPT-PTR` is still in the specification.
 
 If `task` ships in C++26 without these fixes, the concessions in Section 2 are hypothetical. The gap in Section 4 would be larger.
 
-LEWG and SG4 have polled that networking should use the sender model ([P2453R0](https://wg21.link/p2453r0)<sup>[20]</sup>). Case A (I/O as awaitables) is therefore more generous than the stated direction. Case B (Section 5.7) documents the cost under the stated plan.
+LEWG and SG4 have polled that networking should use the sender model ([P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[5]</sup>). Case A (I/O as awaitables) is therefore more generous than the stated direction. Case B (Section 5.7) documents the cost under the stated plan.
 
-[P2762R0](https://wg21.link/p2762r0)<sup>[12]</sup> mentioned `io_task` in one paragraph:
+[P2762R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r0.pdf)<sup>[16]</sup> mentioned `io_task` in one paragraph:
 
 > "It may be useful to have a coroutine task (`io_task`) injecting a scheduler into asynchronous networking operations used within a coroutine... The corresponding task class probably needs to be templatized on the relevant scheduler type."
 
-[P2762](https://wg21.link/p2762r2)<sup>[13]</sup> stopped at R2 (October 2023). No revision in over two years. No published paper defines what `IoEnv` looks like inside `std::execution::task`.
+[P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf)<sup>[17]</sup> stopped at R2 (October 2023). No revision in over two years. No published paper defines what `IoEnv` looks like inside `std::execution::task`.
 
-The implementation section of [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup> acknowledges:
+The implementation section of [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> acknowledges:
 
 > "This implementation hasn't received much use, yet, as it is fairly new."
 
@@ -394,17 +394,17 @@ The implementation section of [P3552R3](https://wg21.link/p3552r3)<sup>[1]</sup>
 
 ## 7. The Zero-Overhead Principle
 
-[P3406R0](https://wg21.link/p3406r0)<sup>[17]</sup> (Stroustrup, 2024) states:
+[P3406R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3406r0.pdf)<sup>[18]</sup> (Stroustrup, 2024) states:
 
 > "Does the C++ design follow the zero-overhead principle? Should it? I think it should, even if that principle isn't trivial to define precisely. Some of you (for some definition of 'you') seem not to. We - WG21 as an organization - haven't taken it seriously enough to make it a requirement for acceptance of new features. I think that is a serious problem."
 
-The principle has two parts. [P0709R4](https://wg21.link/p0709r4)<sup>[18]</sup> (Sutter, 2019) defines them:
+The principle has two parts. [P0709R4](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf)<sup>[19]</sup> (Sutter, 2019) defines them:
 
 > "'Zero overhead' is not claiming zero cost - of course using something always incurs some cost. Rather, C++'s zero-overhead principle has always meant that (a) 'if you don't use it you don't pay for it' and (b) 'if you do use it you can't reasonably write it more efficiently by hand.'"
 
 Part (b) applies here. The user is using a task abstraction for I/O. A coroutine-native task performs the same I/O without `state<Rcvr>` construction and without scheduler extraction. The overhead documented in Sections 4 and 5 exists because of the sender protocol, not because of the I/O operation.
 
-[P3406R0](https://wg21.link/p3406r0)<sup>[17]</sup> continues:
+[P3406R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3406r0.pdf)<sup>[18]</sup> continues:
 
 > "Every proposal, language and library, should be accompanied by a written discussion, ideally backed by measurements for credibility, to demonstrate that in the likely most common usage will not impose overheads compared to current and likely alternatives. Also, to demonstrate that optimizations and tuning will not be inhibited. If no numbers are available or possible, the committee should be extremely suspicious and in particular, never just assume that optimizations will emerge over time. This should be a formal requirement."
 
@@ -450,48 +450,46 @@ The committee has the information to evaluate whether the gap justifies a separa
 
 ## Acknowledgments
 
-The author thanks Bjarne Stroustrup for [P3406R0](https://wg21.link/p3406r0) and for articulating the standard to which this paper holds itself; Herb Sutter for the two-part definition of zero overhead in [P0709R4](https://wg21.link/p0709r4); Dietmar K&uuml;hl for [P3552R3](https://wg21.link/p3552r3) and [P3796R1](https://wg21.link/p3796r1), for `beman::execution`, and for clarifying the stop token bridging resolution on the LEWG reflector; Jens Maurer for clarifying the stated direction for I/O primitives; Jonathan M&uuml;ller for [P3801R0](https://wg21.link/p3801r0) and for documenting the symmetric transfer gap; Chris Kohlhoff for identifying the partial-success problem in [P2430R0](https://wg21.link/p2430r0); Eric Niebler, Lewis Baker, and Kirk Shoop for `std::execution`; Steve Gerbino for co-developing the bridge implementations; Peter Dimov for the frame allocator propagation analysis and for the `set_error(tuple(ec, T...))` routing that resolves the combinator gap; and Mungo Gill, Mohammad Nejati, Michael Vandeberg, and Andrzej Krzemie&nacute;ski for feedback.
+The author thanks Bjarne Stroustrup for [P3406R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3406r0.pdf) and for articulating the standard to which this paper holds itself; Herb Sutter for the two-part definition of zero overhead in [P0709R4](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf); Dietmar K&uuml;hl for [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) and [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html), for `beman::execution`, and for clarifying the stop token bridging resolution on the LEWG reflector; Jens Maurer for clarifying the stated direction for I/O primitives; Jonathan M&uuml;ller for [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html) and for documenting the symmetric transfer gap; Chris Kohlhoff for identifying the partial-success problem in [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf); Eric Niebler, Lewis Baker, and Kirk Shoop for `std::execution`; Steve Gerbino for co-developing the bridge implementations; Peter Dimov for the frame allocator propagation analysis and for the `set_error(tuple(ec, T...))` routing that resolves the combinator gap; and Mungo Gill, Mohammad Nejati, Michael Vandeberg, and Andrzej Krzemie&nacute;ski for feedback.
 
 ---
 
 ## References
 
-1. [P3552R3](https://wg21.link/p3552r3) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025). https://wg21.link/p3552r3
+[1] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-2. [bemanproject/task](https://github.com/bemanproject/task) - P3552R3 reference implementation. https://github.com/bemanproject/task
+[2] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-3. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[3] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-4. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[4] [P4088R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r0.pdf) - "Info: What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
 
-5. [P4088R0](https://isocpp.org/files/papers/P4088R0.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4088R0.pdf
+[5] [P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html) - "Outcomes from the LEWG 2021-09-28 telecon" (Bryce Adelstein Lelbach, 2021).
 
-6. [P3801R0](https://wg21.link/p3801r0) - "Concerns about the design of `std::execution::task`" (Jonathan M&uuml;ller, 2025). https://wg21.link/p3801r0
+[6] [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html) - "Concerns about the design of `std::execution::task`" (Jonathan M&uuml;ller, 2025).
 
-7. [P3980R0](https://wg21.link/p3980r0) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026). https://wg21.link/p3980r0
+[7] [P3980R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r0.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
-8. [P4092R0](https://isocpp.org/files/papers/P4092R0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4092R0.pdf
+[8] [P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf) - "Info: Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-9. [P4093R0](https://isocpp.org/files/papers/P4093R0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026). https://isocpp.org/files/papers/P4093R0.pdf
+[9] [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Info: Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
-10. [P3796R1](https://wg21.link/p3796r1) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025). https://wg21.link/p3796r1
+[10] [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, 2026).
 
-11. [P2762R0](https://wg21.link/p2762r0) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r0
+[11] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024).
 
-12. [P2762R2](https://wg21.link/p2762r2) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023). https://wg21.link/p2762r2
+[12] [P2430R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Slides: Partial success scenarios with P2300" (Chris Kohlhoff, 2021).
 
-13. [P2300R10](https://wg21.link/p2300r10) - "std::execution" (Micha&lstrok; Dominiak, Lewis Baker, Lee Howes, Kirk Shoop, Michael Garland, Eric Niebler, Bryce Adelstein Lelbach, 2024). https://wg21.link/p2300r10
+[13] [P4124R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4124r0.pdf) - "Domain-Aware Combinators" (Vinnie Falco, 2026).
 
-14. [P2430R0](https://wg21.link/p2430r0) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021). https://wg21.link/p2430r0
+[14] [D2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf) - "Info: Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026).
 
-15. [P4003R0](https://wg21.link/p4003r0) - "Coroutine-Native I/O" (Vinnie Falco, Steve Gerbino, 2026). https://wg21.link/p4003r0
+[15] [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025).
 
-16. [P3406R0](https://wg21.link/p3406r0) - "We need better performance testing" (Bjarne Stroustrup, 2024). https://wg21.link/p3406r0
+[16] [P2762R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r0.pdf) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023).
 
-17. [P0709R4](https://wg21.link/p0709r4) - "Zero-overhead deterministic exceptions: Throwing values" (Herb Sutter, 2019). https://wg21.link/p0709r4
+[17] [P2762R2](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2762r2.pdf) - "Sender/Receiver Interface For Networking" (Dietmar K&uuml;hl, 2023).
 
-18. [D2583R3](https://isocpp.org/files/papers/D2583R3.pdf) - "Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026). https://isocpp.org/files/papers/D2583R3.pdf
+[18] [P3406R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3406r0.pdf) - "We need better performance testing" (Bjarne Stroustrup, 2024).
 
-19. [P4124R0](https://isocpp.org/files/papers/P4124R0.pdf) - "Domain-Aware Combinators" (Vinnie Falco, 2026). https://isocpp.org/files/papers/P4124R0.pdf
-
-20. [P2453R0](https://wg21.link/p2453r0) - "Outcomes from the LEWG 2021-09-28 telecon" (Ben Craig, 2021). https://wg21.link/p2453r0
+[19] [P0709R4](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf) - "Zero-overhead deterministic exceptions: Throwing values" (Herb Sutter, 2019).

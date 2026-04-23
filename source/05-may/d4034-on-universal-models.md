@@ -3,7 +3,7 @@ title: "On Universal Models"
 document: P4034R0
 date: 2026-03-08
 intent: info
-audience: All of WG21
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
 ---
@@ -29,9 +29,9 @@ This paper examines the historical record of universal models in computing and a
 ## 1. Disclosure
 
 The author has papers before the committee proposing coroutine-based I/O
-([P4003](https://wg21.link/p4003)) and analyzing `std::execution`
-([P2583](https://wg21.link/p2583), [P4007](https://wg21.link/p4007),
-[P4014](https://wg21.link/p4014)). Every claim in this paper is sourced to
+([P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)) and analyzing `std::execution`
+([P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf), [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf),
+[P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf)). Every claim in this paper is sourced to
 public committee records, published scholarship, or cited implementations.
 
 ## 2. Which Universal Models Succeed?
@@ -87,7 +87,7 @@ A `task<T>` from one library can be `co_await`ed inside a `task<T>` from another
 
 The structure mirrors the Internet's hourglass architecture<sup>[3]</sup>. Below the waist: runtimes (Asio, libuv, io_uring, GPU schedulers). Above the waist: task types, algorithms, ergonomic layers. At the waist: three operations. Innovation happens above and below. The waist is fixed.
 
-[D4003](https://wg21.link/p4003)<sup>[4]</sup> extends the protocol with an `io_env` parameter that carries stop token, executor, and allocator through `await_suspend` - context propagation without coupling the awaitable to any promise type:
+[P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)<sup>[4]</sup> extends the protocol with an `io_env` parameter that carries stop token, executor, and allocator through `await_suspend` - context propagation without coupling the awaitable to any promise type:
 
 ```cpp
 template<typename A>
@@ -127,7 +127,7 @@ On 2021-09-28, SG1 polled:
 
 > "We believe we need one grand unified model for asynchronous execution in the C++ Standard Library, that covers structured concurrency, event based programming, active patterns, etc."
 
-The result was **no consensus** (leaning in favor): 4 SF, 9 WF, 5 N, 5 WA, 1 SA ([P2453R0](https://wg21.link/p2453))<sup>[7]</sup>. The committee did not achieve consensus that a universal model was needed. The direction proceeded as a mandate without one.
+The result was **no consensus** (leaning in favor): 4 SF, 9 WF, 5 N, 5 WA, 1 SA ([P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html))<sup>[7]</sup>. The committee did not achieve consensus that a universal model was needed. The direction proceeded as a mandate without one.
 
 | Domain             | Evidence                                              | Status         |
 |--------------------|-------------------------------------------------------|----------------|
@@ -181,36 +181,36 @@ Universal models that endure have one thing in common: they earned the name.
 
 ## References
 
-1. Butler Lampson. "Hints for Computer System Design." 1983. http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf
+[1] [Hints for Computer System Design](http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf) - "Hints for Computer System Design" (Butler Lampson, 1983).
 
-2. Ted Kaminski. "The One Ring Problem." 2018. https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html
+[2] [The One Ring Problem](https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html) - "The One Ring Problem: Abstraction and Power" (Ted Kaminski, 2018).
 
-3. Wikipedia. "Hourglass model." https://en.wikipedia.org/wiki/Hourglass_model
+[3] [Hourglass model](https://en.wikipedia.org/wiki/Hourglass_model) - "Hourglass model" (Wikipedia).
 
-4. D4003. Falco et al. "IoAwaitables: A Coroutines-Only Framework." WG21. https://wg21.link/p4003
+[4] [P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-5. Michi Henning. "The Rise and Fall of CORBA." ACM Queue, 2006. https://dl.acm.org/doi/10.1145/1142031.1142044
+[5] [The Rise and Fall of CORBA](<https://dl.acm.org/doi/10.1145/1142031.1142044>) - "The Rise and Fall of CORBA" (Michi Henning, 2006).
 
-6. David Chappell. "The Trouble With CORBA." 1998. https://davidchappell.com/writing/article_Trouble_CORBA.php
+[6] [The Trouble With CORBA](https://davidchappell.com/writing/article_Trouble_CORBA.php) - "The Trouble With CORBA" (David Chappell, 1998).
 
-7. P2453R0. "2021 October Library Evolution and Concurrency Networking and Executors Poll Outcomes." WG21, 2022. https://wg21.link/p2453
+[7] [P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html) - "2021 October Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, Fabio Fracassi, Ben Craig, 2022).
 
-8. Robert Leahy. "std::execution in Asio Codebases: Adopting Senders Without a Rewrite." CppCon 2025. https://cppcon2025.sched.com/event/27bQ1
+[8] [CppCon 2025](https://cppcon2025.sched.com/event/27bQ1) - "std::execution in Asio Codebases: Adopting Senders Without a Rewrite" (Robert Leahy, 2025).
 
-9. nvidia.github.io/stdexec. "Standardization Status (as of 2025)." https://nvidia.github.io/stdexec/
+[9] [stdexec](https://nvidia.github.io/stdexec/) - "Standardization Status (as of 2025)" (NVIDIA).
 
-10. libunifex issue #244. "Question about any_sender_of usage." 2021. https://github.com/facebookexperimental/libunifex/issues/244
+[10] [libunifex issue #244](https://github.com/facebookexperimental/libunifex/issues/244) - "Question about any_sender_of usage" (2021).
 
-11. Python standard library: socket. https://docs.python.org/3/library/socket.html
+[11] [Python standard library: socket](https://docs.python.org/3/library/socket.html).
 
-12. Java standard library: java.net. https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/package-summary.html
+[12] [Java standard library: java.net](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/net/package-summary.html).
 
-13. Go standard library: net. https://pkg.go.dev/net
+[13] [Go standard library: net](https://pkg.go.dev/net).
 
-14. Rust standard library: std::net. https://doc.rust-lang.org/std/net/
+[14] [Rust standard library: std::net](https://doc.rust-lang.org/std/net/).
 
-15. C# standard library: System.Net.Sockets. https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets
+[15] [C# standard library: System.Net.Sockets](https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets).
 
-16. Node.js standard library: net. https://nodejs.org/api/net.html
+[16] [Node.js standard library: net](https://nodejs.org/api/net.html).
 
-17. LWG unresolved prioritized list. https://cplusplus.github.io/LWG/unresolved-prioritized.html
+[17] [LWG unresolved prioritized list](https://cplusplus.github.io/LWG/unresolved-prioritized.html).

@@ -121,19 +121,32 @@ their work and interests.
 
 ## References
 
+[1] [P4034R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4034r0.pdf) - "On Universal Models" (Vinnie Falco, 2026).
 
-[1] P4034R0 - "On Universal Models" (Vinnie Falco, 2026).
-[2] P4036R0 - "Why Span Is Not Enough" (Vinnie Falco, 2026).
-[3] P4041R0 - "Is `std::execution` a Universal Async Model?" (Vinnie Falco, 2026).
-[4] P4045R0 - "Response to P4043R0" (Vinnie Falco, 2026).
-[5] P4046R0 - "SAGE: Saving All Gathered Expertise" (Vinnie Falco, 2026).
-[6] P4047R0 - "CRYSTAL BALL: Checking Predictions Against the Record" (Vinnie Falco, 2026).
-[7] P4048R0 - "Networking for C++29: A Call to Action" (Vinnie Falco, 2026).
-[8] P4123R0 - "The Cost of Senders for Coroutine I/O" (Vinnie Falco, 2026).
-[9] P4124R0 - "Combinators and Compound Results from I/O" (Vinnie Falco, 2026).
-[10] P4127R0 - "The Coroutine Frame Allocator Timing Problem" (Vinnie Falco, 2026).
-[11] P4166R0 - "Benefits of Frame-Visible Coroutines for Senders" (Vinnie Falco, 2026).
-[12] P4170R0 - "Prosecute Your Paper To Improve It" (Vinnie Falco, 2026).
-[13] P4178R0 - "Trade-offs in Asynchronous Abstraction Design" (Vinnie Falco, 2026).
-[14] P4183R0 - "Is This C++?" (Vinnie Falco, 2026).
-[15] P4184R0 - "Is P3874R1 C++?" (Vinnie Falco, 2026).
+[2] [P4036R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4036r0.pdf) - "Why Span Is Not Enough" (Vinnie Falco, 2026).
+
+[3] [P4041R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4041r0.pdf) - "Is `std::execution` a Universal Async Model?" (Vinnie Falco, 2026).
+
+[4] [P4045R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4045r0.pdf) - "Response to P4043R0" (Vinnie Falco, 2026).
+
+[5] [P4046R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4046r0.pdf) - "SAGE: Saving All Gathered Expertise" (Vinnie Falco, 2026).
+
+[6] [P4047R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4047r0.pdf) - "CRYSTAL BALL: Checking Predictions Against the Record" (Vinnie Falco, 2026).
+
+[7] [P4048R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4048r0.pdf) - "Networking for C++29: A Call to Action" (Vinnie Falco, 2026).
+
+[8] [P4123R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4123r0.pdf) - "The Cost of Senders for Coroutine I/O" (Vinnie Falco, 2026).
+
+[9] [P4124R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4124r0.pdf) - "Combinators and Compound Results from I/O" (Vinnie Falco, 2026).
+
+[10] [P4127R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4127r0.pdf) - "The Coroutine Frame Allocator Timing Problem" (Vinnie Falco, 2026).
+
+[11] [P4166R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4166r0.pdf) - "Benefits of Frame-Visible Coroutines for Senders" (Vinnie Falco, 2026).
+
+[12] [P4170R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4170r0.pdf) - "Prosecute Your Paper To Improve It" (Vinnie Falco, 2026).
+
+[13] [P4178R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4178r0.pdf) - "Trade-offs in Asynchronous Abstraction Design" (Vinnie Falco, 2026).
+
+[14] [P4183R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4183r0.pdf) - "Is This C++?" (Vinnie Falco, 2026).
+
+[15] [P4184R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4184r0.pdf) - "Is P3874R1 C++?" (Vinnie Falco, 2026).

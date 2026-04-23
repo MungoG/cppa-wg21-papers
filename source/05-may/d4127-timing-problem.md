@@ -30,9 +30,9 @@ C++20 coroutines allocate their frame in `promise_type::operator new`, which the
 
 ## 1. Disclosure
 
-This paper is part of the Network Endeavor ([P4100R0](https://wg21.link/p4100r0)<sup>[1]</sup>). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++. Coroutine-native I/O cannot express compile-time work graphs. The author provides information, asks nothing, and serves at the pleasure of the chair.
+This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++. Coroutine-native I/O cannot express compile-time work graphs. The author provides information, asks nothing, and serves at the pleasure of the chair.
 
-[P4003R1](https://wg21.link/p4003r1)<sup>[4]</sup>, "Coroutines for I/O," uses thread-local propagation for the frame allocator. This paper documents why that choice is one of exactly two possibilities, not a preference among many. The analysis stands independent of the author's library work.
+[P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup>, "Coroutines for I/O," uses thread-local propagation for the frame allocator. This paper documents why that choice is one of exactly two possibilities, not a preference among many. The analysis stands independent of the author's library work.
 
 ---
 
@@ -127,13 +127,13 @@ struct promise_type {
 };
 ```
 
-This works. The allocator reaches `operator new` at the right time. The cost is that every coroutine in a call chain must carry the allocator in its parameter list. [P4003R1](https://wg21.link/p4003r1)<sup>[4]</sup> Section 5.2 documents the ergonomic consequences.
+This works. The allocator reaches `operator new` at the right time. The cost is that every coroutine in a call chain must carry the allocator in its parameter list. [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup> Section 5.2 documents the ergonomic consequences.
 
 ### 4.2 Path B: Ambient State
 
 If the allocator is not in the parameter list, `operator new` must read it from somewhere else. The only "somewhere else" available to a function at call time is ambient state: global, thread-local, or fiber-local storage.
 
-Global state is too coarse - a single allocator for every coroutine chain in the process. Thread-local state scoped per-chain is the minimum viable mechanism. [P4003R1](https://wg21.link/p4003r1)<sup>[4]</sup> Section 5.3 documents the thread-local write-through cache that delivers the allocator to `operator new` and restores it on every resume.
+Global state is too coarse - a single allocator for every coroutine chain in the process. Thread-local state scoped per-chain is the minimum viable mechanism. [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup> Section 5.3 documents the thread-local write-through cache that delivers the allocator to `operator new` and restores it on every resume.
 
 ---
 
@@ -401,7 +401,7 @@ The consequences:
 - **Users who want clean signatures** use the IoAwaitable protocol as-is. The ambient state propagates the allocator transparently. They never touch `allocator_arg_t`.
 - **Users who want both** can pass `allocator_arg_t` at specific boundaries and let ambient state handle the rest of the chain.
 
-Both overloads live in the same promise type. A conforming promise mixin ([P4003R1](https://wg21.link/p4003r1)<sup>[4]</sup> Section 7) provides both paths. Task types that inherit from the mixin support both paths automatically. No ecosystem fragmentation occurs because the choice is per-call-site, not per-task-type.
+Both overloads live in the same promise type. A conforming promise mixin ([P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup> Section 7) provides both paths. Task types that inherit from the mixin support both paths automatically. No ecosystem fragmentation occurs because the choice is per-call-site, not per-task-type.
 
 ---
 
@@ -526,14 +526,14 @@ The author thanks Michael Hava for identifying that R0 failed to distinguish lea
 
 ## References
 
-1. [P4100R0](https://wg21.link/p4100r0) - "The Network Endeavor: Coroutine-Native I/O for C++29" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026). https://wg21.link/p4100r0
+[1] [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
-2. [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library. https://github.com/cppalliance/corosio
+[2] [cppalliance/corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-3. [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library. https://github.com/cppalliance/capy
+[3] [cppalliance/capy](https://github.com/cppalliance/capy) - Coroutine I/O primitives library.
 
-4. [P4003R1](https://wg21.link/p4003r1) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026). https://wg21.link/p4003r1
+[4] [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf) - "Coroutines for I/O" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-5. [Freestanding and hosted implementations](https://en.cppreference.com/w/cpp/freestanding) - cppreference.com. `<memory_resource>` is not required for freestanding implementations. https://en.cppreference.com/w/cpp/freestanding
+[5] [Freestanding and hosted implementations](https://en.cppreference.com/w/cpp/freestanding) - cppreference.com. `<memory_resource>` is not required for freestanding implementations.
 
-6. [Pigweed pw_async2: Coroutines](https://pigweed.dev/pw_async2/coroutines.html) - Google's embedded C++20 coroutine framework. Every coroutine takes a `CoroContext` (wrapping a `pw::Allocator`) as its first parameter. https://pigweed.dev/pw_async2/coroutines.html
+[6] [Pigweed pw_async2: Coroutines](https://pigweed.dev/pw_async2/coroutines.html) - Google's embedded C++20 coroutine framework. Every coroutine takes a `CoroContext` (wrapping a `pw::Allocator`) as its first parameter.
