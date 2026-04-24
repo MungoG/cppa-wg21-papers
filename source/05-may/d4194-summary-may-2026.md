@@ -10,13 +10,9 @@ reply-to:
 
 ## Abstract
 
-Fifteen papers dissect the async design space against its own specification, ship five open-source AI tools for committee self-audit, and deliver the production pipeline to break a twenty-one-year C++ networking deadlock.
+Seventeen papers dissect the async design space against its own specification, ship five open-source AI tools for committee self-audit, and deliver the production pipeline to break a twenty-one-year C++ networking deadlock.
 
-This paper summarizes 15 papers by the author published in the
-May 2026 mailing. It is a reading guide: an executive summary
-that identifies the logical series within the collection, describes
-what each series delivers, and provides individual summaries of every
-paper. It asks for nothing.
+This paper summarizes 17 papers by the author published in the May 2026 mailing, including two revisions of April papers (P4096R1 and P4100R1). It is a reading guide: an executive summary that identifies the logical series within the collection, describes what each series delivers, and provides individual summaries of every paper. It asks for nothing.
 
 ---
 
@@ -76,35 +72,43 @@ Of the 27 dated, public, falsifiable predictions about `std::execution` that P40
 
 After twenty-one years without sockets, DNS, or TLS in the C++ standard, P4048R0 lays out the organizational machinery designed to finally break the deadlock. The paper proposes a six-team continuous production pipeline - Implementation, Design, Wording, Testing, plus two cross-cutting review teams - fed by eleven companion papers and two shipping libraries (Capy and Corosio) with three independent adopters already in the field. Work flows paper-by-paper through the pipeline, with multiple papers occupying different stages simultaneously; every handoff produces a visible, version-controlled artifact in a public GitHub repository. A two-stage delivery plan lets the committee ship pure C++20 abstractions (coroutine execution protocol, buffer concepts, stream concepts) as standalone value even if the full networking stack slips past C++29, ensuring that partial delivery is still delivery.
 
-### 3.8. P4123R0 - The Cost of Senders for Coroutine I/O
+### 3.8. P4096R1 - Coroutine Executors and P2464R0
+
+This is R1 of a paper first published in the April 2026 mailing as P4096R0. The April reader's guide ([D4193R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/d4193r0.pdf)<sup>[18]</sup>) contains the full summary. R1 improves table layout for readability; no substantive changes to the analysis.
+
+### 3.9. P4100R1 - Coroutine-Native I/O for C++29 (The Network Endeavor)
+
+This is R1 of a paper first published in the April 2026 mailing as P4100R0. The April reader's guide ([D4193R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/d4193r0.pdf)<sup>[18]</sup>) contains the full summary. Changes between R0 and R1 are forthcoming.
+
+### 3.10. P4123R0 - The Cost of Senders for Coroutine I/O
 
 Even after granting every proposed engineering fix to `std::execution::task` and comparing against the best possible conforming implementation, a spec-mandated performance gap remains for coroutine I/O users. P4123R0 walks through the normative text of [exec.task] line by line and identifies operations - `state<Rcvr>` construction, scheduler extraction, `affine_on` wrapping - that no conforming implementation can eliminate and that the coroutine-native model simply does not perform. Under the committee's stated direction that networking should use senders, every socket read, every write, every timer wait, and every DNS lookup pays this overhead: a minimal HTTP request-response accumulates 15 `state<Rcvr>` constructions, 15 scheduler extractions, and 10 `affine_on` wrappings where the coroutine-native path stores 10 pointers and is done. The paper invokes Stroustrup's zero-overhead principle and Sutter's two-part definition, presents two cases (I/O as awaitables, I/O as senders), and asks the committee to decide whether the gap justifies a separate task type for I/O.
 
-### 3.9. P4124R0 - Combinators and Compound Results from I/O
+### 3.11. P4124R0 - Combinators and Compound Results from I/O
 
 `std::execution::when_all` cannot see I/O errors - they arrive on the value channel, and the combinator dispatches only on channel tags. P4124R0 traces the `when_all` completion handler through the P2300R10 specification and systematically shows that all three strategies for routing compound I/O results through the three-channel model fail: the value-channel strategy leaves `when_all` blind to errors, the error-channel strategy corrupts downstream composition with misplaced byte counts inside error tuples, and the predicate strategy repeats domain logic at every call site. The paper proposes domain-aware combinators - a single `when_all` that dispatches at compile time via concepts, selecting an IoAwaitable overload that inspects results directly with zero adapter overhead or delegating to `std::execution::when_all` for senders. The result is flat destructuring, correct error-driven cancellation, and no per-call-site boilerplate - two implementations behind one name, selected by the type system.
 
-### 3.10. P4127R0 - The Coroutine Frame Allocator Timing Problem
+### 3.12. P4127R0 - The Coroutine Frame Allocator Timing Problem
 
 P4127R0 proves that the design space for delivering a frame allocator to a C++20 coroutine is closed - exactly two mechanisms exist, and no future customization point can open a third. The paper exhaustively enumerates every coroutine customization point in the language, places each one on a timeline relative to `promise_type::operator new`, and shows that every mechanism either reduces to passing the allocator in the parameter list (`allocator_arg_t`), reduces to ambient state such as thread-local storage, or fires after the frame already exists. A side-by-side comparison across a three-deep coroutine call chain makes the ergonomic stakes concrete: Path A pollutes every signature and every call site with allocator plumbing, while Path B keeps signatures as pure domain logic at the cost of a single `fs:`-relative TLS load. The paper then presents a hybrid `operator new` overload set - shipping in the same promise type - that lets each call site choose its own path, and closes with a structured rebuttal of six common TLS objections, including a platform survey showing the intersection of "has `<memory_resource>`" and "lacks `thread_local`" is empty.
 
-### 3.11. P4166R0 - Benefits of Frame-Visible Coroutines for Senders
+### 3.13. P4166R0 - Benefits of Frame-Visible Coroutines for Senders
 
 Two of the three performance properties that `std::execution` senders hold over coroutines trace to a single C++20 design choice: the coroutine frame is opaque. P4166R0 revisits the Known-Layout Type model documented in P1492R0 (2019) and shows that adding frame-visible coroutines - where `sizeof(frame)` is `constexpr` - would eliminate `std::execution::task`'s mandatory heap allocation and give coroutine-based sender algorithms full optimizer visibility. The paper constructs a formal forward-and-reverse mapping between awaitable return types and the sender three-channel completion model, surfacing a structural constraint: compound I/O results (an error code and a byte count produced by the same operation) cannot round-trip through three mutually exclusive channels. A side-by-side property table makes the case that frame-visible coroutines close the gap between both async models while leaving compile-time work graphs - the type-level encoding of dependency topology - as the sender model's irreducible, unique contribution.
 
-### 3.12. P4170R0 - Prosecute Your Paper To Improve It
+### 3.14. P4170R0 - Prosecute Your Paper To Improve It
 
 For less than a dollar in API tokens and fifteen minutes of wall-clock time, every paper in the mailing can now know its own weaknesses before the committee does. P4170R0 introduces the Advocatus Diaboli, an open-source structured prompt that turns any frontier language model into a five-phase adversarial examiner for WG21 papers - complete with an internal counter-examiner that kills bad findings through six named challenges before they reach the record. The case study applies the tool to P2900R14 ("Contracts for C++," 256KB, 4,348 lines plus its 419KB rationale paper), producing five sections certified as battle-hardened, five formal objections surviving from nine candidates after cross-examination, and sixteen falsifiable predictions with explicit timelines. The tool ships in three cultural translations - a Latin ecclesiastical tribunal, a German engineering inspection, and a Chinese imperial court examination - all implementing identical methodology under CC0 public domain dedication, ready to copy into any frontier model today.
 
-### 3.13. P4178R0 - Trade-offs in Asynchronous Abstraction Design
+### 3.15. P4178R0 - Trade-offs in Asynchronous Abstraction Design
 
 P2300R10 cites its own text against itself - and the results are more interesting than any outside critique could be. P4178R0 extracts paired passages from the `std::execution` specification where two sections of the same document appear to be in tension, organizing them into four recurring rhetorical patterns: claims walked back within a single section, inconsistent evidentiary standards applied to competing abstractions, prior art dismissed then quietly adopted, and stated priorities contradicted by the final design. A seven-line coroutine `retry` is placed beside the 125-line sender implementation of the same algorithm, letting the specification's own code make the argument. Where a charitable reading resolves the tension, the paper says so - making the unresolved cases all the harder to dismiss.
 
-### 3.14. P4183R0 - Is This C++?
+### 3.16. P4183R0 - Is This C++?
 
 P4183R0 offers a 21-question litmus test - distilled entirely from Bjarne Stroustrup's *The Design and Evolution of C++* - that can be pointed at any proposal, feature, library, or blog post to measure how faithfully it embodies the language's founding principles. Each question maps to a specific Stroustrup quote (zero-overhead, static types, deterministic destruction, multi-paradigm composability, and more), plus one from Howard Hinnant on making the safe thing easy and the unsafe thing possible. The paper ships as a structured prompt designed to be executed by a large language model: a subagent extracts tagged evidence from the subject document, a verification phase confirms or overturns each tag, and a strict decision rule collapses 21 binary answers into a single verdict ranging from "This is C++" down to "This is another matter entirely." The entire paper is dedicated to the public domain under CC0, inviting anyone to reuse, fork, or embed the checklist in tutorials, linters, or review tooling without restriction.
 
-### 3.15. P4184R0 - Is P3874R1 C++?
+### 3.17. P4184R0 - Is P3874R1 C++?
 
 P3874R1 - the proposal to make C++ a memory-safe language - scores 7 out of 21 on a checklist of C++ design principles distilled from Stroustrup's own book, and the verdict is "not even close to C++." This paper applies the twenty-one criteria from P4183 "Tool: Is This C++?" to P3874R1, quoting directly from the evaluated paper at every step and rating each claim as supports-yes, supports-no, or overturned. The analysis finds that P3874R1 fails on zero-overhead ("bounds safety entails a performance cost"), on preferring compile-time checking (runtime enforcement is treated as coequal), on current usefulness (the paper itself concedes a new standard library is needed before the safe subset is practical), and on twelve other counts. Every verdict is traceable to a specific passage in P3874R1, making the evaluation independently auditable without requiring access to the AI model that produced it.
 
@@ -112,9 +116,7 @@ P3874R1 - the proposal to make C++ a memory-safe language - scores 7 out of 21 o
 
 ## 4. Conclusion
 
-This reading guide covers 15 papers from the May 2026 mailing.
-The author hopes it helps the reader find the papers most relevant to
-their work and interests.
+This reading guide covers 17 papers from the May 2026 mailing. The author hopes it helps the reader find the papers most relevant to their work and interests.
 
 ---
 
@@ -149,3 +151,9 @@ their work and interests.
 [14] [P4183R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4183r0.pdf) - "Is This C++?" (Vinnie Falco, 2026).
 
 [15] [P4184R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4184r0.pdf) - "Is P3874R1 C++?" (Vinnie Falco, 2026).
+
+[16] [P4096R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r1.pdf) - "Coroutine Executors and P2464R0" (Vinnie Falco, 2026).
+
+[17] [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf) - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
+
+[18] [D4193R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/d4193r0.pdf) - "A Reader's Guide to My April 2026 Papers" (Vinnie Falco, 2026).
