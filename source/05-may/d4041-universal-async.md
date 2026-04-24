@@ -24,9 +24,17 @@ C++20 standardized coroutines. C++26 adds `std::execution`. Both are asynchronou
 
 ## 1. Disclosure
 
-The author developed [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[1]</sup> ("Coroutines for I/O"), [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[2]</sup> ("Senders and Coroutines"), [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[3]</sup> ("The Sender Sub-Language"), and [P2583R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r1.pdf)<sup>[4]</sup> ("Symmetric Transfer and Sender Composition"). The author publishes Capy and Corosio, coroutine-native I/O libraries.
+The author provides information and serves at the pleasure of the committee.
 
-A coroutine-only design cannot express compile-time work graphs, does not support heterogeneous dispatch, and assumes cooperative scheduling. This paper does not cite those libraries or P4003R0 as evidence for any claim. They are disclosed as context for the author's perspective.
+The author developed and maintains [Capy](https://github.com/cppalliance/capy) and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
+
+Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
+
+This paper examines the published record. That effort requires re-examining consequential papers, including papers written by people the author respects.
+
+The author developed [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[1]</sup> ("Coroutines for I/O"), [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[2]</sup> ("Senders and Coroutines"), [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[3]</sup> ("The Sender Sub-Language"), and [P2583R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r1.pdf)<sup>[4]</sup> ("Symmetric Transfer and Sender Composition"). A coroutine-only design cannot express compile-time work graphs, does not support heterogeneous dispatch, and assumes cooperative scheduling. This paper does not cite those libraries or P4003R0 as evidence for any claim. They are disclosed as context for the author's perspective.
+
+This paper asks for nothing.
 
 ---
 

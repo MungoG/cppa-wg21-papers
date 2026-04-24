@@ -27,15 +27,19 @@ The sender three-channel completion model is a genuine achievement: compile-time
 
 ## 1. Disclosure
 
-The author provides information and serves at the pleasure of the chair.
+The author provides information and serves at the pleasure of the committee.
 
-This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[2]</sup> "The Network Endeavor: Coroutine-Native I/O for C++29"). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++.
+This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[2]</sup>), a project to bring coroutine-native I/O to C++.
+
+The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+
+Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
 The author regards `std::execution` as an important contribution to C++ and supports its standardization for the domains it serves well - GPU dispatch, heterogeneous execution, and compile-time work-graph composition among them. The three-channel completion model enables generic algorithms that dispatch on completion disposition without knowing the concrete sender type. Compile-time work graphs - the type-level encoding of dependency topology in the sender operation state - are a sender property the coroutine model does not replicate.
 
 The author believes that C++ would benefit from having all three coroutine models in the language simultaneously: fibers (stackful), frame-opaque coroutines (C++20), and frame-visible coroutines (previously proposed in [P1492R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)<sup>[1]</sup> and [P1342R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1342r0.pdf)<sup>[5]</sup>). Each covers non-overlapping use cases, and users are better served by having access to all of them. Frame-visible coroutines would benefit both async models that C++26 ships.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

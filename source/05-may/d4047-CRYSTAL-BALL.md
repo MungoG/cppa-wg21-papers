@@ -24,12 +24,11 @@ This paper collects dated, public, falsifiable predictions about `std::execution
 
 ## 1. Disclosure
 
-The author has papers before the committee proposing coroutine-based I/O
-([P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)) and analyzing `std::execution`
-([P2583](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf), [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf),
-[P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf)). Every prediction and outcome cited
-below is sourced to public committee records, published blog posts, or
-recorded conference talks.
+The author provides information and serves at the pleasure of the committee.
+
+This paper examines the published record. That effort requires re-examining consequential papers, including papers written by people the author respects.
+
+The author has papers before the committee proposing coroutine-based I/O ([P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)) and analyzing `std::execution` ([P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf), [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf), [P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf)). Every prediction and outcome cited below is sourced to public committee records, published blog posts, or recorded conference talks.
 
 **The author is the intelligence of record.** [P4023R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4023r0.pdf)<sup>[1]</sup> (Directions Group, "Strategic Direction for AI in C++") establishes that "the ultimate responsibility for accuracy, logic, and normative quality rests entirely with the human author." This paper follows that principle. AI tools assist with research, compilation, and drafting. The author curates, verifies, and takes responsibility for every claim.
 
@@ -38,6 +37,8 @@ recorded conference talks.
 **Human curation is required at every stage.** AI can misidentify predictions, misclassify outcomes, or miss relevant public statements. The author verified every prediction-outcome pair against the cited source.
 
 **Outcome classifications reflect the author's assessment of the cited evidence.** The scorecard is one systematic reading of the public record. Each entry cites its source. Readers who disagree with a classification can verify against the cited source and reach their own conclusion.
+
+This paper asks for nothing.
 
 ## 2. Method
 

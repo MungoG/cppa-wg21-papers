@@ -30,9 +30,17 @@ C++20 coroutines allocate their frame in `promise_type::operator new`, which the
 
 ## 1. Disclosure
 
-This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>). The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and believes coroutine-native I/O is the correct foundation for networking in C++. Coroutine-native I/O cannot express compile-time work graphs. The author provides information, asks nothing, and serves at the pleasure of the chair.
+The author provides information and serves at the pleasure of the committee.
+
+This paper is part of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>), a project to bring coroutine-native I/O to C++.
+
+The author developed and maintains [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and [Capy](https://github.com/cppalliance/capy)<sup>[3]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
+
+Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
 [P4003R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r1.pdf)<sup>[4]</sup>, "Coroutines for I/O," uses thread-local propagation for the frame allocator. This paper documents why that choice is one of exactly two possibilities, not a preference among many. The analysis stands independent of the author's library work.
+
+This paper asks for nothing.
 
 ---
 

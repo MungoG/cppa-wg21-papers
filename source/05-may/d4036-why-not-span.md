@@ -24,7 +24,11 @@ C++ has bytes. A contiguous region of bytes needs a type. A sequence of such reg
 
 ## 1. Disclosure
 
+The author provides information and serves at the pleasure of the committee.
+
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[1]</sup>, a published HTTP and WebSocket library built on [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[2]</sup>'s buffer model, and develops [Capy, Corosio, Http, Beast2, and Burl](https://github.com/cppalliance)<sup>[3]</sup> - libraries that define or consume buffer abstractions. The author published [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[4]</sup>. The author holds a neutral position on the Networking TS (changed from positive). This body of work creates a bias toward dedicated buffer types. Such types have costs: one more vocabulary type to learn, and interoperability friction with code that uses raw `span<byte>`.
+
+This paper asks for nothing.
 
 ## 2. Credit Where Due
 

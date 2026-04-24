@@ -28,11 +28,17 @@ This paper examines the historical record of universal models in computing and a
 
 ## 1. Disclosure
 
-The author has papers before the committee proposing coroutine-based I/O
-([P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)) and analyzing `std::execution`
-([P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf), [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf),
-[P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf)). Every claim in this paper is sourced to
-public committee records, published scholarship, or cited implementations.
+The author provides information and serves at the pleasure of the committee.
+
+The author developed and maintains [Capy](https://github.com/cppalliance/capy) and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
+
+Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
+
+This paper examines the published record. That effort requires re-examining consequential papers, including papers written by people the author respects.
+
+The author has papers before the committee proposing coroutine-based I/O ([P4003R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r2.pdf)) and analyzing `std::execution` ([P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf), [P4007R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r2.pdf), [P4014R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r1.pdf)). Every claim in this paper is sourced to public committee records, published scholarship, or cited implementations.
+
+This paper asks for nothing.
 
 ## 2. Which Universal Models Succeed?
 

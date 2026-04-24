@@ -27,7 +27,15 @@ The Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/pap
 
 ## 1. Disclosure
 
-The authors are the architects of the Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>). The lead author developed and maintains [Corosio](https://github.com/cppalliance/corosio) and [Capy](https://github.com/cppalliance/capy) and believes coroutine-native I/O is the correct foundation for networking in C++. Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
+The author provides information and serves at the pleasure of the committee.
+
+This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf) ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[1]</sup>), a project to bring coroutine-native I/O to C++.
+
+The lead author developed and maintains [Capy](https://github.com/cppalliance/capy) and [Corosio](https://github.com/cppalliance/corosio) and believes coroutine-native I/O is a practical foundation for networking in C++.
+
+Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
+
+This paper asks for nothing.
 
 ---
 

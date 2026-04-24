@@ -31,6 +31,8 @@ The technology exists. The methodology is demonstrated. Participation is volunta
 
 ## 1. Disclosure
 
+The author provides information and serves at the pleasure of the committee.
+
 **The author is the intelligence of record.** P4023R0<sup>[1]</sup> establishes that "the ultimate responsibility for accuracy, logic, and normative quality rests entirely with the human author." This paper follows that principle. AI tools assist with transcription, synthesis, and drafting. The author curates, verifies, and takes responsibility for every claim.
 
 **This paper uses AI at every stage.** Interview transcripts were produced by AI transcription. Knowledge synthesis was produced by AI processing. The paper itself was drafted with AI assistance. Every stage involves machine output. P4023R0 identifies research, summarization, and consistency checking as permitted uses of AI in the committee process<sup>[1]</sup>. This paper's use of AI falls within that scope.
@@ -38,6 +40,8 @@ The technology exists. The methodology is demonstrated. Participation is volunta
 **Human curation is required at every stage.** AI transcription introduces errors. AI synthesis can misattribute, compress, or distort meaning. No output in this paper should be treated as a faithful representation of any interviewee's views without that interviewee's explicit review and approval.
 
 **All presented outputs are illustrative, not normative.** The synthesized principles, the paper evaluations, and the combined-principles rankings reflect one experimental run of a preliminary methodology. They do not represent committee consensus, expert endorsement, or recommended policy.
+
+This paper asks for nothing.
 
 ---
 

@@ -40,7 +40,7 @@ The committee decides. Consensus must be accepted even when the author disagrees
 
 **Contracts shipped to the standard before they shipped to regular users.**
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

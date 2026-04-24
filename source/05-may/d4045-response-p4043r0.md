@@ -24,7 +24,11 @@ reply-to:
 
 ## 1. Disclosure
 
-The author has no involvement in the C++ Contracts facility and holds no position on its design. This paper asks for nothing.
+The author provides information and serves at the pleasure of the committee.
+
+The author has no involvement in the C++ Contracts facility and holds no position on its design.
+
+This paper asks for nothing.
 
 ---
 

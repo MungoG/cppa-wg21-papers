@@ -22,8 +22,7 @@ paper. It asks for nothing.
 
 ## 1. Disclosure
 
-The author provides information and serves at the pleasure of the
-committee.
+The author provides information and serves at the pleasure of the committee.
 
 This paper asks for nothing.
 
