@@ -1,6 +1,6 @@
 # Scrivener
 
-Standalone Markdown-to-PDF converter built on ReportLab and mistune.
+Standalone Markdown-to-PDF/HTML converter built on ReportLab, mistune, and Pygments.
 
 ## Why Scrivener Exists
 
@@ -34,12 +34,15 @@ remaining feature gaps is in `gap-report.md`.
 
 ```
 Markdown -> mistune v3 (AST) -> ASTRenderer (flowables) -> ReportLab -> PDF
+                              -> HTMLRenderer (strings)  -> HTML + CSS
 ```
 
 - **Parser**: mistune v3 in AST mode with strikethrough and table
   plugins
-- **Renderer**: converts AST tokens to ReportLab flowables (paragraphs,
+- **PDF Renderer**: converts AST tokens to ReportLab flowables (paragraphs,
   tables, code blocks, images, mermaid diagrams)
+- **HTML Renderer**: converts AST tokens to semantic HTML with CSS classes.
+  CSS is generated from the style YAML to match PDF spacing.
 - **Style system**: flat YAML files in `styles/` with `inherits:`
   cascade and `@palette` color references
 - **Fonts**: logical IDs in `fonts.yaml` manifest, variable font axis
@@ -66,23 +69,50 @@ python scrivener.py doc.md --toc              # force TOC on
 python scrivener.py doc.md --no-toc           # force TOC off
 python scrivener.py doc.md --logo logo.svg    # override logo
 python scrivener.py doc.md --options '{"toc": true}'
+python scrivener.py doc.md --format html      # -> .out/doc.html + .css
+python scrivener.py doc.md --format html --inline-css   # CSS in <style> tag
+python scrivener.py doc.md --format html --html-mode fragment
+python scrivener.py --build-css --style wg21  # generate CSS only
 python scrivener.py --list-styles             # JSON style catalog
 ```
 
 | Argument | Description |
 |----------|-------------|
 | `input` | One or more markdown files or glob patterns |
-| `-o`, `--output` | Output PDF path (single-file mode only) |
+| `-o`, `--output` | Output path (single-file mode only) |
 | `--outdir` | Output directory for batch mode (default: `.out/`) |
 | `--style` | Style name from `styles/` or path to a YAML file |
+| `--format` | Output format: `pdf` (default) or `html` |
+| `--html-mode` | HTML mode: `full` (default) or `fragment` |
+| `--inline-css` | Embed CSS in `<style>` tag instead of separate file |
+| `--build-css` | Generate CSS for a style and exit |
 | `--logo` | Override logo image path |
 | `--toc` | Force table of contents on |
 | `--no-toc` | Force table of contents off |
 | `--options` | JSON string or path to JSON file with option overrides |
 | `--list-styles` | Print JSON style catalog and exit |
 
-Output defaults to `.out/<filename>.pdf` when no `-o` or `--outdir`
-is given.
+Output defaults to `.out/<filename>.pdf` (or `.html`) when no `-o` or
+`--outdir` is given.
+
+### HTML Output
+
+HTML output produces semantic HTML with CSS classes - no inline styles.
+The CSS is generated from the style YAML using the same spacing
+arithmetic as the PDF renderer. A CSS custom property `--u` serves as
+the base unit, with all dimensions expressed as `calc(var(--u) * ratio)`.
+
+- **Full mode** (`--html-mode full`): Complete HTML5 document with
+  `<link>` to the generated CSS file. The `html` element sets
+  `font-size` as a percentage so the layout respects browser
+  accessibility font-size preferences.
+- **Fragment mode** (`--html-mode fragment`): Just an `<article>`
+  element for insertion into a template. The `--u` anchor is set in
+  px directly on the article, making the fragment self-contained.
+- **Inline CSS** (`--inline-css`): Embeds the CSS in a `<style>` tag
+  instead of writing a separate `.css` file.
+- **Standalone CSS** (`--build-css`): Generates the CSS file without
+  any markdown input.
 
 ## Styles
 

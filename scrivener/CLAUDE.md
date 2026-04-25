@@ -6,13 +6,15 @@ Every visual value - colors, sizes, spacing, padding - comes from a style YAML f
 
 ## All Spacing is Proportional
 
-Use `sp(cfg, r)` for every spacing value. Never bare `Spacer(1, 4)` or `spaceAfter=6`. The function is in `lib/config.py`:
+Use `sp(cfg, r)` for every spacing value in the PDF path. Never bare `Spacer(1, 4)` or `spaceAfter=6`. The function is in `lib/config.py`:
 
 ```python
 def sp(cfg, r):
     """Spacing proportional to body_size."""
     return cfg.get("body_size", 11) * r
 ```
+
+For the HTML path, use `su(r)` from `lib/css.py` - the CSS analog of `sp()`. It emits `calc(var(--u) * r)` where `--u` is the base unit set on the article element.
 
 Ratios use the form `N/11` so the original value is visible: `sp(cfg, 4/11)` produces 4pt at body_size 11.
 
@@ -42,8 +44,11 @@ Prefer `bs`, `cfg`, `fm`, `lh`, `cb`, `bq`, `s`, `r`, `w`, `h`. Spell out only w
 - `lib/font_manifest.py` - Font manifest loading, `resolve_font_files()`, `ensure_fonts_downloaded()`.
 - `lib/catalog.py` - `list_styles()`, `list_images()`.
 - `lib/logo.py` - `load_logo()` for raster and SVG.
-- `lib/highlight.py` - Syntax highlighting via Pygments. Single `highlight()` function returns ReportLab XML markup.
+- `lib/highlight.py` - Syntax highlighting via Pygments. `highlight()` returns ReportLab XML markup; `highlight_html()` returns HTML with class-based spans.
 - `lib/renderer.py` - `ASTRenderer`. AST-to-flowable conversion. The largest module.
+- `lib/css.py` - `generate_css()`, `su()`. Converts style YAML to CSS string. Pure function.
+- `lib/html_renderer.py` - `HTMLRenderer`. AST-to-HTML conversion. Mirrors ASTRenderer's dispatch pattern.
+- `lib/html_builder.py` - `build_html()`, `build_css()`. HTML build orchestration, parallel to builder.py.
 
 ## keepWithNext Is Broken
 
@@ -55,7 +60,7 @@ When a flowable's `split()` constructs continuation fragments, it must forward e
 
 ## Links and Security
 
-Links in generated PDFs must restrict URI schemes to `http`, `https`, and `mailto`. Reject `javascript:` and unknown schemes.
+Links in generated PDFs and HTML must restrict URI schemes to `http`, `https`, and `mailto`. Reject `javascript:` and unknown schemes.
 
 ## Testing
 

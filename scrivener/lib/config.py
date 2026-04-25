@@ -18,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STYLES_DIR = PROJECT_ROOT / "styles"
 IMAGES_DIR = PROJECT_ROOT / "images"
 FONTS_DIR = PROJECT_ROOT / ".fonts"
+CSS_DIR = PROJECT_ROOT / "css"
 MANIFEST_PATH = PROJECT_ROOT / "fonts.yaml"
 
 _in = 72

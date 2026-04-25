@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""scrivener - Markdown to PDF converter.
+"""scrivener - Markdown to PDF/HTML converter.
 
 Uses ReportLab, mistune v3, and variable fonts to produce
 beautifully formatted PDFs from Markdown files with YAML front
-matter. Styling is fully externalized into style YAML files.
+matter. Can also render to semantic HTML with generated CSS.
+Styling is fully externalized into style YAML files.
 
 Usage:
     python scrivener.py doc.md                  # -> .out/doc.pdf
     python scrivener.py doc.md -o out.pdf       # explicit output
     python scrivener.py *.md                    # batch mode -> .out/
     python scrivener.py doc.md --style wg21     # named style
+    python scrivener.py doc.md --format html    # -> .out/doc.html
+    python scrivener.py doc.md --format html --inline-css
+    python scrivener.py doc.md --format html --html-mode fragment
+    python scrivener.py --build-css --style wg21
     python scrivener.py --list-styles           # JSON style catalog
     python scrivener.py doc.md --options '{"toc": true}'
 """
@@ -33,7 +38,7 @@ from lib.config import (
 def main():
     parser = argparse.ArgumentParser(
         prog="scrivener",
-        description="Convert Markdown files to beautifully formatted PDFs.",
+        description="Convert Markdown files to beautifully formatted PDFs or HTML.",
         epilog="For the web UI, run 'python paperworks.py serve' from the paperworks directory.")
 
     parser.add_argument(
@@ -41,13 +46,26 @@ def main():
         help="Markdown file(s) or glob patterns to convert")
     parser.add_argument(
         "-o", "--output",
-        help="Output PDF path (single-file mode only)")
+        help="Output path (single-file mode only)")
     parser.add_argument(
         "--outdir",
         help="Output directory for batch mode (default: .out/)")
     parser.add_argument(
         "--style",
         help="Style name (from styles/) or path to a style directory")
+    parser.add_argument(
+        "--format", choices=["pdf", "html"], default="pdf",
+        dest="fmt",
+        help="Output format (default: pdf)")
+    parser.add_argument(
+        "--html-mode", choices=["full", "fragment"], default="full",
+        help="HTML mode: full page or headless fragment (default: full)")
+    parser.add_argument(
+        "--inline-css", action="store_true",
+        help="Embed CSS in <style> tag instead of writing a separate file")
+    parser.add_argument(
+        "--build-css", action="store_true",
+        help="Generate CSS for a style and exit (no markdown input needed)")
     parser.add_argument(
         "--logo",
         help="Override the logo image path")
@@ -72,12 +90,15 @@ def main():
         print(json.dumps(styles, indent=2))
         sys.exit(0)
 
-    if not args.input:
-        parser.print_help()
-        sys.exit(0)
-
     style_path = resolve_style_path(args.style)
     style = load_style(style_path)
+
+    if args.build_css:
+        from lib.html_builder import build_css
+        out = Path(args.output) if args.output else None
+        result = build_css(style, output_path=out)
+        print(f"  ok: {result}")
+        sys.exit(0)
 
     if args.options:
         opt_path = Path(args.options)
@@ -87,6 +108,10 @@ def main():
         else:
             options_dict = json.loads(args.options)
         apply_options(style, options_dict)
+
+    if not args.input:
+        parser.print_help()
+        sys.exit(0)
 
     md_files = []
     for pattern in args.input:
@@ -100,15 +125,16 @@ def main():
     if args.output and len(md_files) > 1:
         parser.error("-o/--output cannot be used with multiple input files")
 
+    ext = ".html" if args.fmt == "html" else ".pdf"
     default_outdir = PROJECT_ROOT / ".out"
 
     if len(md_files) == 1 and args.output:
         outputs = [Path(args.output)]
     elif args.outdir:
         outdir = Path(args.outdir)
-        outputs = [outdir / f.with_suffix(".pdf").name for f in md_files]
+        outputs = [outdir / f.with_suffix(ext).name for f in md_files]
     else:
-        outputs = [default_outdir / f.with_suffix(".pdf").name
+        outputs = [default_outdir / f.with_suffix(ext).name
                     for f in md_files]
 
     cli_cfg = {}
@@ -124,7 +150,13 @@ def main():
 
     for md_file, out_file in zip(md_files, outputs):
         try:
-            result = build_pdf(md_file, out_file, cli_cfg, style)
+            if args.fmt == "html":
+                from lib.html_builder import build_html
+                result = build_html(md_file, out_file, cli_cfg, style,
+                                    mode=args.html_mode,
+                                    inline_css=args.inline_css)
+            else:
+                result = build_pdf(md_file, out_file, cli_cfg, style)
             print(f"  ok: {md_file} -> {result}")
             successes.append(md_file)
         except Exception as e:

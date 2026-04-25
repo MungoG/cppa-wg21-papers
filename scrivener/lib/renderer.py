@@ -59,6 +59,7 @@ class ASTRenderer:
         s = self.style
         bs = s["body_size"]
         lh = bs * s["line_height"]
+        text_color = parse_color(s.get("palette", {}).get("text", "#000000"))
         code_fg = s["code_fg"]
         bq_fg = s["blockquote_fg"]
         self.fm_label_color = s["front_matter_label_color"]
@@ -69,7 +70,8 @@ class ASTRenderer:
         self.ps = {
             "body": ParagraphStyle(
                 "body", fontName="Body", fontSize=bs, leading=lh,
-                spaceAfter=sp(s, 0.8), spaceBefore=0),
+                spaceAfter=sp(s, 0.8), spaceBefore=0,
+                textColor=text_color),
             "code_block": ParagraphStyle(
                 "code_block", fontName="Code",
                 fontSize=bs * s["code_block"]["font_scale"],
@@ -81,7 +83,8 @@ class ASTRenderer:
             "front_value": ParagraphStyle(
                 "front_value", fontName="Body",
                 fontSize=bs * fm_cfg.get("font_scale", 0.9),
-                leading=bs * fm_cfg.get("leading_scale", 1.2)),
+                leading=bs * fm_cfg.get("leading_scale", 1.2),
+                textColor=text_color),
         }
 
         self.gap = self.ps["body"].spaceAfter
@@ -106,7 +109,7 @@ class ASTRenderer:
             self.ps[key] = ParagraphStyle(
                 key, fontName="Body-Bold", fontSize=h_fs,
                 leading=bs * lead_scale, spaceBefore=sb, spaceAfter=sa,
-                keepWithNext=True)
+                keepWithNext=True, textColor=text_color)
 
         toc_fs = bs * s.get("toc_font_scale", 0.9)
         toc_lh = toc_fs * s["line_height"]

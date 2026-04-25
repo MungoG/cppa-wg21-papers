@@ -1,4 +1,10 @@
-"""Syntax highlighting via Pygments, outputting ReportLab XML markup."""
+"""Syntax highlighting via Pygments.
+
+highlight()      - ReportLab XML markup (PDF path)
+highlight_html() - HTML with class-based spans (HTML path)
+"""
+
+from html import escape as _html_escape
 
 from . import escape_xml
 
@@ -78,4 +84,56 @@ def highlight(code, lang, colors):
         return escape_xml(code)
 
     fmt = _RLFormatter(colors)
+    return _hl(code, lexer, fmt)
+
+
+class _HtmlClassFormatter(Formatter):
+    """Pygments formatter that emits HTML spans with CSS classes."""
+    def format(self, tokensource, outfile):
+        for ttype, value in tokensource:
+            text = _html_escape(value, quote=False)
+            key = _resolve(ttype, _PYGMENTS_CLASS_MAP)
+            if key:
+                outfile.write(f'<span class="{key}">{text}</span>')
+            else:
+                outfile.write(text)
+
+
+_PYGMENTS_CLASS_MAP = {
+    Keyword:            "hl-k",
+    Keyword.Type:       "hl-kt",
+    Name.Builtin:       "hl-kt",
+    Name.Class:         "hl-kt",
+    Name.Function:      "hl-nf",
+    Name.Decorator:     "hl-nf",
+    Name.Namespace:     "hl-kt",
+    String:             "hl-s",
+    Literal.String:     "hl-s",
+    Number:             "hl-m",
+    Literal.Number:     "hl-m",
+    Comment:            "hl-c",
+    Comment.Preproc:    "hl-cp",
+    Operator:           "hl-o",
+    Punctuation:        "hl-o",
+}
+
+
+def highlight_html(code, lang):
+    """Highlight code, returning HTML with class-based spans.
+
+    Falls back to plain HTML-escaped text if Pygments is unavailable
+    or the language is not recognized.
+    """
+    if not HAS_PYGMENTS:
+        return _html_escape(code, quote=False)
+
+    try:
+        if lang:
+            lexer = get_lexer_by_name(lang, stripall=True)
+        else:
+            lexer = guess_lexer(code)
+    except Exception:
+        return _html_escape(code, quote=False)
+
+    fmt = _HtmlClassFormatter()
     return _hl(code, lexer, fmt)

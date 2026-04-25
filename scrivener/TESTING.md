@@ -8,9 +8,9 @@ pip install -r requirements.txt
 pytest tests/ -v
 ```
 
-Layer 1 tests (pure functions) run without font downloads.
-Layer 2-3 tests download fonts on first run and cache them
-in `.fonts/`.
+Layer 1 tests (pure functions) and HTML tests run without font
+downloads. PDF Layer 2-3 tests download fonts on first run and
+cache them in `.fonts/`.
 
 ## Architecture
 
@@ -31,13 +31,16 @@ transformation functions that underpin everything else:
 - `test_highlight.py` - Pygments-to-ReportLab markup
 - `test_renderer_utils.py` - static/utility methods on
   ASTRenderer (_nobr_numbers, _only_text, _propagate_keep)
+- `test_css.py` - CSS generation (su() arithmetic, generate_css
+  output structure, full vs fragment mode, color vars, heading
+  scale arithmetic)
 
 ### Layer 2 - Renderer token tests
 
-Require registered fonts. Construct an ASTRenderer with a
-real style dict and feed it hand-built mistune AST tokens.
-Assert on flowable types and key properties - not pixel
-output.
+**PDF renderer** - Require registered fonts. Construct an
+ASTRenderer with a real style dict and feed it hand-built
+mistune AST tokens. Assert on flowable types and key
+properties - not pixel output.
 
 - `test_renderer.py` - block-level rendering (paragraph,
   heading, code, list, table, blockquote, wording divs),
@@ -46,15 +49,34 @@ output.
   generation, table word-wrap prevention (splitLongWords),
   min-word-width column floors, font-size shrink-retry
 
+**HTML renderer** - No fonts or ReportLab needed. Construct
+an HTMLRenderer and feed it the same token shapes.
+
+- `test_html_renderer.py` - block tokens (paragraph, heading,
+  code, list, table, blockquote, wording divs, image, block
+  html), inline tokens (emphasis, strong, codespan, link,
+  strikethrough, softbreak, linebreak, inline html), front
+  matter, TOC, URI scheme restriction, wording div wrapping
+
 ### Layer 3 - Builder integration tests
 
-Full `build_pdf` pipeline. Each test loads a small markdown
-fixture from `tests/fixtures/`, runs the pipeline, and
-verifies the output PDF exists and has a valid header.
+**PDF builder** - Full `build_pdf` pipeline. Each test loads a
+small markdown fixture from `tests/fixtures/`, runs the
+pipeline, and verifies the output PDF exists and has a valid
+header.
 
 - `test_builder.py` - minimal, front-matter, headings, code,
   wording, table fixtures; error cases (bad page_size);
   output directory creation; TOC toggle
+
+**HTML builder** - Full `build_html` pipeline. Tests all four
+mode combinations (full/fragment x linked/inline CSS) and the
+standalone `build_css` path.
+
+- `test_html_builder.py` - full-page output (doctype, stylesheet
+  link, CSS file written), fragment output (no doctype, no html
+  wrapper), inline CSS (style tag, no separate file), build_css
+  standalone, output directory creation, TOC integration
 
 ### Layer 4 - Style and catalog tests
 

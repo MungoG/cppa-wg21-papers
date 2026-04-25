@@ -23,7 +23,7 @@ page_size: a4
 # --- Color palette ---
 palette:
   brand:       "#A91C21"
-  text:        "#2c2c2c"
+  text:        "#000000"
   text-mid:    "#4a4a4a"
   text-muted:  "#6b6b6b"
   text-faint:  "#888888"
@@ -57,33 +57,43 @@ fonts:
   body:
     font: source-serif-4
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400&display=swap"
   body_bold:
     font: source-serif-4
     axes: { wght: 600 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600&display=swap"
   body_italic:
     font: source-serif-4-italic
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@1,400&display=swap"
   body_bold_italic:
     font: source-serif-4-italic
     axes: { wght: 600 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@1,600&display=swap"
   code:
     font: source-code-pro
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400&display=swap"
   code_bold:
     font: source-code-pro
     axes: { wght: 600 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@600&display=swap"
   code_italic:
     font: source-code-pro-italic
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@1,400&display=swap"
   code_bold_italic:
     font: source-code-pro-italic
     axes: { wght: 600 }
+    web_url: "https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@1,600&display=swap"
   cjk:
     font: noto-sans-cjk
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400&display=swap"
   emoji:
     font: noto-emoji
     axes: { wght: 400 }
+    web_url: "https://fonts.googleapis.com/css2?family=Noto+Emoji:wght@400&display=swap"
 
 # --- Typography ---
 body_size: 10
