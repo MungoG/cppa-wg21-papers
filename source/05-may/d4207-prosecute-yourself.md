@@ -1,6 +1,6 @@
 ---
 title: "Prosecute Your Paper To Improve It"
-document: P4170R0
+document: P4207R0
 date: 2026-03-30
 intent: info
 audience: WG21
@@ -34,7 +34,7 @@ This paper uses AI. The case study in Section 6 was produced by an AI tool. The 
 
 The AI analysis was performed using a structured prompt - the Advocatus - against the publicly available text of [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> and its companion rationale paper [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf)<sup>[5]</sup>. The full methodology is introduced in Section 4.
 
-This paper is a companion to P4133R0<sup>[6]</sup>, "What Every Proposal Must Contain," which defines what a healthy feedback loop would contain for library and language proposals. That paper asks whether the committee evaluates its own output. This paper provides a tool that begins the evaluation before the committee sees the paper.
+This paper is a companion to [P4133R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4133r0.pdf)<sup>[6]</sup>, "What Every Proposal Must Contain," which defines what a healthy feedback loop would contain for library and language proposals. That paper asks whether the committee evaluates its own output. This paper provides a tool that begins the evaluation before the committee sees the paper.
 
 The committee decides. Consensus must be accepted even when the author disagrees with the outcome. The author's position is that P2900 should not have been considered for wording until the proposers had presented a complete working implementation deployed into an organization, with independent adoption sufficient to gather user experience and feedback. A paper's evaluation by the committee should begin when user feedback arrives, not before. Instead, with Contracts, user feedback will arrive after the standard ships.
 
@@ -205,11 +205,11 @@ The remainder of this paper provides a worked example.
 
 ---
 
-## 6. Case Study: P2900R14, "Contracts for C++"
+## 6. Case Study: [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>, "Contracts for C++"
 
 [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> is a significant achievement. Fourteen revisions over three years. Genuine consensus in SG21 on questions where consensus seemed unlikely. A clean syntax (`pre`, `post`, `contract_assert`) that survived multiple alternative explorations. Sixteen design principles, internally consistent and clearly stated. A violation handler model that mirrors the replaceable `operator new` pattern C++ programmers already understand. CWG and LWG wording review completed. Two independent compiler implementations (GCC and Clang) available on Compiler Explorer.
 
-The Advocatus examines it not to diminish it but because the best papers deserve the hardest test. The following are the formal observations (*Animadversiones*) produced by the Advocatus, quoted from the analysis output.
+The Advocatus examines it not to diminish it but because the best papers deserve the hardest test. The full formal *Animadversiones* are published separately as [P4208R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4208r0.pdf)<sup>[13]</sup>. The following are highlights from the analysis output.
 
 ### 6.1 The Seal
 
@@ -229,9 +229,9 @@ The Advocatus examines it not to diminish it but because the best papers deserve
 
 ### 6.3 Formal Objections
 
-**Objection I: The Implementation-Defined Evaluation Semantic Selection Is a Design Defect, Not a Feature.** (Severity: Critical. Test failed: Ratio.) P2900R14 delegates the most consequential runtime behavior decision - whether a contract assertion does nothing, observes, enforces, or crashes - entirely to implementation-defined mechanisms. The paper's own Principle 5 (Independence from Chosen Semantic) acknowledges the tension. The consequence is that the same source code compiled by different vendors produces programs with fundamentally different safety properties, and the programmer has no portable mechanism to express intent. [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html)<sup>[13]</sup> (Spicer, Voutilainen, Garcia Sanchez) demonstrates the concrete consequence: when library headers compiled with one semantic are inlined into client code compiled with another, the effective semantic is determined by optimization decisions, not programmer intent.
+**Objection I: The Implementation-Defined Evaluation Semantic Selection Is a Design Defect, Not a Feature.** (Severity: Critical. Test failed: Ratio.) [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> delegates the most consequential runtime behavior decision - whether a contract assertion does nothing, observes, enforces, or crashes - entirely to implementation-defined mechanisms. The paper's own Principle 5 (Independence from Chosen Semantic) acknowledges the tension. The consequence is that the same source code compiled by different vendors produces programs with fundamentally different safety properties, and the programmer has no portable mechanism to express intent. [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html)<sup>[14]</sup> (Spicer, Voutilainen, Garcia Sanchez) demonstrates the concrete consequence: when library headers compiled with one semantic are inlined into client code compiled with another, the effective semantic is determined by optimization decisions, not programmer intent.
 
-**Objection II: The Deployment Experience Claim Does Not Withstand Scrutiny.** (Severity: Critical. Test failed: Veritas.) The paper claims "deployment experience" but the evidence consists of two controlled experiments by Contracts proponents - replacing existing assertion macros in LLVM and libc++ with P2900R14 contract assertions. No production codebase has been reported as using P2900R14's novel features (`pre`/`post` on function declarations, the violation handler replacement mechanism, multiple evaluation semantics in a mixed TU environment) at scale. [P4020R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4020r0.html)<sup>[14]</sup> (Krzemienski - a P2900R14 co-author) states explicitly that the committee's experience is limited to assertion statements in function bodies, not declaration annotations.
+**Objection II: The Deployment Experience Claim Does Not Withstand Scrutiny.** (Severity: Critical. Test failed: Veritas.) The paper claims "deployment experience" but the evidence consists of two controlled experiments by Contracts proponents - replacing existing assertion macros in LLVM and libc++ with [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> contract assertions. No production codebase has been reported as using [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>'s novel features (`pre`/`post` on function declarations, the violation handler replacement mechanism, multiple evaluation semantics in a mixed TU environment) at scale. [P4020R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4020r0.html)<sup>[15]</sup> (Krzemienski - a [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> co-author) states explicitly that the committee's experience is limited to assertion statements in function bodies, not declaration annotations.
 
 **Objection III: Predicate Side-Effect Elision Creates an Unspecified Behavior Surface.** (Severity: Significant. Test failed: Ratio.) The combined effect of predicate side-effect elision (Section 3.5.8) and evaluation repetition (Section 3.5.7) means that side effects in predicates may occur zero, one, or an implementation-defined number of times. For a feature marketed on safety and correctness, introducing a new class of unspecified-count-of-execution is a tension in the narrative.
 
@@ -243,18 +243,18 @@ The Advocatus examines it not to diminish it but because the best papers deserve
 
 1. Making `pre`/`post` on virtual functions ill-formed (Section 3.3.2) is a significant functional limitation that the paper concedes openly.
 2. The `contract_assert` keyword is unavoidably long and will resist adoption by developers accustomed to `assert`.
-3. [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf)<sup>[5]</sup> Section 4.1 documents an errata in P2900R14's Section 3.5.3 that "cannot be corrected directly in that paper because it has already been approved by WG21 plenary."
+3. [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf)<sup>[5]</sup> Section 4.1 documents an errata in [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>'s Section 3.5.3 that "cannot be corrected directly in that paper because it has already been approved by WG21 plenary."
 4. Postconditions on coroutines cannot odr-use parameters - a consequence of the coroutine parameter copy model, not a Contracts design flaw.
 
 ### 6.5 The Acta (Audit Trail)
 
-The Advocatus investigated the full text of P2900R14 (256KB, 4348 lines), the full text of P2899R1 (419KB, 6256 lines), the public record (web search), indexed archives, and local workspace files. The author was deposed with three sets of multiple-choice questions establishing posture, strategic objective, and deployment experience weight. Nine candidate charges were filed. Four were killed by the Advocatus Dei (Confessio: 2, Articulus: 1, Humanitas: 1). Five survived to the formal observations. The analysis cost less than one dollar in API tokens and took approximately fifteen minutes of wall-clock time.
+The Advocatus investigated the full text of [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> (256KB, 4348 lines), the full text of [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf)<sup>[5]</sup> (419KB, 6256 lines), the public record (web search), indexed archives, and local workspace files. The author was deposed with three sets of multiple-choice questions establishing posture, strategic objective, and deployment experience weight. Nine candidate charges were filed. Four were killed by the Advocatus Dei (Confessio: 2, Articulus: 1, Humanitas: 1). Five survived to the formal observations. The analysis cost less than one dollar in API tokens and took approximately fifteen minutes of wall-clock time.
 
 ---
 
 ## 7. The Missing Retrospective
 
-P4133R0<sup>[6]</sup> documented a generic gap: the committee does not require retrospective frameworks for adopted features. No testable predictions. No falsification criteria. No timeline for measuring success or failure. P2900R14 shipped without one. Every large feature ships without one.
+[P4133R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4133r0.pdf)<sup>[6]</sup> documented a generic gap: the committee does not require retrospective frameworks for adopted features. No testable predictions. No falsification criteria. No timeline for measuring success or failure. [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> shipped without one. Every large feature ships without one.
 
 The retrospective below exists to test the Advocatus's predictive value. Every prediction is a direct consequence of a specific finding from the case study in Section 6. Each prediction names its source. In one, two, or three years, the committee can return to this list and measure how many predictions materialized. If most did, the tool has predictive value and the case for pre-submission red-teaming strengthens. If most did not, the tool's judgment on P2900 was wrong, and that is worth knowing too. The retrospective is the accountability mechanism the tool provides for itself.
 
@@ -311,7 +311,7 @@ The cost:
 - Wall-clock time: approximately 15 minutes
 - Human effort: answering 3 sets of multiple-choice questions
 
-Compare to the cost of not running the analysis. C++20 Contracts were adopted at Cologne in 2019 and removed at Prague in 2020<sup>[7]</sup>. The cost of that single cycle was years of committee time, implementation effort in two compilers, and community trust that has not fully recovered six years later. P2900R14's post-adoption NB comments<sup>[8]</sup> - each requiring committee time to process - raised objections the Advocatus identified in fifteen minutes.
+Compare to the cost of not running the analysis. C++20 Contracts were adopted at Cologne in 2019 and removed at Prague in 2020<sup>[7]</sup>. The cost of that single cycle was years of committee time, implementation effort in two compilers, and community trust that has not fully recovered six years later. [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>'s post-adoption NB comments<sup>[8]</sup> - each requiring committee time to process - raised objections the Advocatus identified in fifteen minutes.
 
 **A dollar and fifteen minutes. That is the new cost of knowing a paper's weaknesses before the committee does.**
 
@@ -365,9 +365,11 @@ Anthropic, for Claude - the model that powered the analysis.
 
 [12] [The Shenyueguan](https://cppalliance.org/tools/shenyueguan.pdf) - Appointed examiner tool (Vinnie Falco, 2026).
 
-[13] [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html) - "Contracts make C++ less safe - full stop" (John Spicer, Ville Voutilainen, Jose Daniel Garcia Sanchez, 2025).
+[13] [P4208R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4208r0.pdf) - "C++ Contracts on Trial - Does P2900 Survive Cross-Examination?" (Vinnie Falco, Claude Opus 4.6, 2026).
 
-[14] [P4020R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4020r0.html) - "Concerns about contract assertions" (Andrzej Krzemie&nacute;ski, 2026).
+[14] [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html) - "Contracts make C++ less safe - full stop" (John Spicer, Ville Voutilainen, Jose Daniel Garcia Sanchez, 2025).
+
+[15] [P4020R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4020r0.html) - "Concerns about contract assertions" (Andrzej Krzemie&nacute;ski, 2026).
 
 \newpage
 
