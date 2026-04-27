@@ -205,7 +205,7 @@ The remainder of this paper provides a worked example.
 
 ---
 
-## 6. Case Study: [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>, "Contracts for C++"
+## 6. Case Study: P2900, "Contracts for C++"
 
 [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup> is a significant achievement. Fourteen revisions over three years. Genuine consensus in SG21 on questions where consensus seemed unlikely. A clean syntax (`pre`, `post`, `contract_assert`) that survived multiple alternative explorations. Sixteen design principles, internally consistent and clearly stated. A violation handler model that mirrors the replaceable `operator new` pattern C++ programmers already understand. CWG and LWG wording review completed. Two independent compiler implementations (GCC and Clang) available on Compiler Explorer.
 
