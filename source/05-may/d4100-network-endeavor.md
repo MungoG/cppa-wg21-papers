@@ -80,7 +80,7 @@ These libraries are maintained by other Boost authors:
 
 | Library        | Author                | Status                                                                                         |
 | -------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
-| Boost.MySQL    | Ruben Perez           | Migrating to Corosio                                                                           |
+| Boost.MySQL    | Ruben Perez           | v2 planned on Capy/Corosio; Redis proof-of-concept validates the path                          |
 | Boost.Redis    | Marcelo Zimbres Silva | Experimental port completed; conversion reports published on the Boost Developers Mailing List  |
 | Boost.Postgres | (upcoming)            | Building on Corosio from day one                                                               |
 
@@ -141,7 +141,7 @@ Pure C++20. No language extensions. No compiler intrinsics. Works with every con
 
 ### 4.5 Production deployment
 
-Cross-platform: IOCP, epoll, kqueue. Three independent Boost library adopters (MySQL, Redis, Postgres). One institutional evaluation in production trading infrastructure ([P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf)<sup>[1]</sup>).
+Cross-platform: IOCP, epoll, kqueue, select. Three independent Boost library adopters (MySQL, Redis, Postgres). One institutional evaluation in production trading infrastructure ([P4125R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4125r0.pdf)<sup>[1]</sup>).
 
 ### 4.6 Modularity
 
@@ -381,11 +381,11 @@ Structured concurrency primitives for coroutine-native code. Depends on Paper 2.
 
 ### 8.8 Papers 8-10: Timers, Signals, Files
 
-**Paper 8: Timers.** `timer` with `wait()`, `expires_at()`, `expires_after()`, `cancel()`. Uses `std::chrono::steady_clock`. The simplest kernel interaction that proves the IoAwaitable protocol works end-to-end with a real operating system. Shipping in Corosio. Cross-platform.
+**Paper 8: Timers.** `timer` with `wait()`, `expires_at()`, `expires_after()`, `cancel()`, `cancel_one()`. Uses `std::chrono::steady_clock`. The simplest kernel interaction that proves the IoAwaitable protocol works end-to-end with a real operating system. Shipping in Corosio. Cross-platform.
 
-**Paper 9: Signals.** `signal_set` with `add()`, `remove()`, `wait()`, `cancel()`. Signals complete the server lifecycle: `co_await when_all(accept_loop(), signal_set.wait())` is graceful shutdown in one line. `<csignal>` is from 1989 and nearly unusable with modern C++. Shipping in Corosio.
+**Paper 9: Signals.** `signal_set` with `add()`, `remove()`, `clear()`, `wait()`, `cancel()`. POSIX signal flags (`SA_RESTART`, `SA_NOCLDSTOP`, etc.) are supported via a `flags_t` parameter. Signals complete the server lifecycle: `co_await when_all(accept_loop(), signal_set.wait())` is graceful shutdown in one line. `<csignal>` is from 1989 and nearly unusable with modern C++. Shipping in Corosio.
 
-**Paper 10: Files.** Async file I/O: `file` with `read_some()`, `write_some()`, `open()`, `close()`, and positioning. A `file` satisfies `Stream`. The same generic algorithms work on files and sockets. On Linux, `io_uring`. On Windows, IOCP with `FILE_FLAG_OVERLAPPED`. To be built in Corosio on solved infrastructure.
+**Paper 10: Files.** Async file I/O with `read_some()`, `write_some()`, `open()`, `close()`, and positioning. Two concrete types: `random_access_file` (seekable) and `stream_file` (sequential). Both satisfy `Stream`. The same generic algorithms work on files and sockets. On Windows, IOCP with `FILE_FLAG_OVERLAPPED`. On Linux, `io_uring` is on the roadmap; POSIX file I/O is the current backend. Shipping in Corosio. Cross-platform.
 
 ### 8.9 Papers 11-13: TCP, DNS, UDP
 
@@ -393,7 +393,9 @@ Structured concurrency primitives for coroutine-native code. Depends on Paper 2.
 
 **Paper 12: DNS.** `resolver` with `resolve(host, service)` for forward resolution and `resolve(endpoint)` for reverse resolution. Without DNS, TCP sockets can only connect to hardcoded IP addresses. Shipping in Corosio.
 
-**Paper 13: UDP.** `udp_socket` with `send_to()`, `receive_from()`, `bind()`, and multicast support. UDP is the transport for DNS, QUIC/HTTP/3, game networking, media streaming, and IoT protocols. To be built in Corosio on solved infrastructure.
+**Paper 13: UDP.** `udp_socket` with `send_to()`, `receive_from()`, `bind()`, and multicast support. UDP is the transport for DNS, QUIC/HTTP/3, game networking, media streaming, and IoT protocols. Shipping in Corosio. Cross-platform.
+
+**Unix domain sockets.** `local_stream_socket`, `local_stream_acceptor`, `local_datagram_socket`. Unix domain sockets provide efficient inter-process communication without the network stack overhead. Shipping in Corosio on POSIX platforms.
 
 ### 8.10 Paper 14: TLS
 
@@ -454,8 +456,6 @@ A coroutine-native I/O design has boundaries. Stating them plainly is part of th
 - **Heterogeneous dispatch.** GPU compute, NUMA-aware scheduling, and cross-device dispatch require the scheduler abstraction that `std::execution` provides. Coroutine executors handle thread-pool and strand-based dispatch. They do not target hardware heterogeneity.
 
 - **Cooperative scheduling.** The model assumes cooperative multitasking. Preemptive multitasking is outside scope.
-
-- **Unbuilt papers.** Papers 10 (Files) and 13 (UDP) are not yet implemented in Corosio. The I/O context infrastructure already handles datagram descriptors and overlapped file handles. These wrappers are incremental work on solved infrastructure.
 
 - **C library dependencies.** TLS wrappers depend on C libraries (OpenSSL, WolfSSL). The standard does not eliminate that dependency. It provides the stream abstraction that makes such wrappers composable and replaceable.
 

@@ -1046,7 +1046,7 @@ Scoring: PASS = 2 (compliant), PARTIAL = 1 (partial), FAIL = 0 (non-compliant)
 
 ### Executive Summary
 
-P4003R0 is one of the strongest R0 papers this model has seen on implementation-first design. The paper is explicitly a "research report drawn from working code" - a complete coroutine-only networking library spanning sockets, timers, TLS, DNS, and HTTP across three platforms (Windows, Linux, macOS). The IoAwaitable protocol it describes is minimal: two concepts, one struct, one type-erased executor. The paper documents rationale exhaustively, including alternatives considered and rejected (allocator_arg_t, promise-template await_suspend). Every design decision traces to implementation experience. The paper scores full marks on implementation validation, external incubation, knowledge capture, complexity awareness, enabling previously-impossible capabilities, and principled design.
+P4003R0 is one of the strongest R0 papers this model has seen on implementation-first design. The paper is explicitly a "research report drawn from working code" - a complete coroutine-only networking library spanning sockets, timers, TLS, DNS, UDP, async file I/O, Unix domain sockets, and HTTP across three platforms (Windows, Linux, macOS) plus a portable `select` fallback. The IoAwaitable protocol it describes is minimal: two concepts, one struct, one type-erased executor. The paper documents rationale exhaustively, including alternatives considered and rejected (allocator_arg_t, promise-template await_suspend). Every design decision traces to implementation experience. The paper scores full marks on implementation validation, external incubation, knowledge capture, complexity awareness, enabling previously-impossible capabilities, and principled design.
 
 The paper's vulnerabilities are political and social. It enters a space where SG4 has already reached consensus that networking should use sender/receiver, and asks the committee to reconsider. All implementations (Capy, Corosio, Http) originate from a single organization (C++ Alliance). While respected WG21 contributors (Peter Dimov, Mateusz Pusz) provided feedback, the core design was not shaped by cross-organizational collaboration. Independent adoption outside the proposer's organization is not documented. These factors create political fragility - the paper asks a committee that has already committed to one direction to evaluate a fundamentally different approach, without demonstrating that the broader community has converged on its design.
 
@@ -1079,7 +1079,7 @@ Within its own camp, the proposal has converged on a single design vision. The t
 **Evidence from paper:** The paper is built on working code:
 
 - **Capy** (github.com/cppalliance/capy): implements the IoAwaitable protocol
-- **Corosio** (github.com/cppalliance/corosio): sockets, timers, TLS, DNS on multiple platforms
+- **Corosio** (github.com/cppalliance/corosio): sockets, timers, TLS, DNS, UDP, async file I/O, Unix domain sockets on multiple platforms (IOCP, epoll, kqueue, select)
 - **Http** (github.com/cppalliance/http): HTTP library built on Capy with type-erased streams
 - Performance benchmarks: recycling frame allocator 3.1x faster than std::allocator (MSVC), 1.55x (Apple Clang)
 - Self-contained Compiler Explorer demonstration
@@ -1141,7 +1141,7 @@ The design explicitly builds on Kohlhoff's executor model and credits it through
 **Evidence from paper:** The paper is explicitly structured as a research report from implementation:
 
 - Three implementations: Capy (protocol), Corosio (networking), Http (application layer)
-- Cross-platform: Windows (IOCP), Linux (epoll/io_uring), macOS (kqueue)
+- Cross-platform: Windows (IOCP), Linux (epoll), macOS (kqueue), portable (select). io_uring is on the roadmap for async files on Linux.
 - Benchmarks: recycling frame allocator vs. mimalloc vs. std::allocator, with quantified results
 - Self-contained Compiler Explorer demonstration
 - Complete code examples drawn from working implementations
