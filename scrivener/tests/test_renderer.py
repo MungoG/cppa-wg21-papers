@@ -72,6 +72,140 @@ def test_render_heading_h1_title(renderer_no_fm_title):
     assert any(isinstance(f, TitleEnd) for f in flows)
 
 
+# ---------------------------------------------------------------------------
+# title_block sizing regression tests.
+#
+# title_block has three regimes for the title font size:
+#   1. Title fits at h1 nominal size -> render at h1, single line.
+#   2. Title needs shrinking but the proportional shrink stays >= h2 size
+#      -> render at the shrunk size, single line.
+#   3. Proportional shrink would land below h2 size -> clamp at h2 and let
+#      the Paragraph wrap to multiple lines using ReportLab's default
+#      whitespace-based wrapping.
+# ---------------------------------------------------------------------------
+
+
+def _title_paragraph(renderer, title_text):
+    """Return the Paragraph that title_block produces for *title_text*.
+
+    Strips out the surrounding logo/table wrapper so tests can assert on the
+    title Paragraph's style directly.
+    """
+    flows = renderer.title_block(title_text)
+    for f in flows:
+        if isinstance(f, Paragraph):
+            return f
+        if isinstance(f, Table):
+            for row in f._cellvalues:
+                for cell in row:
+                    if isinstance(cell, Paragraph):
+                        return cell
+    raise AssertionError("no title Paragraph found in title_block output")
+
+
+def test_title_short_uses_h1_size(renderer_no_fm_title):
+    """A title that fits at the nominal h1 size renders at h1 with no shrink."""
+    bs = renderer_no_fm_title.style["body_size"]
+    h1_scale = renderer_no_fm_title.style["headings"]["h1"]["scale"]
+    expected_h1 = bs * h1_scale
+
+    para = _title_paragraph(renderer_no_fm_title, "Short Title")
+    assert para.style.fontSize == pytest.approx(expected_h1)
+    assert para.style.leading == pytest.approx(expected_h1)
+
+
+def test_title_medium_shrinks_to_fit_single_line(renderer_no_fm_title):
+    """A title that overflows h1 but stays >= h2 after shrink is single-line."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    r = renderer_no_fm_title
+    bs = r.style["body_size"]
+    h1_scale = r.style["headings"]["h1"]["scale"]
+    h2_scale = r.style["headings"]["h2"]["scale"]
+    expected_h1 = bs * h1_scale
+    expected_h2 = bs * h2_scale
+
+    # Without a loaded logo, avail_w = content_width. Construct a title whose
+    # h1-width lands squarely in the medium band: just over avail_w (so shrink
+    # fires) but well under avail_w * (h1/h2) (so the shrunk size stays
+    # comfortably above h2).
+    avail_w = r.content_width
+    target_w = avail_w * 1.05  # ~5% over -> mild shrink, well above h2 floor
+    token = "Word "
+    title = token
+    while stringWidth(title.strip(), "Body-Bold", expected_h1) < target_w:
+        title += token
+    title = title.strip()
+
+    para = _title_paragraph(r, title)
+
+    assert para.style.fontSize < expected_h1, "should have shrunk below h1"
+    assert para.style.fontSize > expected_h2, "should have stayed above h2"
+    # Single-line regime: leading equals fontSize.
+    assert para.style.leading == pytest.approx(para.style.fontSize)
+
+
+def test_title_too_long_clamps_to_h2_and_wraps(renderer_no_fm_title):
+    """A pathologically long title clamps at h2 size and wraps to multiple lines."""
+    bs = renderer_no_fm_title.style["body_size"]
+    h2_scale = renderer_no_fm_title.style["headings"]["h2"]["scale"]
+    h2_lead_scale = renderer_no_fm_title.style["headings"]["h2"].get(
+        "leading_scale", 1.3)
+    expected_h2 = bs * h2_scale
+    expected_lead = expected_h2 * h2_lead_scale
+
+    # Long enough that the proportional shrink would fall below h2.
+    title = (
+        "An Unreasonably Long Title Deliberately Constructed To Demonstrate "
+        "That The Title Renderer Wraps Long Titles Across Multiple Lines "
+        "Instead Of Shrinking Below The H2 Heading Size Forever")
+    para = _title_paragraph(renderer_no_fm_title, title)
+
+    assert para.style.fontSize == pytest.approx(expected_h2), (
+        f"expected fontSize {expected_h2} (h2), got {para.style.fontSize}")
+    assert para.style.leading == pytest.approx(expected_lead), (
+        f"expected leading {expected_lead}, got {para.style.leading}")
+
+    # Confirm the Paragraph actually wraps to more than one line at the
+    # available width. content_width=468; subtract a generous logo column
+    # to be conservative.
+    avail_w = renderer_no_fm_title.content_width - 75
+    _, height = para.wrap(avail_w, 10000)
+    assert height > expected_lead * 1.5, (
+        f"expected multi-line wrap (height > {expected_lead * 1.5}), "
+        f"got single-line height {height}")
+
+
+def test_title_at_h2_floor_boundary_uses_single_line(renderer_no_fm_title):
+    """A title whose shrink lands exactly at h2 size still renders single-line."""
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    bs = renderer_no_fm_title.style["body_size"]
+    h1_scale = renderer_no_fm_title.style["headings"]["h1"]["scale"]
+    h2_scale = renderer_no_fm_title.style["headings"]["h2"]["scale"]
+    h1_font = bs * h1_scale
+    h2_font = bs * h2_scale
+
+    # Construct a title whose plain-text width at h1 exactly fills
+    # avail_w * (h1_font / h2_font), so the proportional shrink lands at h2.
+    avail_w = renderer_no_fm_title.content_width - 75
+    target_w_at_h1 = avail_w * (h1_font / h2_font)
+
+    # Repeat a known token until we just exceed target_w_at_h1.
+    token = "Word "
+    title = token
+    while stringWidth(title.strip(), "Body-Bold", h1_font) < target_w_at_h1:
+        title += token
+    # Trim back one token so the shrink stays just above the h2 floor.
+    title = title[: -len(token)].strip()
+
+    para = _title_paragraph(renderer_no_fm_title, title)
+    assert para.style.fontSize >= h2_font, (
+        f"fontSize {para.style.fontSize} must not fall below h2 floor {h2_font}")
+    # Above-floor case stays single-line: leading equals fontSize.
+    assert para.style.leading == pytest.approx(para.style.fontSize)
+
+
 def test_render_heading_registers_all_levels(renderer):
     for level in range(2, 7):
         tok = {

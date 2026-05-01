@@ -372,9 +372,11 @@ class ASTRenderer:
         logo_col_w = title_cfg.get("logo_column_width", 75)
 
         bs = self.style["body_size"]
-        h1_cfg = self.style.get("headings", {}).get("h1", {})
-        font_size = bs * h1_cfg.get("scale", 2.2)
-        space_after = h1_cfg.get("space_after", 1.0) * font_size
+        headings_cfg = self.style.get("headings", {})
+        h1_cfg = headings_cfg.get("h1", {})
+        h2_cfg = headings_cfg.get("h2", {})
+        h1_font = bs * h1_cfg.get("scale", 2.2)
+        h2_font = bs * h2_cfg.get("scale", 1.3)
 
         logo_img = None
         if logo_path:
@@ -386,15 +388,41 @@ class ASTRenderer:
                 log.warning("failed to load logo %s: %s", logo_path, e)
                 logo_img = None
 
+        # Horizontal breathing room between the title text and the logo.
+        # Proportional to body_size so it scales with the document. Applied
+        # as RIGHTPADDING on the title cell below; subtracted from avail_w
+        # here so the shrink/wrap decision uses the actual usable width.
+        title_logo_gap = sp(self.style, 1.0) if logo_img else 0
+
         avail_w = self.content_width - logo_col_w if logo_img else self.content_width
+        avail_w -= title_logo_gap
         plain = re.sub(r'<[^>]+>', '', title_markup)
-        text_w = stringWidth(plain, "Body-Bold", font_size)
-        if text_w > avail_w:
-            font_size = font_size * avail_w / text_w
+        text_w = stringWidth(plain, "Body-Bold", h1_font)
+
+        # Three regimes for title sizing:
+        #   - fits at h1: render at h1, single line, tight leading
+        #   - needs shrink but stays >= h2: shrink proportionally, single line
+        #   - would shrink below h2: clamp at h2 and let the Paragraph wrap
+        # The wrapped regime uses a generous leading (h2_font * h2.leading_scale)
+        # because regular h2 headings rarely wrap and their tighter leading
+        # (bs * leading_scale) was never stressed for multi-line layout.
+        if text_w <= avail_w:
+            font_size = h1_font
+            leading = font_size
+        else:
+            shrunk = h1_font * avail_w / text_w
+            if shrunk >= h2_font:
+                font_size = shrunk
+                leading = font_size
+            else:
+                font_size = h2_font
+                leading = h2_font * h2_cfg.get("leading_scale", 1.3)
+
+        space_after = h1_cfg.get("space_after", 1.0) * font_size
 
         title_style = ParagraphStyle(
             "title", fontName="Body-Bold",
-            fontSize=font_size, leading=font_size,
+            fontSize=font_size, leading=leading,
             spaceBefore=0, spaceAfter=0)
         title_para = Paragraph(title_markup, title_style)
 
@@ -409,6 +437,7 @@ class ASTRenderer:
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), title_logo_gap),
                 ("TOPPADDING", (0, 0), (-1, -1), self.gap_sm),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), self.gap),
             ]))
