@@ -1,7 +1,7 @@
 ---
 title: "Is `std::execution` a Universal Async Model?"
 document: P4041R0
-date: 2026-03-01
+date: 2026-05-01
 intent: info
 audience: LEWG
 reply-to:
@@ -16,7 +16,7 @@ C++20 standardized coroutines. C++26 adds `std::execution`. Both are asynchronou
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 * Initial version.
 

@@ -1,7 +1,7 @@
 ---
 title: "SAGE: Saving All Gathered Expertise"
 document: P4046R0
-date: 2026-02-25
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -23,7 +23,7 @@ The technology exists. The methodology is demonstrated. Participation is volunta
 
 ## Revision History
 
-### R0: January 2026 (Post-Croydon)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version with agentic interview proposal and experimental results
 

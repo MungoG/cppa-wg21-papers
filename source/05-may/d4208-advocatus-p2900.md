@@ -1,7 +1,7 @@
 ---
 title: "C++ Contracts on Trial - Does P2900 Survive Cross-Examination?"
 document: P4208R0
-date: 2026-04-11
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -17,7 +17,7 @@ An AI examines [P2900R14](https://wg21.link/p2900r14) "Contracts for C++" by app
 
 ## Revision History
 
-### R0: May 2026 (pre-Sophia mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 * Initial version.
 

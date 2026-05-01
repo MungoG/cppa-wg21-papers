@@ -1,7 +1,7 @@
 ---
 title: "On Universal Models"
 document: P4034R0
-date: 2026-03-08
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -20,7 +20,7 @@ This paper examines the historical record of universal models in computing and a
 
 ## Revision History
 
-### R0: March 2026
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial revision.
 

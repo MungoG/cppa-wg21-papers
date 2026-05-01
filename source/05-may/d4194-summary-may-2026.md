@@ -1,7 +1,7 @@
 ---
 title: "A Reader's Guide to My May 2026 Papers"
 document: D4194R0
-date: 2026-05-31
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:

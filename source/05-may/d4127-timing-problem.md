@@ -1,7 +1,7 @@
 ---
 title: "The Coroutine Frame Allocator Timing Problem"
 document: P4127R0
-date: 2026-03-18
+date: 2026-05-01
 intent: info
 audience: SG1, LEWG
 reply-to:
@@ -19,7 +19,7 @@ C++20 coroutines allocate their frame in `promise_type::operator new`, which the
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version.
 - Clarified scope: the timing problem applies to child coroutines, not to leaf I/O awaitables (Section 2). Thanks to Michael Hava for identifying the gap.

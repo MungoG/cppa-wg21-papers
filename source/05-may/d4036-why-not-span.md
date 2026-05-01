@@ -1,7 +1,7 @@
 ---
 title: "Why Span Is Not Enough"
 document: P4036R0
-date: 2026-02-28
+date: 2026-05-01
 intent: info
 audience: LEWG
 reply-to:
@@ -16,7 +16,7 @@ C++ has bytes. A contiguous region of bytes needs a type. A sequence of such reg
 
 ## Revision History
 
-### R0: Feb 2026
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version.
 

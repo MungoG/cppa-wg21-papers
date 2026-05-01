@@ -1,7 +1,7 @@
 ---
 title: "Benefits of Frame-Visible Coroutines for Senders"
 document: P4166R0
-date: 2026-03-29
+date: 2026-05-01
 intent: info
 audience: LEWG
 reply-to:
@@ -19,7 +19,7 @@ The sender three-channel completion model is a genuine achievement: compile-time
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version.
 

@@ -1,7 +1,7 @@
 ---
 title: "Prosecute Your Paper To Improve It"
 document: P4207R0
-date: 2026-03-30
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -18,7 +18,7 @@ AI-powered adversarial analysis of WG21 papers now costs under a dollar and take
 
 ## Revision History
 
-### R0: April 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version.
 

@@ -1,7 +1,7 @@
 ---
 title: "Coroutine-Native I/O for C++29 (The Network Endeavor)"
 document: P4100R1
-date: 2026-04-30
+date: 2026-05-01
 intent: info
 audience: LEWG
 reply-to:

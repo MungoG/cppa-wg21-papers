@@ -1,7 +1,7 @@
 ---
 title: "Trade-offs in Asynchronous Abstraction Design"
 document: P4178R0
-date: 2026-04-05
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -13,6 +13,14 @@ reply-to:
 Sections of P2300R10 are compared to other sections of P2300R10 and entered into the historical record.
 
 This paper reviews [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) for internal consistency using only the specification's own text. Each finding pairs two passages from the same paper that appear to be in tension. Four recurring patterns organize the findings. Where a charitable reading resolves the tension, it is noted. No external sources are cited.
+
+---
+
+## Revision History
+
+### R0: May 2026 (pre-Brno mailing)
+
+* Initial version.
 
 ---
 

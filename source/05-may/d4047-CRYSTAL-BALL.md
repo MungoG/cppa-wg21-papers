@@ -1,7 +1,7 @@
 ---
 title: "CRYSTAL BALL: Checking Predictions Against the Record"
 document: P4047R0
-date: 2026-03-08
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -16,7 +16,7 @@ This paper collects dated, public, falsifiable predictions about `std::execution
 
 ## Revision History
 
-### R0: March 2026
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial revision.
 

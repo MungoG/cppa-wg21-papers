@@ -1,7 +1,7 @@
 ---
 title: "Networking for C++29: A Call to Action"
 document: P4048R0
-date: 2026-03-16
+date: 2026-05-01
 intent: info
 audience: WG21
 reply-to:
@@ -19,7 +19,7 @@ The Network Endeavor ([P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/pap
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version.
 

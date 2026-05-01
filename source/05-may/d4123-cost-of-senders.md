@@ -1,7 +1,7 @@
 ---
 title: "The Cost of Senders for Coroutine I/O"
 document: P4123R0
-date: 2026-03-17
+date: 2026-05-01
 intent: info
 audience: LEWG, SG1
 reply-to:
@@ -19,7 +19,7 @@ This paper grants [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version
 

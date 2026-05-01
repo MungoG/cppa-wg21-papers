@@ -1,7 +1,7 @@
 ---
 title: "Combinators and Compound Results from I/O"
 document: P4124R0
-date: 2026-03-18
+date: 2026-05-01
 intent: info
 audience: LEWG, SG1
 reply-to:
@@ -19,7 +19,7 @@ This paper traces the `when_all` completion handler through the [P2300R10](https
 
 ## Revision History
 
-### R0: March 2026 (post-Croydon mailing)
+### R0: May 2026 (pre-Brno mailing)
 
 - Initial version
 
