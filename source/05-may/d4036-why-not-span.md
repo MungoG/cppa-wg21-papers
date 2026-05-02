@@ -275,10 +275,6 @@ Even if `span<void>` were possible, what remains after removing the impossible i
 
 `span<byte>` is also a less-capable `mutable_buffer`. It is `span<void>` with added harm. 
 
-## Suggested Straw Poll
-
-> LEWG agrees that a contiguous byte region descriptor for I/O should be a dedicated type, not `span<byte>`.
-
 ---
 
 ## Acknowledgments
