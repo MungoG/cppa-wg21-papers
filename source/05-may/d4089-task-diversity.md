@@ -55,9 +55,9 @@ The findings documented in this paper and in [P3801R0](https://www.open-std.org/
 
 ### 2.1 Scope
 
-[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> was plenary-approved for C++26 at Sofia. Six Croydon motions modified `task` after plenary approval - restructuring the allocator model ([P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[4]</sup>), rewriting scheduler affinity with a new `get_start_scheduler` query and renaming `affine_on` to `affine` ([P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[24]</sup>), overhauling sender algorithm customization, and adding parallel bulk execution to `task_scheduler`. None of these changes address the `Environment` template parameter, the open query protocol, or the structural interoperability risk documented here.
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> was plenary-approved for C++26 at Sofia. Six Croydon motions modified `task` after plenary approval - restructuring the allocator model ([P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html)<sup>[4]</sup>), rewriting scheduler affinity with a new `get_start_scheduler` query and renaming `affine_on` to `affine` ([P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[24]</sup>), overhauling sender algorithm customization, and adding parallel bulk execution to `task_scheduler`. None of these changes address the `Environment` template parameter, the open query protocol, or the structural interoperability risk documented here.
 
-Three topics are outside scope. Allocator timing - how and when the frame allocator reaches `operator new` - was addressed at Croydon in [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[4]</sup>. Allocator propagation - how the allocator flows to child operations through the environment - is an engineering problem with known solutions. Categorization of compound I/O results into the three channels (`set_value`, `set_error`, `set_stopped`) is the subject of [P4091R0](https://isocpp.org/files/papers/P4091R0.pdf)<sup>[5]</sup> and [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf)<sup>[6]</sup>, not this paper.
+Three topics are outside scope. Allocator timing - how and when the frame allocator reaches `operator new` - was addressed at Croydon in [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html)<sup>[4]</sup>. Allocator propagation - how the allocator flows to child operations through the environment - is an engineering problem with known solutions. Categorization of compound I/O results into the three channels (`set_value`, `set_error`, `set_stopped`) is the subject of [P4091R0](https://isocpp.org/files/papers/P4091R0.pdf)<sup>[5]</sup> and [P4090R0](https://isocpp.org/files/papers/P4090R0.pdf)<sup>[6]</sup>, not this paper.
 
 ---
 
@@ -205,7 +205,7 @@ Neither environment can construct itself from the other. The caller would need t
 
 ### 5.4 What about the standard queries?
 
-[P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[7]</sup> defines seven forwarding queries: `get_scheduler`, `get_allocator`, `get_stop_token`, `get_domain`, `get_delegation_scheduler`, `get_forward_progress_guarantee`, and `get_completion_scheduler<Tag>`. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> adds an eighth: `get_await_completion_adaptor`. Croydon added a ninth: `get_start_scheduler` ([P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[24]</sup>), distinct from `get_scheduler`. The standard set continues to grow.
+[P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[7]</sup> defines seven forwarding queries: `get_scheduler`, `get_allocator`, `get_stop_token`, `get_domain`, `get_delegation_scheduler`, `get_forward_progress_guarantee`, and `get_completion_scheduler<Tag>`. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> adds an eighth: `get_await_completion_adaptor`. Croydon added a ninth: `get_start_scheduler` ([P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[24]</sup>), distinct from `get_scheduler`. The standard set continues to grow.
 
 A conversion layer could forward these. But NVIDIA already defines custom queries (`get_stream_provider`, `get_stream`) that are not in this list. Any domain that needs custom queries - GPU, networking, database, audio - is outside the standard set. The standard queries are the *minimum*. The `Environment` parameter exists precisely so domains can add *more*. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[1]</sup> itself defines a custom `get_value_t` query in its own Section 4.7.
 
@@ -422,7 +422,7 @@ The author thanks Gor Nishanov for the coroutine model's explicit support for ta
 
 [3] [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025).
 
-[4] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
+[4] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
 [5] [P4091R0](https://isocpp.org/files/papers/P4091R0.pdf) - "Two Error Models" (Vinnie Falco, 2026).
 
@@ -468,7 +468,7 @@ The author thanks Gor Nishanov for the coroutine model's explicit support for ta
 
 [23] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native networking library.
 
-[24] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
+[24] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
 
 [25] [P1056R1](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1056r1.html) - "Add lazy coroutine (coroutine task) type" (Lewis Baker, Gor Nishanov, 2019).
 

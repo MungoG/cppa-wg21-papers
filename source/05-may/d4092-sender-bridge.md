@@ -117,7 +117,7 @@ Does not use `execution::task`.
 
 ## 5. What the Bridge Does Not Require
 
-`std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[7]</sup>, revised at Croydon by [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[8]</sup>, [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[9]</sup>, [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.pdf)<sup>[10]</sup>, [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[11]</sup>) is a sender-returning coroutine type. Its promise type-erases the downstream receiver, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. None of the Croydon revisions changed these properties. The bridge avoids both mechanisms:
+`std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[7]</sup>, revised at Croydon by [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html)<sup>[8]</sup>, [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[9]</sup>, [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.html)<sup>[10]</sup>, [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[11]</sup>) is a sender-returning coroutine type. Its promise type-erases the downstream receiver, and its error path converts `error_code` to `exception_ptr` via `AS-EXCEPT-PTR`. None of the Croydon revisions changed these properties. The bridge avoids both mechanisms:
 
 | Property                             | `execution::task`              | Bridge |
 | ------------------------------------ | ------------------------------ | ------ |
@@ -162,11 +162,11 @@ The authors thank Dietmar K&uuml;hl for `beman::execution`<sup>[5]</sup> and for
 
 [7] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
-[8] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
+[8] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
-[9] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
+[9] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
 
-[10] [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.pdf) - "`task_scheduler` Bulk Execution" (Eric Niebler, 2026).
+[10] [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.html) - "`task_scheduler` Bulk Execution" (Eric Niebler, 2026).
 
 [11] [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf) - "Rename `affine_on`" (Robert Leahy, 2026).
 

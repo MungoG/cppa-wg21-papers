@@ -443,7 +443,7 @@ auto sndr = some_operation()
 
 The optimization the reader would hope for - if the sender already completes on the start scheduler, the transition is skipped entirely. No wasted work.
 
-`affine` is the scheduler affinity primitive, redesigned by [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf)<sup>[16]</sup> and renamed from `affine_on` by [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[17]</sup>. It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the start scheduler. The scheduler is not passed as an argument - it comes from the receiver's environment. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine` around every `co_await`ed sender. We will return to this in Section 12.
+`affine` is the scheduler affinity primitive, redesigned by [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[16]</sup> and renamed from `affine_on` by [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf)<sup>[17]</sup>. It behaves like `continues_on` but avoids the scheduling overhead when the predecessor already completes on the start scheduler. The scheduler is not passed as an argument - it comes from the receiver's environment. This is what makes scheduler affinity practical for coroutine `task` - the `await_transform` injects `affine` around every `co_await`ed sender. We will return to this in Section 12.
 
 The equivalent program:
 
@@ -953,7 +953,7 @@ Scheduler affinity means the programmer can reason about execution context the s
 
 ### 12.6 Allocator Support
 
-The context parameter `C` declares the allocator type via `C::allocator_type`. Two allocator paths exist post-[P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf)<sup>[24]</sup>: the frame allocator is specified at the call site via `allocator_arg` (which must be the first parameter), and the environment allocator is obtained from `get_allocator(get_env(rcvr))` at `connect` time.
+The context parameter `C` declares the allocator type via `C::allocator_type`. Two allocator paths exist post-[P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html)<sup>[24]</sup>: the frame allocator is specified at the call site via `allocator_arg` (which must be the first parameter), and the environment allocator is obtained from `get_allocator(get_env(rcvr))` at `connect` time.
 
 ```cpp
 struct alloc_ctx {
@@ -1269,7 +1269,7 @@ task<actuator_result> safety_controller(
 
 ## 14. Real World Examples
 
-The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[25]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.pdf) ("Fix Sender Algorithm Customization")<sup>[26]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[27]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
+The following examples are drawn from the [stdexec](https://github.com/NVIDIA/stdexec)<sup>[25]</sup> reference implementation (whose algorithm customization model is addressed by [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.html) ("Fix Sender Algorithm Customization")<sup>[26]</sup>) and the [sender-examples](https://github.com/steve-downey/sender-examples)<sup>[27]</sup> repository. They demonstrate patterns that combine the algorithms from this tutorial into working code at a scale the reader may encounter in practice.
 
 ### 14.1 The Backtracker
 
@@ -1532,7 +1532,7 @@ The authors thank the P2300R0 authors - Micha&lstrok; Dominiak, Georgy Evtushenk
 
 [15] Philip Wadler. ["The Essence of Functional Programming"](https://doi.org/10.1145/143165.143169). *POPL*, 1992.
 
-[16] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.pdf) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
+[16] [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2026).
 
 [17] [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf) - "Rename affine_on" (Robert Leahy, 2026).
 
@@ -1548,11 +1548,11 @@ The authors thank the P2300R0 authors - Micha&lstrok; Dominiak, Georgy Evtushenk
 
 [23] [P3796R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r1.html). Dietmar K&uuml;hl. "Coroutine Task Issues." 2025.
 
-[24] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.pdf) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
+[24] [P3980R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r1.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
 [25] [stdexec](https://github.com/NVIDIA/stdexec). NVIDIA's reference implementation of `std::execution`.
 
-[26] [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.pdf). Eric Niebler. "Fix Sender Algorithm Customization." 2026.
+[26] [P3826R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3826r5.html). Eric Niebler. "Fix Sender Algorithm Customization." 2026.
 
 [27] [sender-examples](https://github.com/steve-downey/sender-examples). Steve Downey. Example code for C++Now talk.
 
