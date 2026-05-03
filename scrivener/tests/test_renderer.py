@@ -705,6 +705,12 @@ def test_render_mermaid_returns_none_on_bad_input(renderer):
     assert result is None
 
 
+def test_render_block_code_mermaid_bad_input_warns_and_returns_empty(renderer):
+    tok = {"type": "block_code", "raw": "gantt\n    title A Schedule\n    section Work\n    Task :a1, 2024-01-01, 30d", "attrs": {"info": "mermaid"}}
+    result = renderer._render_block_code(tok)
+    assert result == []
+
+
 def test_render_mermaid_contains_drawing(renderer):
     from reportlab.graphics.shapes import Drawing
     result = renderer._render_mermaid("flowchart TD\n    A[Start] --> B[End]")

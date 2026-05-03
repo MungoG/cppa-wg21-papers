@@ -626,7 +626,8 @@ class ASTRenderer:
             result = self._render_mermaid(raw)
             if result:
                 return result
-            raise RuntimeError("Mermaid diagram failed to render — is the 'merm' package installed?")
+            log.warning("Mermaid diagram skipped (unsupported syntax)")
+            return []
 
         if self._wording_context:
             ctx = self._wording_context
