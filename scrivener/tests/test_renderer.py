@@ -480,6 +480,106 @@ def test_inline_html_sup(renderer):
     assert "<super>" in result
 
 
+# -- entity-encoded tags stay literal --
+
+def test_text_encoded_sup_stays_literal(renderer):
+    tok = {"type": "text", "raw": "mc<sup>2</sup>"}
+    assert renderer._inline_text(tok) == "mc&lt;sup&gt;2&lt;/sup&gt;"
+
+
+def test_text_encoded_sub_stays_literal(renderer):
+    tok = {"type": "text", "raw": "H<sub>2</sub>O"}
+    assert renderer._inline_text(tok) == "H&lt;sub&gt;2&lt;/sub&gt;O"
+
+
+# -- sup/sub implied space --
+
+def test_sup_implied_space(renderer):
+    children = [
+        {"type": "text", "raw": "mc"},
+        {"type": "inline_html", "raw": "<sup>2</sup>"},
+    ]
+    assert renderer._inline_children(children) == "mc <super>2</super>"
+
+
+def test_sup_no_double_space(renderer):
+    children = [
+        {"type": "text", "raw": "mc "},
+        {"type": "inline_html", "raw": "<sup>2</sup>"},
+    ]
+    assert renderer._inline_children(children) == "mc <super>2</super>"
+
+
+def test_sup_collapse_multi_space(renderer):
+    children = [
+        {"type": "text", "raw": "mc   "},
+        {"type": "inline_html", "raw": "<sup>2</sup>"},
+    ]
+    assert renderer._inline_children(children) == "mc <super>2</super>"
+
+
+def test_sup_collapse_tabs(renderer):
+    children = [
+        {"type": "text", "raw": "mc\t\t"},
+        {"type": "inline_html", "raw": "<sup>2</sup>"},
+    ]
+    assert renderer._inline_children(children) == "mc <super>2</super>"
+
+
+def test_sup_at_start_no_space(renderer):
+    children = [
+        {"type": "inline_html", "raw": "<sup>2</sup>"},
+    ]
+    assert renderer._inline_children(children) == "<super>2</super>"
+
+
+def test_sup_split_tag_implied_space(renderer):
+    children = [
+        {"type": "text", "raw": "mc"},
+        {"type": "inline_html", "raw": "<sup>"},
+    ]
+    assert renderer._inline_children(children) == "mc <super>"
+
+
+def test_sub_implied_space(renderer):
+    children = [
+        {"type": "text", "raw": "H"},
+        {"type": "inline_html", "raw": "<sub>"},
+        {"type": "text", "raw": "2"},
+        {"type": "inline_html", "raw": "</sub>"},
+    ]
+    assert renderer._inline_children(children) == "H <sub>2</sub>"
+
+
+def test_sub_no_double_space(renderer):
+    children = [
+        {"type": "text", "raw": "H "},
+        {"type": "inline_html", "raw": "<sub>"},
+        {"type": "text", "raw": "2"},
+        {"type": "inline_html", "raw": "</sub>"},
+    ]
+    assert renderer._inline_children(children) == "H <sub>2</sub>"
+
+
+def test_sub_collapse_multi_space(renderer):
+    children = [
+        {"type": "text", "raw": "H   "},
+        {"type": "inline_html", "raw": "<sub>"},
+        {"type": "text", "raw": "2"},
+        {"type": "inline_html", "raw": "</sub>"},
+    ]
+    assert renderer._inline_children(children) == "H <sub>2</sub>"
+
+
+def test_sub_at_start_no_space(renderer):
+    children = [
+        {"type": "inline_html", "raw": "<sub>"},
+        {"type": "text", "raw": "2"},
+        {"type": "inline_html", "raw": "</sub>"},
+    ]
+    assert renderer._inline_children(children) == "<sub>2</sub>"
+
+
 def test_inline_html_br(renderer):
     tok = {"type": "inline_html", "raw": "<br/>"}
     result = renderer._inline(tok)

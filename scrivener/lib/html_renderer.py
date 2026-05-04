@@ -9,6 +9,13 @@ from .highlight import highlight_html
 _SAFE_SCHEMES = {"http", "https", "mailto", ""}
 
 
+def _is_sup_or_sub_open(tok):
+    if tok.get("type") == "inline_html":
+        raw = tok.get("raw", tok.get("text", ""))
+        return raw.startswith("<sup>") or raw.startswith("<sub>")
+    return False
+
+
 class HTMLRenderer:
     """Render mistune AST tokens to semantic HTML fragments.
 
@@ -259,7 +266,15 @@ class HTMLRenderer:
     def _inline_children(self, children):
         if not children:
             return ""
-        return "".join(self._inline(c) for c in children)
+        parts = []
+        for child in children:
+            if parts and _is_sup_or_sub_open(child):
+                last = parts[-1]
+                stripped = last.rstrip(" \t")
+                if stripped:
+                    parts[-1] = stripped + " "
+            parts.append(self._inline(child))
+        return "".join(parts)
 
     def _inline(self, tok):
         t = tok.get("type", "")

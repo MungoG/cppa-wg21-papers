@@ -225,6 +225,65 @@ class TestInlineTokens:
         result = renderer._inline(tok)
         assert 'src="img.png"' in result
 
+    # -- entity-encoded tags stay literal --
+
+    def test_text_encoded_sup_stays_literal(self, renderer):
+        tok = {"type": "text", "raw": "mc<sup>2</sup>"}
+        assert renderer._inline_text(tok) == "mc&lt;sup&gt;2&lt;/sup&gt;"
+
+    def test_text_encoded_sub_stays_literal(self, renderer):
+        tok = {"type": "text", "raw": "H<sub>2</sub>O"}
+        assert renderer._inline_text(tok) == "H&lt;sub&gt;2&lt;/sub&gt;O"
+
+    # -- sup/sub implied space --
+
+    def test_sup_implied_space(self, renderer):
+        children = [
+            {"type": "text", "raw": "mc"},
+            {"type": "inline_html", "raw": "<sup>2</sup>"},
+        ]
+        assert renderer._inline_children(children) == "mc <sup>2</sup>"
+
+    def test_sup_no_double_space(self, renderer):
+        children = [
+            {"type": "text", "raw": "mc "},
+            {"type": "inline_html", "raw": "<sup>2</sup>"},
+        ]
+        assert renderer._inline_children(children) == "mc <sup>2</sup>"
+
+    def test_sup_collapse_multi_space(self, renderer):
+        children = [
+            {"type": "text", "raw": "mc   "},
+            {"type": "inline_html", "raw": "<sup>2</sup>"},
+        ]
+        assert renderer._inline_children(children) == "mc <sup>2</sup>"
+
+    def test_sub_implied_space(self, renderer):
+        children = [
+            {"type": "text", "raw": "H"},
+            {"type": "inline_html", "raw": "<sub>2</sub>"},
+        ]
+        assert renderer._inline_children(children) == "H <sub>2</sub>"
+
+    def test_sub_no_double_space(self, renderer):
+        children = [
+            {"type": "text", "raw": "H "},
+            {"type": "inline_html", "raw": "<sub>2</sub>"},
+        ]
+        assert renderer._inline_children(children) == "H <sub>2</sub>"
+
+    def test_sup_at_start_no_space(self, renderer):
+        children = [
+            {"type": "inline_html", "raw": "<sup>2</sup>"},
+        ]
+        assert renderer._inline_children(children) == "<sup>2</sup>"
+
+    def test_sub_at_start_no_space(self, renderer):
+        children = [
+            {"type": "inline_html", "raw": "<sub>2</sub>"},
+        ]
+        assert renderer._inline_children(children) == "<sub>2</sub>"
+
 
 class TestRender:
     def test_render_returns_string(self, renderer):

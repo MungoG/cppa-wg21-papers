@@ -35,6 +35,13 @@ from .fonts import ensure_lazy, ensure_code_family
 from .highlight import highlight
 
 
+def _is_sup_or_sub_open(tok):
+    if tok.get("type") == "inline_html":
+        raw = tok.get("raw", tok.get("text", ""))
+        return raw.startswith("<sup>") or raw.startswith("<sub>")
+    return False
+
+
 class ASTRenderer:
     def __init__(self, style, body_cmap, fallback_chain, content_width,
                  md_dir, has_fm_title=False, page_geometry=None):
@@ -1148,6 +1155,11 @@ class ASTRenderer:
             return ""
         parts = []
         for child in children:
+            if parts and _is_sup_or_sub_open(child):
+                last = parts[-1]
+                stripped = last.rstrip(" \t")
+                if stripped:
+                    parts[-1] = stripped + " "
             parts.append(self._inline(child))
         return "".join(parts)
 
@@ -1161,12 +1173,7 @@ class ASTRenderer:
 
     def _inline_text(self, tok):
         raw = tok.get("raw", tok.get("text", ""))
-        text = escape_xml(unescape(raw))
-        text = re.sub(r'&lt;sup&gt;(.*?)&lt;/sup&gt;', r'<super>\1</super>', text)
-        text = text.replace('&lt;sup&gt;', '<super>').replace('&lt;/sup&gt;', '</super>')
-        text = re.sub(r'&lt;sub&gt;(.*?)&lt;/sub&gt;', r'<sub>\1</sub>', text)
-        text = text.replace('&lt;sub&gt;', '<sub>').replace('&lt;/sub&gt;', '</sub>')
-        return text
+        return escape_xml(unescape(raw))
 
     def _inline_emphasis(self, tok):
         inner = self._inline_children(tok.get("children", []))
