@@ -33,8 +33,9 @@ def _axes_key(axes):
     return "-".join(f"{k}{v}" for k, v in sorted(axes.items()))
 
 
-def _cache_path(name, axes):
-    return _fonts_dir / "cache" / f"{name}-{_axes_key(axes)}.ttf"
+def _cache_path(name, axes, var_path=None):
+    src = Path(var_path).stem if var_path else ""
+    return _fonts_dir / "cache" / f"{name}-{src}-{_axes_key(axes)}.ttf"
 
 
 def ensure_font(name, var_path, axes):
@@ -46,7 +47,7 @@ def ensure_font(name, var_path, axes):
         _cache[name] = cache_key
         return
 
-    cached = _cache_path(name, axes)
+    cached = _cache_path(name, axes, var_path)
     if cached.exists() and cached.stat().st_mtime >= Path(var_path).stat().st_mtime:
         pdfmetrics.registerFont(TTFont(name, str(cached)))
         _cache[name] = cache_key
@@ -74,7 +75,7 @@ def get_cmap(var_path, axes):
         return _cmap_cache[key]
     from fontTools.ttLib import TTFont as FTFont
 
-    cp = _cache_path(Path(var_path).stem, axes or {})
+    cp = _cache_path(Path(var_path).stem, axes or {}, var_path)
     src = str(cp) if cp.exists() else str(var_path)
     vf = FTFont(src)
     if axes and not cp.exists():
@@ -171,12 +172,31 @@ def build_fallback_cmaps(cfg):
     return chain
 
 
+def reset():
+    """Clear all module state so fonts are re-registered from scratch.
+
+    Also clears ReportLab's internal registries so that re-registering a font
+    under the same name (e.g. "Body") with a different underlying file actually
+    takes effect. Without this, registerTypeFace silently skips faces whose
+    name already exists in _typefaces.
+    """
+    _cache.clear()
+    _lazy.clear()
+    _families.clear()
+    pdfmetrics._fonts.clear()
+    if hasattr(pdfmetrics, '_typefaces'):
+        pdfmetrics._typefaces.clear()
+    if hasattr(pdfmetrics, '_dynFaceNames'):
+        pdfmetrics._dynFaceNames.clear()
+
+
 def ensure_fonts_ready(cfg, manifest):
     """One-call font setup: download, register, and build cmaps.
 
     Returns (fonts_dir, body_cmap, fallback_chain).
     """
     from .font_manifest import ensure_fonts_downloaded, resolve_font_files
+    reset()
     resolve_font_files(cfg, manifest)
     fonts_dir = ensure_fonts_downloaded(cfg, manifest)
     set_fonts_dir(fonts_dir)

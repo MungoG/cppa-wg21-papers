@@ -105,13 +105,18 @@ def _title_paragraph(renderer, title_text):
 
 def test_title_short_uses_h1_size(renderer_no_fm_title):
     """A title that fits at the nominal h1 size renders at h1 with no shrink."""
+    from reportlab.pdfbase.pdfmetrics import getFont
+
     bs = renderer_no_fm_title.style["body_size"]
     h1_scale = renderer_no_fm_title.style["headings"]["h1"]["scale"]
     expected_h1 = bs * h1_scale
 
+    face = getFont("Body-Bold").face
+    metric_scale = (face.ascent + abs(face.descent)) / 1000
+
     para = _title_paragraph(renderer_no_fm_title, "Short Title")
     assert para.style.fontSize == pytest.approx(expected_h1)
-    assert para.style.leading == pytest.approx(expected_h1)
+    assert para.style.leading == pytest.approx(expected_h1 * metric_scale)
 
 
 def test_title_medium_shrinks_to_fit_single_line(renderer_no_fm_title):
@@ -141,8 +146,11 @@ def test_title_medium_shrinks_to_fit_single_line(renderer_no_fm_title):
 
     assert para.style.fontSize < expected_h1, "should have shrunk below h1"
     assert para.style.fontSize > expected_h2, "should have stayed above h2"
-    # Single-line regime: leading equals fontSize.
-    assert para.style.leading == pytest.approx(para.style.fontSize)
+    # Single-line regime: leading spans the full font metric height.
+    from reportlab.pdfbase.pdfmetrics import getFont as _gf
+    _face = _gf("Body-Bold").face
+    _ms = (_face.ascent + abs(_face.descent)) / 1000
+    assert para.style.leading == pytest.approx(para.style.fontSize * _ms)
 
 
 def test_title_too_long_clamps_to_h2_and_wraps(renderer_no_fm_title):
@@ -202,8 +210,11 @@ def test_title_at_h2_floor_boundary_uses_single_line(renderer_no_fm_title):
     para = _title_paragraph(renderer_no_fm_title, title)
     assert para.style.fontSize >= h2_font, (
         f"fontSize {para.style.fontSize} must not fall below h2 floor {h2_font}")
-    # Above-floor case stays single-line: leading equals fontSize.
-    assert para.style.leading == pytest.approx(para.style.fontSize)
+    # Above-floor case stays single-line: leading spans the full font metric height.
+    from reportlab.pdfbase.pdfmetrics import getFont as _gf2
+    _face2 = _gf2("Body-Bold").face
+    _ms2 = (_face2.ascent + abs(_face2.descent)) / 1000
+    assert para.style.leading == pytest.approx(para.style.fontSize * _ms2)
 
 
 def test_render_heading_registers_all_levels(renderer):

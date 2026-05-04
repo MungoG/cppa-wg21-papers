@@ -11,18 +11,18 @@ options:
   - id: logo
     label: "Logo"
     type: image
-    default: "C++ Alliance - Logo.svg"
+    default: ~
   - id: accent_saturated
     label: "Accent Color"
     type: color
-    default: "#A91C21"
+    default: "#444444"
 
 # --- Page ---
 page_size: a4
 
 # --- Color palette ---
 palette:
-  brand:       "#A91C21"
+  brand:       "#444444"
   text:        "#000000"
   text-mid:    "#4a4a4a"
   text-muted:  "#6b6b6b"
@@ -159,7 +159,7 @@ page_number_font_size: 8
 mermaid_max_height_ratio: 0.8
 
 # --- Logo ---
-logo: "C++ Alliance - Logo.svg"
+logo: ~
 
 # --- Table of Contents ---
 toc: auto

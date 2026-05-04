@@ -369,7 +369,7 @@ class ASTRenderer:
         return flows
 
     def title_block(self, title_markup):
-        from reportlab.pdfbase.pdfmetrics import stringWidth
+        from reportlab.pdfbase.pdfmetrics import stringWidth, getFont
 
         flows = []
         logo_path = self.style.get("logo")
@@ -384,6 +384,9 @@ class ASTRenderer:
         h2_cfg = headings_cfg.get("h2", {})
         h1_font = bs * h1_cfg.get("scale", 2.2)
         h2_font = bs * h2_cfg.get("scale", 1.3)
+
+        face = getFont("Body-Bold").face
+        metric_scale = (face.ascent + abs(face.descent)) / 1000
 
         logo_img = None
         if logo_path:
@@ -410,17 +413,16 @@ class ASTRenderer:
         #   - fits at h1: render at h1, single line, tight leading
         #   - needs shrink but stays >= h2: shrink proportionally, single line
         #   - would shrink below h2: clamp at h2 and let the Paragraph wrap
-        # The wrapped regime uses a generous leading (h2_font * h2.leading_scale)
-        # because regular h2 headings rarely wrap and their tighter leading
-        # (bs * leading_scale) was never stressed for multi-line layout.
+        # Leading uses the font's full metric span (ascent + descent) so the
+        # paragraph height matches the character bounding box exactly.
         if text_w <= avail_w:
             font_size = h1_font
-            leading = font_size
+            leading = font_size * metric_scale
         else:
             shrunk = h1_font * avail_w / text_w
             if shrunk >= h2_font:
                 font_size = shrunk
-                leading = font_size
+                leading = font_size * metric_scale
             else:
                 font_size = h2_font
                 leading = h2_font * h2_cfg.get("leading_scale", 1.3)

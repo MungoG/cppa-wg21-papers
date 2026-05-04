@@ -460,7 +460,7 @@ def _emit_misc(lines, sel, cfg):
     lines.append(f"{sel} hr {{ border: none; border-top: 1px solid var(--heading-rule-color); margin: {su(0.8)} 0; }}")
     lines.append(f"{sel} hr.page-break {{ border-top-width: 3px; margin: {su(1.6)} 0; }}")
     lines.append(f"{sel} .title-block {{ margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; }}")
-    lines.append(f"{sel} .title-block h1 {{ margin-top: 0; flex: 1; }}")
+    lines.append(f"{sel} .title-block h1 {{ margin: 0; flex: 1; }}")
     logo_h = cfg.get("title", {}).get("logo_height", 36)
     lines.append(f"{sel} .title-logo {{ height: {_su_abs(cfg, logo_h)}; margin-left: var(--u); }}")
 
@@ -468,7 +468,7 @@ def _emit_misc(lines, sel, cfg):
     rt = title_cfg.get("rule_thickness", 3)
     if rt:
         lines.append(f"{sel} .title-block {{ border-bottom: {_su_abs(cfg, rt)} solid var(--heading-rule-color); padding-bottom: {su(0.8)}; }}")
-    lines.append(f"{sel} .title-block.no-rule {{ border-bottom: none; }}")
+    lines.append(f"{sel} .title-block.no-rule {{ border-bottom: none; padding-bottom: 0; }}")
 
     toc_fs = cfg.get("toc_font_scale", 0.9)
     fm_cfg = cfg.get("front_matter", {})

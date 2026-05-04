@@ -2,6 +2,14 @@ inherits: default
 name: "C++ Alliance"
 description: "C++ Alliance letterhead with Noto Condensed typography"
 
+logo: "C++ Alliance - Logo.svg"
+
+palette:
+  brand: "#A91C21"
+
+accent_saturated: "@brand"
+link_color: "@brand"
+
 fonts:
   body:
     font: noto-sans
