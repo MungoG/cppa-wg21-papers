@@ -82,6 +82,10 @@ The issues in this section are items where shipping forecloses the fix.
 
 - **Symmetric Transfer.** The completion functions (`set_value`, `set_error`, `set_stopped`) and `start()` return `void`, providing no channel to propagate a `coroutine_handle<>`. When a sender completes synchronously, the receiver calls `handle.resume()` on the caller's stack, adding a frame per completion with no upper bound. Shipping this protocol forecloses the `coroutine_handle<>`-returning completion protocol that would enable symmetric transfer.
 
+Jonathan M&uuml;ller wrote in [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html)<sup>[5]</sup>: *"Having iterative code that is actually recursive is a potential security vulnerability."* The same paper observes: *"This is surprising behavior that can lead to unnecessary memory consumption and potentially hard to figure out bugs. It fundamentally breaks the promises of RAII where destruction is strictly tied to the end of a scope."*
+
+In April 2026, @mika-fischer [reported](https://github.com/NVIDIA/stdexec/issues/2047)<sup>[16]</sup> a production crash in stdexec where *"Destroying the spawn state destroys the task operation, which destroys the currently executing task coroutine frame, including the sender awaiter whose `await_suspend()` has not returned yet."*
+
 ---
 
 ## Acknowledgements
@@ -127,4 +131,6 @@ Papers, issues, and ballot comments referenced in this document.
 [14] [P4151R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4151r1.pdf) - "Rename affine_on" (Robert Leahy, 2026).
 
 [15] [P3927R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3927r2.html) - "task_scheduler Bulk Execution" (Eric Niebler, 2026).
+
+[16] [NVIDIA/stdexec issue #2047: Another crash with stdexec::task](https://github.com/NVIDIA/stdexec/issues/2047) - @mika-fischer, April 2026.
 

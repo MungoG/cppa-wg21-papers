@@ -194,6 +194,14 @@ Rub&eacute;n P&eacute;rez Hidalgo, author of [Boost.MySQL](https://github.com/bo
 
 **The reference implementation has 1,300 stars. The I/O ecosystem built on it has 21.**
 
+Ben FrantzDale, who [called](https://benfrantzdale.github.io/blog/2024/10/01/sender-intuition-senders-dont-send.html)<sup>[63]</sup> P2300 "amazing promise," also wrote:
+
+> *"I've been keeping an eye on the P2300 'Senders' proposal for generic asynchrony for many years, but felt like I never quite 'got' it. I know I'm not the only one who has found it challenging to grok... if you step into implementations, you quickly find yourself in a sea of underscores, namespaces, and customization-point objects."*
+
+Sean Baxter, author of the Circle compiler, [reported](https://github.com/NVIDIA/stdexec/issues/856)<sup>[64]</sup> that swapping the order of a single constraint in the `sender` concept caused Clang to produce an error message so long (5,500 lines) that it triggered an internal compiler error.
+
+Rainer Grimm, author of *Modernes C++*, [abandoned](https://www.modernescpp.com/index.php/stdexecution/)<sup>[65]</sup> his planned C++26 library coverage: *"The implementation status of the library is not good enough. Therefore, I decided to continue with concurrency and `std::execution`. I will present the remaining C++26 features if a compiler implements them."*
+
 ---
 
 ## 9. Open Question
@@ -349,3 +357,9 @@ this paper.
 [61] [P2300R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2300r0.html) - "std::execution" (Eric Niebler, Kirk Shoop, Lewis Baker, Lee Howes, 2021).
 
 [62] [Boost.MySQL](https://github.com/boostorg/mysql) - Async MySQL client library for Boost (Rub&eacute;n P&eacute;rez).
+
+[63] [Sender Intuition: Senders Don't Send](https://benfrantzdale.github.io/blog/2024/10/01/sender-intuition-senders-dont-send.html) - Ben FrantzDale, Oct 2024.
+
+[64] [NVIDIA/stdexec issue #856: sender concept has side effects, is order-dependent](https://github.com/NVIDIA/stdexec/issues/856) - Sean Baxter, March 2023.
+
+[65] [std::execution - MC++ BLOG](https://www.modernescpp.com/index.php/stdexecution/) - Rainer Grimm, Nov 2024.

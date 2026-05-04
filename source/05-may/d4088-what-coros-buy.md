@@ -486,6 +486,12 @@ A: It does. `task` is a coroutine that is also a sender. But serving both models
 
 A: C++ already teaches three execution models: parallel algorithms with execution policies, `std::execution` with sender algorithms, and coroutines with `co_await`. These three complement each other in C++26. The teachability cost was paid when the committee shipped all three. Coroutine-native I/O does not add a fourth model. It completes the third. The programmer already writes `co_await` - coroutines are the code they already know, with three keywords added. The sender model requires thirty algorithms, each replacing a language construct the programmer already knows. [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> is a progressive tutorial of all thirty. The `retry` algorithm: approximately 120 lines as a sender, seven as a coroutine. The four-layer composition in [P4014R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4014r0.pdf)<sup>[4]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
 
+The teachability gap extends beyond the committee. On the `stdexec` issue tracker, a user [reported](https://github.com/NVIDIA/stdexec/issues/1564)<sup>[28]</sup> that `let_error([](int) { ... })` does not compile when the upstream sender can also complete with `std::exception_ptr`. The response: *"This is the design of stdexec."* The user replied: *"The obvious solution was just use `let_error([](int) ...`. But it's not working because of 'This is the design'."* Another user summarized the sentiment: *"Is it fundamentally impossible? May `let_*` senders be implemented that way in future?"* The answer was no.
+
+Jonathan M&uuml;ller [wrote](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa)<sup>[29]</sup>: *"One particular complexity I don't like is the idea of environments... If we compose two senders from different libraries in a third library using the environment from a fourth place, it can require a lot of digging around to figure out what exactly went wrong."*
+
+One anonymous r/cpp commenter [reported](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/)<sup>[30]</sup>: *"I seriously investigated [libunifex] for roughly 2 work-days. I didn't like it, and couldn't use it to do what I wanted. That doesn't mean that libunifex couldn't - it means that I couldn't. The cognitive load was too high."*
+
 **Q: Coroutines were not designed for I/O.**
 
 A: Correct. The five properties were designed for generality - async patterns, lazy evaluation, generators. Section 7 documents what they produce when applied to I/O. The substrate is emergent.
@@ -638,3 +644,9 @@ The author thanks Chris Kohlhoff for Asio's stream model, buffer sequences, and 
 [26] [P4093](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
 [27] [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html) - "`std::execution`" (Eric Niebler, Micha&lstrok; Dominiak, Lewis Baker, Kirk Shoop, Lucian Radu Teodorescu, Lee Howes, 2024).
+
+[28] [NVIDIA/stdexec issue #1564: type issue of let_error](https://github.com/NVIDIA/stdexec/issues/1564) - @taooceros, @BartolomeyKant, July 2025 / March 2026.
+
+[29] [Trip Report: Summer ISO C++ Meeting in St. Louis, USA](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa) - Jonathan M&uuml;ller, July 2024.
+
+[30] [r/cpp: C++ committee polling results for asynchronous programming](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/) - Oct 2021.

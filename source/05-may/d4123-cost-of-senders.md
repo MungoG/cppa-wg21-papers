@@ -416,6 +416,8 @@ Part (b) applies here. The user is using a task abstraction for I/O. A coroutine
 
 This paper is that written discussion. The analysis is in Sections 4 and 5. The current and likely alternative is the coroutine-native task. The overheads are spec-mandated and cannot be assumed away by future optimizations.
 
+The zero-allocation claim is also questioned outside the committee. u/gpderetta [observed](https://news.ycombinator.com/item?id=46072323)<sup>[20]</sup>: *"From what I've seen, as soon as your code is complex enough that you need two compilation units, you need some higher level async abstraction, like coroutines. And as soon as you have coroutines, you need to type-erase both the senders and the scheduler, so you have at least couple of allocations per continuation."* Another Hacker News commenter in the same thread reported: *"I played around with a similar idea... my conclusion derived from the experiments was the same - it is allocation-heavy."*
+
 ---
 
 ## 8. Conclusion
@@ -499,3 +501,5 @@ The author thanks Bjarne Stroustrup for [P3406R0](https://www.open-std.org/jtc1/
 [18] [P3406R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3406r0.pdf) - "We need better performance testing" (Bjarne Stroustrup, 2024).
 
 [19] [P0709R4](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0709r4.pdf) - "Zero-overhead deterministic exceptions: Throwing values" (Herb Sutter, 2019).
+
+[20] [Hacker News: Trying Out C++26 Executors](https://news.ycombinator.com/item?id=46072323) - 2025.

@@ -231,6 +231,10 @@ A: This paper examines the word "networking." The parallelism and GPU evidence i
 
 A: Section 1 discloses this. Section 4.2 labels the author's own papers separately. The evidence in Sections 2 through 4 stands or falls on the published record, not on who assembled it.
 
+**Q: The committee voted with full information.**
+
+A: Jonathan M&uuml;ller [reported](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa)<sup>[23]</sup> from St. Louis: *"P2300 was adopted in the plenary vote and is now a part of the working draft which will become the C++26 standard, it was a very narrow vote with 1/3 voting against adoption."* One anonymous commenter during the 2021 electronic ballot [wrote](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/)<sup>[24]</sup>: *"I don't think it's fair to consider standardizing S&R until there are at least a thousand codebases that use S&R. The probability of missing an important use-case, or an important gotcha is very very high if the actual quantity of 'Junior engineer + intern' experience in the field is low."*
+
 ---
 
 ## Acknowledgments
@@ -284,3 +288,7 @@ The author thanks Bryce Adelstein Lelbach, Fabio Fracassi, and Ben Craig for the
 [21] [P2583R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r3.pdf) - "Symmetric Transfer and Sender Composition" (Vinnie Falco, 2026).
 
 [22] [N1925](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf) - "Networking proposal for TR2 (rev. 1)" (Gerhard Wesp, 2005).
+
+[23] [Trip Report: Summer ISO C++ Meeting in St. Louis, USA](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa) - Jonathan M&uuml;ller, July 2024.
+
+[24] [r/cpp: C++ committee polling results for asynchronous programming](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/) - Oct 2021.

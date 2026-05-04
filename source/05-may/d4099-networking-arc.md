@@ -57,6 +57,8 @@ This paper asks for nothing.
 
 Each decision was locally reasonable, made by experienced practitioners under real constraints. The published record surveyed in this series is now assembled.
 
+Jonathan M&uuml;ller [reported](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa)<sup>[28]</sup> from St. Louis: *"P2300 was adopted in the plenary vote and is now a part of the working draft which will become the C++26 standard, it was a very narrow vote with 1/3 voting against adoption."*
+
 ---
 
 ## 3. What the Committee Got Right
@@ -117,6 +119,8 @@ struct read_operation
 
 `std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[16]</sup>) already fuses both models. The question is whether I/O facilities should also exploit each model's strengths independently.
 
+One anonymous commenter during the 2021 electronic ballot [wrote](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/)<sup>[29]</sup>: *"I don't think it's fair to consider standardizing S&R until there are at least a thousand codebases that use S&R. The probability of missing an important use-case, or an important gotcha is very very high if the actual quantity of 'Junior engineer + intern' experience in the field is low."*
+
 ---
 
 ## 6. Anticipated Objections
@@ -124,6 +128,8 @@ struct read_operation
 **Q: This is hindsight bias.**
 
 A: The companion papers document what evidence was available at the time each decision was made. The questions in Sections 4 and 5 of [P4094R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r0.pdf)<sup>[1]</sup> could have been asked in 2014. They were not. The two-framing analysis in [P4095R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r0.pdf)<sup>[2]</sup> could not have been performed in 2019 because C++20 coroutines did not yet exist. This paper distinguishes between the two cases.
+
+The evidence gap was also noticed contemporaneously. M&uuml;ller [wrote](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa)<sup>[28]</sup> at the time of adoption: *"Concerns were raised that maybe it wasn't reviewed properly, as committee members were not able to fully understand the intricate design details, and instead just trusted the authors that they did a good enough job."*
 
 **Q: P2300 will eventually cover networking.**
 
@@ -202,3 +208,7 @@ The effort to bring async programming to C++ has been genuine, sustained, and co
 [26] [P3801R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3801r0.html) - "Concerns about the design of std::execution::task" (Jonathan M&uuml;ller, 2025).
 
 [27] [P2469R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf) - "Response to P2464: The Networking TS is baked, P2300 Sender/Receiver is not" (Christopher Kohlhoff, Jamie Allsop, Vinnie Falco, Richard Hodges, Klemens Morgenstern, 2021).
+
+[28] [Trip Report: Summer ISO C++ Meeting in St. Louis, USA](https://www.think-cell.com/en/career/devblog/trip-report-summer-iso-cpp-meeting-in-st-louis-usa) - Jonathan M&uuml;ller, July 2024.
+
+[29] [r/cpp: C++ committee polling results for asynchronous programming](https://old.reddit.com/r/cpp/comments/q6tgod/c_committee_polling_results_for_asynchronous/) - Oct 2021.
