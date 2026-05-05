@@ -10,9 +10,9 @@ reply-to:
 
 ## Abstract
 
-Thirty-eight papers audit two decades of async decisions, deploy coroutine-native I/O at a derivatives exchange with zero per-operation allocations, bridge the result to std::execution, and deliver open-source AI tools that score any WG21 proposal against Stroustrup's design principles.
+Thirty-seven papers audit two decades of async decisions, deploy coroutine-native I/O at a derivatives exchange with zero per-operation allocations, bridge the result to std::execution, and deliver open-source AI tools that score any WG21 proposal against Stroustrup's design principles.
 
-This paper summarizes 38 papers published in the
+This paper summarizes 37 papers published in the
 May 2026 mailing. It is a reading guide: an executive summary
 that identifies the logical series within the collection, describes
 what each series delivers, and provides individual summaries of every
@@ -37,13 +37,13 @@ Ten papers conduct a structural analysis of std::execution's cost model for I/O 
 
 Seven papers reconstruct the decision chain that kept networking out of C++ for twenty-one years. P4094 audits P0443's fourteen revisions and finds the entire evidentiary basis for unifying networking, GPU dispatch, and thread pool executors is a single hypothetical code snippet. P4095 re-examines the Cologne pivot paper and shows that three of four deficiencies vanish under the continuation framing of execute(F&&). P4097 searches the published record surrounding the October 2021 poll and finds zero networking evidence behind the word "basis" at the time LEWG voted. P4047 grades twenty-seven dated predictions from both proponents and critics, finding eighteen confirmed - safety concerns and networking gaps proved highly predictive; universality claims did not. Read together, these papers document a recurring structural gap: decisions achieved consensus without published evidence in the domain those decisions governed, and no process mechanism required that both analytical framings be examined before the committee acted.
 
-Six papers introduce AI-assisted evaluation methodologies and apply them to active proposals. P4046 (SAGE) distills five structured interviews with veteran committee members into an eleven-principle scoring rubric, then grades the lead author's own paper to demonstrate the pipeline. P4183 publishes a twenty-four-question checklist from Stroustrup's Design and Evolution as a structured LLM prompt - feed it a paper, read the verdict. P4184 applies that checklist to P3874R1 and scores the memory safety direction paper at 40 percent. P4207 introduces the Advocatus Diaboli - a red-teaming framework that killed bad findings through six named challenges before they reach the record - and P4208 applies it to P2900R14, where fourteen of fifteen charges collapse under cross-examination. P4137 proposes PAVE, a three-phase methodology for measuring how much of a real codebase survives a type-safety profile ban. Every tool ships under CC0 with full source; the value of the cluster is not any single verdict but a reproducible evaluation infrastructure the committee did not previously possess.
+Five papers introduce AI-assisted evaluation methodologies and apply them to active proposals. P4046 (SAGE) distills five structured interviews with veteran committee members into an eleven-principle scoring rubric, then grades the lead author's own paper to demonstrate the pipeline. P4183 publishes a twenty-four-question checklist from Stroustrup's Design and Evolution as a structured LLM prompt - feed it a paper, read the verdict. P4184 applies that checklist to P3874R1 and scores the memory safety direction paper at 40 percent. P4207 introduces the Advocatus Diaboli - a red-teaming framework that killed bad findings through six named challenges before they reach the record - and P4208 applies it to P2900R14, where fourteen of fifteen charges collapse under cross-examination. Every tool ships under CC0 with full source; the value of the cluster is not any single verdict but a reproducible evaluation infrastructure the committee did not previously possess.
 
 Two papers deliver bidirectional bridges between the coroutine and sender worlds. P4092's await_sender consumes any std::execution sender from inside a coroutine with inline operation state, zero heap allocation beyond the coroutine frame, and automatic error_code inspection that produces io_result values instead of exceptions. P4093's as_sender produces senders from awaitables with a static_assert that fires at compile time when compound results would lose data crossing the abstraction floor. Both implementations print in full in their appendices, compile today on MSVC 19.43 against Capy and beman::execution, and position the coroutine body as the translation layer that the sender algebra structurally cannot be.
 
 Five papers address design principles that cut across the async debate. P4034 surveys every successful universal model in computing history and observes that each was narrow, emerged from practice, and achieved adoption before standardization - then places the three-operation C++20 awaitable protocol in that lineage. P4035 identifies the escape-hatch pattern the standard library has applied since condition_variable and proposes it for cstring_view. P4036 demonstrates that six independent I/O ecosystems rejected a generic byte view in favor of a dedicated buffer type and argues the same principle applies one level higher. P4014 delivers a complete progressive tutorial covering all thirty sender algorithms in C++26, from just(42) to a four-layer pipeline, dedicated to the public domain under CC0. P4182 consolidates seven platform categories and six compiler families into structured tables so future authors can cite one paper number instead of writing three paragraphs of platform context.
 
-The full collection yields a qualitatively different picture than any subset. Individual papers deliver specific tools - a bridge adapter, a scoring checklist, a benchmark table, a field interview report. Clusters deliver compound understanding - why the composition algebra fails for I/O, how four decisions chained into a decade without networking, what a complete coroutine-native architecture looks like from language mechanism through type-erased ABI. But reading across clusters reveals the unifying thread: every retrospective finding motivates a specific architectural choice in the constructive papers, every cost analysis has a corresponding zero-cost implementation in the bridge or architecture papers, and every AI evaluation tool is demonstrated against a live proposal before being offered to the committee. The thirty-eight papers form a single argument assembled from independently verifiable parts.
+The full collection yields a qualitatively different picture than any subset. Individual papers deliver specific tools - a bridge adapter, a scoring checklist, a benchmark table, a field interview report. Clusters deliver compound understanding - why the composition algebra fails for I/O, how four decisions chained into a decade without networking, what a complete coroutine-native architecture looks like from language mechanism through type-erased ABI. But reading across clusters reveals the unifying thread: every retrospective finding motivates a specific architectural choice in the constructive papers, every cost analysis has a corresponding zero-cost implementation in the bridge or architecture papers, and every AI evaluation tool is demonstrated against a live proposal before being offered to the committee. The thirty-seven papers form a single argument assembled from independently verifiable parts.
 
 Three entry points serve different readers. A committee member evaluating the C++29 networking direction should begin with P4100, which maps the full fourteen-paper series and its two-stage delivery plan. An implementer or library author interested in the sender-coroutine boundary should start with P4092 and P4093, whose complete implementations compile today and whose abstraction-floor enforcement is immediately applicable. A reader interested in AI-assisted committee process - or looking for tools to apply to unrelated proposals - should begin with P4207, which introduces the red-teaming methodology and includes the most dramatic demonstration: a dollar in API tokens reproducing the substantive national body comments on a three-year proposal.
 
@@ -167,39 +167,35 @@ Every sender pipeline that invokes an awaitable today allocates a coroutine fram
 
 Exactly two mechanisms can deliver a frame allocator to a C++20 coroutine's `operator new`, and no future customization point within the current language model can add a third. This paper enumerates every coroutine customization point in the language - `await_transform`, `operator co_await`, `initial_suspend`, deferred invocation, promise-based injection, sender-environment bridge wrappers - and proves that each one either fires after the frame already exists or reduces to one of exactly two paths: the allocator in the parameter list (`allocator_arg_t`), or the allocator in ambient state (thread-local storage). The tradeoff is signature pollution versus hidden state, and the paper documents both costs with side-by-side code showing three-deep coroutine chains under each regime - where Path A infects every signature and every call site, breaks separate compilation, and prevents virtual dispatch, while Path B uses a single zero-initialized pointer invisible to coroutine authors. A hybrid `operator new` overload set lets both paths coexist in a single promise type, making the choice per-call-site rather than per-ecosystem.
 
-### 3.30. P4137R1 - Profile Analysis and Verification Evidence (PAVE)
-
-The type-safety profile defines what must be banned, but nobody has measured how much of a real codebase survives the ban. P4137R1 proposes PAVE - a three-phase methodology that fills the evidence gap: Phase 1 classifies every function against the profile's rules using Clang AST predicates, Phase 2 uses LLM-assisted triage to sort rejections into true positives and false positives, and Phase 3 infers annotations that expand the verifiable subset. The paper maps all eight profile rules to concrete AST node types, notes that five already ship as clang-tidy checks, and defines an "annotation dividend" metric that tells the committee whether richer attributes or revised rules would do more to close coverage gaps. No novel tooling is required - the entire methodology runs today on any Clang-compilable codebase, and the paper asks for nothing except that someone fill in the table before the committee votes.
-
-### 3.31. P4166R0 - Benefits of Frame-Visible Coroutines for Senders
+### 3.30. P4166R0 - Benefits of Frame-Visible Coroutines for Senders
 
 A coroutine frame model documented in P1492R0 during C++20 standardization - considered and set aside in 2019 - would eliminate the heap allocation that `std::execution::task` is forced to make today. P4166R0 identifies two of the three properties that senders currently hold over coroutines (optimizer visibility and zero-allocation composition) as consequences of a single language choice: the coroutine frame is opaque behind `coroutine_handle<>`. The paper also surfaces a structural constraint in the three-channel completion model: compound I/O results such as an `error_code` paired with a byte count cannot round-trip through mutually exclusive channels, because exactly one channel fires per completion and the others lose their data. If C++ added frame-visible coroutines alongside the existing opaque-frame model, `std::execution::task` embeds the coroutine frame directly (its `sizeof` becomes `constexpr`), coroutine-based sender algorithms gain full optimizer visibility, and compile-time work graphs - the type-level encoding of dependency topology - remain the unique and irreducible sender contribution.
 
-### 3.32. P4172R1 - IoAwaitable for Coroutine-Native Byte-Oriented I/O
+### 3.31. P4172R1 - IoAwaitable for Coroutine-Native Byte-Oriented I/O
 
 The IoAwaitable executor concept has seven requirements; this paper demonstrates that removing any single one produces a concrete failure in deployed I/O code. P4172R1 is the design audit trail for P4003R1's normative vocabulary, recording what alternatives were rejected and which domain constraint forced each choice across executor shape, frame allocation, cancellation, and environment propagation. The audience model is the primary evaluation filter: three populations with sharply different skill expectations, and a design rule that if the largest population - application developers - must understand anything beyond "call the function, check the error," the facility is wrong. Frame allocator benchmarks show the recycling allocator at 3.1x the throughput of std::allocator on MSVC and 1.28x faster than mimalloc, yet application coroutines carry zero infrastructure parameters - the out-of-band propagation mechanism and type-erased executor_ref keep the entire allocation and dispatch machinery invisible to every handler signature.
 
-### 3.33. P4178R0 - Trade-offs in Asynchronous Abstraction Design
+### 3.32. P4178R0 - Trade-offs in Asynchronous Abstraction Design
 
 Every finding in P4178R0 cites exactly two sources, and both of them are P2300R10. The paper pairs eighteen passages from the C++26 senders specification that appear to be in tension, organized into four patterns: claims walked back within the same section, asymmetric evidentiary standards for coroutines versus senders, prior art dismissed then adopted, and stated goals contradicted by the design. The contrast is sharpest in code: Section 4.16 calls a seven-line coroutine retry "trivial," while Section 1.5.2 presents the sender implementation of the same algorithm at roughly 125 lines. Every finding is accompanied by a charitable reading that explains how the tension might resolve, making the analysis harder to dismiss and easier to act on.
 
-### 3.34. P4182R1 - A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains
+### 3.33. P4182R1 - A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains
 
 Every WG21 mailing rehearses the same platform deployment facts, and this paper exists so no author ever has to write them again. P4182R1 consolidates seven platform categories - from full-hosted desktop through bare-metal Cortex-M and GPU device code - and six compiler families into structured tables covering coroutines, TLS, PMR, heap availability, exception defaults, allocation style, and scheduling class. It extends the capability survey from P4127R0 with additional SG14-relevant columns and adds matching compiler rows for GCC, Clang, MSVC, Arm GNU bare-metal, NVIDIA nvcc, and the EDG front end. The document is a living reference: future authors cite one paper number instead of writing three paragraphs of platform context that the next author will rewrite from scratch.
 
-### 3.35. P4183R0 - Is This C++? Find Out With This Tool
+### 3.34. P4183R0 - Is This C++? Find Out With This Tool
 
 Twenty-four questions from Stroustrup's *The Design and Evolution of C++* have been distilled into a single checklist that scores any proposal, feature, or library on whether it belongs in the language. P4183R0 publishes the checklist as a structured prompt designed to be operated by a large language model: feed it a paper, answer yes, no, or not applicable to each question, divide, and read the verdict - from "This is C++" at 90 percent down to "This is another matter entirely" below 29. Twenty-three questions come from D&E, one from Howard Hinnant, and the execution protocol specifies a two-phase evidence-extraction-then-verification pipeline rigorous enough to catch a subagent's tagging errors. The entire tool is dedicated to the public domain under CC0, asks for nothing from the committee, and invites anyone to point it at the next proposal that lands in a mailing.
 
-### 3.36. P4184R0 - Is P3874R1 C++?
+### 3.35. P4184R0 - Is P3874R1 C++?
 
 The committee's memory safety direction paper scores 40 percent against Stroustrup's own design principles - eight out of twenty applicable - and the verdict is "not even close to C++." This paper applies the twenty-four-point checklist from P4183R0 to P3874R1, with a large language model evaluating each principle against direct quotations from the memory safety paper. The audit finds failures on zero-overhead cost, static type system preservation, compile-time over runtime checking, multi-paradigm freedom, and integration with existing features. Every judgment carries a tagged evidence chain - specific passage, verdict, and reasoning - that any committee member can reproduce or contest.
 
-### 3.37. P4207R0 - Prosecute Your Paper To Improve It
+### 3.36. P4207R0 - Prosecute Your Paper To Improve It
 
 A dollar in API tokens and fifteen minutes of wall-clock time produced five formal objections against the fourteen-revision, three-year Contracts proposal - objections that tracked the substantive national body comments filed after adoption. P4207R0 introduces the Advocatus Diaboli, a structured AI red-teaming methodology for WG21 papers in which a built-in counter-examiner kills bad findings through six named challenges before they reach the record, the tool deposes the author before any charge is filed, and sections that survive earn formal certification as battle-hardened. The methodology ships in three cultural translations - a medieval canonical tribunal, a German engineering inspection, and a Chinese imperial court examination - each implementing identical logic under CC0, runnable against any frontier language model. The paper includes falsifiable predictions on one-, two-, and three-year horizons, forming the retrospective accountability mechanism the committee does not yet require for adopted features.
 
-### 3.38. P4208R0 - C++ Contracts on Trial - Does P2900 Survive Cross-Examination?
+### 3.37. P4208R0 - C++ Contracts on Trial - Does P2900 Survive Cross-Examination?
 
 Of the roughly fifteen adversarial charges filed against the 119-page C++26 Contracts proposal, fourteen collapsed under cross-examination - twelve because P2900 had already confessed the limitation before any critic could raise it. This paper applies the Advocatus Diaboli framework from P4207 to P2900R14, stress-testing every claim across twenty-one articuli drawn from five years of SG21 deliberation, seven national-body removal requests, and three competing counter-proposals. Eleven sections earn formal approbatio; only one objection survives: the gap between the paper's safety-motivated design narrative and the non-normative weight of its recommended-practice default for enforce semantics. The verdict is cum obiectionibus - the cause proceeds, and the surviving objection concerns framing rather than substance.
 
@@ -273,20 +269,18 @@ their work and interests.
 
 [29] P4127R0 - "The Coroutine Frame Allocator Timing Problem" (Vinnie Falco, 2026).
 
-[30] P4137R1 - "Profile Analysis and Verification Evidence (PAVE)" (Vinnie Falco, 2026).
+[30] P4166R0 - "Benefits of Frame-Visible Coroutines for Senders" (Vinnie Falco, 2026).
 
-[31] P4166R0 - "Benefits of Frame-Visible Coroutines for Senders" (Vinnie Falco, 2026).
+[31] P4172R1 - "IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, 2026).
 
-[32] P4172R1 - "IoAwaitable for Coroutine-Native Byte-Oriented I/O" (Vinnie Falco, 2026).
+[32] P4178R0 - "Trade-offs in Asynchronous Abstraction Design" (Vinnie Falco, 2026).
 
-[33] P4178R0 - "Trade-offs in Asynchronous Abstraction Design" (Vinnie Falco, 2026).
+[33] P4182R1 - "A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains" (Vinnie Falco, 2026).
 
-[34] P4182R1 - "A Citable Inventory of Platforms, Operating Systems, and Compiler Toolchains" (Vinnie Falco, 2026).
+[34] P4183R0 - "Is This C++? Find Out With This Tool" (Vinnie Falco, 2026).
 
-[35] P4183R0 - "Is This C++? Find Out With This Tool" (Vinnie Falco, 2026).
+[35] P4184R0 - "Is P3874R1 C++?" (Vinnie Falco, 2026).
 
-[36] P4184R0 - "Is P3874R1 C++?" (Vinnie Falco, 2026).
+[36] P4207R0 - "Prosecute Your Paper To Improve It" (Vinnie Falco, 2026).
 
-[37] P4207R0 - "Prosecute Your Paper To Improve It" (Vinnie Falco, 2026).
-
-[38] P4208R0 - "C++ Contracts on Trial - Does P2900 Survive Cross-Examination?" (Vinnie Falco, 2026).
+[37] P4208R0 - "C++ Contracts on Trial - Does P2900 Survive Cross-Examination?" (Vinnie Falco, 2026).
