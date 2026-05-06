@@ -47,7 +47,7 @@ This paper asks for nothing.
 | TCP/IP        | Narrow (IP datagram)         | DARPA implementations | Worldwide                       | Won over OSI   |
 | IEEE 754      | Narrow (one FP format)       | Intel 8087            | Every vendor                    | Won over chaos |
 | STL iterators | Narrow (3 operations)        | STL library, 1994     | Every container                 | Universal      |
-| REST          | Narrow (resources and verbs) | HTTP practice         | The web                         | Won over CORBA |
+| REST          | Narrow (resources and verbs) | HTTP practice         | The web                         | Won over SOAP  |
 | CORBA         | Wide (6+ bundled concerns)   | OMG committee         | Vendor mandates                 | Failed         |
 | OSI           | Wide (7 layers)              | ISO committee         | Government mandates             | Failed         |
 
@@ -55,7 +55,7 @@ Butler Lampson:
 
 > "An interface should capture the minimum essentials of an abstraction. Don't generalize; generalizations are generally wrong."
 >
-> [Lampson, "Hints for Computer System Design"](http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf)<sup>[1]</sup> (1983)
+> [Lampson, "Hints for Computer System Design"](https://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf)<sup>[1]</sup> (1983)
 
 Ted Kaminski captured the tradeoff:
 
@@ -77,7 +77,7 @@ await_resume()   -> T
 |---------------------------|-------------------|--------------------------------|
 | Operations                | 3                 | 3                              |
 | Cross-library interop     | Emergent          | Emergent                       |
-| Designed for interop?     | No                | No                             |
+| Mandated by committee?    | No                | No                             |
 | Type erasure              | N/A               | `coroutine_handle<>` built in  |
 | Practice before standard  | STL, 1994         | MSVC, Clang, GCC before C++20  |
 | Stable since              | C++98 (28 years)  | C++20 (6 years)                |
@@ -91,7 +91,7 @@ A `task<T>` from one library can be `co_await`ed inside a `task<T>` from another
 | tmc::task (TooManyCooks)  | any coroutine       | None                  |
 | stdexec sender (via task) | any awaitable       | None                  |
 
-The structure mirrors the Internet's hourglass architecture<sup>[3]</sup>. Below the waist: runtimes (Asio, libuv, io_uring, GPU schedulers). Above the waist: task types, algorithms, ergonomic layers. At the waist: three operations. Innovation happens above and below. The waist is fixed.
+The structure mirrors the Internet's hourglass architecture<sup>[3]</sup>. Below the waist: I/O substrates (Asio, libuv, io_uring, GPU dispatch). Above the waist: task types, algorithms, ergonomic layers. At the waist: three operations. Innovation happens above and below. The waist is fixed.
 
 [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[4]</sup> extends the protocol with an `io_env` parameter that carries stop token, executor, and allocator through `await_suspend` - context propagation without coupling the awaitable to any promise type:
 
@@ -104,6 +104,8 @@ concept IoAwaitable =
         a.await_suspend( h, env );
     };
 ```
+
+This shows only the `await_suspend` extension; the full awaitable protocol (`await_ready`, `await_suspend`, `await_resume`) is defined by the language and refined in [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[4]</sup>.
 
 ## 4. Which Pattern Does `std::execution` Follow?
 
@@ -156,7 +158,8 @@ auto s = just(buf)
        | let_value([&](auto b) {
            return async_read(stream, b);
          })
-       | then([](std::size_t n) { /* ... */ });
+       | then([](std::size_t n) { /* use n */ })
+       | upon_error([](auto e) { /* handle error */ });
 sync_wait(on(system_ctx.get_scheduler(), std::move(s)));
 ```
 
@@ -187,7 +190,7 @@ Universal models that endure have one thing in common: they earned the name.
 
 ## References
 
-[1] [Hints for Computer System Design](http://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf) - "Hints for Computer System Design" (Butler Lampson, 1983).
+[1] [Hints for Computer System Design](https://research.microsoft.com/en-us/um/people/blampson/33-Hints/Acrobat.pdf) - "Hints for Computer System Design" (Butler Lampson, 1983).
 
 [2] [The One Ring Problem](https://tedinski.com/2018/01/30/the-one-ring-problem-abstraction-and-power.html) - "The One Ring Problem: Abstraction and Power" (Ted Kaminski, 2018).
 
@@ -195,7 +198,7 @@ Universal models that endure have one thing in common: they earned the name.
 
 [4] [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-[5] [The Rise and Fall of CORBA](<https://dl.acm.org/doi/10.1145/1142031.1142044>) - "The Rise and Fall of CORBA" (Michi Henning, 2006).
+[5] [The Rise and Fall of CORBA](https://dl.acm.org/doi/10.1145/1142031.1142044) - "The Rise and Fall of CORBA" (Michi Henning, 2006).
 
 [6] [The Trouble With CORBA](https://davidchappell.com/writing/article_Trouble_CORBA.php) - "The Trouble With CORBA" (David Chappell, 1998).
 
