@@ -609,7 +609,10 @@ class ASTRenderer:
         return text
 
     def _render_paragraph(self, tok):
-        text = self._inline_children(tok.get("children", []))
+        children = tok.get("children", [])
+        if len(children) == 1 and children[0].get("type") == "image":
+            return self._render_image(children[0])
+        text = self._inline_children(children)
         if text.strip() == "\\newpage":
             return [PageBreak()]
         text = self._inject_fallback_fonts(text)
@@ -1211,8 +1214,13 @@ class ASTRenderer:
         return f'<a href="{escape_xml(href)}" color="{self.link_color}">{children}</a>'
 
     def _inline_image(self, tok):
-        src = tok.get("attrs", {}).get("src", "")
-        alt = tok.get("attrs", {}).get("alt", "")
+        attrs = tok.get("attrs", {})
+        src = attrs.get("src", "") or attrs.get("url", "")
+        alt = attrs.get("alt", "")
+        if not alt:
+            children = tok.get("children", [])
+            if children and children[0].get("type") == "text":
+                alt = children[0].get("raw", "")
         return escape_xml(alt or f"[image: {src}]")
 
     def _inline_strikethrough(self, tok):
@@ -1266,19 +1274,22 @@ class ASTRenderer:
         return ""
 
     def _render_image(self, tok):
-        src = tok.get("attrs", {}).get("src", "")
+        attrs = tok.get("attrs", {})
+        src = attrs.get("src", "") or attrs.get("url", "")
         resolved = Path(src)
         if not resolved.is_absolute():
             resolved = self.md_dir / src
         if resolved.exists():
             try:
-                img = RLImage(str(resolved), kind="proportional")
+                img = RLImage(str(resolved))
                 iw, ih = img.imageWidth, img.imageHeight
-                if iw > self.content_width:
-                    scale = self.content_width / iw
-                    img = RLImage(str(resolved),
-                                  width=self.content_width,
-                                  height=ih * scale)
+                if iw and ih:
+                    max_h = self._page_h if hasattr(self, "_page_h") else 600
+                    scale = min(self.content_width / iw, max_h / ih, 1.0)
+                    if scale < 1.0:
+                        img = RLImage(str(resolved),
+                                      width=iw * scale,
+                                      height=ih * scale)
                 return [
                     Spacer(1, self.gap_sm),
                     img,
