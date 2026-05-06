@@ -29,7 +29,7 @@ namespace capy {
 // ============================================================
 // execution_context (minimal for demo)
 //
-// The full execution_context (P4003R1 Section 4.4) provides
+// The full execution_context (P4003R3 Section 4.4) provides
 // service management (use_service, make_service), frame
 // allocator accessors (get/set_frame_allocator), and ordered
 // shutdown. The ExecutionContext concept requires a nested
