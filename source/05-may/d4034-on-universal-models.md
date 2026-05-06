@@ -133,7 +133,7 @@ On 2021-09-28, SG1 polled:
 
 > "We believe we need one grand unified model for asynchronous execution in the C++ Standard Library, that covers structured concurrency, event based programming, active patterns, etc."
 
-The result was **no consensus** (leaning in favor): 4 SF, 9 WF, 5 N, 5 WA, 1 SA ([P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html))<sup>[7]</sup>. The committee did not achieve consensus that a universal model was needed. The direction proceeded as a mandate without one.
+The result was **no consensus** (leaning in favor): 4 SF, 9 WF, 5 N, 5 WA, 1 SA ([P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html))<sup>[7]</sup>. The committee did not achieve consensus that a universal model was needed. The direction proceeded as a mandate without one.
 
 | Domain             | Evidence                                              | Status         |
 |--------------------|-------------------------------------------------------|----------------|
@@ -199,7 +199,7 @@ Universal models that endure have one thing in common: they earned the name.
 
 [6] [The Trouble With CORBA](https://davidchappell.com/writing/article_Trouble_CORBA.php) - "The Trouble With CORBA" (David Chappell, 1998).
 
-[7] [P2453R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html) - "2021 October Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, Fabio Fracassi, Ben Craig, 2022).
+[7] [P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html) - "2021 October Library Evolution and Concurrency Networking and Executors Poll Outcomes" (Bryce Adelstein Lelbach, Fabio Fracassi, Ben Craig, 2022). Note: the linked document incorrectly self-reports as P2452R0 due to an authoring error; P2452R0 is a separate paper containing the poll questions.
 
 [8] [CppCon 2025](https://cppcon2025.sched.com/event/27bQ1) - "std::execution in Asio Codebases: Adopting Senders Without a Rewrite" (Robert Leahy, 2025).
 
