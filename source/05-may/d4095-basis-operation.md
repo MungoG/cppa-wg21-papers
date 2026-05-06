@@ -192,7 +192,7 @@ Under the continuation framing, the executor does not need to implement `schedul
 | ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Error propagation       | Real. No channel back to caller after submission.                | No error exists. The I/O has not completed. The handle carries a resumption, not a result.              |
 | Cancellation            | Real. Destruction of untyped callable is ambiguous.              | Un-resumed continuation has one state: waiting. Destruction is cancellation.                            |
-| Zero-allocation         | Real. `execute(F&&)` requires type erasure and heap allocation.  | `coroutine_handle<>` is fixed-size. The awaiter embeds in the frame.                                   |
+| Zero-allocation         | Real. `execute(F&&)` requires type erasure and heap allocation.  | `coroutine_handle<>` is fixed-size. The awaiter embeds in the coroutine frame.                                   |
 | Asymmetry               | Real. `execute` cannot implement `schedule`.                     | Different question. The executor is not the composition mechanism. `async_result` and `co_await` are.   |
 
 The four deficiencies are real under the work framing. Under the continuation framing, three do not arise and the fourth addresses a different question. [P1525R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1525r0.pdf)<sup>[1]</sup> analyzed `execute(F&&)` under the work framing. The work framing was the only framing visible on the API surface in 2019.
