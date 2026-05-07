@@ -317,6 +317,11 @@ public:
 
     ~io_awaitable_promise_base()
     {
+        // Orphaned-continuation cleanup. Reachable only when set_continuation
+        // was called but final_suspend did not run. Valid under the protocol's
+        // cooperative-cancellation lifecycle (Section 5.4): handles are not
+        // destroyed mid-flight, so the parent reached here is one whose only
+        // resumer was this coroutine (e.g., a launcher's trampoline).
         if(cont_ != std::noop_coroutine())
             cont_.destroy();
     }
