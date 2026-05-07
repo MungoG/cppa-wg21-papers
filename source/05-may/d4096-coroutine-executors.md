@@ -173,13 +173,13 @@ If the execution context shuts down, the ownership contract requires the executo
 
 **Sender model:**
 
-If the execution context shuts down, the operation state is destroyed. `set_stopped` propagates cancellation. In-flight results are lost.
+If the execution context shuts down, the implementation is expected to complete outstanding operations via `set_stopped` before destroying the operation state. Destruction alone does not call `set_stopped` - the completion and the resource teardown are distinct events. In-flight results are lost.
 
-| Model           | Catastrophic drop  | Initiator state | Program state                 |
-| --------------- | ------------------ | --------------- | ----------------------------- |
-| Networking TS   | Handler destroyed  | Gone (returned) | Not hung                      |
-| Coroutine model | Handle destroyed   | Suspended       | Not hung (ownership contract) |
-| Sender model    | Op-state destroyed | Connected       | Not hung (`set_stopped`)      |
+| Model           | Catastrophic drop  | Initiator state | Program state                            |
+| --------------- | ------------------ | --------------- | ---------------------------------------- |
+| Networking TS   | Handler destroyed  | Gone (returned) | Not hung                                 |
+| Coroutine model | Handle destroyed   | Suspended       | Not hung (ownership contract)            |
+| Sender model    | Op-state destroyed | Connected       | Not hung (if `set_stopped` called first) |
 
 Under catastrophic conditions, all three models lose in-flight results. This is not a deficiency of any one model. It is a property of catastrophic shutdown. [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[1]</sup>'s "irrecoverable data loss" concern described a structural property of routine operation under the work framing - a fire-and-forget API where the caller hands off work and moves on, with no channel to learn what happened. Under the continuation framing, routine operation delivers the result to the continuation. The information loss that [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[1]</sup> described does not occur during routine operation. It occurs only under catastrophic conditions that affect all models equally.
 
