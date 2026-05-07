@@ -59,7 +59,7 @@ An I/O-aware `when_all` follows the same principle. The combinator knows the res
 auto [ec, n] = co_await sock.async_read_some(buf);
 ```
 
-`ec` is always present. `!ec` means success; the remaining elements are meaningful. `ec` means failure; the remaining elements are present but not guaranteed meaningful. `io_result` is defined in [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[4]</sup>.
+`ec` is always present. `!ec` means success; the remaining elements are meaningful. `ec` means failure; the remaining elements are present but not guaranteed meaningful. `io_result` is defined in [P4166R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4166r0.pdf)<sup>[9]</sup> and implemented in [Capy](https://github.com/cppalliance/capy/blob/p4088r0/include/boost/capy/io_result.hpp)<sup>[3]</sup>.
 
 ### 2.2 Behavior
 
@@ -75,7 +75,7 @@ auto [ec, n] = co_await sock.async_read_some(buf);
 | 8  | One child throws                            | Capture exception. Cancel siblings. Rethrow after all complete.                                                                                    |
 | 9  | Multiple children throw                     | First exception captured. Others discarded. Rethrow first.                                                                                         |
 | 10 | One throws, another returns `ec`            | Exception wins. Tuple is not accessible.                                                                                                           |
-| 11 | Parent stop token fires                     | Children return `operation_aborted`. First `ec` wins.                                                                                              |
+| 11 | Parent stop token fires                     | Stop requested for children. Children observing stop return `operation_aborted`; a child already completing may return its own result. First `ec` wins. |
 | 12 | All children fail                           | Propagate single `error_code` (first wins). Not a tuple of failures.                                                                               |
 
 The combinator inspects the **value** - the `error_code` in the first position of the result. It does not dispatch on a channel tag.
@@ -313,7 +313,7 @@ A `when_all` that dispatches based on what it receives.
 
 ### 6.1 IoAwaitable Children
 
-When all children satisfy `IoAwaitable`, the combinator takes the coroutine-native path:
+When all children satisfy `IoAwaitable` ([P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[4]</sup>), the combinator takes the coroutine-native path:
 
 1. Creates a shared `stop_source`.
 2. Bridges the parent's stop token to the shared stop source.
@@ -425,4 +425,6 @@ The author thanks Peter Dimov for the `io_result` return type design and the `se
 [7] Dietmar K&uuml;hl - Irreplaceable sender algorithms inside a coroutine body (LEWG reflector, March 18, 2026).
 
 [8] [P2430R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2430r0.pdf) - "Partial success scenarios with P2300" (Chris Kohlhoff, 2021).
+
+[9] [P4166R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4166r0.pdf) - "Benefits of Frame-Visible Coroutines for Senders" (Vinnie Falco, 2026).
 
