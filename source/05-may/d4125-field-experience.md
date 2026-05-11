@@ -216,15 +216,7 @@ The partner's goals for the port are twofold: (a) establish that performance and
 
 ### 7.2 Why Not Sender/Receivers?
 
-For additional context on why the coroutine-native path was chosen, we asked the integration partner why they had not previously considered sender/receivers given the attention it has received in the committee as a potential foundational building block. The following is a summary of their response. The partner states that it should be considered opinion only, and notes that they have not been keeping up-to-date with all the latest changes to sender/receivers - some things may have changed.
-
-The partner's architecture is essentially a message passing architecture, which is the norm for high performance financial market systems targeting ultra-low latency and high message throughput. In the partner's view, sender/receivers is an opinionated structured concurrency model that chooses specific trade-offs which are at odds with their existing architecture. They acknowledge that those choices have their benefits in other domains and in more general applications, but state that they create friction in the context of their architecture.
-
-The partner also expressed the view that the sender/receivers model does not scale across their architecture as a whole - for example, across multiple deployed components - and forces a set of design choices that make porting more of a rewrite than an incremental refactoring. In their assessment, the approach conflates a number of concerns, such as providing a pipeline model that is not equivalent to a full-fledged message passing pipeline (for which the partner has its own mature library).
-
-Regardless of the complexity of any potential port (which the partner characterises as closer to a complete rewrite), the trade-off choices already represent a forced compromise on the existing architecture. This removed any potential performance motivation from the outset. Further, the invasive nature of such a change would impact too many libraries to make the effort feasible to validate from a behavioural point of view, as there would be fundamental changes required to message pathways.
-
-Lastly, the partner expressed concern over the expression syntax used to compose pipelines in sender/receivers, stating that it caused many mental "trips" when trying to reason about what was happening. In their view, it may be adequate for simple examples but does not appear to scale, and is not comparable or compatible with the kind of pipeline architecture they use.
+The partner evaluated sender/receivers and concluded that the model of computation was not aligned with their workload or their workflow. No further assessment was undertaken.
 
 ### 7.3 Migration Approach
 
