@@ -495,7 +495,7 @@ class ASTRenderer:
                 spaceAfter=space_after,
                 lineCap='butt'))
         else:
-            flows.append(Spacer(1, space_after))
+            flows.append(Spacer(1, self.gap_sm))
         flows.append(TitleEnd())
         return flows
 
