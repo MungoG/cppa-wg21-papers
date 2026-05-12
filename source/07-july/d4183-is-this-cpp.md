@@ -1,7 +1,7 @@
 ---
 title: "Is This C++? Find Out With This Tool"
 document: P4183R0
-date: 2026-05-01
+date: 2026-07-01
 intent: info
 audience: WG21
 reply-to:
@@ -21,7 +21,7 @@ The author dedicates all original content in this paper to the public domain und
 
 ## Revision History
 
-### R0: May 2026 (pre-Brno mailing)
+### R0: July 2026 (post-Brno mailing)
 
 * Initial version.
 

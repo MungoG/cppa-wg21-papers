@@ -10,9 +10,9 @@ reply-to:
 
 ## Abstract
 
-Thirteen papers, fourteen failure modes, twenty-seven voting exhibits, and nine discrepancies with ISO's own rules deliver the first published structural audit of how WG21 governs itself. Four additional papers complete the buffer-vocabulary formalization for the Network Endeavor series.
+Thirteen papers, fourteen failure modes, twenty-seven voting exhibits, and nine discrepancies with ISO's own rules deliver the first published structural audit of how WG21 governs itself. Four additional papers complete the buffer-vocabulary formalization for the Network Endeavor series. Two papers deliver an AI-operated design-principles checklist derived from Stroustrup's D&E and its first application to an active proposal.
 
-This paper summarizes 17 papers published in the
+This paper summarizes 19 papers published in the
 July 2026 mailing. It is a reading guide: an executive summary
 that identifies the logical series within the collection, describes
 what each series delivers, and provides individual summaries of every
@@ -40,6 +40,8 @@ Two papers translate the diagnostic record into concrete forward commitments - a
 Two papers expose specific, verifiable gaps between WG21's stated procedures and the rules that formally bind it. D4193R0 places SD-4 and the ISO/IEC Directives side by side on nine points - subgroup chair appointment, consensus thresholds, ballot comment scope, escalation rules, priority allocation, meeting record transparency - and finds SD-4 deviates on every one, noting that no other JTC 1 working group maintains a comparable procedural supplement and that the only body reaching similar scale - MPEG at 300 to 500 participants - was formally restructured by ISO rather than permitted to write its own governance document. P4169R0 tackles a narrower but equally consequential gap: at Croydon, multiple papers were revised during the meeting week and voted into the working draft in versions that never appeared in any pre-meeting mailing. The proposed bright-line amendment to SD-4 requires that any paper seeking a plenary motion with normative wording changes must have appeared, in the exact revision to be voted on, in a pre-meeting mailing - replacing subjective chair judgment with an objective test. These two papers ground the broader diagnostic findings in specific, actionable procedural corrections.
 
 Four papers complete the buffer-vocabulary formalization for the Network Endeavor series. *I/O Buffer Ranges* and *I/O Buffer Ranges: Design Rationale* split a single proposal into a proposal-only ask paper and a design-rationale companion, following the IoAwaitable pattern of P4003R1 paired with P4172R0. The ask paper proposes two byte-region types, two range concepts, and four customization point objects; the design paper carries the seven-ecosystem convergence record, the relationship to `std::ranges`, the anticipated objections, and the Capy header inventory. *Dynamic Buffer* and *Dynamic Buffer: Design Rationale* repeat the split for the growable buffer concept (prepare, commit, data, consume), with the design paper covering the two-phase model, the four-implementation tour from Capy, the three-ecosystem convergence (Asio, .NET, Go), and the deferrals (allocator-aware variants, owned-storage refinement, lifetime parameterization).
+
+Two papers deposit a reusable AI-operated evaluation instrument into the permanent record. P4183R0 distills twenty-four design principles from Stroustrup's *The Design and Evolution of C++* into a structured checklist prompt: feed it a proposal, answer yes, no, or not applicable to each question, divide, and read the verdict. P4184R0 applies that checklist to P3874R1 and scores the memory safety direction paper at 40 percent - eight out of twenty applicable principles satisfied. The tool and its first application arrive together; the checklist is dedicated to the public domain under CC0, and anyone can point it at the next proposal that lands in a mailing.
 
 The full collection gives the reader something qualitatively different from any subset. The diagnostic series describes the system; the institutional-theory papers explain why it behaves the way it does; the forward-direction papers show what it would take to change course; the procedural papers identify the specific rule gaps where change requires no new authority. No prior WG21 mailing has assembled a comparable body of evidence - published papers, meeting minutes, voting records, on-camera interviews, ISO clause comparisons, and peer-reviewed academic literature - into a single cross-referenced analysis of the committee's governance. Every claim is traceable to published N-numbered or P-numbered documents; the collection does not require agreement with every conclusion, but it makes engagement with the evidence unavoidable.
 
@@ -117,11 +119,19 @@ The proposal-only ask paper for the `DynamicBuffer` concept - a growable byte bu
 
 The design-rationale companion to *Dynamic Buffer*<sup>[16]</sup>. The paper opens with the brutal summary that C++ has growable strings and growable vectors but no growable buffer for I/O. From there the paper carries the two-phase model rationale (writable and readable boundaries advancing independently in the same object), the required-associated-types rationale (a flat buffer returns a single `const_buffer`, a circular buffer returns a `const_buffer_pair` because the readable region may wrap), the four-implementation tour from Capy (`flat_dynamic_buffer`, `circular_dynamic_buffer`, `vector_dynamic_buffer`, `string_dynamic_buffer` - the first two caller-owned-storage, the latter two adapters over standard containers), the three-ecosystem convergence record, and four deferrals. The paper is research-report mode and matches the buffer-ranges design paper in voice and structure.
 
+### 3.18. P4183R0 - Is This C++? Find Out With This Tool
+
+Twenty-four questions from Stroustrup's *The Design and Evolution of C++* have been distilled into a single checklist that scores any proposal, feature, or library on whether it belongs in the language. P4183R0 publishes the checklist as a structured prompt designed to be operated by a large language model: feed it a paper, answer yes, no, or not applicable to each question, divide, and read the verdict - from "This is C++" at 90 percent down to "This is another matter entirely" below 29. Twenty-three questions come from D&E, one from Howard Hinnant, and the execution protocol specifies a two-phase evidence-extraction-then-verification pipeline rigorous enough to catch a subagent's tagging errors. The entire tool is dedicated to the public domain under CC0, asks for nothing from the committee, and invites anyone to point it at the next proposal that lands in a mailing.
+
+### 3.19. P4184R0 - Is P3874R1 C++?
+
+The committee's memory safety direction paper scores 40 percent against Stroustrup's own design principles - eight out of twenty applicable - and the verdict is "not even close to C++." This paper applies the twenty-four-point checklist from P4183R0 to P3874R1, with a large language model evaluating each principle against direct quotations from the memory safety paper. The audit finds failures on zero-overhead cost, static type system preservation, compile-time over runtime checking, multi-paradigm freedom, and integration with existing features. Every judgment carries a tagged evidence chain - specific passage, verdict, and reasoning - that any committee member can reproduce or contest.
+
 ---
 
 ## 4. Conclusion
 
-This reading guide covers 17 papers from the July 2026 mailing.
+This reading guide covers 19 papers from the July 2026 mailing.
 The author hopes it helps the reader find the papers most relevant to
 their work and interests.
 
@@ -162,3 +172,7 @@ their work and interests.
 [16] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper for the growable buffer concept. D0003R0.
 
 [17] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the growable buffer concept. D0004R0.
+
+[18] P4183R0 - "Is This C++? Find Out With This Tool" (Vinnie Falco, 2026).
+
+[19] P4184R0 - "Is P3874R1 C++?" (Vinnie Falco, 2026).
