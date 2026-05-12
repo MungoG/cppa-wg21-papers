@@ -26,6 +26,8 @@ Read [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[1]</sup> first 
 
 * Corrected P4003 section cross-references in Section 11.2 (await_suspend is Section 4.2; execution_context is Section 4.4).
 * Formatting corrections.
+* Expanded Section 6.3 with subsection 6.3.1 (The Recycling Pattern) explaining the mechanism behind amortized zero allocation.
+* Added note in Section 11.1 on stdexec's independent adoption of the frame allocator pattern via `exec::function`.
 
 ### R0: April 2026 (post-Croydon mailing)
 
@@ -363,6 +365,16 @@ The mimalloc result is the critical comparison: a state-of-the-art general-purpo
 
 *Historical context.* [P0054R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0054r0.html)<sup>[29]</sup> established `operator new` as the coroutine frame allocation hook. [P2006R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2006r0.pdf)<sup>[30]</sup> documented the "lifetime impedance mismatch" when adapting senders to awaitables - the adapter often adds a heap allocation due to inverted ownership. [P4095R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r0.pdf)<sup>[31]</sup> Section 4.3 demonstrated that the zero-allocation argument in [P1525R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1525r0.pdf)<sup>[32]</sup> applies to `execute(F&&)` type erasure, not to coroutine awaiters where the awaiter lives in the frame.
 
+#### 6.3.1 The Recycling Pattern
+
+The recycling allocator is not proposed for standardisation - the choice of frame allocation strategy is a quality-of-implementation concern. What the standard proposes is the `memory_resource` hook. What follows describes the strategy used in Capy and Corosio to explain why it is effective.
+
+Coroutine frames in an I/O chain nest like stack frames. A parent coroutine allocates its frame, calls a child, the child allocates its frame, runs to completion, deallocates, and the parent continues. Deallocation order mirrors allocation order. Over a steady-state server loop - accept, read, process, write, repeat - the same sequence of coroutines executes repeatedly with the same frame sizes.
+
+A recycling allocator exploits both properties. It maintains a free list of recently deallocated blocks, keyed by size. When the next allocation requests a block of a size already in the cache, the allocator returns the cached block with no system call. Because frame sizes repeat (the same coroutine has the same frame layout on every invocation) and lifetimes nest (deallocation feeds the cache before the next allocation of the same size), every frame allocation after the first iteration is a cache hit. The result is amortized zero allocation per I/O operation in the hot path.
+
+This is the mechanism behind the 3.1x speedup over `std::allocator` in the benchmark table above. A general-purpose allocator like mimalloc cannot exploit the nesting invariant because it serves allocations of arbitrary size and lifetime. The recycling allocator is specialised for the narrow pattern that coroutine frames exhibit - and that pattern is inherent to coroutine-based I/O, not an implementation accident.
+
 The frame allocator must be present at invocation time: `operator new` executes before the coroutine body. Section 8 documents the two delivery channels.
 
 ---
@@ -621,6 +633,8 @@ Four alternative approaches address the same problem space. Each is presented at
 
 **Sender/receiver ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[12]</sup>).** The committee-adopted framework for structured asynchronous execution. Its advantages are real: generality across I/O, GPU, and parallel workloads; a formal algebra of sender composition; strong structured-concurrency guarantees. For domains that require DAG-shaped execution graphs, sender/receiver provides machinery that _IoAwaitable_ does not attempt. Where sender/receiver is less well suited is in the I/O-specific properties: it requires a second template parameter on the task type, it does not define a frame allocator propagation mechanism, and the sender composition algebra adds conceptual weight that I/O coroutines do not use. [P4007R3](https://isocpp.org/files/papers/P4007R3.pdf)<sup>[41]</sup> and [P4014R2](https://isocpp.org/files/papers/P4014R2.pdf)<sup>[42]</sup> examine this relationship in detail.
 
+Independently, Ian Petersen has adopted the frame allocator pattern within stdexec itself: `exec::function<...>` ([NVIDIA/stdexec#2040](https://github.com/NVIDIA/stdexec/pull/2040)<sup>[43]</sup>, [exec/function.hpp](https://github.com/NVIDIA/stdexec/blob/main/include/exec/function.hpp)<sup>[44]</sup>) introduces a `get_frame_allocator` environment query to achieve the same amortized-zero-allocation behaviour for type-erased senders, explicitly crediting the Capy recycling allocator as the inspiration.
+
 **Boost.Asio completion handlers ([Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[5]</sup>).** The most widely deployed C++ async I/O model. Mature, extensively documented. Supports coroutines through completion tokens. The absence of a standard frame allocator propagation mechanism forces either `allocator_arg_t` signature pollution or reliance on `shared_ptr` for lifetime management.
 
 **Pure coroutine libraries (cppcoro, libcoro).** Coroutine task types and synchronization primitives without a formal protocol. Simple, but each library defines its own model. Without a shared protocol, each library is an island.
@@ -650,7 +664,7 @@ Each major design decision is documented with rationale, trade-offs, and conditi
 | DNS resolution   | Corosio<sup>[4]</sup>  | All supported platforms                                  |
 | Timers           | Corosio<sup>[4]</sup>  | All supported platforms                                  |
 
-[P4125R1](https://isocpp.org/files/papers/P4125R1.pdf)<sup>[43]</sup> reports a derivatives exchange porting from Asio callbacks to coroutine-native I/O using the _IoAwaitable_ protocol.
+[P4125R1](https://isocpp.org/files/papers/P4125R1.pdf)<sup>[45]</sup> reports a derivatives exchange porting from Asio callbacks to coroutine-native I/O using the _IoAwaitable_ protocol.
 
 Domains not yet validated: embedded/real-time, file I/O, database I/O, game engines. GPU compute is a complementary domain addressed by `std::execution` (Section 10).
 
@@ -698,7 +712,7 @@ When code calls a blocking read on a socket, the thread waits while the network 
 
 ### A.2 The Thread-Per-Connection Trap
 
-The natural response to blocking I/O is to spawn a thread per connection. Each thread consumes memory (typically 1MB for the stack) and creates scheduling overhead. At 10,000 connections, the scheduler spends more time switching between threads than running actual code. The [C10K problem](https://www.kegel.com/c10k.html)<sup>[44]</sup> revealed that thread-per-connection does not scale.
+The natural response to blocking I/O is to spawn a thread per connection. Each thread consumes memory (typically 1MB for the stack) and creates scheduling overhead. At 10,000 connections, the scheduler spends more time switching between threads than running actual code. The [C10K problem](https://www.kegel.com/c10k.html)<sup>[46]</sup> revealed that thread-per-connection does not scale.
 
 ### A.3 Event-Driven I/O
 
@@ -1075,6 +1089,8 @@ struct promise_type
 
 The authors would like to thank Chris Kohlhoff for Boost.Asio and Lewis Baker for his foundational work on C++ coroutines - their contributions shaped the foundation upon which this paper builds. We also thank Peter Dimov and Mateusz Pusz for their valuable feedback, as well as Mohammad Nejati, Michael Vandeberg, and Klemens Morgenstern for their assistance with the implementation. The out-of-band propagation spoilage gap, which led to the `safe_resume` protocol described in Section 8.3, was identified during internal review.
 
+Ian Petersen independently adopted the frame allocator pattern within stdexec, introducing `exec::function<...>` with a `get_frame_allocator` environment query and publicly attributing the approach to the Capy recycling allocator.
+
 ---
 
 ## References
@@ -1163,6 +1179,10 @@ The authors would like to thank Chris Kohlhoff for Boost.Asio and Lewis Baker fo
 
 [42] [P4014R2](https://isocpp.org/files/papers/P4014R2.pdf) - "The Sender Sub-Language" (Vinnie Falco, Mungo Gill, 2026).
 
-[43] [P4125R1](https://isocpp.org/files/papers/P4125R1.pdf) - "Report: Coroutine-Native I/O at a Derivatives Exchange" (Mungo Gill, 2026).
+[43] [NVIDIA/stdexec#2040](https://github.com/NVIDIA/stdexec/pull/2040) - "Introduce exec::function<...>" (Ian Petersen, 2026).
 
-[44] [The C10K problem](https://www.kegel.com/c10k.html) - Scalable network programming (Dan Kegel).
+[44] [exec/function.hpp](https://github.com/NVIDIA/stdexec/blob/main/include/exec/function.hpp) (Ian Petersen, 2026).
+
+[45] [P4125R1](https://isocpp.org/files/papers/P4125R1.pdf) - "Report: Coroutine-Native I/O at a Derivatives Exchange" (Mungo Gill, 2026).
+
+[46] [The C10K problem](https://www.kegel.com/c10k.html) - Scalable network programming (Dan Kegel).
