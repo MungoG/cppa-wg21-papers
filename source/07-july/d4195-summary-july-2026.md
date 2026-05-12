@@ -10,9 +10,9 @@ reply-to:
 
 ## Abstract
 
-Thirteen papers, fourteen failure modes, twenty-seven voting exhibits, and nine discrepancies with ISO's own rules deliver the first published structural audit of how WG21 governs itself. Four additional papers complete the buffer-vocabulary formalization for the Network Endeavor series. Two papers deliver an AI-operated design-principles checklist derived from Stroustrup's D&E and its first application to an active proposal.
+Thirteen papers, fourteen failure modes, twenty-seven voting exhibits, and nine discrepancies with ISO's own rules deliver the first published structural audit of how WG21 governs itself. Four additional papers complete the buffer-vocabulary formalization for the Network Endeavor series. Two papers deliver an AI-operated design-principles checklist derived from Stroustrup's D&E and its first application to an active proposal. One paper surveys every successful universal model in computing history and asks whether C++ already has one.
 
-This paper summarizes 19 papers published in the
+This paper summarizes 20 papers published in the
 July 2026 mailing. It is a reading guide: an executive summary
 that identifies the logical series within the collection, describes
 what each series delivers, and provides individual summaries of every
@@ -42,6 +42,8 @@ Two papers expose specific, verifiable gaps between WG21's stated procedures and
 Four papers complete the buffer-vocabulary formalization for the Network Endeavor series. *I/O Buffer Ranges* and *I/O Buffer Ranges: Design Rationale* split a single proposal into a proposal-only ask paper and a design-rationale companion, following the IoAwaitable pattern of P4003R1 paired with P4172R0. The ask paper proposes two byte-region types, two range concepts, and four customization point objects; the design paper carries the seven-ecosystem convergence record, the relationship to `std::ranges`, the anticipated objections, and the Capy header inventory. *Dynamic Buffer* and *Dynamic Buffer: Design Rationale* repeat the split for the growable buffer concept (prepare, commit, data, consume), with the design paper covering the two-phase model, the four-implementation tour from Capy, the three-ecosystem convergence (Asio, .NET, Go), and the deferrals (allocator-aware variants, owned-storage refinement, lifetime parameterization).
 
 Two papers deposit a reusable AI-operated evaluation instrument into the permanent record. P4183R0 distills twenty-four design principles from Stroustrup's *The Design and Evolution of C++* into a structured checklist prompt: feed it a proposal, answer yes, no, or not applicable to each question, divide, and read the verdict. P4184R0 applies that checklist to P3874R1 and scores the memory safety direction paper at 40 percent - eight out of twenty applicable principles satisfied. The tool and its first application arrive together; the checklist is dedicated to the public domain under CC0, and anyone can point it at the next proposal that lands in a mailing.
+
+One paper examines what makes a universal model succeed or fail. P4034R0 lines up every successful universal model in computing history - TCP/IP, IEEE 754, STL iterators, REST - and observes that each was narrow in scope, emerged from practice, and achieved adoption before standardization. It places the three-operation C++20 awaitable protocol in that lineage and `std::execution` alongside CORBA and OSI on the other side of the ledger, while a survey of six major languages confirms that every one ships standard networking and none ships a sender/receiver framework.
 
 The full collection gives the reader something qualitatively different from any subset. The diagnostic series describes the system; the institutional-theory papers explain why it behaves the way it does; the forward-direction papers show what it would take to change course; the procedural papers identify the specific rule gaps where change requires no new authority. No prior WG21 mailing has assembled a comparable body of evidence - published papers, meeting minutes, voting records, on-camera interviews, ISO clause comparisons, and peer-reviewed academic literature - into a single cross-referenced analysis of the committee's governance. Every claim is traceable to published N-numbered or P-numbered documents; the collection does not require agreement with every conclusion, but it makes engagement with the evidence unavoidable.
 
@@ -127,11 +129,15 @@ Twenty-four questions from Stroustrup's *The Design and Evolution of C++* have b
 
 The committee's memory safety direction paper scores 40 percent against Stroustrup's own design principles - eight out of twenty applicable - and the verdict is "not even close to C++." This paper applies the twenty-four-point checklist from P4183R0 to P3874R1, with a large language model evaluating each principle against direct quotations from the memory safety paper. The audit finds failures on zero-overhead cost, static type system preservation, compile-time over runtime checking, multi-paradigm freedom, and integration with existing features. Every judgment carries a tagged evidence chain - specific passage, verdict, and reasoning - that any committee member can reproduce or contest.
 
+### 3.20. P4034R0 - On Universal Models
+
+Fourteen years after the executor discussion began, C++ ships `std::execution` in C++26 but still has no standard networking - the use case that started the conversation. P4034R0 lines up every successful universal model in computing history - TCP/IP, IEEE 754, STL iterators, REST - and observes that each one was narrow in scope, emerged from practice, and achieved adoption before standardization, then places `std::execution` and its six bundled concerns alongside CORBA and OSI on the other side of the ledger. The paper argues that a universal async protocol may already exist in plain sight: the three-operation C++20 awaitable protocol, which today enables cross-library coroutine interop between cppcoro, Folly, Asio, and TooManyCooks with zero coordination between authors. A side-by-side code comparison distills the stakes for ordinary developers into two lines of `co_await` versus six lines of sender chains, while a survey of six major languages confirms that every one ships standard networking and none ships a sender/receiver framework.
+
 ---
 
 ## 4. Conclusion
 
-This reading guide covers 19 papers from the July 2026 mailing.
+This reading guide covers 20 papers from the July 2026 mailing.
 The author hopes it helps the reader find the papers most relevant to
 their work and interests.
 
@@ -176,3 +182,5 @@ their work and interests.
 [18] P4183R0 - "Is This C++? Find Out With This Tool" (Vinnie Falco, 2026).
 
 [19] P4184R0 - "Is P3874R1 C++?" (Vinnie Falco, 2026).
+
+[20] P4034R0 - "On Universal Models" (Vinnie Falco, 2026).
