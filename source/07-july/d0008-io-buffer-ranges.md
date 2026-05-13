@@ -1,6 +1,6 @@
 ---
 title: "I/O Buffer Ranges: Design Rationale"
-document: D0002R0
+document: D0008R0
 date: 2026-05-15
 intent: info
 audience: LEWG
@@ -518,8 +518,8 @@ Neil MacIntosh's [P0298R3](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/20
 
 [19] [P0298R3](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0298r3.pdf) - "A byte type definition" (Neil MacIntosh, Botond Ballo, 2017).
 
-[20] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper. D0001R0.
+[20] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper. D0007R0.
 
-[21] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper for the growable buffer concept. D0003R0.
+[21] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper for the growable buffer concept. D0009R0.
 
-[22] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the growable buffer concept. D0004R0.
+[22] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the growable buffer concept. D0010R0.

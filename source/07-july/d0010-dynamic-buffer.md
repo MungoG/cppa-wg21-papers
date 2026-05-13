@@ -1,6 +1,6 @@
 ---
 title: "Dynamic Buffer: Design Rationale"
-document: D0004R0
+document: D0010R0
 date: 2026-05-15
 intent: info
 audience: LEWG
@@ -327,13 +327,13 @@ Peter Dimov's review of the Capy buffer code surfaced the contract questions tra
 
 [6] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O on epoll, kqueue, and IOCP (Vinnie Falco, 2024-2026).
 
-[7] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper. D0003R0.
+[7] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper. D0009R0.
 
-[8] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the byte-region descriptors and sequence concepts. D0002R0.
+[8] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the byte-region descriptors and sequence concepts. D0008R0.
 
 [9] [C++ Working Draft](https://eel.is/c++draft/) - `<vector>`, `<string>`.
 
-[10] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper for the byte-region vocabulary. D0001R0.
+[10] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper for the byte-region vocabulary. D0007R0.
 
 [11] [.NET API: System.Buffers.IBufferWriter&lt;T&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.buffers.ibufferwriter-1) - Producer interface for incremental writes (Microsoft, 2018-2026).
 

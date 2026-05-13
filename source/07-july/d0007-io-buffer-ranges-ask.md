@@ -1,6 +1,6 @@
 ---
 title: "I/O Buffer Ranges"
-document: D0001R0
+document: D0007R0
 date: 2026-05-15
 intent: ask
 audience: LEWG
@@ -222,11 +222,11 @@ Peter Dimov's review of the Capy buffer code surfaced the contract-tightening qu
 
 [6] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O on epoll, kqueue, and IOCP (Vinnie Falco, 2024-2026).
 
-[7] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper. D0002R0.
+[7] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper. D0008R0.
 
-[8] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper for the growable buffer concept. D0003R0.
+[8] *Dynamic Buffer* (Vinnie Falco, 2026). Companion ask paper for the growable buffer concept. D0009R0.
 
-[9] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the growable buffer concept. D0004R0.
+[9] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the growable buffer concept. D0010R0.
 
 [10] [P4036R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4036r0.pdf) - "Why Span Is Not Enough" (Vinnie Falco, 2026).
 

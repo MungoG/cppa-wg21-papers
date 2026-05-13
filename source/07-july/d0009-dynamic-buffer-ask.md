@@ -1,6 +1,6 @@
 ---
 title: "Dynamic Buffer"
-document: D0003R0
+document: D0009R0
 date: 2026-05-15
 intent: ask
 audience: LEWG
@@ -195,11 +195,11 @@ The .NET runtime team's `IBufferWriter<T>`<sup>[10]</sup> and `ReadOnlySequence<
 
 [6] [Corosio](https://github.com/cppalliance/corosio) - Coroutine-native I/O on epoll, kqueue, and IOCP (Vinnie Falco, 2024-2026).
 
-[7] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper. D0004R0.
+[7] *Dynamic Buffer: Design Rationale* (Vinnie Falco, 2026). Companion design paper. D0010R0.
 
-[8] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper for the byte-region vocabulary. D0001R0.
+[8] *I/O Buffer Ranges* (Vinnie Falco, 2026). Companion ask paper for the byte-region vocabulary. D0007R0.
 
-[9] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the byte-region vocabulary. D0002R0.
+[9] *I/O Buffer Ranges: Design Rationale* (Vinnie Falco, 2026). Companion design paper for the byte-region vocabulary. D0008R0.
 
 [10] [.NET API: System.Buffers.IBufferWriter&lt;T&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.buffers.ibufferwriter-1) - Producer interface for incremental writes (Microsoft, 2018-2026).
 
