@@ -675,9 +675,9 @@ async function loadCatalog(){
   }catch(e){showToast('Failed to load catalog');}
 }
 async function saveCreds(){const body={isocpp_username:document.getElementById('cred-user').value.trim()};const pass=document.getElementById('cred-pass').value;if(pass)body.isocpp_password=pass;postConfig(body);}
-async function addDir(){const inp=document.getElementById('add-dir-input');const val=inp.value.trim();if(!val)return;try{const d=await postJson('/api/dirs',{dir:val});renderDirs(d.watch_dirs);inp.value='';}catch(e){showToast(e.message||'Failed');}}
-async function removeDir(path){const r=await fetch('/api/dirs',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir:path})});if(r.ok){const d=await r.json();renderDirs(d.watch_dirs);}}
-async function toggleDir(path,field,value){try{const d=await postJson('/api/dirs/toggle',{dir:path,field,value});renderDirs(d.watch_dirs);}catch(e){showToast(e.message||'Toggle failed');}}
+async function addDir(){const inp=document.getElementById('add-dir-input');const val=inp.value.trim();if(!val)return;try{const d=await postJson('/api/dirs',{dir:val});renderDirs(d.watch_dirs);inp.value='';loadInventory();}catch(e){showToast(e.message||'Failed');}}
+async function removeDir(path){const r=await fetch('/api/dirs',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir:path})});if(r.ok){const d=await r.json();renderDirs(d.watch_dirs);loadInventory();}}
+async function toggleDir(path,field,value){try{const d=await postJson('/api/dirs/toggle',{dir:path,field,value});renderDirs(d.watch_dirs);loadInventory();}catch(e){showToast(e.message||'Toggle failed');}}
 async function browseDir(inputId){try{const r=await fetch('/api/pick-dir');const d=await r.json();if(d.path)document.getElementById(inputId).value=d.path;}catch(e){showToast('Browse failed');}}
 let _autoRender=true;
 function toggleAutoRender(){_autoRender=!_autoRender;document.getElementById('auto-render-toggle').className='toggle'+(_autoRender?' on':'');postConfig({auto_render:_autoRender});}

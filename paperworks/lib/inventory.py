@@ -296,8 +296,18 @@ def build_inventory(watch_dirs, output_dir, remote_papers=None):
 
         md_path = md["md_path"] if md else None
         md_mtime = md["md_mtime"] if md else None
-        pdf_path = pdf["pdf_path"] if pdf else None
-        pdf_mtime = pdf["pdf_mtime"] if pdf else None
+
+        if md_path and output_dir:
+            derived = Path(output_dir) / Path(md_path).with_suffix(".pdf").name
+            if derived.is_file():
+                pdf_path = str(derived)
+                pdf_mtime = derived.stat().st_mtime
+            else:
+                pdf_path = None
+                pdf_mtime = None
+        else:
+            pdf_path = pdf["pdf_path"] if pdf else None
+            pdf_mtime = pdf["pdf_mtime"] if pdf else None
 
         stale_pdf = False
         if md_mtime and pdf_mtime:
