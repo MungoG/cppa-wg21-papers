@@ -1,6 +1,6 @@
 ---
 title: "Each Standard Takes Longer"
-document: D0000R0
+document: P4193R0
 date: 2026-08-01
 intent: info
 audience: WG21

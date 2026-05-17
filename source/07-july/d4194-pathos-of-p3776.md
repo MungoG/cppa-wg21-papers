@@ -1,6 +1,6 @@
 ---
 title: "The Pathos of P3776"
-document: P4196R0
+document: P4194R0
 date: 2026-05-02
 intent: info
 audience: WG21
