@@ -4,7 +4,7 @@ This is a meta-analysis created from other papers and publicly available informa
 
 ## THE FRAME
 
-WG21 has no mechanism to ensure its output serves its 5 million users.
+WG21 has no mechanism to ensure its output serves its 15 million users.
 
 ### Developer Alignment Research
 
