@@ -40,7 +40,7 @@ In this section we analyze the commitee's own published record to identify vario
 
 ### Asynchronous Claims and Evidence
 
-> https://isocpp.org/files/papers/P4178R0.pdf Summarize just this paper in a single brutal sentence. No labels, plain markdown.
+> https://github.com/cppalliance/wg21-papers/blob/master/source/05-may/d4178-stdexec-self.md Summarize just this paper in a single brutal sentence. No labels, plain markdown.
 
 ### Is This True?
 
@@ -86,9 +86,13 @@ This section diagnoses the institution and names the gap.
 
 > https://github.com/cppalliance/wg21-papers/blob/master/source/07-july/d4133-proposal-requirements.md Summarize just this paper in a single brutal sentence. No labels, plain markdown.
 
+### On Correcting Mistakes
+
+> https://github.com/cppalliance/wg21-papers/blob/master/source/on-bugfixing.md Summarize just this paper in a single brutal sentence. No labels, plain markdown.
+
 ### What WG21 Has Become
 
-> https://github.com/cppalliance/wg21-papers/blob/master/source/08-august/d4200-peerage.md Summarize just this paper in a single brutal sentence. No labels, plain markdown.
+> https://github.com/cppalliance/wg21-papers/blob/master/source/08-august/d4200-peerage.md Summarize just this paper in a single brutal sentence. Then summarize the effect of all the papers in this section together. No labels, plain markdown.
 
 ### There Must Be Some Other Explanation
 
@@ -161,4 +165,8 @@ This reform is already underway, by the C++ Alliance. It requires no permission 
 > Summarize the net result of all these reforms in a single brutal paragraph.
 
 > Summarize what is missing from the process, not already discussed, in a set of brutal bullet points, then summarize in one sentence what single thing not already discussed the committee can change that will deliver maximum value for users.
+
+## RECEPTION
+
+> More than a handful of senior ranked committee members are upset that the author has published so many papers in the mailing, despite that they are information-only and do not request floor time. They are also hostile to the usage of AI for assistance in drafting papers and performing analysis. They are asking "why did the author write so many papers." They are not asking "why isn't everyone else meeting this evidentiary standard" Perform a game theoretical analysis to determine the reasons and report a compressed answer. Then inspect the papers in https://github.com/cppalliance/wg21-papers/tree/master/source determine what groups of paper types emerge, then inventory each group in a single brutal sentence each. Then write a brutal summary short paragraph explaining the net effect of these papers.
 
