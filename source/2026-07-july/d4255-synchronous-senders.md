@@ -12,7 +12,7 @@ reply-to:
 
 The awaitable protocol handles synchronous I/O at zero cost. The sender protocol does not.
 
-C++20 awaitables provide two mechanisms for synchronous I/O: recompilation (swap the awaitable type, the algorithm goes from async to sync) and relinking (compile once against a type-erased stream, swap the object file). Both work today. This paper implements the simplest possible synchronous write operation under both models, grants senders every affordance, and places the two implementations adjacent.
+C++20 awaitables provide two mechanisms for synchronous I/O: recompilation (swap the awaitable type, the algorithm goes from async to sync) and relinking (compile once against a type-erased stream, swap the object file). Both work today. This paper implements the simplest possible synchronous write operation under both models, grants senders every affordance, and sets the two implementations side by side.
 
 ---
 
@@ -300,17 +300,15 @@ auto sndr = as_sender(sink.write(line))
         });
 ```
 
-The sender algebra works. `when_all` composes bridged IoAwaitables into parallel work. `let_value` sequences them. `upon_error` handles failures. `retry` retries. The IoAwaitable is a leaf node in the sender's work graph. Structured concurrency is inherited from the sender pipeline.
+The sender algebra works. `when_all` composes bridged IoAwaitables into parallel work. `let_value` sequences them. `upon_error` handles failures. The IoAwaitable is a leaf node in the sender's work graph. Structured concurrency is inherited from the sender pipeline.
 
-The bridge allocates one coroutine frame per bridged operation. The frame exists to produce a `coroutine_handle<>` - the only type the awaitable protocol accepts. The frame holds nothing the sender needs.
-
-[P4126R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r1.pdf)<sup>[10]</sup> shows that this allocation is eliminable. A callback handle - three pointers matching the coroutine frame prefix, zero heap allocation - gives senders a `coroutine_handle<>` without allocating a frame. The bridge cost drops to zero.
+Without callback handles, the bridge allocates one coroutine frame per bridged operation - the frame exists only to produce a `coroutine_handle<>`, the only type the awaitable protocol accepts. [P4126R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r1.pdf)<sup>[10]</sup> shows this allocation is eliminable. A callback handle - three pointers matching the coroutine frame prefix, zero heap allocation - gives senders a `coroutine_handle<>` without allocating a frame. The bridge cost drops to zero.
 
 IoAwaitables own the I/O layer. Sender pipelines own the composition layer. The bridge connects them. With callback handles, the bridge is free.
 
 ## 10. The Case for Coroutine I/O
 
-Section 9 shows IoAwaitables entering sender pipelines via `as_sender`.<sup>[9]</sup> [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf)<sup>[11]</sup> shows senders consumed from coroutine-native code without `execution::task`. The bridge goes both ways. Neither model lacks access to the other's operations. The broader design fork is documented in [P4088R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r1.pdf).<sup>[12]</sup>
+Section 9 shows IoAwaitables entering sender pipelines via `as_sender`.<sup>[9]</sup> [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf)<sup>[11]</sup> shows senders consumed from coroutine-native code without `execution::task`. The bridge goes both ways. The broader design fork is documented in [P4088R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r1.pdf).<sup>[12]</sup>
 
 The question is not which model is more powerful. It is which implementation shape minimizes total cost when both consumers exist.
 
@@ -323,7 +321,7 @@ The question is not which model is more powerful. It is which implementation sha
 | Synchronous | Zero (P4126R1)<sup>[10]</sup> | Zero |
 | Asynchronous | Zero (P4126R1)<sup>[10]</sup> | Zero |
 
-The awaitable column is four zeros. The sender column carries a protocol tax in every coroutine cell. For synchronous I/O, the tax is the eight-step ceremony documented in Section 6. For asynchronous I/O, the coroutine suspends regardless - the operation is genuinely async - but the sender protocol adds ceremony on top: `connect`, receiver wiring, `variant` emplacement, and affinity wrapping are not inherent to the async operation. They are inherent to the sender protocol.
+The awaitable column is four zeros. For synchronous I/O, the sender column carries the full eight-step ceremony of Section 6. For asynchronous I/O, the sender protocol adds ceremony - `connect`, receiver wiring, `variant` emplacement, affinity wrapping - atop the inherent suspend. The ceremony is not inherent to the async operation. It is inherent to the sender protocol.
 
 The sender pipeline cells in the awaitable column depend on P4126R1<sup>[10]</sup> callback handles. Without callback handles, senders consuming an awaitable allocate one coroutine frame per operation. Two of the awaitable column's four zeros require P4126R1.
 
@@ -430,7 +428,7 @@ struct immediate
 
 **"Awaitables don't compose into work graphs."** They do, through the bridge. Section 9 shows IoAwaitables consumed by sender pipelines via `as_sender`.<sup>[9]</sup> The sender algebra - `when_all`, `let_value`, `upon_error` - works. The bridge cost is eliminable.<sup>[10]</sup>
 
-**"The modifications in Section 11 are natural evolution."** Each modification introduces a new mechanism: a readiness query, a second value-delivery path, conditional affinity wrapping, virtual dispatch for type erasure. Five new mechanisms to match a three-member struct.
+**"The modifications in Section 11 are natural evolution."** Each modification introduces a new mechanism: a readiness query, a second value-delivery path, conditional affinity wrapping, virtual dispatch for type erasure. The awaitable protocol provides the same capability with three members.
 
 **"Senders retarget via scheduler swap; awaitables require recompilation."** Section 4 demonstrates retargeting by relinking. One vtable call, zero allocations. The linker swaps the object file.
 
@@ -440,7 +438,7 @@ struct immediate
 
 **"Operation state construction delivers structured concurrency guarantees."** Genuine for asynchronous operations where the coroutine suspends and work executes concurrently. For a synchronous write where the data is in the string before `co_await` evaluates, there is no concurrent lifetime to manage. The operation state guarantees a property that was never at risk.
 
-**"The type erasure comparison is asymmetric."** Both paths use type erasure. The awaitable path produces one indirect call and zero allocations. `any_sender::connect` materializes an operation state the compiler cannot see through. The measurement is at the same boundary: what the algorithm pays per write.
+**"The type erasure comparison is asymmetric."** Both paths use type erasure at the same boundary. The awaitable path produces one indirect call and zero allocations. `any_sender::connect` materializes an operation state the compiler cannot see through.
 
 **"The bridge concedes the dependency."** The bridge goes both directions. [P4093R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r1.pdf)<sup>[9]</sup> bridges IoAwaitables into sender pipelines. [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf)<sup>[11]</sup> bridges senders into coroutine-native code without `execution::task`. Section 10 shows the cost is asymmetric: if I/O is an awaitable, both consumers pay zero; if I/O is a sender, coroutines pay the ceremony.
 
