@@ -318,8 +318,8 @@ The question is not which model is more powerful. It is which implementation sha
 | Synchronous | Zero (no suspend) | 8-step ceremony (Section 6) |
 | Asynchronous | Zero protocol overhead (inherent suspend only) | Inherent suspend + ceremony |
 | **Sender pipeline** | | |
-| Synchronous | Zero (P4126R1)<sup>[10]</sup> | Zero |
-| Asynchronous | Zero (P4126R1)<sup>[10]</sup> | Zero |
+| Synchronous | Zero ([P4126R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r1.pdf))<sup>[10]</sup> | Zero |
+| Asynchronous | Zero ([P4126R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r1.pdf))<sup>[10]</sup> | Zero |
 
 The awaitable column is four zeros. For synchronous I/O, the sender column carries the full eight-step ceremony of Section 6. For asynchronous I/O, the sender protocol adds ceremony - `connect`, receiver wiring, `variant` emplacement, affinity wrapping - atop the inherent suspend. The ceremony is not inherent to the async operation. It is inherent to the sender protocol.
 
@@ -337,7 +337,7 @@ The sender model, as specified, does not match the awaitable model for synchrono
 
 `sender-awaitable::await_ready()` returns `false` unconditionally.<sup>[3]</sup><sup>[8]</sup> To skip suspension for senders that complete synchronously, a readiness query is required. The sender must advertise, at compile time or at run time, that its `start` will call `set_value` before returning.
 
-P3552R3's `await_transform` could detect synchronous senders before they enter `as_awaitable` and bypass the `sender-awaitable` path entirely. It does not.
+[P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[5]</sup>'s `await_transform` could detect synchronous senders before they enter `as_awaitable` and bypass the `sender-awaitable` path entirely. It does not.
 
 This requires a new concept requirement on senders. A trait, a tag, or a constexpr query. The sender model now has a readiness query.
 
@@ -365,7 +365,7 @@ The sender model now carries a readiness query, a direct extraction path, two va
 
 ### 11.5. Zero-Allocation Type Erasure
 
-`any_sender::connect` produces a type-erased operation state whose size is unknown at compile time. The current implementations use small-buffer optimization (64 bytes in stdexec) or heap allocation.<sup>[3]</sup> The per-operation cost is 0-1 allocations.
+`any_sender::connect` produces a type-erased operation state whose size is unknown at compile time. The current implementations use small-buffer optimization (64 bytes in stdexec) or heap allocation.<sup>[3]</sup> The per-operation cost is zero or one allocation.
 
 Measured in the Capy benchmark suite<sup>[1]</sup> (`bench/beman`) on a type-erased no-op read, single thread, 20,000,000 operations per cell, clang 22.1.5 release build: the type-erased awaitable consumed by a coroutine allocates zero times per operation; the type-erased `any_sender` consumed by a coroutine allocates once. Wall-clock was 37 ns per operation for the awaitable and 55 ns for the sender; that figure spans two coroutine frameworks and is reported for context, while the allocation count is the structural result.
 
@@ -482,7 +482,7 @@ The observations documented in this paper would be discharged if any of the foll
 
 ## Acknowledgements
 
-Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution` and the sender algebra. Dietmar K&uuml;hl and Maikel Nadolski for P3552R3 (`std::execution::task`). Robert Leahy for the AIO-to-sender bridge and P2583R4 (symmetric transfer).
+Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::execution` and the sender algebra. Dietmar K&uuml;hl and Maikel Nadolski for [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) (`std::execution::task`). Robert Leahy for the AIO-to-sender bridge and [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf) (symmetric transfer).
 
 ## References
 
