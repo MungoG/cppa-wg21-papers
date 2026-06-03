@@ -34,7 +34,7 @@ This paper is part of the [Network Endeavor](https://www.open-std.org/jtc1/sc22/
 
 The author develops and maintains [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

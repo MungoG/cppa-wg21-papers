@@ -2,7 +2,7 @@
 title: "Executor Utilities"
 document: D0005R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author develops and maintains [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[4]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 This paper is the proposal-only ask paper for `strand` and `any_executor`. The design rationale lives in the companion *Executor Utilities: Design Rationale*<sup>[8]</sup>.
+
+This paper asks for nothing.
 
 ---
 

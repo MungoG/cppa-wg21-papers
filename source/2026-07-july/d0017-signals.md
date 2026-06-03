@@ -2,7 +2,7 @@
 title: "Signals"
 document: D0017R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author develops and maintains [Capy](https://github.com/cppalliance/capy)<sup>[4]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[1]</sup>, which implement the `signal_set` type proposed here. The body of work creates a bias toward coroutine-native signal handling.
 
 This paper is the proposal-only ask paper for the signal handling vocabulary. The design rationale lives in the companion *Signals: Design Rationale*<sup>[7]</sup>.
+
+This paper asks for nothing.
 
 ---
 

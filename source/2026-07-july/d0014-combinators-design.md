@@ -34,7 +34,7 @@ The author develops [Capy](https://github.com/cppalliance/capy)<sup>[5]</sup> an
 
 Coroutine-native I/O and `std::execution` are complementary. Each serves the domain where its design choices pay off.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

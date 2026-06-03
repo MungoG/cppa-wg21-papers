@@ -36,7 +36,7 @@ The author develops and maintains [Capy](https://github.com/cppalliance/capy)<su
 
 This paper documents the signal handling vocabulary that ships in Corosio. The vocabulary is consumed by every server application built on Corosio.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

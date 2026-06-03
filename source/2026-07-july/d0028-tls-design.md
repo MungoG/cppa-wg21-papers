@@ -34,7 +34,7 @@ The author develops and maintains [Capy](https://github.com/cppalliance/capy)<su
 
 This paper documents the design rationale for the TLS vocabulary proposed in the companion *TLS*<sup>[1]</sup>. The stream concepts that `tls_stream` satisfies are proposed in *Stream Concepts*<sup>[14]</sup> and *Stream Concepts: Design Rationale*<sup>[15]</sup>.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

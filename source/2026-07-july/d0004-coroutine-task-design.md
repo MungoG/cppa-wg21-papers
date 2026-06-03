@@ -42,7 +42,7 @@ The companion papers are *Coroutine Task*<sup>[8]</sup> (proposal-only ask paper
 
 Every type proposed in the companion ask paper ships in Capy. Every Corosio example and test uses `task<T>` with `run()`. Appendix B is the inventory.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

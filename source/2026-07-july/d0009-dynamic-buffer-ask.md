@@ -2,7 +2,7 @@
 title: "Dynamic Buffer"
 document: D0009R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[5]</sup> and develops [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup>, plus three further Boost libraries that consume dynamic buffers for protocol parsing. The body of work creates a bias toward dedicated dynamic-buffer concepts.
 
 This paper is the proposal-only ask paper for the `DynamicBuffer` concept. The design rationale, the four-implementation tour, and the convergence record live in the companion *Dynamic Buffer: Design Rationale*<sup>[7]</sup>. The byte-region descriptors and sequence concepts the dynamic buffer's associated types satisfy live in *I/O Buffer Ranges*<sup>[8]</sup> and *I/O Buffer Ranges: Design Rationale*<sup>[9]</sup>.
+
+This paper asks for nothing.
 
 ---
 

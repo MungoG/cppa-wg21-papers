@@ -2,7 +2,7 @@
 title: "Files"
 document: D0019R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author develops and maintains [Capy](https://github.com/cppalliance/capy)<sup>[5]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[1]</sup>. File I/O ships in Corosio today on Windows (IOCP) and Linux (POSIX). The experience informs this proposal.
 
 This paper is the proposal-only ask paper for `stream_file` and `random_access_file`. The design rationale lives in the companion *Files: Design Rationale*<sup>[9]</sup>.
+
+This paper asks for nothing.
 
 ---
 

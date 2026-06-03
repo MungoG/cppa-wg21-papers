@@ -34,7 +34,7 @@ The author develops [Capy](https://github.com/cppalliance/capy)<sup>[7]</sup> an
 
 This paper examines the published record. That effort requires re-examining consequential papers.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

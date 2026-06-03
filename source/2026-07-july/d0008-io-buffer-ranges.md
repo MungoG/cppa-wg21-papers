@@ -46,7 +46,7 @@ The companion papers are *I/O Buffer Ranges*<sup>[20]</sup> (the proposal-only a
 
 Every concept and type proposed in the companion ask paper ships in Capy. Every I/O operation in Corosio consumes them. Appendix B is the inventory.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

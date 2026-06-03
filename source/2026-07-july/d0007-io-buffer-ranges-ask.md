@@ -2,7 +2,7 @@
 title: "I/O Buffer Ranges"
 document: D0007R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[5]</sup> and develops [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup>, plus three further Boost libraries built on them. Each defines or consumes buffer abstractions. The body of work creates a bias toward dedicated buffer types.
 
 This paper is the proposal-only ask paper for the buffer descriptor and sequence vocabulary. The design rationale lives in the companion *I/O Buffer Ranges: Design Rationale*<sup>[7]</sup>. The argument that `std::span<std::byte>` is structurally insufficient for I/O buffer descriptors lives in [P4036R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4036r0.pdf)<sup>[10]</sup>.
+
+This paper asks for nothing.
 
 ---
 

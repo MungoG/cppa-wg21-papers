@@ -32,7 +32,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[4]</sup> and develops [Capy](https://github.com/cppalliance/capy)<sup>[5]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[6]</sup>, plus three further Boost libraries built on them. Corosio ships a timer type on three platforms. The body of work creates a bias toward a dedicated timer type in the standard.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

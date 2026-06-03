@@ -2,7 +2,7 @@
 title: "Stream Concepts"
 document: D0011R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[7]</sup> and develops [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>, plus three further Boost libraries built on them. Each defines or consumes stream abstractions. The body of work creates a bias toward dedicated stream concepts.
 
 This paper is the proposal-only ask paper for the coroutine stream concepts and type-erasing wrappers. The design rationale lives in the companion *Stream Concepts: Design Rationale*<sup>[11]</sup>. The buffer-ranges vocabulary that stream operations accept lives in *I/O Buffer Ranges*<sup>[12]</sup> and *I/O Buffer Ranges: Design Rationale*<sup>[14]</sup>. The dynamic-buffer concept that `ReadSource` reads into lives in *Dynamic Buffer*<sup>[13]</sup> and *Dynamic Buffer: Design Rationale*<sup>[15]</sup>.
+
+This paper asks for nothing.
 
 ---
 

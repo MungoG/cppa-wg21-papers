@@ -2,7 +2,7 @@
 title: "Coroutine Task"
 document: D0003R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[3]</sup> and develops [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup>, plus three further Boost libraries built on them. Every asynchronous entry point in these libraries returns `task<T>`. [Boost.Asio](https://www.boost.org/doc/libs/release/doc/html/boost_asio.html)<sup>[9]</sup> ships `awaitable<T>`, the predecessor shape. The body of work creates a bias toward a single coroutine task type.
 
 This paper is the proposal-only ask paper for `task<T>`, the launch functions, and the execution contexts. The design rationale lives in the companion *Coroutine Task: Design Rationale*<sup>[8]</sup>. The IoAwaitable protocol that `task<T>` implements is defined in [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[5]</sup> and [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[6]</sup>.
+
+This paper asks for nothing.
 
 ---
 

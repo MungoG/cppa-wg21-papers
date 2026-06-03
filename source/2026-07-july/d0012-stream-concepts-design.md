@@ -40,7 +40,7 @@ The companion papers are *Stream Concepts*<sup>[21]</sup> (proposal-only ask pap
 
 Every concept and wrapper documented in this paper ships in Capy. Every I/O type in Corosio satisfies the stream concepts. Appendix B is the inventory.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

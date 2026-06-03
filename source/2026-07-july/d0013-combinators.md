@@ -2,7 +2,7 @@
 title: "Combinators"
 document: D0013R0
 date: 2026-05-15
-intent: ask
+intent: info
 audience: LEWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -35,6 +35,8 @@ The author provides information and serves at the pleasure of the committee.
 The author develops [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup> and believes coroutine-native I/O is a practical foundation for networking in C++.
 
 This paper is the proposal-only ask paper for the combinator vocabulary. The design rationale, convergence evidence, and anticipated objections live in the companion *Combinators: Design Rationale*<sup>[7]</sup>. The task type and IoAwaitable protocol these combinators build on live in D0003R0<sup>[4]</sup> and D0004R0<sup>[5]</sup>.
+
+This paper asks for nothing.
 
 ---
 

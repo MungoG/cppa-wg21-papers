@@ -38,7 +38,7 @@ The [Networking TS](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n477
 
 The companion paper is *DNS*<sup>[5]</sup> (the proposal-only ask paper for the resolver in this paper). [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf)<sup>[3]</sup> is the umbrella paper that places this work in series.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

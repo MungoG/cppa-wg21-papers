@@ -46,7 +46,7 @@ The companion papers are *Dynamic Buffer*<sup>[7]</sup> (proposal-only ask paper
 
 Every implementation tour entry in this paper ships in Capy. Appendix B is the inventory.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

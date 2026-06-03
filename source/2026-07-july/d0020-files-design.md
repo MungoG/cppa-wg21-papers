@@ -26,7 +26,7 @@ This paper documents the design rationale for async file I/O in the Network Ende
 
 ## 1. Disclosure
 
-The author asks for nothing.
+This paper asks for nothing.
 
 The author develops and maintains [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>. File I/O ships in Corosio today. The experience informs this rationale.
 
