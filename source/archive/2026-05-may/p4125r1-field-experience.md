@@ -263,29 +263,29 @@ Each scenario was executed with both an empty order book and a pre-filled order 
 
 An order is entered using `enter_order` and immediately cancelled (by sequencing ID) before receipt of the `order_entered` acknowledgement. The latency measured spans from the first `enter_order` to the last `top_of_book` update resulting from both messages.
 
-![Scenario 1 message flow](d4125_images/flow-scenario-1.png)
+![Scenario 1 message flow](p4125r1_images/flow-scenario-1.png)
 
 #### Scenario 2 - Enter IOC, No Execution
 
 An Immediate-or-Cancel order is entered. In the empty book case, the order is rejected as invalid (no counterparty).
 
-![Scenario 2 message flow (empty book)](d4125_images/flow-scenario-2-empty.png)
+![Scenario 2 message flow (empty book)](p4125r1_images/flow-scenario-2-empty.png)
 
 In the filled book case, the Matching Facility must inspect the book to determine whether execution is possible. The empty book case should be significantly faster because no book inspection occurs.
 
-![Scenario 2 message flow (filled book)](d4125_images/flow-scenario-2.png)
+![Scenario 2 message flow (filled book)](p4125r1_images/flow-scenario-2.png)
 
 #### Scenario 3 - Order Amends, Quantity Only
 
 A previously entered order is amended by varying quantity only. Priority is retained in the book and no reordering is required. The difference between empty and filled book cases is the time taken to locate the order in the relevant book.
 
-![Scenario 3 message flow](d4125_images/flow-scenario-3.png)
+![Scenario 3 message flow](p4125r1_images/flow-scenario-3.png)
 
 #### Scenario 4 - Two Orders Resulting in a Trade
 
 One order is entered, then a second is entered to match and trigger an execution resulting in a trade. The processing time is measured from receipt of the triggering order until the last derived message (trade report, price updates, book updates) is published.
 
-![Scenario 4 message flow](d4125_images/flow-scenario-4.png)
+![Scenario 4 message flow](p4125r1_images/flow-scenario-4.png)
 
 #### Scenarios 5, 6, 7 - Sweep 10 Orders
 
@@ -297,17 +297,17 @@ Three sweep scenarios test the same basic flow with different book configuration
 
 In each case the book is pre-loaded with 10 orders and then a single order sweeps all of them. One triggering order produces 10 trades and 100 derived messages. The latency measured is the processing time from the triggering execution to the last derived message.
 
-![Sweep scenarios - book loading](d4125_images/flow-scenario-5-loading.png)
+![Sweep scenarios - book loading](p4125r1_images/flow-scenario-5-loading.png)
 
-![Sweep scenarios - execution](d4125_images/flow-scenario-5-sweep.png)
+![Sweep scenarios - execution](p4125r1_images/flow-scenario-5-sweep.png)
 
 #### Scenario 8 - Mass Cancel Orders across 100 Markets
 
 One hundred tradeable markets are loaded with quotes (buy and sell orders) from a single account. A `cancel_orders` message for that account triggers mass cancellation across all markets. The latency measured includes the triggering message and all derived messages: 4 messages per order cancelled, 2 orders per book, 100 books = 800 derived messages.
 
-![Scenario 8 - book loading](d4125_images/flow-scenario-8-loading.png)
+![Scenario 8 - book loading](p4125r1_images/flow-scenario-8-loading.png)
 
-![Scenario 8 - mass cancellation](d4125_images/flow-scenario-8.png)
+![Scenario 8 - mass cancellation](p4125r1_images/flow-scenario-8.png)
 
 ### 7.6 Comparative Data
 
