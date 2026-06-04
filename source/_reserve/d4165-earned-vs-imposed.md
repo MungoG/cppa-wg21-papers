@@ -1,5 +1,5 @@
 ---
-title: "Five Million Users, One Hundred Delegates"
+title: "Sixteen Million Users, One Hundred Delegates"
 document: P4165R0
 date: 2026-03-28
 intent: info
@@ -105,7 +105,7 @@ Joseph Schumpeter, *Capitalism, Socialism and Democracy* (1942)<sup>[10]</sup>. 
 
 ### 3.4 Collective Action
 
-Mancur Olson, *The Logic of Collective Action* (1965)<sup>[11]</sup>. Small, concentrated groups with strong per-member incentives outperform large, diffuse groups in influencing institutional outcomes - even when the diffuse group's aggregate interest is greater. A firm with three delegates in a standards body has concentrated incentives: the delegates attend every meeting, track every paper, and coordinate their positions. Five million developers who use the standard library have diffuse incentives: no individual developer's stake justifies the cost of participation.
+Mancur Olson, *The Logic of Collective Action* (1965)<sup>[11]</sup>. Small, concentrated groups with strong per-member incentives outperform large, diffuse groups in influencing institutional outcomes - even when the diffuse group's aggregate interest is greater. A firm with three delegates in a standards body has concentrated incentives: the delegates attend every meeting, track every paper, and coordinate their positions. Sixteen million developers who use the standard library have diffuse incentives: no individual developer's stake justifies the cost of participation.
 
 ### 3.5 Regulatory Capture
 
