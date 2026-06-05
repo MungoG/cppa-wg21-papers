@@ -30,7 +30,9 @@ The analysis names no individuals. Every structural observation applies to the o
 
 The author provides information and serves at the pleasure of the committee.
 
-The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space: [P4003R0](https://wg21.link/p4003r0), [P4007R0](https://wg21.link/p4007r0), and [P4100R0](https://wg21.link/p4100r0). The author's first attended WG21 meeting was in 2018. The institutional-theory literature presented here applies to every consensus body, including bodies whose decisions the author agrees with.
+The author is the founder and principal of the C++ Alliance and maintains competing proposals in the `std::execution` space: [P4003R0](https://wg21.link/p4003r0), [P4007R0](https://wg21.link/p4007r0), and [P4100R0](https://wg21.link/p4100r0). The author's first attended WG21 meeting was in 2018. The institutional-theory literature presented here applies to every consensus body, including bodies whose decisions the author agrees with.
+
+The C++ Alliance funded Sean Baxter's Safe C++ project to determine whether rigorous Rust-style memory safety is achievable within C++. The research concluded that full safety requires changes to the template model incompatible with C++ - templates are a form of duck typing, and the type system would have to change. The C++ Alliance agrees with the committee's decision to pursue profiles over the Rust safety model.
 
 The author asks for nothing.
 
@@ -38,7 +40,7 @@ The author asks for nothing.
 
 ## 2. Executive Summary
 
-Two procedural documents govern WG21. The ISO/IEC Directives create a multi-principal oversight system - a constitutional republic of sovereign National Bodies with separated powers, fixed terms, formal appeals, forced feedback loops, and transparency obligations. SD-4 replaces this with a single-principal delegation model: unilateral chair appointments with no terms, a by-invitation Direction Group controlling scheduling priorities without committee authorization, consensus determined by the chair alone using a 2:1 threshold absent from the Directives, meeting records sealed from public quotation, and no retrospective mechanism to evaluate whether shipped features achieved their claimed benefits.
+The ISO/IEC Directives create a multi-principal oversight system - a constitutional republic of sovereign National Bodies with separated powers, fixed terms, formal appeals, forced feedback loops, and transparency obligations. SD-4 replaces this with a single-principal delegation model: unilateral chair appointments with no terms, a by-invitation Direction Group whose priority list and patronage credentials shape chair scheduling through focal-point dynamics rather than formal authority - influence without accountability and without any appealable decision, consensus determined by the chair alone using a 2:1 threshold absent from the Directives, meeting records sealed from public quotation, and no retrospective mechanism to evaluate whether shipped features achieved their claimed benefits.
 
 The gap between these two systems is the structural explanation for what the committee has become. The ISO system was designed to prevent the concentration of procedural power in a self-replicating appointment chain. SD-4 dismantled every prevention mechanism. What grew in the space SD-4 created is a peerage - a system of rank in which titles confer authority independent of technical contribution, patronage determines advancement, and social trust substitutes for independent evaluation. The peerage was not designed. It was the predictable institutional outcome of removing structural safeguards in a body where the median delegate is rationally ignorant about 90% of the polls they vote on, and where consensus-as-silence converts that rational ignorance into procedural legitimacy.
 
@@ -56,7 +58,7 @@ Every analytical claim is accompanied by an observability statement - what the r
 
 - If process-reform papers that constrain chair discretion survive at the same rate as papers that reduce chair burden, the "immune system" claim is wrong.
 - If the next convener restructures the appointment chain without external pressure, the "self-replicating" claim is wrong.
-- If Direction Group-endorsed priorities ship at the same rate as non-endorsed items, "advisory without accountability" is wrong.
+- If Direction Group-endorsed priorities receive scheduling time at the same rate as non-endorsed items, the focal-point mechanism (Section 5.2) is wrong - chairs are not converging on the DG list. If DG-endorsed items receive disproportionate scheduling but this is fully explained by corporate backing and author-team size rather than DG status, the DG credential is epiphenomenal and the "zero-power influence" claim collapses to a corporate-capture claim (Stigler 1971).
 - If competing proposals receive scheduling priority comparable to incumbents, the "bird-in-hand" claim is wrong.
 
 ### 3.2 Institutional Forces
@@ -84,19 +86,7 @@ Ten principles from Mises' *Human Action* (1949) provide the economic foundation
 
 ### 3.4 Great Founder Theory Diagnostic Tests
 
-Five tests from Samo Burja's GFT separate functional institutions from institutions that merely imitate them: **Live Player** (can the institution do something it has never done?), **Social Technology** (living tradition vs. dead tradition), **Power Source** (owned vs. borrowed), **Functionality** (produces what it claims?), **Imitation Distance** (how many copies from the original?). Applied symmetrically to both systems in Section 6.
-
-### 3.5 Committee Decision-Making Literature
-
-The empirical backbone draws on four strands of literature.
-
-**Decision-making structure under uncertainty:** Bikhchandani et al. (1992, informational cascades); Banerjee (1992, herd behavior); Newham & Midjord (2019, FDA expert herding under sequential voting, which led the FDA to switch to simultaneous voting); Lorenz et al. (2011, social influence reduces diversity without increasing accuracy); Feddersen & Pesendorfer (1998, unanimity rules can produce worse error rates); Visser & Swank (2007, reputational concerns push toward visible unity); Karotkin & Paroush (2003, optimal committee size).
-
-**Public versus secret voting in committees:** Levy (2007, foundational model showing career-concerned committee members vote differently under observability -- secrecy amplifies conservative bias, transparency removes it, and the net effect on decision quality depends on the voting rule); Mattozzi & Nakaguma (2023, public-vs-secret voting in committees; documents the 2017 Italian Parliament natural experiment in which a malfunction briefly revealed individual votes during a secret ballot and 15% of members switched within 8 seconds, and the 2013 Brazil expulsion-procedure change in which public voting nearly doubled votes in favor); Name-Correa & Yildirim (2019, formal model of the blame-fear / audience-cost mechanism); Funk (2010, Swiss mail-ballot natural experiment showing social-pressure effects strongest in small communities of known associates).
-
-**Social cost of visible dissent:** Schachter (1951, foundational experiments on group punishment of deviants -- reduced communication, lowest likability ratings, menial-task assignment); Marques, Yzerbyt & Leyens (1988, Black Sheep Effect: ingroup dissenters are judged more harshly than outsiders with the same views); Asch (1956, 36.8% conform to a clearly-wrong unanimous majority under social pressure); Janis (1972/1982, Groupthink symptoms: self-censorship, direct pressure on dissenters, illusion of unanimity); Noelle-Neumann (1993, spiral of silence: fear of isolation suppresses minority-view expression); Matthes, Knoll & von Sikorski (2018, meta-analysis finding the strongest silencing effect (r=.34) in face-to-face groups of known associates); Braghieri, Bursztyn & Fasnacht (2026, public voting nearly doubles abstention on stigmatized positions).
-
-**Aggregation, agenda, and access:** Downs (1957, rational ignorance); Barbera et al. (1993, median voter is structurally decisive); Romer & Rosenthal (1978, monopoly agenda-setters extract concessions); Olson (1965, collective action failure); Hirschman (1970, exit/voice/loyalty); Arrow (1951, no ranked system satisfies all fairness criteria).
+Five tests from Samo Burja's GFT separate functional institutions from institutions that merely imitate them: **Live Player** (can the institution do something it has never done?), **Social Technology** (living tradition vs. dead tradition), **Power Source** (owned vs. borrowed), **Functionality** (produces what it claims?), **Imitation Distance** (how many copies from the original?). Applied symmetrically to both systems in Section 7.
 
 ---
 
@@ -104,9 +94,9 @@ The empirical backbone draws on four strands of literature.
 
 SD-4 creates a governance system with five compounding effects, each individually defensible, each structurally consequential, and none visible from any single rule:
 
-**All power flows from a single appointment chain.** The Convener appoints subgroup chairs with no elections, no fixed terms, and no National Body confirmation. The chairs control scheduling, framing, and consensus determination. A by-invitation Direction Group maintains the priority list that drives chair scheduling. Every structural filter traces back to the Convener. The chain reproduces its own composition because existing gatekeepers select the next gatekeepers (Michels 1911).
+**All power flows from a single appointment chain.** The Convener appoints subgroup chairs with no elections, no fixed terms, and no National Body confirmation. The chairs control scheduling, framing, and consensus determination. A by-invitation Direction Group produces a priority list that functions as a Schelling focal point for chair scheduling - the DG has no formal authority over chairs, but chairs converge on its list because deviating requires justification while following requires none (Schelling 1960). Membership is a convener-dispensed credential that doubles as a reputational multiplier in a body where the uncommitted middle votes on heuristics. Every structural filter traces back to the Convener. The chain reproduces its own composition because existing gatekeepers select the next gatekeepers (Michels 1911).
 
-**The consensus definition is the load-bearing flaw.** SD-4 quotes the ISO consensus definition but applies it in a system where the vast majority of voters have no informed opinion on any given poll. The committee generates 300-500 papers per year; the median delegate reads 20-40. On approximately 90% of plenary polls, the median delegate is rationally ignorant (Downs 1957). SD-4's consensus mechanism counts this knowledge deficit as agreement. Even informed delegates face systematic conformity pressure under show-of-hands voting: the 2017 Italian Parliament natural experiment is the cleanest demonstration -- during a secret ballot, a technical malfunction briefly displayed individual votes on a large screen; within 8 seconds at least 62 members (15% of those voting) switched (Mattozzi & Nakaguma 2023). Brazil's 2013 switch from secret to public voting on congressional expulsions nearly doubled votes in favor, in the predictable direction when the person being voted on can see the dissenter. The FDA observed the same dynamic in expert advisory committees and switched to simultaneous voting (Newham & Midjord 2019). Levy (2007) provides the theoretical mechanism: career-concerned committee members vote differently when individual votes are observable. Levy's model shows that secrecy amplifies conservative bias while transparency removes it; the relevant insight for WG21 is that observability changes voting behavior regardless of direction. SD-4's consensus mechanism therefore operates under both the bandwidth gap and the conformity gap.
+**The consensus definition is the load-bearing flaw.** SD-4 quotes the ISO consensus definition but applies it in a system where the vast majority of voters have no informed opinion on any given poll. The committee generates 300-500 papers per year; the median delegate reads 20-40. On approximately 90% of plenary polls, the median delegate is rationally ignorant (Downs 1957). SD-4's consensus mechanism counts this knowledge deficit as agreement. Even informed delegates face systematic conformity pressure under show-of-hands voting: the 2017 Italian Parliament natural experiment is the cleanest demonstration -- during a secret ballot, a technical malfunction briefly displayed individual votes on a large screen; within 8 seconds at least 62 members (15% of those voting) switched (Mattozzi & Nakaguma 2023). Brazil's 2013 switch from secret to public voting on congressional expulsions nearly doubled votes in favor, in the predictable direction when the person being voted on can see the dissenter. The FDA observed the same dynamic in expert advisory committees and switched to simultaneous voting (Newham & Midjord 2019; Levy 2007). SD-4's consensus mechanism therefore operates under both the bandwidth gap and the conformity gap.
 
 **The rules create a consensus ratchet.** Once a chair declares consensus, reversing it is procedurally nearly impossible. SD-4 says the minority must "accept group decisions" and attributes this to the ISO Code of Conduct. The phrase does not appear in the ISO Code of Ethics and Conduct (PUB100011, March 2023); it appears only on a JTC 1 presentation slide. The actual Code says "we accept and respect *consensus* decisions" -- a narrower obligation paired with explicit appeal and escalation rights. SD-4 drops the word "consensus," broadens the obligation, and severs it from the rights the Code pairs it with, then uses the broadened version to characterize minority positions as Code violations. Ballot comments that revisit past decisions are "not appropriate." Repeated escalation "erodes credibility." The bird-in-hand rule gives structural priority to first-movers. Each rule is individually reasonable. Together they create a one-way valve.
 
@@ -128,27 +118,39 @@ Each entry below presents the SD-4 dominant strategy and the ISO counterfactual.
 
 ### 5.2 The Direction Group
 
-**Under SD-4:** Maintain priority-setting influence without accountability. The DG controls the coordination mechanism (Mises #6) without writing papers, building implementations, or answering to the committee. On a strict textual reading of the Directives, the DG's priority-setting function maps to a power reserved to the TMB (Directive 1.1f), and its formation does not comply with Directive 1.13.2. Decades of TMB and SC22 non-objection constitute a practice-based counterargument - tacit acceptance or institutional tolerance. Whether this textual non-compliance has practical significance remains untested precisely because no superior body has challenged it. The DG has no terms of reference, no committee-approved membership, no sunset clause, and no reporting obligation.
+**Under SD-4:** The DG has no structural power. It cannot direct chairs to schedule anything, cannot veto a proposal, cannot mandate a priority. It produces a "priority list" that chairs may or may not follow, and it confers a credential - "Direction Group member" - on its appointees. In practical terms, membership is a reward the convener dispenses. The anticipated defense - "the DG is purely advisory; it has no power" - is precisely the structural feature that makes the DG unchallengeable. Formal authority can be appealed, term-limited, reformed, constrained. Advisory influence through a patronage credential cannot be checked because there is no decision to appeal, no authority to constrain, no term to expire.
+
+Five game-theoretic mechanisms explain how zero structural power produces real scheduling effects:
+
+1. **Schelling focal point** (Schelling 1960). The DG priority list is the salient coordination default for chairs scheduling hundreds of papers per cycle. Deviating requires justification; following requires none.
+2. **Strategic information transmission** (Crawford & Sobel 1982; applied to committees by Gilligan & Krehbiel 1987). Costless messages influence when sender and receiver interests are aligned. DG members and chairs are selected by the same appointment chain. The advice is credible because the adviser and the decision-maker were chosen by the same patron.
+3. **Rank-order tournament** (Lazear & Rosen 1981; applied to committee leadership by Fong & McCrain 2025). When a prize (the credential) is awarded by a single decision-maker, aspirants compete on the dimension the decision-maker values - institutional alignment - producing self-censorship on governance questions without any explicit rule requiring it.
+4. **Heuristic amplifier** (Bikhchandani et al. 1992). "DG member endorses X" is a low-cost, high-credibility signal for the rationally ignorant uncommitted middle (Section 5.7), tilting the starting conditions of informational cascades.
+5. **Distributed irresponsibility.** When a DG-endorsed priority consumes years of bandwidth and fails to deliver (Section 5.9; [P4099R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r2.pdf)<sup>[54]</sup>), the DG only advised, the chair only scheduled voluntarily, and the convener only appointed. Each actor behaved locally rationally. The system-level outcome has no accountable author.
+
+On a strict textual reading of the Directives, the DG's priority-setting function maps to a power reserved to the TMB (Directive 1.1f), and its formation does not comply with Directive 1.13.2. Decades of TMB and SC22 non-objection constitute a practice-based counterargument - tacit acceptance or institutional tolerance. Whether this textual non-compliance has practical significance remains untested precisely because no superior body has challenged it. The DG has no terms of reference, no committee-approved membership, no sunset clause, and no reporting obligation.
 
 **Under ISO:** The DG would not exist in its current form. Advisory groups require committee approval of convenor, membership, and terms of reference (1.13.2), must be disbanded when tasks are complete (1.13.6), and produce recommendations only (1.13.3).
 
 ### 5.3 Subgroup Chairs
 
-**Under SD-4:** Maximize throughput. Minimize conflict. Deprioritize difficult work. SD-4 grants unconstrained discretion over scheduling, time-boxing, poll ordering, and consensus determination with no fixed terms and no ex-post review (Mises #7, Romer & Rosenthal 1978). The chair roster maps directly to employer names: NVIDIA holds the EWG chair and DG rotating chair simultaneously; Microsoft holds LEWG; IBM holds CWG vice-chair and LWG chair (Stigler 1971). The institutional immune system operates through chairs: reforms that address chair pain points succeed (P2138R4 progressed through 5 revisions in ~1 year and was adopted, shifting burden from chairs to design groups); reforms that constrain chair discretion die in the scheduling queue. A search of the entire WG21 paper corpus (1.4 million indexed records) returns zero papers proposing term limits for subgroup chairs, election of chairs, scheduling transparency requirements, or chair accountability mechanisms. The absence is itself data: the immune system operates not by rejecting reforms but by ensuring they are never proposed. P2138R4 is a partial counterexample -- the system can adopt process reforms when they align with chair incentives. The narrower claim is that reforms against chair incentives face structural headwinds, and the test is the differential survival rate.
+**Under SD-4:** Maximize throughput. Minimize conflict. Deprioritize difficult work. SD-4 grants unconstrained discretion over scheduling, time-boxing, poll ordering, and consensus determination with no fixed terms and no ex-post review (Mises #7, Romer & Rosenthal 1978). The chair roster maps directly to employer names (Stigler 1971; Kanevskaia et al. 2023 document the same pattern at IETF and 3GPP):
+
+| Company | Positions |
+|---------|-----------|
+| NVIDIA | EWG chair, DG rotating chair |
+| Microsoft | LEWG chair |
+| IBM/Red Hat | CWG vice-chair, LWG chair |
+
+The institutional immune system operates through chairs: reforms that address chair pain points succeed (P2138R4 progressed through 5 revisions in ~1 year and was adopted, shifting burden from chairs to design groups); reforms that constrain chair discretion die in the scheduling queue. The same corpus search (Section 4) returns zero papers proposing term limits for subgroup chairs, election of chairs, scheduling transparency requirements, or chair accountability mechanisms. The absence is itself data: the immune system operates not by rejecting reforms but by ensuring they are never proposed. P2138R4 is a partial counterexample - the system can adopt process reforms when they align with chair incentives. The narrower claim is that reforms against chair incentives face structural headwinds, and the test is the differential survival rate.
 
 **Under ISO:** Three-year terms (1.12.1), NB confirmation, consensus judged in consultation with secretary (2.5.6), all views must be summed up (1.8.2d). The immune system is checked by the periodic accountability moment.
 
-### 5.4 National Bodies
+### 5.4 National Bodies and Corporate Delegations
 
-**Under SD-4:** Ratify rather than challenge. NB delegates make "good enough" judgments from coarse signals filtered through the information seal (Mises #5, #9). SD-4 declares two categories of ballot comments "not appropriate" and redefines the "No" vote as a kill vote for the entire project, compressing the ballot to a near-binary choice.
+**Under SD-4:** NBs ratify rather than challenge, making "good enough" judgments from coarse signals filtered through the information seal (Mises #5, #9). SD-4 declares two categories of ballot comments "not appropriate" and redefines the "No" vote as a kill vote for the entire project, compressing the ballot to a near-binary choice. Corporate delegations staff chair positions, send consistent delegations, and establish bird-in-hand priority. The gains are concentrated (employer product roadmap, competitive positioning), so heavy investment is individually rational (Mises #9 inverted, Stigler 1971).
 
-**Under ISO:** NBs become active principals. NB confirmation of chair appointments (1.12.1) creates a structural check. Unrestricted ballot comments (2.6.2), all comments must be addressed (2.6.5), and appeal rights at three levels (5.1) provide a credible outside option.
-
-### 5.5 Corporate Delegations
-
-**Under SD-4:** Staff chair positions. Send consistent delegations. Establish bird-in-hand priority. The gains are concentrated (employer product roadmap, competitive positioning), so heavy investment is individually rational (Mises #9 inverted, Stigler 1971).
-
-**Under ISO:** Corporate participants still dominate through expertise and travel capacity. But chair positions are subject to committee-level accountability at reappointment. The NB intermediary is re-inserted into the appointment chain.
+**Under ISO:** NBs become active principals. NB confirmation of chair appointments (1.12.1) creates a structural check. Unrestricted ballot comments (2.6.2), all comments must be addressed (2.6.5), and appeal rights at three levels (5.1) provide a credible outside option. Corporate participants still dominate through expertise and travel capacity, but the NB intermediary is re-inserted into the appointment chain and chair positions are subject to committee-level accountability at reappointment.
 
 ### 5.6 Paper Authors
 
@@ -160,9 +162,9 @@ Each entry below presents the SD-4 dominant strategy and the ISO counterfactual.
 
 ### 5.7 The Uncommitted Middle
 
-**Under SD-4:** Vote with the room. Minimize personal exposure. Three Mises principles converge: uncertainty (#1) makes heuristics dominate; division of labor (#3) makes the bandwidth gap structural; marginal effort (#4) makes full engagement irrational. Bikhchandani et al. (1992) describe informational cascades; Barbera et al. (1993) proved the median voter is structurally decisive. WG21 uses sequential hand-raising, and the conformity literature quantifies the effect across multiple settings. The 2017 Italian Parliament incident provides the cleanest natural experiment: during a secret ballot, a technical malfunction briefly displayed individual votes on a large screen; within 8 seconds at least 62 members (15% of those voting) switched (Mattozzi & Nakaguma 2023). Brazil's 2013 switch from secret to public voting on congressional expulsions nearly doubled votes in favor -- the predictable direction when the person being voted on can see the dissenter. Schachter (1951) documents the mechanism: visible dissenters receive reduced communication, lowest likability ratings, and assignment of menial tasks. The Black Sheep Effect (Marques et al. 1988) predicts ingroup dissenters are judged more harshly than outsiders with the same views -- directly applicable to WG21's repeated-interaction structure. Funk (2010) shows the effect is strongest in small communities where members know each other and continue interacting. Janis (1972/1982) catalogs the symptoms in cohesive decision-making groups: self-censorship, direct pressure on dissenters, illusion of unanimity. Matthes et al. (2018) meta-analysis found the strongest silencing effect (r=.34) in face-to-face groups of known associates -- precisely WG21's conditions. The FDA observed the same dynamic with sequential expert voting and switched to simultaneous voting (Newham & Midjord 2019). SA is the most stigmatized position in WG21's five-way poll, and the convergent prediction across this literature is that it is systematically underrepresented in show-of-hands counts. SD-4's consensus-as-silence converts the resulting default mild agreement into procedural legitimacy.
+**Under SD-4:** Vote with the room. Minimize personal exposure. Three Mises principles converge: uncertainty (#1) makes heuristics dominate; division of labor (#3) makes the bandwidth gap structural; marginal effort (#4) makes full engagement irrational. The conformity mechanisms documented in Section 4 - sequential voting, observability pressure, stigmatization of dissent - apply with full force here. WG21's five-way poll (SF/WF/N/WA/SA) makes SA the most stigmatized position, and the convergent prediction across the conformity literature<sup>[35]</sup><sup>[37]</sup><sup>[38]</sup><sup>[39]</sup><sup>[42]</sup><sup>[43]</sup> is that SA is systematically underrepresented in show-of-hands counts. SD-4's consensus-as-silence converts the resulting default mild agreement into procedural legitimacy.
 
-Each individual vote is purposeful (Mises #5) - the delegate applied a heuristic and chose. The critique is not that individual votes are random. It is that the consensus label misrepresents what purposeful-but-coarse votes aggregate into. The aggregation mechanism stamps "consensus" on a collection of individually purposeful choices, implying informed collective agreement that the inputs do not support.
+Each individual vote is purposeful (Mises #5). The critique is not that individual votes are random. It is that the aggregation mechanism stamps "consensus" on a collection of purposeful-but-coarse choices, implying informed collective agreement the inputs do not support.
 
 **Under ISO:** The voter pool shifts from "each person in the room" to NB-appointed registered experts (1.12.1). The bandwidth gap still exists, but the evaluation pool is curated by NBs rather than self-selected by attendance.
 
@@ -181,7 +183,7 @@ These are evidence of technical pressure on C++, not evidence of governance fail
 
 The second layer is process exit -- where individuals or teams disengage because they believe the WG21 process will not produce what they need. This is the relevant evidence for the governance argument:
 
-- Sean Baxter abandoned Safe C++ after WG21 rejected the Rust safety model in favor of Profiles: "The Rust safety model is unpopular with the committee. Further work on my end won't change that."
+- The C++ Alliance funded Sean Baxter's Safe C++ project to determine whether Rust-style memory safety is achievable in C++. The research concluded it is not - templates are duck typing, and the type system would have to change. The committee was right to pursue profiles (Section 1). Baxter's exit ("The Rust safety model is unpopular with the committee. Further work on my end won't change that") is the correct conclusion of funded research, not a governance failure. The governance failure is that the endorsed direction (profiles) still has not shipped (Section 6).
 - Modules shipped in C++20 on a trajectory insiders describe as "borderline unimplementable," with critics "shot down by a group of higher-up people" (see Section 5.9 parallel cases).
 - Implementers in P3962R0 document that features accumulate faster than they can implement; the natural response of repeated, sustained complaints from the implementation community is itself a process-exit signal.
 
@@ -199,7 +201,7 @@ The committee shipped coroutines in C++20. The natural next step - exploring wha
 
 **Consensus ratchet:** The October 2021 poll ("sender/receiver is a good basis for most asynchronous use cases" - SF:24/WF:16/N:3/WA:6/SA:3) locked direction before the alternative was explored. P4129R1 Exhibit N documents that five years later, no sender-based networking shipped, but the directional poll remained the stated direction.
 
-**Scheduling funnel:** P2300 was a Direction Group priority. It consumed LEWG bandwidth across multiple cycles. A coroutine-native alternative competed for whatever time remained. If no time remained, it was never heard. Nobody rejected it. It simply never arrived.
+**Scheduling funnel:** P2300 was a Direction Group priority - not a mandate (the DG has no scheduling authority), but a focal point that chairs converged on because following the credentialed list requires no justification while deviating from it does (Section 5.2). It consumed LEWG bandwidth across multiple cycles. A coroutine-native alternative competed for whatever time remained. If no time remained, it was never heard. Nobody rejected it. It simply never arrived. The full evidence chain is documented in [P4099R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r2.pdf)<sup>[54]</sup>.
 
 **Bandwidth gap:** The October 2021 poll had 52 voters deciding whether sender/receiver was the right async basis when the alternative - the language feature just shipped in C++20 - had never been prototyped as a complete framework within the committee process. The room voted on a question it lacked the information to answer.
 
@@ -215,11 +217,50 @@ The same four SD-4 mechanisms appear in two other recent trajectories, without t
 
 **Contracts (C++26):** Adopted into the C++26 Working Draft at Hagenberg (Feb 2025). Twenty-plus NB comments from 19 of 26 national bodies followed (O'Dwyer 2025). Spain, the US, France, and Finland requested complete removal; Romania requested removal conditional on redesign of the "ignore" semantic. P4005R0 (guaranteed enforcement) was rejected by EWG (14 SA). P4043R0 questioned readiness. The final DIS vote was non-unanimous. The consensus ratchet operated as predicted: directional consensus was declared, and NBs who object are told their comments are "not appropriate" or "out of harmony with the ISO Code of Conduct."
 
-Both exhibit the same pattern as senders -- bird-in-hand, consensus ratchet, scheduling funnel, no feedback loop -- without the author conflict that colors the coroutines example.
+Both exhibit the same pattern as senders - bird-in-hand, consensus ratchet, scheduling funnel, no feedback loop - without the author conflict that colors the coroutines example.
 
 ---
 
-## 6. The Gap
+## 6. Case Study: Profiles and the Direction Group
+
+The senders/networking arc (Section 5.9) demonstrates the DG focal-point mechanism producing a shipped framework whose key claim was unevidenced. The profiles arc demonstrates something more revealing: the DG focal-point mechanism failing to deliver the DG's *own* endorsed direction, even when the architect of that direction sits on the DG.
+
+| Date | Event | Result |
+|------|-------|--------|
+| Jan 2023 | DG unanimous opinion [P2759R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2759r1.pdf)<sup>[58]</sup> | Profiles named as safety mechanism; SG23 created |
+| Feb 2023 | Issaquah: [P2816R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2816r0.pdf)<sup>[59]</sup> presented to SG23/EWG | 47 for, 2 against |
+| Jun 2023 | Varna: competing Rust-model papers | Consensus against further work |
+| Nov 2024 | Wroclaw: Profiles vs Safe C++ priority poll | 19 Profiles, 9 Safe C++ |
+| Nov 2024 | Wroclaw: initialization profile [P3081R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3081r0.pdf)<sup>[60]</sup> | 18-1 consensus, forwarded to EWG |
+| Feb 2025 | Hagenberg: language safety white paper | SF:32/F:31/N:6/A:4/SA:4 |
+| Jan 2026 | [P3970R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf)<sup>[61]</sup> call to action (five current/former DG) | "SG23 and EWG have repeatedly... pointed to Profiles" |
+| Jun 2026 | Result | Not in C++26 |
+
+### The alternative was correctly rejected
+
+The C++ Alliance funded Safe C++ (Section 1). The research answered the question: rigorous Rust-style memory safety requires changes to the template model that would make C++ no longer C++. The committee was right to pursue profiles. This forecloses the defense that non-delivery was caused by a bad bet.
+
+### Endorsement over engineering
+
+Without the DG credential, the architect's dominant strategy would have been the same as Baxter's or Kohlhoff's: build a working implementation, produce measurable evidence, let the work speak. That is the engineering path - the path that produced Asio (20 years of deployment), Circle (working borrow checker), Capy and Corosio (3 months).
+
+With the DG credential, the dominant strategy shifted to endorsement-first. A 47-2 vote takes one meeting. A working profile checker takes years. Game theory predicts agents take the cheapest path to their goal. The DG made ceremonial endorsement cheaper than engineering evidence. The architect took the cheaper path - not because of any personal failing, but because the incentive structure made it rational. The DG is optimized for direction-setting and alternative-killing. It has no mechanism for delivery. The credential substituted for the compiler.
+
+### Policy-based evidence making
+
+The UK House of Commons Select Committee on Science and Technology coined the term "policy-based evidence making" in 2006 to describe decision-makers who "selectively pick pieces of evidence which support an already agreed policy." The DG's recurring directions paper (P2000 series) is the evidence base. Chairs selectively amplify DG directions that align with their preferences and silently ignore the rest.
+
+When a chair's interests align with a DG direction, the direction provides cover: "I scheduled X because it's a DG priority." The chair's discretionary power becomes invisible. When a chair's interests conflict with a DG direction, the chair simply does not schedule it. The cost is zero - the DG has no enforcement mechanism, meeting records are sealed, and the "purely advisory" framing is the chair's own shield.
+
+The DG endorsed profiles three times. The chairs who control EWG and LEWG scheduling prioritized senders, contracts, and other work. The endorsement was loud. The scheduling response was silent. And the silence was invisible.
+
+### Falsification criterion
+
+If profiles ship in C++29 with compiler enforcement and empirical coverage evidence (the PAVE methodology in [P4137R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4137r0.pdf)<sup>[62]</sup> or equivalent), the "DG hindered delivery" claim was premature - the timeline was normal for a feature of this scope. If profiles ship without empirical coverage evidence, the ceremony-over-engineering diagnosis stands regardless of the ship date.
+
+---
+
+## 7. The Gap
 
 The ISO system provides seven structural properties that serve as countermeasures to the forces identified in Section 3: distributed authority (no single person holds appointment, scheduling, priority-setting, and consensus-determination simultaneously), fixed terms as accountability moments (3-year terms with committee reappointment, 1.12.1), consensus as negotiated outcome (requiring reconciliation of conflicting arguments, 2.5.6), the appeal chain as credible outside option (three levels, 5.1), NB sovereignty (inherent rights not narrowable by committee-level documents), forced feedback loops (comments must be addressed, negative votes resolved, projects cancelled after 5 years, 2.5.3/2.6.5/2.1.6), and no punishment for objection (objectors directed to appeals, 2.5.6).
 
@@ -232,18 +273,39 @@ SD-4 removes every countermeasure:
 | Social trust substitutes for evaluation | Chair must sum up all views (1.8.2d); consensus in consultation (2.5.6) | Chair determines alone; 2:1 threshold |
 | Objection is penalized | No penalty; objectors directed to appeals (2.5.6) | "Erodes credibility" |
 | The room reads the person, not the paper | Decisions in writing, posted within 48 hours (1.8.2e, 1.9.2c) | Meeting records sealed |
-| Priority follows patronage | TMB allocates priorities (1.1f) | Direction Group (by-invitation) |
+| Priority follows patronage | TMB allocates priorities (1.1f) | DG focal point (by-invitation, zero authority, un-appealable) |
 | System cannot distinguish consensus from compliance | Forced feedback: comments addressed, negative votes resolved (2.5.3, 2.6.5) | No retrospective; revisiting decisions "inappropriate" |
 
 ### GFT Prognosis
 
-**ISO - Live Player:** The question is not "does the system produce novel technical output?" - both systems do; modules, concepts, and ranges are genuine technical novelties. The question is "can the system do something it has never done *in governance*?" The answer for ISO in WG21 specifically is untested but structurally enabled: the appeal chain (5.1) provides an adaptation mechanism independent of the officers being challenged; the fixed-term reappointment moment (1.12.1) provides a periodic governance-adaptation opportunity; the multi-principal structure means governance novelty can originate from any NB, not only from the officers being challenged. This is structural capacity, not demonstrated behavior in WG21. **Social Technology:** Living tradition - the Foreword explicitly states the six WTO principles the rules exist to safeguard. **Power Source:** Mixed correctly - NB sovereignty is owned (inherent in P-member status), officer authority is borrowed (revocable at reappointment). **Functionality:** Functional - the system produces what it claims. **Imitation Distance:** First generation - the Directives are the original.
+**Live Player**
 
-**SD-4 - Live Player:** Tested in governance, and the answer is no. The system has never adopted a governance reform against officer incentives. P2138R4 - the only process reform found - aligned with chair incentives; zero papers constraining chair discretion exist in the entire WG21 corpus. The relevant test is whether the system can adapt its own governance in response to novel conditions (e.g., the NB ballot revolt on contracts). Current evidence: it has not. Three Profiles endorsements, zero structural change. **Social Technology:** The technical social technology is living - implementers and domain experts carry genuine expertise, and the committee ships real features. The governance social technology is dead tradition: participants follow SD-4 without understanding that it deviates from the Directives; the consensus mechanism performs the ceremony of agreement without producing the substance of negotiated consent. The direction-setting process is where the diagnosis lands hardest: the committee shipped coroutines (C++20) and then invested six years into a library framework built on a different computational model without ever asking whether they compose (Section 5.9). The process measures ceremonies completed, not engineering outcomes achieved. **Power Source:** Structurally contradictory - chair authority under SD-4 is owned power (no term, no review), but the legitimacy that makes WG21's output an ISO standard is borrowed from the ISO framework. Metastable: persists as long as no one tests the borrowed component. **Functionality:** Technically productive (ships standards, on-time, high quality) and governance-non-functional: the consensus mechanism does not produce the informed collective agreement it claims. Each individual vote is purposeful (Mises #5), but the aggregation mechanism stamps "consensus" on a collection of purposeful-but-coarse choices, implying informed agreement the inputs do not support. The dysfunction surfaces downstream: in NB comments, in implementer complaints (P3962R0), in the coroutines/senders open-loop failure, and in the Hirschman exit that Microsoft's 2030 Rust migration and Google's Chrome policy represent. **Imitation Distance:** Third-generation copy. SD-4 quotes the ISO consensus definition while replacing every structural safeguard the definition was designed to operate within.
+- *ISO:* Untested but structurally enabled. The appeal chain (5.1), fixed-term reappointment (1.12.1), and multi-principal structure mean governance novelty can originate from any NB, not only from the officers being challenged. Structural capacity, not demonstrated behavior in WG21.
+- *SD-4:* Tested, and the answer is no. The system has never adopted a governance reform against officer incentives. P2138R4 - the only process reform found - aligned with chair incentives. Three Profiles endorsements, zero structural change.
+
+**Social Technology**
+
+- *ISO:* Living tradition. The Foreword explicitly states the six WTO principles the rules exist to safeguard.
+- *SD-4:* The technical social technology is living - implementers carry genuine expertise, the committee ships real features. The governance social technology is dead tradition: participants follow SD-4 without knowing the Directives. The direction-setting process exhibits cargo cult properties: the committee shipped coroutines (C++20) and invested six years into a library framework built on a different computational model without asking whether they compose (Section 5.9). The process measures ceremonies completed, not outcomes achieved.
+
+**Power Source**
+
+- *ISO:* Mixed correctly. NB sovereignty is owned (inherent in P-member status), officer authority is borrowed (revocable at reappointment).
+- *SD-4:* Structurally contradictory. Chair authority is owned power (no term, no review), but the legitimacy that makes WG21's output an ISO standard is borrowed from the ISO framework. Metastable: persists as long as no one tests the borrowed component.
+
+**Functionality**
+
+- *ISO:* Functional - the system produces what it claims.
+- *SD-4:* Technically productive (ships standards, on-time, high quality) and governance-non-functional: the consensus mechanism does not produce the informed collective agreement it claims. The dysfunction surfaces downstream: NB comments, implementer complaints (P3962R0), the coroutines/senders open-loop failure, and the Hirschman exit that Microsoft's 2030 Rust migration and Google's Chrome policy represent.
+
+**Imitation Distance**
+
+- *ISO:* First generation - the Directives are the original.
+- *SD-4:* Third-generation copy. SD-4 quotes the ISO consensus definition while replacing every structural safeguard the definition was designed to operate within.
 
 ---
 
-## 7. References
+## 8. References
 
 1. ISO/IEC. "ISO/IEC Directives, Part 1 - Consolidated JTC 1 Supplement." 2023.
 2. ISO/IEC. "ISO/IEC Directives, Part 1 - Consolidated ISO Supplement." Edition 2024.
@@ -298,3 +360,15 @@ SD-4 removes every countermeasure:
 51. O'Dwyer, A. "The C++26 NB comments have arrived." 2025.
 52. Adelstein Lelbach, B. P2247R1. "2020 Library Evolution Report." 2020.
 53. Karotkin, D. & Paroush, J. "Optimum Committee Size: Quality-versus-Quantity Dilemma." *Social Choice and Welfare* 20(3), 2003.
+54. [P4099R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4099r2.pdf) - "The Twenty-One Year Networking Arc" (Vinnie Falco, 2026).
+55. Schelling, T.C. *The Strategy of Conflict*. Harvard UP, 1960.
+56. Crawford, V.P. & Sobel, J. "Strategic Information Transmission." *Econometrica* 50(6), 1982.
+57. Lazear, E.P. & Rosen, S. "Rank-Order Tournaments as Optimum Labor Contracts." *Journal of Political Economy* 89(5), 1981.
+58. [P2759R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2759r1.pdf) - "DG Opinion on Safety for ISO C++" (Michael Wong, Howard Hinnant, Roger Orr, Bjarne Stroustrup, Daveed Vandevoorde, 2023).
+59. [P2816R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2816r0.pdf) - "Safety Profiles: Type-and-resource Safe programming in ISO Standard C++" (Bjarne Stroustrup, Gabriel Dos Reis, 2023).
+60. [P3081R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3081r0.pdf) - "Core safety Profiles: Specification, adoptability, and impact" (2024).
+61. [P3970R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf) - "Profiles and Safety: a call to action" (Daveed Vandevoorde, Jeff Garland, Paul E. McKenney, Roger Orr, Bjarne Stroustrup, Michael Wong, 2026).
+62. [P4137R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4137r0.pdf) - "PAVE: Profile Analysis and Verification Evidence" (Vinnie Falco, 2026).
+63. Gilligan, T.W. & Krehbiel, K. "Collective Decision-Making and Standing Committees: An Informational Rationale for Restrictive Amendment Procedures." *Journal of Law, Economics, and Organization* 3(2), 1987.
+64. Fong, C. & McCrain, J. "A Tournament Theory of Congressional Committee Leadership." *Public Choice* 202(1), 2025.
+65. Kanevskaia, O. et al. "Wearing Multiple Hats: The Role of Working Group Chairs' Affiliation in Standards Development." *Research Policy* 52(9), 2023.
