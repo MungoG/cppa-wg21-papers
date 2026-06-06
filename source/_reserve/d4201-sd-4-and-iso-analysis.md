@@ -34,7 +34,7 @@ The author is the founder and principal of the C++ Alliance and maintains compet
 
 The C++ Alliance funded Sean Baxter's Safe C++ project to determine whether rigorous Rust-style memory safety is achievable within C++. The research concluded that full safety requires changes to the template model incompatible with C++ - templates are a form of duck typing, and the type system would have to change. The C++ Alliance agrees with the committee's decision to pursue profiles over the Rust safety model.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

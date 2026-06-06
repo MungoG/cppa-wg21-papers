@@ -30,7 +30,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space: [P4003R0](https://wg21.link/p4003r0)<sup>[1]</sup>, [P4007R0](https://wg21.link/p4007r0)<sup>[2]</sup>, and [P4100R0](https://wg21.link/p4100r0)<sup>[3]</sup>. The author has attended WG21 meetings since 2018. The institutional-theory literature presented here applies to every consensus body, including bodies whose decisions the author agrees with.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

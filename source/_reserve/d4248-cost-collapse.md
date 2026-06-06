@@ -30,7 +30,7 @@ The author is the founder of the C++ Alliance and maintains proposals in the `st
 
 This paper is a companion to P4201<sup>[1]</sup> (SD-4 and ISO governance), P4237<sup>[2]</sup> (the information seal), and P4241<sup>[3]</sup> (dopaminergic effects of consensus participation).
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

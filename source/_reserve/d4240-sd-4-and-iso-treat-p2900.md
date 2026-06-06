@@ -28,7 +28,7 @@ Nineteen of twenty-six national bodies filed comments on P2900. Spain, the Unite
 
 The author provides information and serves at the pleasure of the committee.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

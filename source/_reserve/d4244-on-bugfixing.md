@@ -30,7 +30,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space: [P4003R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r0.pdf)<sup>[1]</sup>, [P4007R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r0.pdf)<sup>[2]</sup>, and [P4100R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r0.pdf)<sup>[3]</sup>. This paper does not address networking, senders, or any specific feature. It documents a structural property of the committee's correction process. The author does not propose which defect to fix.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

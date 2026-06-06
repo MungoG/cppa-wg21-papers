@@ -32,7 +32,7 @@ The author is the founder of the [C++ Alliance](https://cppalliance.org/)<sup>[1
 
 The author has used generative tools in drafting and revision of technical work, including assistance with routine prose in this paper. The substantive judgments, structure, and claims remain the author's responsibility.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

@@ -31,7 +31,7 @@ The author has papers in the WG21 mailing and participates in the committee proc
 
 This paper is a companion to [P4129R1](https://wg21.link/p4129r1)<sup>[5]</sup>, which documents the dynamics of WG21 voting, and [P4130R0](https://wg21.link/p4130r0)<sup>[6]</sup>, which documents the convenership's structural influence over WG21. Those papers examine the mechanism and the officer. This paper examines the schedule.
 
-The author provides information, asks nothing, and serves at the pleasure of the chair.
+This paper asks for nothing.
 
 ---
 

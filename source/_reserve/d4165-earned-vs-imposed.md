@@ -35,7 +35,7 @@ The author maintains [Boost.Beast](https://github.com/boostorg/beast)<sup>[1]</s
 
 The Boost ecosystem competes with the standard library. When this paper examines standard library components alongside Boost alternatives, the author's stake is direct. The reader should weigh every claim in this paper with that bias in mind. Every quotation is attributed. Every document is public. Every fact is independently verifiable.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 

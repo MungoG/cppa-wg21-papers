@@ -30,7 +30,7 @@ The author provides information and serves at the pleasure of the committee.
 
 This paper takes no position on the technical quality of any feature, including Contracts. The analysis is procedural.
 
-The author asks for nothing.
+This paper asks for nothing.
 
 ---
 
