@@ -42,8 +42,6 @@ All JTC 1 working groups, including WG21, are bound by the ISO/IEC Directives Pa
 
 The Directives provide for this arrangement. The Foreword states that "additional documents may require referencing, such as Standing Documents (SD) for JTC 1 to complement the ISO/IEC Directives and the Consolidated JTC 1 Supplement"<sup>[15]</sup>. Other WG21 standing documents fit this description: SD-3 organizes study groups, SD-5 contains meeting information, SD-7 describes mailing procedures. Each complements the Directives with logistics and reference information consistent with them. SD-4 is the only standing document that interprets the ISO consensus definition, creates voting thresholds, restricts National Body ballot comments, establishes escalation deadlines, and penalizes repeated objection.
 
-Both documents are publicly available. The comparison below is systematic.
-
 **What the current system produces.** Four consecutive on-time releases from C++14 through C++23. Major compiler implementations tracking the standard within months of publication. A volunteer workforce that has produced modules, concepts, ranges, coroutines, `std::expected`, `std::print`, and `std::mdspan`. WG21's subgroup structure is an adaptation to a scale the Directives did not anticipate. The procedural deviations documented below purchased something - speed, decisiveness, simplified administration. The cost is measured in Directive compliance.
 
 ### 2.1 How ISO Defines a Subgroup
@@ -56,13 +54,13 @@ Within this model, the Directives authorize working groups to subdivide. The ful
 >
 > Directive 1.12.1<sup>[2]</sup>
 
-That single sentence - with no appointment procedure, no term limits, no oversight requirements - is the entire Directive framework for subgroups.
+That single sentence - with no appointment procedure, no term limits, no oversight requirements - is the entire Directive framework for subgroups. ISO does not see or recognize the internal structure of a working group as official.
 
 WG21's siblings in SC 22 operate within this model:
 
 | Working Group | Typical Attendance | Internal Subgroups |
 |---|---|---|
-| WG14 (C) | ~25 | Informal parallel breakouts during the week; all decisions in single plenary |
+| WG14 (C) | ~30-35 | Standing study groups (e.g. CFP) meeting independently between plenaries; all formal decisions in single plenary |
 | WG5 (Fortran) | ~23 | None; delegates to US national body |
 | WG21 (C++) | 200+ | 23 subgroups, multiple parallel tracks |
 
@@ -121,6 +119,8 @@ SD-4<sup>[1]</sup> states:
 | Term length | Up to three years | No fixed term |
 | NB confirmation | Required | Not mentioned |
 
+The Directives' governance requirements - election, terms, NB confirmation - exist so that accountability operates through institutional mechanisms rather than through the judgment of any individual officeholder.
+
 ### 3.2 Consensus Threshold
 
 Directive 1.12.1<sup>[2]</sup> requires that working groups "operate by consensus." The Directives define consensus via ISO/IEC Guide 2:2004, quoted at Directive 2.5.6<sup>[2]</sup>:
@@ -131,9 +131,9 @@ SD-4<sup>[1]</sup> replaces this qualitative standard with a numeric threshold:
 
 > "A proposal normally advances if there are more than twice as many in favor of a proposal as against, after discussion of the concerns of those voting against and possibly a re-poll to see if opinions have improved."
 
-The "after discussion" clause reflects Guide 2's principle of seeking to take into account all views. But the numeric rule permits advancement over sustained opposition from up to a third of the room. Whether Guide 2's qualitative standard would treat that level of opposition as "sustained opposition to substantial issues by any important part of the concerned interests" is a question the text leaves to judgment. That judgment, however, was designed to operate alongside structural safeguards the Directives provide and SD-4 does not reproduce: participants individually appointed by National Bodies (1.12.1), formal dispute resolution (5.1.1, 5.1.2), and the requirement that the convenor "act in a purely international capacity" (1.12.1). SD-4 replaces the qualitative standard with a numeric threshold while removing the structural context in which that standard was meant to operate, and applies the result to a room whose composition is untethered from NB appointment.
+The "after discussion" clause reflects Guide 2's principle of seeking to take into account all views. But the numeric rule permits advancement over sustained opposition from up to a third of the room. Whether Guide 2's qualitative standard would treat that level of opposition as "sustained opposition to substantial issues by any important part of the concerned interests" is a question the text leaves to judgment. That judgment, however, was designed to operate alongside structural safeguards the Directives provide and SD-4 does not reproduce: participants individually appointed by National Bodies (1.12.1), formal dispute resolution (5.1.1, 5.1.2), and the requirement that the convenor "act in a purely international capacity" (1.12.1). SD-4 replaces the qualitative standard with a numeric threshold while removing the structural context in which that standard was meant to operate, and applies the result to a room whose composition is not determined by NB appointment.
 
-The measurement instrument compounds the concern. WG21's practice for these polls is a show of hands — a visible, sequential expression of position. The academic literature documents that visible voting systematically suppresses opposition in committee settings. Asch's conformity experiments found 36.8% of participants conformed to a clearly wrong majority under social pressure<sup>[19]</sup>. In the Italian Parliament in 2017, a technical malfunction briefly revealed individual votes during a secret ballot; within eight seconds, at least 62 members (15% of those voting) switched their votes<sup>[22]</sup>. A 2019 structural-model study of FDA advisory committees, exploiting the FDA's 2007 switch from sequential to simultaneous voting as a natural experiment, found that roughly half of expert panelists would vote against their private assessment in response to earlier voters' positions<sup>[20]</sup>. The 2007 switch itself was prompted by the Institute of Medicine's 2006 report and the FDA Amendments Act, on the concern that sequential public voting could compromise the integrity of the result through momentum effects among later voters. The spiral-of-silence literature found the strongest silencing effect (r = .34) in face-to-face settings with known associates<sup>[21]</sup>. Beyond conformity, visible dissent carries social cost: Schachter's foundational experiments showed that group members who consistently disagreed with the majority received the lowest likability ratings, were assigned menial tasks, and in cohesive groups were ultimately marginalized within the group<sup>[23]</sup>. A 2:1 count taken by show of hands in a room where participants know each other and will continue working together is drawn from an instrument the literature identifies as systematically biased toward the majority position.
+The measurement instrument compounds the concern. WG21's practice for these polls is a show of hands - a visible, sequential expression of position. The academic literature documents that visible voting systematically suppresses opposition in committee settings. A structural-model study of FDA advisory committees found that roughly half of expert panelists would vote against their private assessment in response to earlier voters' positions<sup>[20]</sup>. In the Italian Parliament in 2017, a malfunction briefly revealed individual votes during a secret ballot; within eight seconds, 15% of those voting switched their votes<sup>[22]</sup>. Conformity<sup>[19]</sup>, spiral-of-silence<sup>[21]</sup>, and social-cost-of-dissent<sup>[23]</sup> literatures all find the same direction. A 2:1 count taken by show of hands in a room where participants know each other and will continue working together is drawn from an instrument the literature identifies as systematically biased toward the majority position.
 
 Section 2.1 establishes that WG21's subgroups function as working groups. If they are working groups, 1.12.1 requires them to operate by consensus as the Directives define it.
 
@@ -149,7 +149,7 @@ SD-4<sup>[1]</sup> delegates work prioritization to a Direction Group:
 
 The Directives define three types of subsidiary body relevant here. Working groups (1.12)<sup>[2]</sup> are established by a committee for specific tasks - the Direction Group is not a working group. Groups having advisory functions within a committee (1.13)<sup>[2]</sup> may be "established by a committee to assist the Chair and secretariat in tasks concerning coordination, planning and steering of the committee's work" - this is the closest functional match, but 1.13 is available to committees (TCs/SCs), not to working groups. Ad hoc groups (1.14)<sup>[2]</sup> may be created by working groups in JTC 1, but require committee-approved convenors, terms of reference, and a target completion date - the Direction Group has none of these.
 
-The Direction Group exercises a function the Directives assign to formal structures but is constituted as none of them. Its relationship to the Directives' organizational categories is unclear. Formalization under Directive 1.4<sup>[2]</sup> would remove the ambiguity.
+The Direction Group exercises a function the Directives assign to formal structures but is constituted as none of them. Its relationship to the Directives' organizational categories is unclear.
 
 ### 3.4 Ballot Comment Scope
 
@@ -163,7 +163,7 @@ SD-4's provisions govern how a subgroup disposes of a comment, not whether an NB
 
 Directive 0.7(c)<sup>[2]</sup> is partially aligned in principle: it states that NBs have "the responsibility of ensuring that their technical standpoint... is made clear at an early stage of the work rather than, for example, at the final (approval) stage." SD-4's concern about re-litigating decided issues reflects this spirit.
 
-What SD-4 adds is the normative label. The Directives place the responsibility for timely position-taking on the NB (0.7(c)). SD-4 places a characterization on the comment itself - "out of scope" and "out of harmony with the ISO Code of Conduct's commitment to 'accept group decisions.'" The Directives contain no provision authorizing a working group to pre-categorize NB ballot comments in these terms. "Out of harmony with the ISO Code of Conduct" is a serious characterization to attach to the exercise of a Directive right. (The attribution of "accept group decisions" to the ISO Code of Conduct is examined separately in §3.6.)
+What SD-4 adds is the normative label. The Directives place the responsibility for timely position-taking on the NB (0.7(c)). SD-4 places a characterization on the comment itself - "out of scope" and "out of harmony with the ISO Code of Conduct's commitment to 'accept group decisions.'" The Directives contain no provision authorizing a working group to pre-categorize NB ballot comments in these terms. SD-4 attaches a Code of Conduct characterization to the exercise of a Directive right. (The attribution of "accept group decisions" to the ISO Code of Conduct is examined separately in Section 3.6.)
 
 ### 3.5 Escalation and Credibility
 
@@ -177,7 +177,9 @@ SD-4 also imposes a deadline for raising objections. Serious concerns must be po
 
 > "Objections that are not so escalated, but are raised or re-raised in plenary, should not be given weight in plenary."
 
-The Directives contain no comparable cutoff after which objections lose standing.
+The Directives contain no comparable cutoff after which objections lose standing. A "WG plenary" does not exist in ISO terms; it is entirely a matter of internal WG 21 organization.
+
+SD-4's escalation provisions may address a legitimate practical concern - participants who repeatedly invoke technical dispute processes as a form of procedural obstruction. That concern is real; WG21 has experienced it. But the text of SD-4 connects escalation behavior to the ISO Code of Conduct (Section 3.4) and attaches normative consequences - credibility erosion and deadline forfeiture - that the Code does not authorize and the Directives do not provide for. Whether the provisions address a real problem does not determine whether they operate within the Directives' framework.
 
 ### 3.6 Code of Conduct Attribution
 
@@ -187,9 +189,9 @@ The ISO Code of Ethics and Conduct<sup>[18]</sup> says:
 
 > "we accept and respect consensus decisions"
 
-Three differences matter.
+Three differences.
 
-First, SD-4 drops the word "consensus." The ISO Code conditions the acceptance obligation on a specific deliberative process — the consensus process defined in Guide 2 — not on whatever the group decides by any method. "Accept group decisions" and "accept and respect consensus decisions" impose different obligations.
+First, SD-4 drops the word "consensus." The ISO Code conditions the acceptance obligation on a specific deliberative process - the consensus process defined in Guide 2 - not on whatever the group decides by any method. "Accept group decisions" and "accept and respect consensus decisions" impose different obligations.
 
 Second, the source is misidentified. The phrase "accept group decisions" does not appear in the ISO Code of Ethics and Conduct<sup>[18]</sup>. It appears on a JTC 1 presentation slide. SD-4 attributes a slide's paraphrase to the Code itself.
 
@@ -211,7 +213,7 @@ The Directives require transparency at multiple levels. At the working group lev
 
 The Directives do not require that working group records be world-readable. They do, however, address meeting records directly. Directive SF.10<sup>[15]</sup> provides a consent-based framework for meeting recordings: recording by the Secretary/Committee Manager is acceptable if participants are informed at the start and no one objects, any participant may require recording be turned off during their intervention, and recordings are to help prepare minutes and may be used to resolve disputes. JTC 1 Standing Document 19 (2022), Section 9 explicitly adopts this framework: "JTC 1 follows the ISO policy on recording technical meetings which are included in the Consolidated ISO Supplement, Annex SF Clause 10"<sup>[24]</sup>. In March 2025, ISO published guidance explicitly permitting the use of AI tools for meeting transcription under SF.10<sup>[16]</sup>.
 
-WG21's opening meeting guidelines state: "Meetings are not public, we want everyone to be able to speak freely. Please refrain from live tweeting, blogging, taking photos or videos"<sup>[17]</sup>. SD-4's blanket prohibition operates outside the SF.10 framework rather than within it. SF.10 provides a consent-based process that balances transparency with participant comfort. WG21's guidelines skip the framework and default to prohibition.
+WG21's opening meeting guidelines state: "Meetings are not public, we want everyone to be able to speak freely. Please refrain from live tweeting, blogging, taking photos or videos"<sup>[17]</sup>. SF.10 provides a consent-based process that balances transparency with participant comfort. WG21's guidelines operate outside this framework and default to prohibition.
 
 WG21's practice is unusual among comparable bodies. WG21's sibling working groups in SC 22 publish their meeting minutes as public documents: WG14 (C) publishes minutes as N-numbered documents on open-std.org; WG5 (Fortran) publishes minutes on its official site; WG9 (Ada) lists draft minutes in its public Electronic Documents Log. Outside ISO, ECMA TC39 (JavaScript) publishes full meeting transcripts on a public GitHub repository; the IETF publishes working group minutes and recordings on its Datatracker; W3C publishes working group minutes on w3.org. No other JTC 1 working group examined maintains a comparable prohibition on recording or public quotation of meeting discussions. Appendix B documents this comparison. Appendix C documents the recording and transcription practices.
 
@@ -243,19 +245,21 @@ The appeal provisions (5.1.1, 5.1.2, 5.3.4) exist regardless of whether SD-4 res
 
 SD-1 is the official PL22.16/WG21 document list, maintained continuously since the committee's founding.
 
-The 2009 SD-1<sup>[3]</sup> enumerates the then-current standing documents SD-1, SD-2, and SD-5 as document rows; the 2012 SD-1<sup>[4]</sup> enumerates SD-1, SD-2, SD-3, and SD-5. From 2016 onward, the SD-1 lists<sup>[5]</sup><sup>[6]</sup><sup>[7]</sup><sup>[8]</sup> list only SD-1 itself as an SD row; other standing documents are referenced only when a numbered paper is about them (for example, "P0835 Adopt SD-6 feature macros…", "P1919 Expanding the Rights in SD-8"). SD-4 does not appear as a row in any year examined.
+The 2009 SD-1<sup>[3]</sup> enumerates the then-current standing documents SD-1, SD-2, and SD-5 as document rows; the 2012 SD-1<sup>[4]</sup> enumerates SD-1, SD-2, SD-3, and SD-5. From 2016 onward, the SD-1 lists<sup>[5]</sup><sup>[6]</sup><sup>[7]</sup><sup>[8]</sup> list only SD-1 itself as an SD row; other standing documents are referenced only when a numbered paper is about them (for example, "P0835 Adopt SD-6 feature macros...", "P1919 Expanding the Rights in SD-8"). SD-4 does not appear as a row in any year examined.
 
 The more telling observation is publication location. WG21's document pipeline hosts pre-publication drafts (D-papers) on isocpp.org and formally published papers (P-papers, N-papers, and published standing documents) on open-std.org. Published standing documents - SD-3, SD-5, SD-7 - appear on open-std.org. SD-4 appears on isocpp.org alongside pre-publication drafts.
+
+At the March 2026 plenary in Brno, a slide shown to all in-person and remote delegates instructed them to follow "WG21 Practices and Procedures." SD-4's full title is "SD-4: WG21 Practices and Procedures." The document number was not named on the slide.
 
 ---
 
 ## 6. Why SD-4?
 
-No other JTC 1 working group maintains a comparable procedural supplement. WG9 (Ada) states that all its standards are "developed in accordance with the JTC1 Directives"<sup>[11]</sup> - no supplement needed. WG14 (C) maintains only meeting-logistics documents<sup>[12]</sup>. WG5 (Fortran) has a strategic plan. Appendix A documents this comparison.
+No other JTC 1 working group maintains a comparable procedural supplement. WG9 (Ada) states that all its standards are "developed in accordance with the JTC1 Directives"<sup>[11]</sup> - no supplement needed. WG14 (C) maintains meeting-logistics and study group documents<sup>[12]</sup>. WG5 (Fortran) has a strategic plan. Appendix A documents this comparison.
 
 Even MPEG (SC 29/WG 11), the only other JTC 1 working group that grew to comparable scale, never wrote a comprehensive procedural supplement<sup>[9]</sup>. At several hundred attendees per meeting with permanent subgroups, MPEG operated under the Directives framework with only narrow ad hoc group rules. When the organizational model became unsustainable, ISO restructured MPEG into proper SC-level working groups<sup>[10]</sup> rather than having it write its own governance document.
 
-SD-4 exists because WG21 has built a structure the Directives were not designed to govern. A working group of 200+ participants with 23 subgroups, multiple parallel tracks, and mandatory gatekeeping sub-bodies needs procedures the Directives do not provide. SD-4 fills that gap. The deviations documented in Sections 3-5 are a consequence of that gap.
+SD-4 exists because WG21 has built a structure the Directives were not designed to govern. A working group of 200+ participants with 23 subgroups, multiple parallel tracks, and mandatory gatekeeping sub-bodies needs procedures the Directives do not provide. SD-4 fills that gap. The deviations documented in Sections 3-5 are a consequence of that gap. They share a common structure: each fills the Directives' silence on subgroup governance with a provision that, for participants below the plenary level, narrows or replaces a protection the Directives provide for every comparable role - election, fixed terms, NB confirmation, formal appeal, transparency.
 
 ---
 
@@ -263,7 +267,7 @@ SD-4 exists because WG21 has built a structure the Directives were not designed 
 
 The following responses address objections raised in early review of this paper.
 
-### "The Directives don't cover WG internal substructure"
+### "The Directives do not cover WG internal substructure"
 
 The claim is that ISO only sees WG21 as a single working group with a convener, and that everything inside - subgroup chairs, consensus procedures, scheduling - is the WG's private business that the Directives do not reach.
 
@@ -279,7 +283,7 @@ The convener's authority to create subgroups is not in question - Directive 1.12
 
 The Directives' appointment requirements for convenors - committee appointment, fixed terms, NB confirmation - exist to ensure accountability and oversight over the people who lead the bodies doing the standardization work. Section 2.1 documents that WG21's subgroup chairs are those people. They set agendas, run sessions, hold polls whose outcomes determine what enters the working draft, and serve with no fixed term and no NB confirmation. The authority to create subgroups does not self-evidently include the authority to staff them outside the governance framework the Directives apply to every comparable role.
 
-### "The Directives govern the convenor; the convenor governs the subgroups — so the chain is complete"
+### "The Directives govern the convenor; the convenor governs the subgroups - so the chain is complete"
 
 The argument is that Directive governance runs through a chain: National Bodies appoint experts, the committee appoints the convenor, the convenor manages the subgroups. Since the convenor is subject to Directive governance (committee appointment, fixed terms, NB confirmation), subgroup governance is unnecessary because the convenor is the accountability checkpoint.
 
@@ -287,7 +291,7 @@ The chain requires the convenor to actually exercise oversight, and the Directiv
 
 The chain also assumes a single individual can provide effective oversight over bodies that collectively process the committee's entire technical workload. Section 2.1 documents 23 subgroups running in multiple parallel tracks simultaneously across a full-week meeting. The MPEG precedent (Appendix A.3) illustrates ISO's own response when a single convenor's oversight capacity proved insufficient for an organization of comparable scale: restructuring the subgroups into proper working groups, not continued reliance on the chain.
 
-### "SD-4 supplements the Directives; it doesn't replace them"
+### "SD-4 supplements the Directives; it does not replace them"
 
 SD-4 describes itself this way. The question is whether this self-description is accurate. On every topic where both documents speak - chair appointment, consensus thresholds, ballot comment scope, escalation, priority allocation - the SD-4 provision is the one followed in practice. A supplement that is followed instead of the document it supplements is a replacement.
 
@@ -295,54 +299,85 @@ SD-4 describes itself this way. The question is whether this self-description is
 
 This paper takes no position on whether the deviations produce good or bad technical outcomes. Section 2 acknowledges that the current system has produced four consecutive on-time releases and major features. The question is procedural compliance, not technical quality. Directive 1.4<sup>[2]</sup> requires authorization for deviations. Whether the deviations are beneficial is a separate question from whether they are authorized.
 
-### "This paper doesn't have a point"
+### "This paper does not have a point"
 
-The comparison had not been made. Both documents are public. The deviations documented in Sections 3-5 are either authorized under Directive 1.4<sup>[2]</sup> or they are not. This paper provides the information needed to ask that question.
+The comparison had not been made. The deviations documented in Sections 3-5 are either authorized under Directive 1.4<sup>[2]</sup> or they are not. This paper provides the information needed to ask that question.
 
 ---
 
 ## 8. Available Processes
 
-The Directives provide two mechanisms.
+The Directives provide three mechanisms.
 
 **Formalization.** Directive 1.4<sup>[2]</sup> provides a path for committees whose practices necessarily differ from the Directives' defaults:
 
 > "Deviations from the procedures set out in the present document shall not be made without the authorization of the Chief Executive Officers of ISO or IEC or the technical management boards for deviations in the respective organizations."
 
+**Committee Specific Procedures.** The 2023 ISO Supplement<sup>[25]</sup> provided a mechanism for committees whose practices require procedural supplements: proposed CSPs must be submitted with a rationale to the TMB for review by the Directives Maintenance Team. The Supplement stated that committees "should have little, if any, need to develop committee-specific procedures." The 2024 edition removed this clause. SD-4 was not submitted through this process.
+
 **Objection.** Directive 5.1.2<sup>[2]</sup> provides a path for National Bodies to align the committee's practices with the Directives:
 
 > A P-member of a committee may appeal against any action or inaction "not in accordance with" the Statutes and Rules of Procedure or the ISO/IEC Directives.
 
-A committee that knows when to exercise either mechanism is in control of its own governance.
+A committee that knows when to exercise any of these mechanisms is in control of its own governance.
 
 ---
 
 ## References
 
-1. Guy Davidson, "SD-4: WG21 Practices and Procedures," ISO/IEC JTC1/SC22/WG21/SD-4, 2026-05-11. [https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures) (This paper was drafted against the pre-2026-05-11 version of SD-4; the cited provisions have been stable across revisions. SD-4 provisions quoted in this paper predate the current convenor and were authored and maintained by Herb Sutter during his tenure as convenor through 2025.)
-2. ISO/IEC, "ISO/IEC Directives, Part 1 - Consolidated JTC 1 Supplement," 2024. [https://www.pkn.pl/sites/default/files/sites/default/files/imce/files/ISO-IEC%20Consolidated%20JTC%201%20Supplement%202024.pdf](https://www.pkn.pl/sites/default/files/sites/default/files/imce/files/ISO-IEC%20Consolidated%20JTC%201%20Supplement%202024.pdf) (Hosted by the Polish Committee for Standardization, an ISO national body. The 2023 edition is also available at [jtc1info.org](https://jtc1info.org/wp-content/uploads/2023/11/ISO-IEC-Consolidated-JTC-1-Supplement-2023.pdf); clause references are stable across the 2023 and 2024 editions.)
-3. SD-1: 2009 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/sd-1.htm)
-4. SD-1: 2012 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/sd-1.htm)
-5. SD-1: 2016 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/sd-1.htm)
-6. SD-1: 2019 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/sd-1.htm)
-7. SD-1: 2023 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/sd-1.htm)
-8. SD-1: 2024 PL22.16/WG21 document list. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/sd-1.htm](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/sd-1.htm)
-9. Leonardo Chiariglione, "The MPEG Special Forces: Subgroups," 2020. [https://blog.chiariglione.org/the-mpeg-special-forces-subgroups/](https://blog.chiariglione.org/the-mpeg-special-forces-subgroups/)
-10. JTC 1, "Future of SC 29 with JPEG and MPEG," 2020. [https://jtc1info.org/future-of-sc-29-with-jpeg-and-mpeg/](https://jtc1info.org/future-of-sc-29-with-jpeg-and-mpeg/)
-11. WG9 (Ada) organizational page. [https://open-std.org/JTC1/SC22/WG9/organize.htm](https://open-std.org/JTC1/SC22/WG9/organize.htm)
-12. WG14 (C) Standing Document 1: Joint Mailing and Meeting Information, N1829. [https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1829.htm](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1829.htm)
-13. ISO/TC 211, "Roles in Committee Work," Good Practices. [https://committee.iso.org/sites/tc211/home/resolutions/isotc-211-good-practices/--roles-in-committee-work.html](https://committee.iso.org/sites/tc211/home/resolutions/isotc-211-good-practices/--roles-in-committee-work.html)
-14. Herb Sutter, WG21 trip reports, 2024-2026. [https://herbsutter.com/](https://herbsutter.com/)
-15. ISO/IEC, "ISO/IEC Directives, Part 1 - Consolidated ISO Supplement," Edition 2024. [https://www.iso.org/sites/directives/current/consolidated/index.html](https://www.iso.org/sites/directives/current/consolidated/index.html)
-16. ISO, "Guidance on use of artificial intelligence (AI) for ISO committees," Version 1.1, March 2025. [https://www.iso.org/files/live/sites/isoorg/files/developing_standards/who_develops_standards/docs/use%20of%20AI.pdf](https://www.iso.org/files/live/sites/isoorg/files/developing_standards/who_develops_standards/docs/use%20of%20AI.pdf)
-17. N4916, "WG21 2022-07 Virtual Meeting Minutes of Meeting," Section 1.2 Meeting guidelines. [https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4916.pdf](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4916.pdf). See also N4933 (November 2022, Kona), same section.
-18. ISO, "ISO Code of Ethics and Conduct," PUB100011, First Edition, 2023. [https://www.iso.org/files/live/sites/isoorg/files/store/en/PUB100011.pdf](https://www.iso.org/files/live/sites/isoorg/files/store/en/PUB100011.pdf)
-19. Solomon E. Asch, "Studies of Independence and Conformity: I. A Minority of One Against a Unanimous Majority," *Psychological Monographs: General and Applied*, 70(9), 1956.
-20. Melissa Newham and Rune Midjord, "Do Expert Panelists Herd? Evidence from FDA Committees," *DIW Discussion Papers*, No. 1825, 2019.
-21. Jörg Matthes, Johannes Knoll, and Christian von Sikorski, "The 'Spiral of Silence' Revisited: A Meta-Analysis on the Relationship Between Perceptions of Opinion Support and Political Opinion Expression," *Communication Research*, 45(1), 2018.
-22. Andrea Mattozzi and Marcos Y. Nakaguma, "Public versus Secret Voting in Committees," *Journal of the European Economic Association*, 21(3), 2023. (Documents the 2017 Italian Parliament incident in which a malfunction briefly revealed individual votes during a secret ballot.)
-23. Stanley Schachter, "Deviation, Rejection, and Communication," *Journal of Abnormal and Social Psychology*, 46(2), 1951, pp. 190-207.
-24. JTC 1, Standing Document 19, "Meetings," 2022, Section 9 "Recording of meetings."
+[1] [SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures) - "SD-4: WG21 Practices and Procedures" (Guy Davidson, 2026). This paper was drafted against the pre-2026-05-11 version of SD-4; the cited provisions have been stable across revisions. SD-4 provisions quoted in this paper predate the current convenor and were authored and maintained by Herb Sutter during his tenure as convenor through 2025.
+
+[2] [JTC 1 Supplement 2024](https://www.pkn.pl/sites/default/files/sites/default/files/imce/files/ISO-IEC%20Consolidated%20JTC%201%20Supplement%202024.pdf) - "ISO/IEC Directives, Part 1 - Consolidated JTC 1 Supplement" (ISO/IEC, 2024). Hosted by the Polish Committee for Standardization, an ISO national body. The 2023 edition is also available at [jtc1info.org](https://jtc1info.org/wp-content/uploads/2023/11/ISO-IEC-Consolidated-JTC-1-Supplement-2023.pdf); clause references are stable across the 2023 and 2024 editions.
+
+[3] [SD-1 2009](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2009).
+
+[4] [SD-1 2012](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2012).
+
+[5] [SD-1 2016](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2016).
+
+[6] [SD-1 2019](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2019).
+
+[7] [SD-1 2023](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2023).
+
+[8] [SD-1 2024](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/sd-1.htm) - "PL22.16/WG21 Document List" (WG21, 2024).
+
+[9] [MPEG Subgroups](https://blog.chiariglione.org/the-mpeg-special-forces-subgroups/) - "The MPEG Special Forces: Subgroups" (Leonardo Chiariglione, 2020).
+
+[10] [Future of SC 29](https://jtc1info.org/future-of-sc-29-with-jpeg-and-mpeg/) - "Future of SC 29 with JPEG and MPEG" (JTC 1, 2020).
+
+[11] [WG9 Organization](https://open-std.org/JTC1/SC22/WG9/organize.htm) (WG9).
+
+[12] [N1829](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1829.htm) - "Joint Mailing and Meeting Information" (WG14).
+
+[13] [TC 211 Good Practices](https://committee.iso.org/sites/tc211/home/resolutions/isotc-211-good-practices/--roles-in-committee-work.html) - "Roles in Committee Work" (ISO/TC 211).
+
+[14] [herbsutter.com](https://herbsutter.com/) - WG21 trip reports (Herb Sutter, 2024-2026).
+
+[15] [Consolidated ISO Supplement 2024](https://www.iso.org/sites/directives/current/consolidated/index.html) - "ISO/IEC Directives, Part 1 - Consolidated ISO Supplement" (ISO/IEC, 2024).
+
+[16] [AI Guidance](https://www.iso.org/files/live/sites/isoorg/files/developing_standards/who_develops_standards/docs/use%20of%20AI.pdf) - "Guidance on use of artificial intelligence (AI) for ISO committees" (ISO, 2025).
+
+[17] [N4916](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/n4916.pdf) - "WG21 2022-07 Virtual Meeting Minutes of Meeting" (WG21, 2022). Section 1.2 Meeting guidelines. See also N4933 (November 2022, Kona), same section.
+
+[18] [PUB100011](https://www.iso.org/files/live/sites/isoorg/files/store/en/PUB100011.pdf) - "ISO Code of Ethics and Conduct" (ISO, 2023).
+
+[19] "Studies of Independence and Conformity: I. A Minority of One Against a Unanimous Majority" (Solomon E. Asch, *Psychological Monographs: General and Applied*, 70(9), 1956).
+
+[20] "Do Expert Panelists Herd? Evidence from FDA Committees" (Melissa Newham, Rune Midjord, *DIW Discussion Papers*, No. 1825, 2019).
+
+[21] "The 'Spiral of Silence' Revisited: A Meta-Analysis on the Relationship Between Perceptions of Opinion Support and Political Opinion Expression" (J&ouml;rg Matthes, Johannes Knoll, Christian von Sikorski, *Communication Research*, 45(1), 2018).
+
+[22] "Public versus Secret Voting in Committees" (Andrea Mattozzi, Marcos Y. Nakaguma, *Journal of the European Economic Association*, 21(3), 2023). Documents the 2017 Italian Parliament incident in which a malfunction briefly revealed individual votes during a secret ballot.
+
+[23] "Deviation, Rejection, and Communication" (Stanley Schachter, *Journal of Abnormal and Social Psychology*, 46(2), 1951).
+
+[24] "Meetings" (JTC 1, Standing Document 19, 2022). Section 9 "Recording of meetings."
+
+[25] [Consolidated ISO Supplement 2023](https://agenturacas.gov.cz/wp-content/uploads/ISO-IEC-Directives-Part-1-with-ISO-Supplement-2023-PDF.pdf) - "Consolidated ISO Supplement" (ISO, 2023). Foreword paragraph h).
+
+[26] [JTC 1 Strategic Business Plan](https://www.iso.org/files/live/sites/isoorg/files/developing_standards/who_develops_standards/docs/JTC%201%20Strategic%20Business%20Plan%20November%202020.pdf) - "JTC 1 Strategic Business Plan" (JTC 1, 2020).
+
+[27] [The Way Forward in SC 29](https://jtc1info.org/the-way-forward-in-sc-29/) - "The Way Forward in SC 29" (JTC 1). Interview with Gary Sullivan and Toshiyasu Suzuki.
 
 \newpage
 
@@ -356,7 +391,7 @@ The Directives describe working groups as comprising "a restricted number of Exp
 
 | Working Group | Parent SC | Typical Attendance | Internal Subgroups | Meeting Format |
 |---|---|---|---|---|
-| WG14 (C) | SC 22 | ~25 | Informal parallel breakouts during the week; all decisions in single plenary | 2x/year |
+| WG14 (C) | SC 22 | ~30-35 | Standing study groups (e.g. CFP) meeting independently between plenaries; all formal decisions in single plenary | 2x/year |
 | WG5 (Fortran) | SC 22 | ~23 | None; delegates to US national body J3 | 2x/year |
 | WG9 (Ada) | SC 22 | Small | 3 rapporteur groups meeting between sessions | 1-day meetings, 2x/year |
 | WG4 (COBOL) | SC 22 | Very small | None; delegates to US national body | As needed |
@@ -386,9 +421,9 @@ MPEG (SC 29/WG 11) was established in 1988 as a working group of SC 29. It grew 
 
 Like WG21, MPEG developed permanent internal subgroups with appointed chairs - Audio, Video, Systems, Test, Requirements, 3D Graphics, and others. Like WG21, MPEG's subgroup chairs set agendas, ran multi-day sessions, and exercised de facto authority over their technical domains.
 
-In 2020, SC 29 formally restructured MPEG<sup>[10]</sup>. Its subgroups were elevated into proper SC 29-level working groups (WG 2 through WG 8) and advisory groups. Leonardo Chiariglione, who had served as MPEG's convenor for 32 years, resigned during this process<sup>[9]</sup>.
+In 2020, SC 29 formally restructured MPEG<sup>[10]</sup>. Its subgroups were elevated into proper SC 29-level working groups (WG 2 through WG 8) and advisory groups. The JTC 1 Strategic Business Plan describes the restructuring as "deconstructing a very large working group into 7 working groups of more manageable size" for "improved governance and greater agility"<sup>[26]</sup>. SC 29's Chair observed that MPEG "had become too diversified to be a working group"<sup>[27]</sup>. Leonardo Chiariglione, who had served as MPEG's convenor for 32 years, resigned during this process<sup>[9]</sup>.
 
-The restructuring acknowledged that a single working group had outgrown the ISO organizational model. The solution was to make the organizational chart match the organizational reality - the subgroups became working groups with all the governance requirements that entails. WG21 has not undergone any such restructuring.
+The solution was to make the organizational chart match the organizational reality - the subgroups became working groups with all the governance requirements that entails. WG21 has not undergone any such restructuring.
 
 ### A.4 TC 211's Self-Assessment
 
@@ -424,7 +459,7 @@ No other JTC 1 working group maintains a procedural supplement comparable to SD-
 | Body | Standing Documents | Procedural Scope | Comparable to SD-4? |
 |---|---|---|---|
 | WG9 (Ada) | "Developed in accordance with the JTC1 Directives"<sup>[11]</sup> | None - follows Directives directly | No |
-| WG14 (C) | SD-1: meeting logistics<sup>[12]</sup>; SD-2: study group organization | Logistics only | No |
+| WG14 (C) | SD-1: meeting logistics<sup>[12]</sup>; SD-2: study group organization | Logistics and organizational | No |
 | WG5 (Fortran) | SD-4: strategic plan | Strategic/organizational | No |
 | SC 27 (Cybersecurity) | Programme-of-work SDs | No procedural governance | No |
 | SC 29/MPEG | 15 narrow ad hoc group rules | One organizational unit type | No |
@@ -491,7 +526,7 @@ In March 2025, ISO published guidance explicitly permitting the use of AI tools 
 
 WG21 meeting guidelines (N4916<sup>[17]</sup>, N4933) state: "Meetings are not public, we want everyone to be able to speak freely. Please refrain from live tweeting, blogging, taking photos or videos."
 
-This is stricter than SF.10. The Directive provides a framework that balances transparency with participant comfort (consent, per-intervention opt-out, secretary custody, destruction after approval). WG21 skips the framework and defaults to prohibition.
+This is stricter than SF.10. The Directive provides a framework that balances transparency with participant comfort (consent, per-intervention opt-out, secretary custody, destruction after approval). WG21 operates outside the framework and defaults to prohibition.
 
 ### C.3 Recording Practices Across Standards Bodies
 
@@ -507,6 +542,4 @@ This is stricter than SF.10. The Directive provides a framework that balances tr
 
 ### C.4 Summary
 
-The ISO Directives provide a consent-based framework (SF.10) that allows recording with safeguards. ISO's own 2025 AI guidance explicitly permits AI transcription under this framework. The IETF records routinely and publishes recordings. W3C provides an opt-in recording process with participant consent. WG21 prohibits recording outright, going beyond what the Directives restrict.
-
-ISO's direction of travel is toward AI-assisted documentation. WG21's practice moves in the opposite direction.
+The ISO Directives provide a consent-based framework (SF.10) that allows recording with safeguards. ISO published guidance permitting AI-assisted meeting transcription in 2025<sup>[16]</sup>. The IETF records routinely and publishes recordings. W3C provides an opt-in recording process with participant consent. WG21 prohibits recording.
