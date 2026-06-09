@@ -232,23 +232,40 @@ WG21's quoting restriction is not inherited from ISO. It is an SD-4 invention. O
 
 The Chatham House Rule, established by the Royal Institute of International Affairs in 1927 and last revised in 2002, provides that participants may use information received at a meeting but may not reveal the identity or affiliation of any speaker<sup>[2]</sup>. It has been criticized as "designed to protect elite discussions from transparency and accountability"<sup>[3]</sup>. SD-4's restriction is stricter: it prohibits not only attribution but quotation of the content itself.
 
-ISO's own framework for meeting records is SF.10<sup>[4]</sup>, a consent-based system that balances transparency with participant comfort. Under SF.10, meetings may be recorded with participant consent, participants may opt out on a per-intervention basis, recordings are held by the secretary, and minutes are approved through a defined process. WG21's meeting guidelines skip this framework:
+| Body | Domain | Meeting records | Quotation policy | Verification |
+|---|---|---|---|---|
+| WG14 (C) | SC 22 | Minutes published as N-documents<sup>[9]</sup> | On the record | Full |
+| WG5 (Fortran) | SC 22 | Minutes published on official site<sup>[20]</sup> | On the record | Full |
+| WG9 (Ada) | SC 22 | Minutes in public document log<sup>[21]</sup> | On the record | Full |
+| SC 29/MPEG | JTC 1 | Public meeting reports<sup>[22]</sup> | No restriction found | Full |
+| TC39 | JavaScript (Ecma) | Verbatim notes published on GitHub<sup>[8]</sup> | On the record | Full |
+| W3C | Web standards | Minutes published publicly<sup>[7]</sup>; transcripts attendee-restricted<sup>[13]</sup> | On the record (off-the-record option) | Partial |
+| WHATWG | HTML | Discussions in public GitHub issues<sup>[23]</sup> | On the record | Full |
+| IETF | Internet standards | Meetings recorded and published<sup>[6]</sup>; mailing lists public | On the record | Full |
+| Rust | Language governance | Council minutes on GitHub<sup>[24]</sup>; private carve-outs for moderation | Default transparent | Full |
+| Python | Language governance | Steering Council updates on GitHub<sup>[25]</sup>; PEP discussions public | On the record | Full |
+| WG21 (C++) | SC 22 | Plenary minutes only; subgroup records restricted | Prohibited except by consent | None for outsiders |
+
+Ten of eleven bodies publish meeting records. Nine do so as a matter of course. WG21's three sibling working groups in SC 22 - the C, Fortran, and Ada committees - all publish their minutes without restriction.
+
+IETF counts Cisco, Huawei, Google, Meta, Netflix, Oracle, Cloudflare, Akamai, Ericsson, Juniper, Nokia, and Comcast among its major corporate participants, all operating under full transparency with no attribution restrictions<sup>[14]</sup>. IETF's transparency is codified as a core process requirement<sup>[14]</sup>. The corporate-constituency argument does not distinguish WG21 from bodies that function under transparency.
+
+ISO's own framework for meeting records is SF.10<sup>[4]</sup>, a consent-based system that balances transparency with participant comfort. Under SF.10, meetings may be recorded with participant consent, participants may opt out on a per-intervention basis, recordings are held by the secretary, and minutes are approved through a defined process. In March 2025, ISO published guidance explicitly permitting the use of AI tools for meeting transcription under SF.10<sup>[26]</sup>.
+
+WG21's meeting guidelines operate outside this framework:
 
 > Meetings are not public, we want everyone to be able to speak freely. Please refrain from live tweeting, blogging, taking photos or videos.<sup>[5]</sup>
 
-Other standards bodies operate differently:
+| Body | Recording practice |
+|---|---|
+| IETF | Meetings recorded via Meetecho; recordings published on YouTube and Datatracker |
+| W3C | Recording optional per working group with announced consent process |
+| TC39 | Collaborative notes drafted during meetings, published to GitHub |
+| Rust | Default no recording; design meetings may be recorded with unanimous agreement |
+| Python | Internal meetings not recorded; PyCon panels recorded and published |
+| WG21 | Recording prohibited |
 
-| Body | Domain | Meeting records | Quotation policy | Verification |
-|---|---|---|---|---|
-| IETF | Internet standards | Meetings recorded and published<sup>[6]</sup>; mailing lists public | Contributions are on the record | Full |
-| W3C | Web standards | Minutes published publicly<sup>[7]</sup>; transcripts restricted to attendees<sup>[13]</sup> | On the record (with off-the-record option) | Partial |
-| TC39 | JavaScript (Ecma) | Verbatim meeting notes published on GitHub<sup>[8]</sup> | On the record | Full |
-| WG14 | C (SC 22) | Minutes published<sup>[9]</sup> | On the record | Full |
-| WG21 | C++ (SC 22) | Plenary minutes only; subgroup records restricted | Prohibited except by individual consent | None for outsiders |
-
-Five of these six bodies publish meeting records. Four publish them as a matter of course. WG21 is the outlier within its own subcommittee.
-
-The comparison shows the externality is not inevitable. Other institutions in equally contested domains - including IETF, which counts Cisco, Huawei, Google, Meta, and Nokia among its major corporate participants - operate under regimes that do not impose these costs on themselves. IETF's transparency is not cultural; it is codified as a core process requirement<sup>[14]</sup>.
+WG21 does not adopt SF.10. It prohibits recording.
 
 WG21's relationship to ISO confidentiality is selective. Strict ISO compliance would require making GitHub repositories private, forbidding conference talks about committee papers, and removing the wg21.link redirect service<sup>[15]</sup>. The committee ignores these rules but enforces the quoting restriction. The restriction is not an ISO inheritance; it is a choice.
 
@@ -318,7 +335,7 @@ Those dysfunctions are visible and correctable. IETF's protracted debates are ob
 
 ### "WG21's corporate constituency needs the restriction more than the comparison bodies."
 
-IETF includes Cisco, Huawei, Google, Meta, Netflix, Oracle, Cloudflare, Akamai, Ericsson, Juniper, Nokia, and Comcast among its major corporate participants, all operating under full transparency with no attribution restrictions<sup>[14]</sup>. IETF's corporate concentration is at least as high as WG21's. The corporate-constituency argument does not distinguish WG21 from bodies that function under transparency.
+Section 10 documents that IETF operates under full transparency with corporate participation at least as concentrated as WG21's. The corporate-constituency argument does not distinguish WG21 from bodies that function under transparency.
 
 ---
 
@@ -381,3 +398,17 @@ What the rule protects is consequence-free speech for people who are present. Wh
 [18] Cross & Hedgehammer, "Negotiating with Your Mouth Full: Intergovernmental Negotiations Between Transparency and Confidentiality," *Review of International Organizations*, 2024.
 
 [19] Gimmingsrud et al., "Do Open Meetings Affect Deliberation?" *Journal of Deliberative Democracy*.
+
+[20] [WG5 Documents](https://wg5-fortran.org/documents.html) (WG5 Fortran).
+
+[21] [WG9 Electronic Documents Log](https://open-std.org/JTC1/SC22/WG9/documents.htm) (WG9 Ada).
+
+[22] [MPEG Meeting Reports](https://www.mpeg.org/) (SC 29/MPEG).
+
+[23] [WHATWG HTML](https://github.com/whatwg/html) (WHATWG).
+
+[24] [Rust Leadership Council Minutes](https://github.com/rust-lang/leadership-council/tree/main/minutes) (Rust Leadership Council).
+
+[25] [Python Steering Council](https://github.com/python/steering-council) (Python Steering Council).
+
+[26] [AI Guidance](https://www.iso.org/files/live/sites/isoorg/files/developing_standards/who_develops_standards/docs/use%20of%20AI.pdf) - "Guidance on use of artificial intelligence (AI) for ISO committees" (ISO, 2025).
