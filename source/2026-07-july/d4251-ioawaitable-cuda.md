@@ -579,7 +579,7 @@ The sender/receiver model has been deployed at scale for compute scheduling and 
 
 The largest production deployment of the sender/receiver model is Meta's libunifex, operating at massive scale. Their internal guidance is instructive. From GitHub issue #586<sup>[21]</sup> (December 2023):
 
-> "Our experience at Meta has been that coroutines are easier to read, write, debug, and just generally maintain than composition-of-sender algorithms-style code. The advice we give to internal teams adopting Unifex is that they should prefer coroutines until they know that the overheads are unacceptable."
+> "Our experience at Meta has been that coroutines are easier to read, write, debug, and just generally maintain than composition-of-sender algorithms-style code. The cost of that ease is basically overhead; coroutines don't optimize as well as raw senders (either for size or speed). The advice we give to internal teams adopting Unifex is that they should prefer coroutines until they know that the overheads are unacceptable, at which point they can refactor to the lower-level abstraction of raw senders."
 
 The team that has shipped sender/receiver at the largest scale recommends coroutines for the common case. This is production evidence from practitioners, not a theoretical preference.
 
@@ -863,7 +863,7 @@ This paper was generated with AI assistance (Claude, via Cursor).
 
 [20] [CUDA Runtime API: API Synchronization Behavior](https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html) (NVIDIA, 2024).
 
-[21] [libunifex Issue #586](https://github.com/facebook/libunifex/issues/586) - Meta internal guidance on senders vs coroutines (2023).
+[21] [libunifex Issue #586](https://github.com/facebookexperimental/libunifex/issues/586#issuecomment-1845934903) - Meta internal guidance on senders vs coroutines (Ian Petersen, 2023).
 
 [22] [P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf) - "The SG14 Priority List for C++29/32" (Michael Wong, 2026).
 
