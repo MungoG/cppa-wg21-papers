@@ -1,5 +1,5 @@
 ---
-title: "Why I Write So Many Papers"
+title: "Why I Write"
 document: P4263R0
 date: 2026-06-10
 intent: info
