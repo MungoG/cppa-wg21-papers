@@ -46,13 +46,15 @@ SG21 spent five years gathering use cases, exploring the design space, and refin
 
 ## 3. The Thesis
 
-The ISO Directives would not have prevented contracts from being adopted. They would have required the "ignore" semantic, the enforcement question, and the implementation experience concern to be reconciled during development - producing iterative design evolution rather than terminal confrontation.
+One point of jurisdiction first, because it frames everything that follows. The ISO Directives do not reach inside a working group. SG21 polls, EWG polls, and WG21 plenary votes have no procedural standing in ISO terms - the Directives neither require reconciliation there nor forbid its absence. The reconciliation machinery of Directive 2.5.6, the comment-resolution obligations of 2.6.5, and the appeal chain of 5.1 operate at the committee level, where National Bodies act. The comparison in this paper is therefore a counterfactual: what the development process would have looked like had the work been organized in ISO-governed bodies where those rules apply.
 
-Networking lacked progress. Contracts had momentum without course correction. Both are consequences of the same structural gap: the absence of forced reconciliation (ISO Directive 2.5.6).
+The counterfactual matters because of what the actual structure produces. The ISO Directives would not have prevented contracts from being adopted. In an ISO-governed body, they would have required the "ignore" semantic, the enforcement question, and the implementation experience concern to be reconciled during development - producing iterative design evolution rather than terminal confrontation. In the actual structure, every one of those decisions was made by internal polls that ISO does not recognize, under SD-4 rules that bind no National Body, and the first decision point with ISO standing was the SC 22 ballot - which is exactly where the unreconciled dissent surfaced.
 
-Under SD-4, "no consensus for change" preserves the status quo. A minority that cannot muster a 2:1 supermajority to change the design has no structural remedy. The design proceeds. Under the ISO Directives, consensus requires "seeking to take into account the views of all parties concerned and to reconcile any conflicting arguments" (2.5.6). The minority is directed to the appeal chain (5.1), not told to accept the outcome.
+Networking lacked progress. Contracts had momentum without course correction. Both are consequences of the same structural gap: the entire development pipeline runs in a space where no reconciliation obligation exists.
 
-The difference is not in whether the decision is made. It is in whether the minority's concerns are engaged with substantively or simply outvoted.
+Under SD-4, "no consensus for change" preserves the status quo. A minority that cannot muster a 2:1 supermajority to change the design has no structural remedy. The design proceeds. Under the ISO Directives, at committee level, consensus requires "seeking to take into account the views of all parties concerned and to reconcile any conflicting arguments" (2.5.6). The minority is directed to the appeal chain (5.1), not told to accept the outcome.
+
+The difference is not in whether the decision is made. It is in whether the minority's concerns are engaged with substantively or simply outvoted - and in whether any of the intermediate decisions carry procedural weight at all.
 
 ---
 
@@ -64,7 +66,7 @@ Each section states the design choice, provides rationale, then shows a poll tab
 
 Four polls resulted in "No consensus" or "Not consensus": Poll 3 (safe-predicate model, 5-2-0-7-4), Poll 4 (side-effect-free predicates, 6-2-1-5-4), Poll 9 (throwing predicate as violation, 7-7-3-3-7), Poll 10 (exception propagation, 5-5-4-3-10). In each case the paper records the vote, prints the disposition, and moves on. No documentation of follow-up discussion. No description of compromise proposals attempted. No indication of whether the items were revisited with modified wording.
 
-Under the ISO Directives, this absence is itself a structural gap. Directive 2.5.6 requires the process, not just the outcome.
+No Directive was violated by this absence - the Directives do not apply to SG21, and none of these twenty-one polls has ISO standing. That is the structural gap. In an ISO-governed body, Directive 2.5.6 requires the process, not just the outcome. Inside a working group, no rule requires it, no rule forbids it, and the record shows it did not happen.
 
 ---
 
@@ -98,7 +100,7 @@ EWG polled at Tokyo (March 2024):
 
 The minority who wanted guaranteed enforcement - seven votes (SF:6 / F:1) - were structurally blocked. Under SD-4, "no consensus for change" preserves the status quo. The seven who wanted enforce-only have no further remedy.
 
-Under the ISO Directives (2.5.6), the minority's unresolved objection to the proceeding - that "ignore" undermines safety - would require reconciliation. Engagement with the substance of their concern, not merely a vote confirming the status quo.
+In an ISO-governed body, the minority's unresolved objection to the proceeding - that "ignore" undermines safety - would require reconciliation (2.5.6). Engagement with the substance of their concern, not merely a vote confirming the status quo. In EWG, a body ISO does not recognize, neither the poll nor any obligation attached to it exists in ISO terms.
 
 [P3362R0](https://wg21.link/p3362r0)<sup>[11]</sup> (Voutilainen/Corden, 2024) articulated the substance: without guaranteed enforcement, static analyzers cannot reason about contract predicates. Contracts become useless for safety proofs.
 
@@ -156,7 +158,7 @@ SG23 polled (May 2024):
 
 The concern surfaced in 2022. It was voted down in SG21, escalated to EWG, redirected to SG23 after procedural complaints, and voted down there. At no stage does the published record document reconciliation - engagement with the substance of the minority's objection between polls, compromise proposals attempted, or reasons why the concern was found unpersuasive rather than merely outvoted.
 
-Under the ISO Directives (2.5.6), "no consensus" does not close a topic. It triggers the obligation to reconcile. The minority retains standing and is directed to the appeal chain (5.1). The SG21 co-chairs' discretionary re-hearing in SG23 is not an appeal process. It is an accommodation that the chair could have declined. The Directives provide structural remedy. SD-4 provides none.
+In an ISO-governed body, "no consensus" does not close a topic. It triggers the obligation to reconcile (2.5.6), and the minority retains standing with access to the appeal chain (5.1). None of that machinery reaches inside WG21: the SG21 co-chairs' discretionary re-hearing in SG23 is not an appeal process. It is an accommodation that the chair could have declined. At committee level the Directives provide structural remedy. Inside the working group, where this entire arc played out, there is none - by anyone's rules.
 
 ---
 
@@ -182,7 +184,7 @@ P2899R1<sup>[3]</sup> Section 2.9 describes the same deployment experience from 
 
 Three months later at Hagenberg (February 2025), P2900R14 was adopted. LWG: F:13 / A:0 / N:0.
 
-Under SD-4, the near-unanimous Tokyo poll created no binding obligation. Ship pressure overrode it. Under the ISO Directives, a near-unanimous consensus requirement would be treated as a prerequisite condition. Directive 2.5.6's reconciliation framework would flag the forwarding as inconsistent with the prior consensus unless the implementation experience had been provided.
+Under SD-4, the near-unanimous Tokyo poll created no binding obligation. Ship pressure overrode it. Nor did it create an ISO obligation - an EWG poll has no ISO standing, so there was nothing in the ISO framework for the forwarding to be inconsistent with. In an ISO-governed body, a near-unanimous consensus requirement would be treated as a prerequisite condition, and the reconciliation framework (2.5.6) would flag the forwarding as inconsistent with the prior consensus unless the implementation experience had been provided.
 
 ---
 
@@ -200,9 +202,7 @@ EWG telecon (February 2025):
 >
 > SF:9 / F:4 / N:8 / A:8 / SA:6 - Not consensus.
 
-Under SD-4, the paper was rejected twice. No further procedural remedy exists. The NB that filed RO 2-056 has no structural path to resolution within the committee process.
-
-Under the ISO Directives, Directive 2.5.6 directs objectors to the three-level appeal chain (5.1). The NB retains standing. Directive 2.6.5 requires the ballot comment to be *addressed* - substantive engagement, not merely a vote demonstrating that the majority disagrees.
+Under SD-4, the paper was rejected twice. No further procedural remedy exists within WG21. But this is the one point in the arc where the ISO framework genuinely applies, because RO 2-056 is a National Body ballot comment at SC level: Directive 2.6.5 requires it to be *addressed* - substantive engagement, not merely a vote demonstrating that the majority disagrees - and the NB retains standing with access to the three-level appeal chain (5.1). Two EWG telecon polls, which have no ISO standing, cannot discharge that obligation. No WG-internal vote can.
 
 ---
 
@@ -220,7 +220,7 @@ Fifteen votes against out of fifty-seven voters. Twenty-six percent opposition.
 
 Under SD-4, the 2:1 threshold was met (42 in favor vs 15 against). Consensus was declared. The paper was forwarded.
 
-Under the ISO Directives, consensus requires "seeking to take into account the views of all parties concerned and to reconcile any conflicting arguments" (2.5.6). Nine senior committee members filing "grave concerns" is not reconciled consensus. It is a supermajority override of a substantial minority.
+Measured against the ISO definition of consensus - "seeking to take into account the views of all parties concerned and to reconcile any conflicting arguments" (2.5.6) - nine senior committee members filing "grave concerns" is not reconciled consensus. It is a supermajority override of a substantial minority. The override broke no ISO rule, because an EWG forwarding vote is not an ISO decision. That is precisely the problem: a decision with no ISO standing carried the design to the one stage where NB objections could no longer be reconciled, only balloted.
 
 ---
 
@@ -241,9 +241,9 @@ The escalation trajectory of the opposition papers:
 
 No single decision was wrong. The "ignore" semantic has genuine use cases: gradual deployment in large codebases where enabling enforcement everywhere simultaneously is impractical. The MVP approach was a rational response to C++20's removal. Ship pressure is real. Experienced practitioners made these calls. [P3846R1](https://wg21.link/p3846r1)<sup>[4]</sup>'s twenty-two-author defense is thorough.
 
-But the minority's concerns were expressed in 2022 and are still unresolved in 2026. Under the ISO Directives, forced reconciliation at each stage would have required the committee to engage with the substance of each objection rather than preserving the status quo through repeated "no consensus for change." The Directives do not guarantee better outcomes. They guarantee documented engagement. The difference is that the minority's concerns either evolve the design iteratively or are reconciled through explicit compromise - rather than accumulating until the NB ballot forces a terminal confrontation.
+But the minority's concerns were expressed in 2022 and are still unresolved in 2026. Had the work been organized in ISO-governed bodies, forced reconciliation at each stage would have required engaging with the substance of each objection rather than preserving the status quo through repeated "no consensus for change." The Directives do not guarantee better outcomes. They guarantee documented engagement. The difference is that the minority's concerns either evolve the design iteratively or are reconciled through explicit compromise - rather than accumulating until the NB ballot forces a terminal confrontation. As it was, none of the decisions that carried the design forward had any ISO standing, and the ballot was the first point where ISO procedure touched the project at all.
 
-No formal ISO-process appeal was filed. The opposition took the form of papers, not procedural escalation. Under the ISO Directives, the appeal chain (5.1) would have been the structural remedy. Under SD-4, the system provided no structural path to resolution other than "bring a paper and outvote the majority."
+No formal ISO-process appeal was filed. The opposition took the form of papers, not procedural escalation - and the appeal right belongs to National Bodies (5.1), not to individual participants, so for most of the dissenters papers were the only channel that existed. For the NBs, the appeal chain remains the structural remedy that no WG-internal rule can foreclose. Under SD-4, the system provided no structural path to resolution other than "bring a paper and outvote the majority."
 
 ---
 

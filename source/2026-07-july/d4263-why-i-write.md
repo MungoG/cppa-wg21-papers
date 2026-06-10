@@ -1,7 +1,7 @@
 ---
-title: "Why I Write"
-document: D4256R0
-date: 2026-07-31
+title: "Why I Write So Many Papers"
+document: P4263R0
+date: 2026-06-10
 intent: info
 audience: WG21
 reply-to:
@@ -18,7 +18,7 @@ Between February and May 2026, thirty-six papers from the author and his collabo
 
 ## Revision History
 
-### R0: July 2026
+### R0: July 2026 (Post-Brno)
 
 - Initial revision.
 
@@ -36,9 +36,7 @@ The author maintains proposals in the coroutine I/O space that address the same 
 
 This paper examines the published record. That effort requires re-examining consequential papers, including papers written by people the author respects.
 
-This paper uses AI.
-
-Coroutine-native I/O cannot express compile-time work graphs; senders can.
+This paper is drafted with AI.
 
 This paper asks for nothing.
 
@@ -256,7 +254,23 @@ The corpus attacks three structural conditions at once. The information seal: ea
 
 Thirty-four of the thirty-six papers close their disclosure with the same sentence: "This paper asks for nothing." The sentence is the strategy, performed in the front matter.
 
-### 9.1. The corpus
+### 9.1. "Why not a blog?"
+
+The question has been asked, in good faith, and it deserves a complete answer. In its strongest form: a corpus that asks for nothing does not need the mailing; a blog reaches more readers and burdens no one; filing thirty-six papers is itself a claim on the committee's attention, and the venue is the imposition.
+
+The venue is load-bearing, for four reasons.
+
+The subject is the record, so the examination belongs in the record. The corpus audits decisions whose primary sources - the proposals, the poll outcomes, the revision histories - live in the mailing archive. A correction filed in the same archive as the claims it examines travels with them: the reader who finds P2300R10 and the poll records in the document index finds the retrospectives in the same index, under the same numbering scheme, at the same permanence. A correction filed anywhere else is discoverable only by readers who already know to look for it.
+
+The wager requires immutability and dating. Section 11 declares predictions whose value depends on the trail being dated before the outcome and unalterable after it. A mailing paper is numbered, dated, and immutable once published; the method of [P4047R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4047r0.pdf)<sup>[22]</sup> admits only predictions that are dated, public, and falsifiable. A blog can be edited after the fact, moved, or quietly deleted. The C++29 wager cannot be made from a venue whose contents can change after the outcome is known.
+
+The archive reader exists in only one venue. The mailing is preserved by ISO/IEC JTC 1/SC 22/WG21 for the life of the standard and read by every future participant who researches how a feature came to be. The corpus is written for that reader. The median blog does not survive a platform migration, let alone a decade.
+
+The mailing is the institution's public channel. The deliberation behind the standard is sealed; the mailing is the one public record the institution itself maintains. Work addressed to the institution and its users belongs in the channel the institution owns, where it is part of the proceedings rather than commentary upon them.
+
+One property of the suggestion is recorded without attribution: it concedes the content and contests the venue. It asks for the audit to be relocated out of the records of the audited.
+
+### 9.2. The corpus
 
 What follows is the complete published corpus, February through May 2026, grouped by function. One line each.
 

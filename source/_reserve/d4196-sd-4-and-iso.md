@@ -8,6 +8,8 @@ reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
 ---
 
+> **SHELVED (2026-06-10). DO NOT CIRCULATE.** The thesis of this paper is incorrect: ISO deliberately specified no rules for WG subgroups, so SD-4's subgroup provisions deviate from nothing and require no authorization. A written commitment was made not to circulate a paper with this premise. Retained as a record. Surviving material for a future inverted-thesis paper: the SD-4 vs ISO Code of Conduct mismatch (sections 3.4/3.6) and the NB appeal rights inventory (5.1.x); dead material: sections 3.1, 3.3, the 1.13.2 row of section 4, and the 1.4 path in section 5.
+
 ## Abstract
 
 WG21 has two procedural documents. One is binding. The other is followed.
