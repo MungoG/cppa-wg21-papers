@@ -90,7 +90,11 @@ One branch follows from the framework's model of the governance register. The ot
 
 ---
 
-## 4. Claim 1: The Thin Record
+## 4. The Eight Claims
+
+Each subsection states one claim from P4263R0 and the columns for each cohort the claim reaches. Cohorts a claim does not reach are omitted.
+
+### 4.1. The Thin Record
 
 P4263R0 Section 3 asserts that the published evidence behind the networking claim in `std::execution` is empty: the unification of executors rests on one hypothetical code snippet, and the cells pairing twenty years of asynchronous claims with networking evidence are blank.
 
@@ -102,9 +106,7 @@ P4263R0 Section 3 asserts that the published evidence behind the networking clai
 
 **The public - disconfirmer:** Discussion engages the evidence question itself - what was polled, what was published - rather than the template.
 
----
-
-## 5. Claim 2: The Tournament
+### 4.2. The Tournament
 
 P4263R0 Section 4 asserts that papers compete in a zero-sum tournament whose dominant strategy - the move that wins regardless of what others play - is to claim the largest domain on the least evidence. Thinness wins polls.
 
@@ -116,9 +118,7 @@ P4263R0 Section 4 asserts that papers compete in a zero-sum tournament whose dom
 
 **The public - disconfirmer:** Discussion tests the incentive model against cases instead of repeating it.
 
----
-
-## 6. Claim 3: The Chosen Game
+### 4.3. The Chosen Game
 
 P4263R0 Section 5 asserts that the tournament structure is self-authored: the ISO/IEC Directives impose nothing at the working group's interior, so the structure is a local construction, renewable and changeable by local authority with no ISO process.
 
@@ -130,9 +130,7 @@ P4263R0 Section 5 asserts that the tournament structure is self-authored: the IS
 
 **The public - disconfirmer:** Pushback that the analysis over-reads the Directives' silence.
 
----
-
-## 7. Claim 4: Three Rational Responses
+### 4.4. Three Rational Responses
 
 P4263R0 Section 6 asserts that game theory predicts three responses to evidence supplied from outside the tournament - attack the volume, attack the provenance, go silent - and reports all three as already observed.
 
@@ -140,15 +138,13 @@ P4263R0 Section 6 asserts that game theory predicts three responses to evidence 
 
 **Appointees - disconfirmer:** A specific claim from the corpus is engaged on its substance: the one response the analysis says the structure does not reward.
 
-This paper is itself unfalsifiable by construction and states the property openly in Section 14. The concession removes the trap. The definitions are the paper's entire claim.
+This paper is itself unfalsifiable by construction and states the property openly in Section 7. The concession removes the trap. The definitions are the paper's entire claim.
 
 **The public - expected:** The analysis is shared as spectacle.
 
 **The public - disconfirmer:** The game-theoretic argument is critiqued on its merits - the dominant-strategy claim tested, not enjoyed.
 
----
-
-## 8. Claim 5: A Dead Player
+### 4.5. A Dead Player
 
 P4263R0 Section 7 asserts, borrowing the vocabulary of Samo Burja's [Great Founder Theory](https://samoburja.com/gft/)<sup>[5]</sup> - in which a live player reasons from first principles while a dead player executes inherited scripts - that the committee performs the ceremonies of evidence without the principles that generated them.
 
@@ -160,9 +156,7 @@ P4263R0 Section 7 asserts, borrowing the vocabulary of Samo Burja's [Great Found
 
 **The public - disconfirmer:** The dead-player frame is evaluated as a model rather than adopted as a verdict or dismissed as an insult.
 
----
-
-## 9. Claim 6: Ask For Nothing As Strategy
+### 4.6. Ask For Nothing As Strategy
 
 P4263R0 Section 9 asserts that information-only papers that ask for nothing are the one move the tournament cannot process: they request nothing that can be denied, compete for nothing that can be lost, and sit in the permanent record either way.
 
@@ -178,9 +172,7 @@ P4263R0 Section 9 asserts that information-only papers that ask for nothing are 
 
 **The public - disconfirmer:** The venues converge on reading the disclosure as manipulation.
 
----
-
-## 10. Claim 7: The Wager
+### 4.7. The Wager
 
 P4263R0 Section 11 declares its program's term: C++29 is when the committee's answer on networking comes due, against a published record of benchmarks, working implementations, and dated decisions. If the shipped answer matches or exceeds the working implementations, the author's predictions are scored wrong in public by the same method the corpus applies to everyone else.
 
@@ -196,9 +188,7 @@ P4263R0 Section 11 declares its program's term: C++29 is when the committee's an
 
 **The public - disconfirmer:** The wager is tracked beyond one news cycle.
 
----
-
-## 11. Claim 8: What the Author Wants
+### 4.8. What the Author Wants
 
 P4263R0 Section 13 states four conditions under which its corpus would stop being necessary - a symmetric evidence bar, examinable decision records, output bounded by absorption, reconciliation as the operating mode - and notes that every one is already permitted.
 
@@ -212,7 +202,7 @@ P4263R0 Section 13 states four conditions under which its corpus would stop bein
 
 ---
 
-## 12. Rhetorical Approaches
+## 5. Rhetorical Approaches
 
 A political assertion dressed as a claim is a sentence with the surface grammar of an evaluation - truth conditions, checkable content - whose working function is positional: it defends standing, shifts burden, or converts substance into procedure. "It works today" sounds like evidence and functions as burden-shift. "Not a single person I have spoken with agrees" sounds like data and is unverifiable by construction, because the conversations are private. The framework catalogs these grammars as named verbal moves. Each move has a trigger, a sentence-level structure, and a function the surface conceals.
 
@@ -317,7 +307,7 @@ Every utterance below is synthetic - expected speech, modeled on the documented 
 
 ---
 
-## 13. What This Paper Claims
+## 6. What This Paper Claims
 
 This paper claims exactly three things.
 
@@ -329,7 +319,7 @@ Everything else belongs to the reader: the framework's correctness, the meaning 
 
 ---
 
-## 14. Reading the Instrument
+## 7. Reading the Instrument
 
 **Exhaustiveness.** Each binary in this paper is exhaustive: exactly one branch will occur. The paper is therefore unfalsifiable by construction, and says so here. An instrument is not a hypothesis. It does not bet; it partitions.
 
@@ -345,7 +335,7 @@ The strongest objection to this instrument is that its disconfirming column is c
 
 ### The Binary Table
 
-Branch labels below are compressed; the governing definitions are in Sections 3 through 11.
+Branch labels below are compressed; the governing definitions are in Sections 3 and 4.
 
 | ID  | Claim            | Cohort     | Expected                             | Disconfirmer                     |
 | :-- | :--------------- | :--------- | :----------------------------------- | :------------------------------- |
@@ -396,7 +386,7 @@ If a public response to a claim arrives, it either instantiates the paired move 
 
 ---
 
-## 15. The Invitation
+## 8. The Invitation
 
 The reader is invited to observe. The committee's capacity to self-correct is measured by what happens next, and what happens next belongs entirely to the committee. The instrument is now part of the record it measures.
 
