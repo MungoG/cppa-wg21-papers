@@ -1487,18 +1487,11 @@ def fix_title_mismatches(
                     break
 
                 print(
-                    f"  Title mismatch [{num}] {pid}:\n"
+                    f"  Title mismatch [{num}] {pid} "
+                    f"(not modified; reference title is authoritative):\n"
                     f"    Reference: \"{ref_title}\"\n"
                     f"    Index:     \"{meta.title}\"",
                     file=sys.stderr)
-                new_title = to_html_entities(meta.title)
-                old_line = result[entry.line_idx]
-                new_line = old_line.replace(
-                    f'"{ref_title}"', f'"{new_title}"', 1)
-                if new_line == old_line and ref_title in old_line:
-                    new_line = old_line.replace(
-                        ref_title, new_title, 1)
-                result[entry.line_idx] = new_line
             break
 
     for num, entry in refs.items():

@@ -132,7 +132,7 @@ class TestFixTitleMismatches:
             paper_id='P2300R10', title='new title',
             authors='Eric', date='', url='')
         result = fix_title_mismatches(lines, refs, resolved)
-        assert '"new title"' in result[2]
+        assert '"old title,' in result[2]
 
     def test_no_mismatch_unchanged(self):
         lines = _lines("""\
@@ -160,7 +160,7 @@ class TestFixTitleMismatches:
             title='Mutex, Lock, Condition Variable Rationale',
             authors='Hinnant', date='', url='')
         result = fix_title_mismatches(lines, refs, resolved)
-        assert 'Mutex, Lock, Condition Variable Rationale' in result[2]
+        assert 'Mutex Lock Condition Variable' in result[2]
 
 
 class TestNormalizeRefFormat:
@@ -357,7 +357,7 @@ class TestTitleConfidenceCheck:
             title='Networking proposal for TR2 (rev. 1)',
             authors='Test', date='', url='')
         result = fix_title_mismatches(lines, refs, resolved)
-        assert 'Networking proposal for TR2' in result[1]
+        assert 'A Proposal to Add Networking' in result[1]
 
     def test_title_identical_no_change(self):
         lines, refs = self._make_lines_and_refs('std::execution')
@@ -410,7 +410,7 @@ class TestTitleBodyConsistency:
             title='Correct new title for this paper',
             authors='A', date='', url='')
         result = fix_title_mismatches(lines, refs, resolved)
-        assert 'Correct new title' in result[-1]
+        assert 'old title' in result[-1]
 
     def test_title_skip_partial_match_not_triggered(self):
         content = """\
@@ -430,7 +430,7 @@ class TestTitleBodyConsistency:
             authors='A', date='', url='')
         result = fix_title_mismatches(lines, refs, resolved)
         ref_line = [l for l in result if 'P9999R0' in l and l.strip().startswith('[')]
-        assert ref_line and 'Networking proposal for TR2' in ref_line[0]
+        assert ref_line and 'networking proposal' in ref_line[0]
 
 
 # ---------------------------------------------------------------------------
