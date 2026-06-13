@@ -69,7 +69,7 @@ Each dimension is engaged somewhere in the published responses; none is assemble
 
 - *The argument.* P3835R0<sup>[3]</sup>, P3573R0<sup>[5]</sup>, and SG15 message 2978<sup>[8]</sup> hold that a facility is needed for guaranteed non-continuation past a failed check, expressed at the declaration and not removable by the function definition.
 - *The answer on record.* P3846R1<sup>[2]</sup> Concern 1 offers four present-day paths to non-ignorable checks: build the defining translation unit with a checked semantic; duplicate the check with `pre` on the declaration and an `if` in the body; use a vendor attribute such as Clang's `contract_semantic("quick_enforce")`; or use an `if` statement until the extension lands. P2899R1<sup>[1]</sup> Section 2.3 lists the in-language guarantee under "Features Not Proposed" and names the labels extension, P3400R1, as the eventual mechanism.
-- *The resolution.* The skeptic seeks an in-language, definition-proof guarantee, which P2900 does not provide; the response concedes this and defers it to labels (P3400R1), which would also supply in-source semantic selection. EWG declined mandatory enforcement: an "enforce semantics only" poll reached consensus against (SF:6 F:1 N:3 A:15 SA:24)<sup>[6]</sup>. The skeptics characterize the four present-day paths as workarounds that do not meet the stated requirement. In the SG15 thread that requirement was given its sharpest form as a "Will Not Continue" guarantee<sup>[8]</sup>: non-continuation past a failed check, fixed at the function declaration and not removable by the definition - one the definition "cannot fail to deliver and cannot forget to deliver"<sup>[8]</sup>. An `if` in the body supplies a check the definition can still drop or alter, which is the property a declaration-level guarantee exists to exclude.
+- *The resolution.* The skeptic seeks an in-language, definition-proof guarantee, which P2900 does not provide; the response concedes this and defers it to labels (P3400R1), which would also supply in-source semantic selection. EWG declined mandatory enforcement at Tokyo (March 2024): an "enforce semantics only" poll reached consensus against (SF:6 F:1 N:3 A:15 SA:24)<sup>[6]</sup>. The skeptics characterize the four present-day paths as workarounds that do not meet the stated requirement. In the SG15 thread that requirement was given its sharpest form as a "Will Not Continue" guarantee<sup>[8]</sup>: non-continuation past a failed check, fixed at the function declaration and not removable by the definition - one the definition "cannot fail to deliver and cannot forget to deliver"<sup>[8]</sup>. An `if` in the body supplies a check the definition can still drop or alter, which is the property a declaration-level guarantee exists to exclude.
 
 ### 2.4 Bounded Predicates
 
@@ -144,7 +144,7 @@ A deferral is a conditional answer. It closes the argument it was given to answe
 
 [1] [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf) - "Contracts for C++ - Rationale" (Joshua Berne, Timur Doumler, Rostislav Khlebnikov, Andrzej Krzemie&nacute;ski, 2025).
 
-[2] [P3846R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3846r1.pdf) - "C++26 Contract Assertions, Reasserted" (Timur Doumler, Joshua Berne, et al., 2025).
+[2] [P3846R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3846r1.pdf) - "C++26 Contract Assertions, Reasserted" (Timur Doumler, Joshua Berne, et al., 2026).
 
 [3] [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html) - "Contracts make C++ less safe - full stop!" (John Spicer, Ville Voutilainen, Jose Daniel Garcia Sanchez, 2025).
 
@@ -180,7 +180,7 @@ A deferral is a conditional answer. It closes the argument it was given to answe
 
 [19] [P3878R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3878r1.html) - "Standard library hardening should not use the 'observe' semantic" (Ville Voutilainen, Jonathan Wakely, John Spicer, Stephan T. Lavavej, 2025).
 
-[20] [ISO/IEC Directives, Part 1](https://www.iso.org/sites/directives/current/consolidated/) - "Consolidated ISO Supplement - Procedures specific to ISO" (ISO/IEC, 2023). Consensus definition from ISO/IEC Guide 2:2004, cl. 2.5.6.
+[20] [ISO/IEC Directives, Part 1](https://www.iso.org/sites/directives/current/consolidated/) - "Consolidated ISO Supplement - Procedures specific to ISO" (ISO/IEC, 2024). Consensus definition from ISO/IEC Guide 2:2004, cl. 2.5.6.
 
 [21] [N5028](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5028.pdf) - "C++26 CD summary of voting and comments" (Herb Sutter, 2025).
 
