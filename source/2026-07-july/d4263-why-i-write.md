@@ -124,6 +124,8 @@ Claim maximally. Every domain a paper claims is territory a rival cannot enter. 
 
 Evidence minimally. Every benchmark, every disclosed tradeoff, every named limitation beyond the minimum needed to advance is ammunition for opponents. The rational author discloses exactly enough to pass the next gate.
 
+The dynamic has a cost that implementers have named directly. Eighteen implementers across every major compiler asked, in [P3962R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3962r0.pdf)<sup>[32]</sup>, for "ways of slowing down the addition of features into the standard to allow implementers to catch up, and to allow the existing features to improve in quality." A tournament that rewards claiming maximally and disclosing minimally ships faster than the language can be implemented.
+
 ### 5.2. The author's ask sharpens this
 
 `std::io::task` makes the domain boundary explicit. Its acceptance converts the universal claim into a scoped one. The architects of P2300 have structural reason to oppose it regardless of its evidence - because the cost of accepting it is not a technical concession but a reputational one: the universal model was not universal after all. Non-engagement is the dominant strategy. The evidence does not need to be refuted if its author can be dismissed on other grounds.
@@ -308,3 +310,5 @@ The title borrows from George Orwell's 1946 essay of the same name.
 [30] [P4223R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4223r0.pdf) - "Towards Senders in Interfaces" (Ian Petersen, 2026).
 
 [31] [P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf) - "The SG14 Priority List for C++29" (Michael Wong, 2026).
+
+[32] [P3962R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3962r0.pdf) - "Implementation reality of WG21 standardization" (Nina Ranns, et al., 2026).
