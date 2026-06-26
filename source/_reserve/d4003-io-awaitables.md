@@ -12,19 +12,21 @@ reply-to:
 
 ## Abstract
 
-This paper asks the committee to advance the _IoAwaitable_ protocol as a standard coroutine execution model.
+C++20 coroutines suspend and resume, but the language does not determine where resumption occurs, how cancellation propagates, or where coroutine frames are allocated. No standard protocol exists for these concerns. Every library invents its own execution model, and tasks from one framework do not compose with executors from another.
 
-We start from the minimal use case:
+The _IoAwaitable_ protocol resolves three concerns at every suspension point: executor affinity determines where the coroutine resumes, stop token propagation carries cancellation forward, and frame allocator delivery controls where frames are allocated. The motivating use case is a single line:
 
 ```cpp
 co_await f();
 ```
 
-For this to work, something must decide where the coroutine resumes, whether it should stop, and where its frame is allocated. The _IoAwaitable_ protocol provides exactly those three things - executor affinity, stop token propagation, and frame allocator delivery - and nothing more.
+For this to work, something must decide where the coroutine resumes, whether it should stop, and where its frame is allocated. The _IoAwaitable_ protocol provides these three things through a two-argument `await_suspend` that makes protocol violations a compile error.
 
 A companion paper, [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup>, provides the design rationale, evidence framework, preemptive objections, and analysis of alternative approaches.
 
 Everything in this paper comes from a complete implementation on three platforms: [Capy](https://github.com/cppalliance/capy)<sup>[2]</sup> (protocol) and [Corosio](https://github.com/cppalliance/corosio)<sup>[3]</sup>. A self-contained demonstration is available on [Compiler Explorer](https://godbolt.org/z/Wzrb7McrT)<sup>[4]</sup>.
+
+This paper asks LEWG to advance the _IoAwaitable_ protocol as a standard coroutine execution model.
 
 ---
 
@@ -95,30 +97,30 @@ If only this proposal ships and nothing else, we get:
 | `executor_ref` | (protocol) |
 | `io_env` | (protocol) |
 
-The left column is small. The right column is not. Small protocol, big rewards. It earns its keep.
+The left column is the standard's commitment - eight named facilities. The right column is what library authors and users build against that surface: interoperable tasks, awaitables, launch functions, executors, and custom frame allocators from any vendor.
 
-This protocol is a companion to [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> `std::execution`. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for design rationale and analysis of alternative approaches.
+This protocol is a companion to [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[6]</sup> `std::execution`. [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> evaluates four alternatives - sender/receiver, Boost.Asio completion handlers, pure coroutine libraries, and ecosystem-only - and concludes that each has structural limitations for I/O: sender/receiver requires a second template parameter on task types, Asio lacks standard frame allocator propagation, pure coroutine libraries are mutually incompatible, and twenty years of ecosystem behavior shows a shared vocabulary requires standardization. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the full design rationale and analysis.
 
 ---
 
 ## 3. What Coroutines Need
 
-What follows is the minimum.
+A coroutine that suspends needs three things resolved at the moment of suspension: who resumes it, whether it should stop, and where child frames come from. These map to five operational questions. Sections 3.1-3.2 address resumption - the executor. Section 3.3 addresses cancellation - the stop token. Section 3.4 addresses launching from non-coroutine code. Section 3.5 addresses frame allocation.
 
 ### 3.1 How to Suspend
 
-The minimal statement that suspends a coroutine:
+Standard C++ coroutine syntax provides one statement for suspension:
 
 ```cpp
 co_await f();
 ```
 
-When this executes, the coroutine suspends and control passes to the awaitable returned by `f()`. That awaitable holds the coroutine handle and must eventually resume it. But on which thread? Under whose control?
+When this executes, the coroutine suspends and control passes to the awaitable returned by `f()`. That awaitable holds the coroutine handle and must eventually resume it. The specification does not determine which thread the coroutine resumes on or which component controls resumption.
 
 ```cpp
 std::coroutine_handle<> h = /* ...the suspended coroutine... */;
 
-h.resume();  // but WHERE? on which thread? under whose control?
+h.resume();  // resumes on the current thread - which may be wrong
 ```
 
 This is the question that drives the entire protocol. The awaitable cannot just call `h.resume()` - that resumes on the current thread, possibly while holding a lock, possibly re-entering code that is not re-entrant. Something must decide where and how the coroutine wakes up.
@@ -196,7 +198,7 @@ The protocol must:
 
 ## 4. The _IoAwaitable_ Protocol
 
-What follows is the minimum as well.
+The protocol resolves the three concerns from Section 3 through six facilities. `io_env` (4.1) bundles executor, stop token, and frame allocator into a single struct. _IoAwaitable_ (4.2) defines the two-argument suspension contract that delivers the environment to every awaitable. _Executor_ (4.3) and `execution_context` (4.4) define resumption and the platform reactor. Frame allocator delivery (4.5) solves the `operator new` timing problem. _IoRunnable_ (4.6) extends the contract for launch functions that cannot `co_await`.
 
 ### 4.1 `io_env`
 
@@ -227,7 +229,7 @@ concept IoAwaitable =
 
 The two-argument `await_suspend` is the mechanism. The caller's `await_transform` injects the environment as a pointer parameter - no templates, no type leakage. A `task` needs only one template parameter. The environment is passed as a pointer because the launch function owns the `io_env` and every coroutine in the chain borrows it - pointer semantics make the ownership model explicit.
 
-The two-argument signature is also a compile-time boundary check. A non-compliant awaitable fails to compile. A compliant awaitable in a non-compliant coroutine fails to compile. Both sides of every suspension point are statically verified. In a world with multiple coexisting async models, a coroutine that accidentally `co_await`s across model boundaries should fail at compile time, not silently misbehave at runtime. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the alternative design discussion and detailed analysis.
+The two-argument signature is also a compile-time boundary check. A non-compliant awaitable fails to compile. A compliant awaitable in a non-compliant coroutine fails to compile. Both sides of every suspension point are statically verified. In a world with multiple coexisting async models, a coroutine that accidentally `co_await`s across model boundaries should fail at compile time, not silently misbehave at runtime. [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 5.1 demonstrates that the standard C++20 `await_suspend(coroutine_handle<Promise>)` compiles silently when promise and awaitable are mismatched across async models; the two-argument signature is the only form that makes protocol violations a compile error. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the full alternative design discussion.
 
 ### 4.3 _Executor_
 
@@ -275,7 +277,7 @@ public:
 };
 ```
 
-The `continuation` struct pairs a `coroutine_handle<>` with an intrusive `next` pointer, allowing executors to queue continuations without allocating a separate node - eliminating the last steady-state allocation in the hot path. `dispatch` returns a `coroutine_handle<>` for symmetric transfer: if the caller is already in the executor's context, it returns `c.h` directly for zero-overhead resumption. Otherwise it queues and returns `noop_coroutine()`. `post` always defers. The `executor_ref` type-erases any _Executor_ as two pointers - one indirection (~1-2 nanoseconds<sup>[8]</sup>) is negligible for I/O operations at 10,000+ nanoseconds. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed semantics.
+The `continuation` struct pairs a `coroutine_handle<>` with an intrusive `next` pointer, allowing executors to queue continuations without allocating a separate node - eliminating the last steady-state allocation in the hot path. `dispatch` returns a `coroutine_handle<>` for symmetric transfer: if the caller is already in the executor's context, it returns `c.h` directly for zero-overhead resumption. Otherwise it queues and returns `noop_coroutine()`. `post` always defers. The `executor_ref` type-erases any _Executor_ as two pointers - one indirection (~1-2 nanoseconds<sup>[8]</sup>) is negligible for I/O operations at 10,000+ nanoseconds. [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 5.2 traces each of the seven executor concept requirements to a concrete failure on removal: nothrow copy/move for exception safety at suspension points, `context()` for frame allocator discovery, `on_work_started`/`on_work_finished` to prevent premature return from `ctx.run()`, and `operator==` as forward investment for strand support. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for full semantics.
 
 ### 4.4 `execution_context`
 
@@ -329,7 +331,7 @@ The execution context holds the default frame allocator. The user can optionally
 
 ### 4.5 Frame Allocator Delivery
 
-There are exactly two ways to deliver the allocator to `operator new`:
+[P4127R0](https://isocpp.org/files/papers/P4127R0.pdf) enumerates every C++20 coroutine customization point and identifies two delivery channels for the allocator to reach `operator new`:
 
 1. **The parameter list.** This is `allocator_arg_t` - it always works and is always available as a fallback, but it should not be the only option.
 2. **Out of band.** The allocator is temporarily stashed somewhere the `operator new` can find it.
@@ -345,7 +347,7 @@ set_cached_frame_allocator(
     std::pmr::memory_resource* mr) noexcept;
 ```
 
-See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the timing constraint analysis, execution window, `safe_resume` protocol, and responses to common concerns.
+[P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 8 documents the execution window: `operator new` runs before the coroutine body, so the frame allocator must be in place before the coroutine is called. The `safe_resume` protocol saves and restores one pointer per `.resume()` call, preventing slot spoilage when intervening code resumes coroutines from other chains. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the full timing constraint analysis and responses to common concerns.
 
 ### 4.6 `IoRunnable` and Launch Functions
 
@@ -408,11 +410,13 @@ concept IoRunnable =
       });
 ```
 
-See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed examples and implementation guidance.
+[P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 7 demonstrates both launch functions with full listings. The two-phase invocation syntax - `run_async(ex)(task())` - exists because `operator new` executes before the coroutine body; the first call sets up the environment, the second call invokes the coroutine whose `operator new` reads it. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed examples and implementation guidance.
 
 ---
 
 ## 5. _IoAwaitable_ Is Structured Concurrency
+
+Structured concurrency requires that every concurrent operation has a known owner at every point in its lifetime. The _IoAwaitable_ protocol provides this guarantee through a three-phase ownership chain:
 
 1. The awaitable owns the suspended coroutine handle.
 2. The awaitable submits the operation and transfers ownership to the executor.
@@ -435,7 +439,7 @@ auto [ec, counts] = co_await when_all(std::move(reads));
 auto result = co_await when_any(std::move(reads));
 ```
 
-**The _IoAwaitable_ protocol is structured concurrency.**
+The protocol satisfies structured concurrency: every operation has a known owner, every lifetime is lexically bounded, and cancellation propagates without escape.
 
 ### 5.1 Structurable Building Blocks Are More Fundamental
 
@@ -504,9 +508,9 @@ structured concurrency constructs are assembled.
 
 Under type erasure, `connect(sndr, rcvr)` produces a type-dependent `op_state` that must be heap-allocated when either side is erased.
 
-The sender composition algebra does not apply to compound results - such as `[ec, n]` - without data loss or shared state; the sender three-channel model is in tension with `error_code` as a value-channel result.<sup>[10,11]</sup>
+The sender composition algebra does not apply to compound results - such as `[ec, n]` - without data loss or shared state; the sender three-channel model is in tension with `error_code` as a value-channel result. [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf)<sup>[10]</sup> demonstrates that sender composition under type erasure requires per-operation heap allocation that awaitables avoid. [P4091R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r0.pdf)<sup>[11]</sup> shows that the sender three-channel completion model (value/error/stopped) conflicts with C++ functions that return compound results containing `error_code`.
 
-See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for detailed analysis.
+[P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 6.2 concludes that type erasure through `executor_ref` enables separate compilation and ABI stability at a cost of one vtable indirection per dispatch - bounded, constant, and negligible relative to I/O latency. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the full analysis.
 
 [P3482R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3482r1.html)<sup>[12]</sup> ("Design for C++ networking based on IETF TAPS") defines a TAPS-shaped networking API surface. The _IoAwaitable_ protocol provides the coroutine execution model beneath it. A TAPS implementation needs coroutines that suspend, resume correctly, cancel, and allocate frames - exactly what this protocol provides. The two are not competing; TAPS is a consumer.
 
@@ -514,7 +518,13 @@ See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.p
 
 ## 7. Conclusion
 
-Executor affinity, stop token propagation, frame allocator delivery. Three concerns. One protocol. A companion to `std::execution`, implemented on three platforms. Nothing in it can be removed.
+The _IoAwaitable_ protocol provides a standard coroutine execution model. At every suspension point, the protocol delivers three things: an executor that determines where the coroutine resumes, a stop token that carries cancellation forward, and a frame allocator that controls where frames are allocated. The two-argument `await_suspend` makes protocol violations a compile error. Type erasure through `executor_ref` keeps `task<T>` at one template parameter, enabling separate compilation and ABI stability. The protocol is implemented on three platforms and deployed at a derivatives exchange.
+
+If adopted, C++ gains a shared vocabulary for coroutine-based I/O. Library authors build interoperable tasks, executors, and awaitables against a fixed surface. TAPS-shaped networking ([P3482R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3482r1.html)<sup>[12]</sup>) gains a coroutine execution model beneath it. The protocol complements `std::execution` - each serves the domain where its design choices pay off, and bridge papers ([P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf), [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)) connect them.
+
+Without a standard protocol, each library continues to invent its own execution model. Tasks from one framework do not compose with executors from another. The higher layers of the abstraction tower - HTTP frameworks, database drivers, RPC stacks that interoperate across vendors - remain blocked on a foundation that is not shared.
+
+This paper asks LEWG to advance the _IoAwaitable_ protocol.
 
 ---
 
