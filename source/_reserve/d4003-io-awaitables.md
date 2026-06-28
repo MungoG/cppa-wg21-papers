@@ -234,7 +234,34 @@ concept IoAwaitable =
     };
 ```
 
-The two-argument `await_suspend` is the mechanism. The caller's `await_transform` injects the environment as a pointer parameter - no templates, no type leakage. A `task` needs only one template parameter. The environment is passed as a pointer because the launch function owns the `io_env` and every coroutine in the chain borrows it - pointer semantics make the ownership model explicit.
+The two-argument `await_suspend` is the mechanism. The C++20 compiler only calls the standard one-argument `await_suspend(coroutine_handle<>)`. The promise type's `await_transform` bridges the two forms by wrapping every IoAwaitable in a `transform_awaiter`:
+
+```cpp
+template<class Awaitable>
+struct transform_awaiter
+{
+    std::decay_t<Awaitable> a_;
+    promise_type* p_;
+
+    bool await_ready() noexcept
+        { return a_.await_ready(); }
+
+    template<class Promise>
+    auto await_suspend(
+        std::coroutine_handle<Promise> h) noexcept
+    {
+        return a_.await_suspend(
+            h, p_->environment());
+    }
+
+    decltype(auto) await_resume()
+        { return a_.await_resume(); }
+};
+```
+
+When a parent coroutine evaluates `co_await child`, the compiler calls `await_transform` on the parent's promise, which wraps the child in a `transform_awaiter` that captures the promise pointer. The compiler then calls the wrapper's one-argument `await_suspend(handle)`. The wrapper reads the parent's environment via `p_->environment()` and forwards both the handle and the `io_env const*` to the child's two-argument `await_suspend`. The child stores the environment in its own promise via `set_environment`. When the child itself does `co_await`, the same three steps repeat - propagation is automatic and invisible to the coroutine author.
+
+A `task` needs only one template parameter. The environment is passed as a pointer because the launch function owns the `io_env` and every coroutine in the chain borrows it - pointer semantics make the ownership model explicit. The `io_awaitable_promise_base` CRTP mixin (see [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Appendix C) provides the `await_transform` dispatch and the `transform_awaitable` override point; derived promise types install the `transform_awaiter` by overriding `transform_awaitable`.
 
 The two-argument signature is also a compile-time boundary check. A non-compliant awaitable fails to compile. A compliant awaitable in a non-compliant coroutine fails to compile. Both sides of every suspension point are statically verified. In a world with multiple coexisting async models, a coroutine that accidentally `co_await`s across model boundaries should fail at compile time, not silently misbehave at runtime. [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> Section 5.1 demonstrates that the standard C++20 `await_suspend(coroutine_handle<Promise>)` compiles silently when promise and awaitable are mismatched across async models; the two-argument signature is the only form that makes protocol violations a compile error. See [P4172R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4172r0.pdf)<sup>[1]</sup> for the full alternative design discussion.
 

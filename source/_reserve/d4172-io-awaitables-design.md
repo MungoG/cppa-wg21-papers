@@ -187,7 +187,36 @@ concept IoAwaitable =
     };
 ```
 
-The two-argument `await_suspend` is the protocol boundary. The caller's `await_transform` injects the environment as a pointer parameter. A non-compliant awaitable produces a compile-time failure when a compliant coroutine's `await_transform` calls the two-argument form.
+The two-argument `await_suspend` is the protocol boundary. The C++20 compiler only ever calls the standard one-argument `await_suspend(coroutine_handle<>)`. The promise type bridges the gap through `await_transform`, which wraps every IoAwaitable in a `transform_awaiter`:
+
+```cpp
+template<class Awaitable>
+struct transform_awaiter
+{
+    std::decay_t<Awaitable> a_;
+    promise_type* p_;
+
+    bool await_ready() noexcept
+        { return a_.await_ready(); }
+
+    template<class Promise>
+    auto await_suspend(
+        std::coroutine_handle<Promise> h) noexcept
+    {
+        return a_.await_suspend(
+            h, p_->environment());
+    }
+
+    decltype(auto) await_resume()
+        { return a_.await_resume(); }
+};
+```
+
+The chain works in three steps. First, when a coroutine evaluates `co_await child`, the compiler calls `await_transform` on the parent's promise. `await_transform` (inherited from `io_awaitable_promise_base`, Appendix C) dispatches to the derived promise's `transform_awaitable` override, which wraps the child in a `transform_awaiter` that captures the promise pointer. Second, the compiler calls the wrapper's one-argument `await_suspend(handle)` - the standard C++20 form. The wrapper reads the parent's environment via `p_->environment()` and forwards both the handle and the `io_env const*` to the child's two-argument `await_suspend`. Third, the child stores the environment in its own promise via `set_environment`. When the child itself does `co_await`, the same three steps repeat.
+
+This is the mechanism that makes environment propagation automatic and invisible to the application developer audience (Section 3.1). The `io_awaitable_promise_base` mixin provides the `await_transform` dispatch and the `transform_awaitable` override point. Derived promise types install the `transform_awaiter` by overriding `transform_awaitable`. The base class default forwards the awaitable unchanged - a derived promise that does not override `transform_awaitable` will fail to compile when it `co_await`s an IoAwaitable, because the compiler will attempt the one-argument call on a type that only provides the two-argument form.
+
+A non-compliant awaitable produces a compile-time failure when a compliant coroutine's `await_transform` calls the two-argument form.
 
 *Why not template on the promise type.* The standard C++20 pattern is `await_suspend(coroutine_handle<Promise>)`, where the awaitable sees the concrete promise type. This compiles silently when promise and awaitable are mismatched - a coroutine from one async model can `co_await` an awaitable from another, producing runtime errors instead of compile-time failures. The two-argument signature with `io_env const*` ensures that a coroutine from a different model (one whose `await_transform` does not inject `io_env`) fails to compile. Both sides of every suspension point are statically verified. [P4094R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r0.pdf)<sup>[15]</sup> Section 6 examines how rationale loss across paper boundaries contributed to the framing confusion between work and continuation semantics; a compile-time boundary prevents analogous confusion at the awaitable level.
 
@@ -1069,7 +1098,7 @@ Promise types inherit from this mixin to gain:
 - **Frame allocation**: `operator new`/`delete` using the out-of-band frame allocator, with the `memory_resource*` stored at the end of each frame for correct deallocation
 - **Continuation support**: `set_continuation`/`continuation` for unconditional symmetric transfer at `final_suspend`
 - **Environment storage**: `set_environment`/`environment` for executor and stop token propagation
-- **Awaitable transformation**: `await_transform` intercepts `environment_tag`, delegating all other awaitables to `transform_awaitable`
+- **Awaitable transformation**: `await_transform` intercepts `environment_tag`, delegating all other awaitables to `transform_awaitable`. The default `transform_awaitable` forwards unchanged. Derived promise types override it to wrap IoAwaitables in a `transform_awaiter` that bridges the compiler's one-argument `await_suspend` to the protocol's two-argument form (see Section 5.1). This override is required - without it, `co_await`ing an IoAwaitable will not compile.
 
 Derived promise types that need additional `await_transform` overloads should override `transform_awaitable` rather than `await_transform` itself. Defining `await_transform` in the derived class shadows the base class version, silently breaking `this_coro::environment` support. If a separate `await_transform` overload is truly necessary, import the base class overloads with a using-declaration:
 
