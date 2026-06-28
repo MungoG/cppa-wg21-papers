@@ -11,7 +11,7 @@ reply-to:
 
 ## Abstract
 
-C++ already got an asynchronous model: regular C++20 coroutines.
+C++20 shipped coroutines as a language-level asynchronous model.
 
 C++26 also ships senders. Each model provides properties the other cannot replicate at zero per-operation cost. Two of those properties matter specifically for serial stream I/O: zero-cost iteration in stream loops, and the immediately-ready fast path that skips suspension when data is already buffered. This paper documents both properties, traces their structural origin to the coroutine frame, states the price coroutines pay, and places the evidence beside the sender model's corresponding path.
 
@@ -74,7 +74,7 @@ The coroutine "tutorial" is: write regular code, put `co_await` before async ope
 
 ### 2.2 Thirty Algorithms
 
-The sender model replaces these constructs with library equivalents: `let_value` for local variables, `then` for function calls, `upon_error` for `catch`, `when_all` for concurrent joins, `repeat_effect_until` for `for`. [P4014R2](https://isocpp.org/files/papers/P4014R2.pdf)<sup>[4]</sup>, a progressive tutorial of all thirty sender algorithms in C++26, documents the equivalences. The `retry` algorithm requires approximately 120 lines of template machinery as a sender; the coroutine equivalent is seven lines. The four-layer composition example in [P4014R2](https://isocpp.org/files/papers/P4014R2.pdf)<sup>[4]</sup> Section 12 collapses from interleaved sender pipelines into a single coroutine.
+The sender model provides library equivalents for these constructs: `let_value` for local variables, `then` for function calls, `upon_error` for `catch`, `when_all` for concurrent joins, `repeat_effect_until` for `for`. [P4014R2](https://isocpp.org/files/papers/P4014R2.pdf)<sup>[4]</sup>, a progressive tutorial of all thirty sender algorithms in C++26, documents the equivalences.
 
 | Model      | New vocabulary |
 | ---------- | -------------- |
@@ -95,17 +95,17 @@ On September 28, 2021, the Executors telecon polled ([P2453R0](https://www.open-
 >
 > SF:4 / WF:9 / N:5 / WA:5 / SA:1 - No consensus (leaning in favor).
 
-The "one model" premise did not achieve consensus. C++26 ships two.
+The poll did not reach consensus. The working draft ships both models.
 
 ### 2.4 The Chronology
 
-C++20 was ratified in 2020 with coroutines as a language feature. Every major compiler implements them. Production codebases have used them for six years. `std::execution` was adopted into the working draft at St. Louis in July 2024<sup>[7]</sup> and ships in C++26. Networking is not in the C++ standard. Twenty-one years from [N1925](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[8]</sup> "A Proposal to Add Networking Utilities to the C++ Standard Library."
+C++20 was ratified in 2020 with coroutines as a language feature. Every major compiler implements them. Production codebases have used them for six years. `std::execution` was adopted into the working draft at St. Louis in July 2024<sup>[7]</sup> and ships in C++26. Networking has been proposed since [N1925](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[8]</sup> (2005) and is not in the standard.
 
 ### 2.5 The Incumbent
 
 Three execution models complement each other in C++26: parallel algorithms with execution policies, `std::execution` with sender/receiver composition, and coroutines with `co_await`. Execution policies annotate synchronous calls with parallelism. Senders compose asynchronous work graphs. Coroutines suspend and resume sequential code. The committee accepted complementary execution models when it shipped all three.
 
-`std::sort(std::execution::par, first, last)` does not use senders. [P2500R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html)<sup>[10]</sup> "C++ parallel algorithms and P2300", the only paper that attempts the bridge, has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified. A universal execution model does not require a bridge paper to reach the execution model already in the standard.
+`std::sort(std::execution::par, first, last)` does not use senders. [P2500R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2500r2.html)<sup>[10]</sup> "C++ parallel algorithms and P2300", the only paper that attempts a bridge between execution policies and senders, has not been revised since October 2023, was never adopted, and leaves the customization mechanism unspecified.
 
 Coroutine-native I/O does not introduce a fourth model. It completes the third. C++20 gave the committee `co_await`, `coroutine_handle<>`, and `promise_type`. It did not give the committee standard I/O operations that use them. The question is what happens when you build I/O on the model the language already provides.
 
@@ -249,13 +249,13 @@ Two things vanished. The completion token disappeared - in the coroutine model, 
 
 What stayed: `read_some` takes a buffer, returns `(error_code, size_t)`. The named requirement became a concept. The language caught up to the contract.
 
-Networking stalled because networking is not the hard problem. Asynchrony is the hard problem, and asynchrony has three domains: bulk-parallel execution, heterogeneous work-graph composition, and serial stream I/O. C++17 standardized the first. C++26 standardized the second. The serial I/O domain - networking, files, pipes, TLS - has no standard facility. The obstacle was the unexamined assumption that one model must cover all three domains. The answer was three models.
+Networking stalled because networking is not the hard problem. Asynchrony is the hard problem, and asynchrony has three domains: bulk-parallel execution, heterogeneous work-graph composition, and serial stream I/O. C++17 standardized the first. C++26 standardized the second. The serial I/O domain - networking, files, pipes, TLS - has no standard facility. C++26 ships three execution models.
 
 ---
 
 ## 7. The Stream Loop
 
-Stream I/O is inherently iterative. TLS decrypts by looping encrypted reads. HTTP sequences header parsing with body reads. Protocol implementations - SMTP, DNS, WebSocket, QUIC - are loops over `read_some`. The cost model of that loop determines I/O throughput at scale. Coroutines provide zero per-iteration cost. The sender model does not.
+Stream I/O is inherently iterative. TLS decrypts by looping encrypted reads. HTTP sequences header parsing with body reads. Protocol implementations - SMTP, DNS, WebSocket, QUIC - are loops over `read_some`. The cost model of that loop determines I/O throughput at scale. The two protocols produce different per-iteration cost structures.
 
 ### 7.1 The Mechanism
 
@@ -273,7 +273,7 @@ for (;;) {
 
 The coroutine frame is allocated once, before the first iteration. Every subsequent `co_await` reuses the same frame. The awaitable returned by `read_some` stores its state inside the socket (Section 9.2) - not allocated per call. The loop has the cost structure of a `while` loop with a function call.
 
-Under the sender model, a stream read loop requires `repeat_effect` or equivalent iteration. Each iteration calls `connect(sender, receiver)`, constructing an operation state whose type depends on both the sender and the receiver. `start` launches the work. When the work completes, `set_value` fires on the receiver, and the next iteration begins. Each iteration independently pays the connect/start/complete ceremony.
+Under the sender model, a stream read loop requires `repeat_effect` or equivalent iteration. Each iteration calls `connect(sender, receiver)`, constructing an operation state whose type depends on both the sender and the receiver. `start` launches the work. When the work completes, `set_value` fires on the receiver, and the next iteration begins. Each iteration independently executes the connect/start/complete protocol sequence.
 
 | Per iteration | Coroutine loop | Sender loop |
 | ------------- | -------------- | ----------- |
@@ -289,17 +289,19 @@ The asymmetry is structural. The coroutine frame persists across iterations beca
 
 Real I/O is layered. A network read passes through tcp -> tls -> decompress -> parse. Each layer is a coroutine composing the layer below through `co_await`. The pipeline shares one frame per layer.
 
-[P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> "Awaitables And Senders For Synchronous I/O" Section 11 quantifies the composed I/O cost. A 64 KB read with a 4 KB kernel buffer produces sixteen iterations of `read_some`. Under the awaitable model, when the buffer already contains decrypted data, `await_ready()` returns `true` and no suspension occurs. The loop runs with the same cost as a hand-written `while` loop calling `memcpy`. Under the sender model, each of those sixteen iterations pays the seven-step ceremony documented in [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 6: construct operation state, instantiate receiver, suspend coroutine, call `start`, fire `set_value`, emplace into `variant`, resume coroutine.
+[P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> "Awaitables And Senders For Synchronous I/O" Section 11 quantifies the composed I/O cost. A 64 KB read with a 4 KB kernel buffer produces sixteen iterations of `read_some`. Under the awaitable model, when the buffer already contains decrypted data, `await_ready()` returns `true` and no suspension occurs. The loop runs with the same cost as a hand-written `while` loop calling `memcpy`. Under the sender model, each of those sixteen iterations executes the seven-step protocol sequence documented in [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 6: construct operation state, instantiate receiver, suspend coroutine, call `start`, fire `set_value`, emplace into `variant`, resume coroutine.
 
-TLS is the canonical amplifier. One network read fills a 16 KB TLS record. A 4 KB application buffer reads four times from that record. Three of those four reads are synchronous - the data is already decrypted in memory. Under awaitables, three of four reads pay zero protocol cost. Under senders, all four pay the full ceremony. The multiplier compounds across protocol layers: HTTP over TLS over TCP is three layers of composed coroutines, each with its own `read_some` loop.
+TLS is the canonical amplifier. One network read fills a 16 KB TLS record. A 4 KB application buffer reads four times from that record. Three of those four reads are synchronous - the data is already decrypted in memory. Under awaitables, three of four reads pay zero protocol cost. Under senders, all four execute the full protocol sequence. The multiplier compounds across protocol layers: HTTP over TLS over TCP is three layers of composed coroutines, each with its own `read_some` loop.
 
 ### 7.3 Honest Limits
 
 A sender can handle multiple iterations within a single functor. A `then` handler that processes all buffered data before returning concedes zero per-iteration cost to the coroutine model. Hybrid code at that boundary shares the coroutine's cost structure.
 
-Sequence senders - an extension to the sender model for multi-shot, streaming operations - would address the iteration problem directly. Kirk Shoop proposed the abstraction in an August 2019 reflector post. Seven years later, no P-number paper exists. A prototype lives on the `kirkshoop/libunifex` branch `sequenceconnect`, not on stdexec. An experimental API under the `exec::` namespace exists in stdexec, using `subscribe`/`set_next` semantics, with a known bug: stop token propagation fails for type-erased sequence senders ([stdexec issue #1668](https://github.com/NVIDIA/stdexec/issues/1668)). `split`, the sender model's only multi-shot mechanism in the C++26 standard, was removed at Croydon (P3682R0<sup>[34]</sup>). The coroutine loop ships today.
+When the compiler has full type visibility - no type erasure, concrete sender and receiver types - the per-iteration protocol steps (operation state construction, receiver instantiation, connect, start) may compile to near-zero overhead. The irreducible cost appears under type erasure (Section 9.3) and at the `await_ready` boundary (Section 8), where the structural gap persists regardless of optimization.
 
-**One frame, every iteration. The sender model pays to enter each one.**
+Sequence senders - an extension to the sender model for multi-shot, streaming operations - would address the iteration problem directly. Kirk Shoop proposed the abstraction in an August 2019 reflector post. Seven years later, no P-number paper exists. A prototype lives on the `kirkshoop/libunifex` branch `sequenceconnect`, not on stdexec. An experimental API under the `exec::` namespace exists in stdexec, using `subscribe`/`set_next` semantics, with a known bug: stop token propagation fails for type-erased sequence senders ([stdexec issue #1668](https://github.com/NVIDIA/stdexec/issues/1668)). `split`, the sender model's only multi-shot mechanism in the C++26 standard, was removed at Croydon (P3682R0<sup>[34]</sup>). The coroutine loop is available today.
+
+The coroutine frame persists across all iterations. The sender protocol constructs a fresh operation state for each one.
 
 ---
 
@@ -337,13 +339,13 @@ The sender model's initial-suspension-by-design is a genuine architectural stren
 
 Piecewise graph construction, compile-time work aggregation, and zero-allocation composition all depend on this property. GPU dispatch (Section 3) builds entire work graphs before launching any kernel. Domain customization via `transform_sender` retargets the same graph to CPU or GPU by swapping the scheduler. The separation between construction and launch is what makes senders the right choice for heterogeneous composition.
 
-The cost appears at I/O boundaries. When the data is already buffered and the operation completes synchronously, the sender protocol still constructs an operation state, wires a receiver, calls `start`, routes through `set_value`, and resumes through the coroutine handle. [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 6 documents the full sequence: seven protocol steps to append bytes to a string.
+The cost appears at I/O boundaries. When the data is already buffered and the operation completes synchronously, the sender protocol still constructs an operation state, wires a receiver, calls `start`, routes through `set_value`, and resumes through the coroutine handle. [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 6 documents the full sequence: seven protocol steps for an operation that completes synchronously.
 
 ### 8.3 Why I/O Benefits
 
 Network I/O frequently has data already buffered. TLS decryption reads an entire record (up to 16 KB) from the network in one syscall. Application-level reads from the decrypted buffer are synchronous until the buffer drains. HTTP header parsing reads buffered bytes until a delimiter. DNS cache lookups return cached results with no network transition.
 
-[P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 11 quantifies the pattern for composed I/O. A 64 KB read with a 4 KB buffer produces sixteen iterations. On a buffered stream where most completions are synchronous, each synchronous completion pays the seven-step ceremony under senders. Under awaitables with `await_ready() == true`, the generic algorithm has the same cost as a hand-written `while` loop calling `memcpy`.
+[P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 11 quantifies the pattern for composed I/O. A 64 KB read with a 4 KB buffer produces sixteen iterations. On a buffered stream where most completions are synchronous, each synchronous completion executes the seven-step protocol sequence under senders. Under awaitables with `await_ready() == true`, the generic algorithm has the same cost as a hand-written `while` loop calling `memcpy`.
 
 Stepanov's iterator concepts do not impose indirection when dereferencing a pointer. A `T*` satisfies `random_access_iterator` and dereferences in one instruction - the concept does not require constructing an intermediate state object, wiring a callback, or performing a two-phase access protocol. The awaitable protocol has this property. `await_ready() == true` is the pointer dereference: the value is there, take it. `await_ready() == false` is the disk-backed iterator: the value requires work, suspend, resume when ready. The cost tracks the operation, not the protocol.
 
@@ -361,7 +363,7 @@ Both stdexec and libunifex unconditionally return `false` from `await_ready` whe
 
 [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 14 states three falsification criteria - testable conditions that would discharge these observations. No implementation has satisfied any of them.
 
-**`await_ready()` is the zero-cost path. The sender protocol does not reach it.**
+The awaitable protocol reaches the zero-cost path through `await_ready()`. The sender protocol has no equivalent conditional path.
 
 ---
 
@@ -499,7 +501,7 @@ The architecture also enables the [Capy](https://github.com/cppalliance/capy)<su
 
 The vtable layout of `any_read_stream` does not change. Libraries compiled today work with new transports tomorrow. A `tls_stream` implementation compiled against OpenSSL 3.0 satisfies `ReadStream`. A future implementation compiled against a post-quantum TLS library satisfies the same concept, plugs into the same `any_read_stream`, and works with every library compiled against the old transport.
 
-ABI commitments are permanent. `std::regex` cannot be made faster because its ABI cannot change. The C++11 `std::string` ABI break was traumatic. The question is whether this vtable will need to change.
+ABI commitments are permanent. The question is whether this vtable will need to change.
 
 The contract behind it:
 
@@ -572,7 +574,7 @@ Small buffer optimization (SBO) is another mitigation. SBO works for `std::funct
 
 The allocation purchased something. The receiver-parameterized operation state gives the optimizer full pipeline visibility - the strength documented in Section 3. That visibility is what makes senders the right choice for GPU dispatch, HPC, and compile-time work graphs. The allocation is the price of stamping the receiver into the operation state when the receiver is type-erased.
 
-The coroutine model provides zero-allocation type erasure as a language consequence. The frame the compiler already built is the storage the awaitable already uses. No pool. No size calculation. No API threading. No per-connection management. The language feature provides what the workaround stack reconstructs.
+The coroutine model provides zero-allocation type erasure as a language consequence. The frame the compiler already built is the storage the awaitable already uses. No pool. No size calculation. No API threading. No per-connection management.
 
 ---
 
@@ -594,7 +596,7 @@ The teachability gap extends beyond the committee. On the `stdexec` issue tracke
 
 **Q: Sequence senders will solve the stream-loop problem.**
 
-A: Sequence senders, an extension for multi-shot streaming operations, have been forthcoming since Kirk Shoop's August 2019 reflector post. Seven years later, no P-number paper exists. The prototype lives on a libunifex branch, not stdexec. An experimental API under `exec::` exists in stdexec with known bugs. `split`, the sender model's only multi-shot mechanism in C++26, was removed at Croydon (P3682R0<sup>[34]</sup>). The coroutine loop ships today. [P0592R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0592r4.html) (Voutilainen): "C++ ships on time."
+A: Sequence senders, an extension for multi-shot streaming operations, have been forthcoming since Kirk Shoop's August 2019 reflector post. Seven years later, no P-number paper exists. The prototype lives on a libunifex branch, not stdexec. An experimental API under `exec::` exists in stdexec with known bugs. `split`, the sender model's only multi-shot mechanism in C++26, was removed at Croydon (P3682R0<sup>[34]</sup>). The coroutine loop is available today.
 
 **Q: Senders complete synchronously too.**
 
@@ -602,9 +604,9 @@ A: `sender-awaitable::await_ready()` returns `false` unconditionally per the nor
 
 **Q: The full-pipeline comparison favors senders because the entire pipeline is one allocation.**
 
-A: A sender pipeline launched on a scope pays one allocation for the pipeline. Each iteration of `repeat_effect` within that pipeline independently pays connect/start/complete. [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 11 documents the per-iteration ceremony for a 64 KB read with 4 KB buffer: sixteen iterations, each paying seven protocol steps. The pipeline allocation is shared. The iteration ceremony is not.
+A: A sender pipeline launched on a scope pays one allocation for the pipeline. Each iteration of `repeat_effect` within that pipeline independently pays connect/start/complete. [P4255R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4255r0.pdf)<sup>[32]</sup> Section 11 documents the per-iteration protocol sequence for a 64 KB read with 4 KB buffer: sixteen iterations, each executing seven protocol steps. The pipeline allocation is shared. The per-iteration protocol cost is not.
 
-**Q: A sender can provide member `as_awaitable` to skip the ceremony.**
+**Q: A sender can provide member `as_awaitable` to skip the protocol sequence.**
 
 A: True. `[exec.as.awaitable]` uses a sender's own `as_awaitable` in preference to the generic `sender-awaitable` path. A sender whose `as_awaitable` returns a synchronous awaitable takes the three-step path of Section 8.1 rather than the seven-step path. Two costs remain. The `as_awaitable` member is manual and per-sender - a sender that omits it inherits the seven-step path. And the member is lost under type erasure: `any_sender` erases the concrete sender and the `as_awaitable` member with it.
 
@@ -622,7 +624,7 @@ A: Different computation models interact at boundaries. C and C++ interact throu
 
 **Q: P2300 was designed to serve I/O too. Its motivating example is a TCP server.**
 
-A: The motivating example demonstrates the gap. [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[27]</sup> Section 1.4.1.3 is analyzed in [P4007R3](https://isocpp.org/files/papers/P4007R3.pdf)<sup>[23]</sup> Section 3 and [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf)<sup>[20]</sup>. The echo server loses the byte count on the error path. The I/O types cannot be type-erased without per-operation allocation. The stream cannot be separately compiled. The design intent included I/O. The design properties serve parallel and heterogeneous dispatch.
+A: The motivating example illustrates the trade-off. [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[27]</sup> Section 1.4.1.3 is analyzed in [P4007R3](https://isocpp.org/files/papers/P4007R3.pdf)<sup>[23]</sup> Section 3 and [P4090R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4090r0.pdf)<sup>[20]</sup>. The three-channel completion model routes the byte count and the error code to separate channels. Type erasure requires per-operation allocation because the operation state depends on the receiver. The design properties that produce these characteristics are the same properties that serve parallel and heterogeneous dispatch.
 
 **Q: io_uring's batch submission model favors senders.**
 
@@ -638,7 +640,7 @@ A: [P4003R3](https://isocpp.org/files/papers/P4003R3.pdf)<sup>[24]</sup> "A Mini
 
 Two properties of C++20 coroutines matter for serial stream I/O, and neither can be replicated by the sender model at zero per-operation cost.
 
-The first is zero-cost iteration. A coroutine stream loop allocates one frame and reuses it across every iteration. The sender model constructs a fresh operation state per iteration because the receiver is stamped into the type. For a 64 KB buffered TLS read at 4 KB per application read, that is sixteen iterations. The coroutine pays once. The sender pays sixteen times.
+The first is zero-cost iteration. A coroutine stream loop allocates one frame and reuses it across every iteration. The sender model constructs a fresh operation state per iteration because the receiver is stamped into the type. For a 64 KB buffered TLS read at 4 KB per application read, that is sixteen iterations. The coroutine allocates one frame; the sender protocol constructs sixteen operation states.
 
 The second is the immediately-ready fast path. When data is already in memory, `await_ready()` returns `true` and the coroutine continues without suspension - 1.0 ns per operation. The sender protocol suspends unconditionally - `sender-awaitable::await_ready()` returns `false` per the normative specification - incurring register spill, atomic CAS, and resumption overhead at 2.6-5.1 ns per operation. Both stdexec and libunifex confirm this behavior.
 

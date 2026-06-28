@@ -186,7 +186,7 @@ What happens inside `co_await sink.write(line)`, per the specification:
 
 7. `await_resume()` extracts the value from the `variant`.<sup>[3]</sup>
 
-Seven protocol steps. One suspension and one resumption. One operation state construction. One receiver instantiation. One `variant` emplacement. No scheduler affinity check. To append bytes to a string.
+Seven protocol steps. One suspension and one resumption. One operation state construction. One receiver instantiation. One `variant` emplacement. No scheduler affinity check. For an operation that completes synchronously.
 
 The `inline-sender` bypass in step 1 is type-specific: `await_transform` checks `same_as<remove_cvref_t<Sender>, inline-sender>`.<sup>[5]</sup> A user-defined sender that completes synchronously does not match this check and takes the full path, including `affine_on` wrapping<sup>[6]</sup> (P3941R2, "Scheduler Affinity," which specifies scheduler affinity enforcement for sender-based coroutines) - eight steps. Seven is the best case, achieved only by using the standard's own facility.
 
@@ -250,7 +250,7 @@ What happens inside `co_await sink.write(line)`:
 
 3. `await_resume()` returns.
 
-Three protocol steps. No suspension. No operation state. No receiver. No `variant`. No scheduler affinity check. The bytes were appended to the string.
+Three protocol steps. No suspension, no operation state construction, no receiver instantiation, no `variant` emplacement, no scheduler affinity check.
 
 ## 8. Comparison
 
@@ -297,13 +297,13 @@ The question is which implementation shape minimizes total cost when both consum
 | Consumer / I/O shape | Awaitable | Sender |
 | -------------------- | --------- | ------ |
 | **Coroutine** | | |
-| Synchronous | Zero (no suspend) | 7-step ceremony (Section 6) |
-| Asynchronous | Zero protocol overhead (inherent suspend only) | Inherent suspend + ceremony |
+| Synchronous | Zero (no suspend) | 7-step protocol sequence (Section 6) |
+| Asynchronous | Zero protocol overhead (inherent suspend only) | Inherent suspend + protocol sequence |
 | **Sender pipeline** | | |
 | Synchronous | Zero (P4126R2<sup>[10]</sup>) | Zero |
 | Asynchronous | Zero (P4126R2<sup>[10]</sup>) | Zero |
 
-The awaitable column is four zeros. For synchronous I/O, the sender column carries the seven-step ceremony of Section 6. For asynchronous I/O, the sender protocol adds ceremony - `connect`, receiver wiring, `variant` emplacement - atop the inherent suspend. The ceremony is not inherent to the async operation. It is inherent to the sender protocol.
+The awaitable path imposes no protocol overhead in any cell. For synchronous I/O, the sender column carries the seven-step protocol sequence of Section 6. For asynchronous I/O, the sender protocol adds `connect`, receiver wiring, and `variant` emplacement atop the inherent suspend. These steps are not inherent to the async operation. They are inherent to the sender protocol.
 
 For asynchronous I/O these added steps are a step count, not a separately observable runtime cost: once the operation suspends to a scheduler, the suspension dominates and the steps are not measurable above it. The case this paper isolates is synchronous completion, where no suspension absorbs them.
 
@@ -315,7 +315,9 @@ Composed I/O algorithms call lower-level operations in a loop. This section exam
 
 `read` fills a buffer by looping `read_some`. TLS decrypts by looping encrypted reads. HTTP sequences header parsing with body reads. Each layer is a coroutine composing awaitables. These algorithms are generic - constrained on concepts, agnostic to execution context.
 
-Under the sender protocol, each iteration of such a loop pays the ceremony of Section 6 independently - even when the operation completes synchronously. Each synchronous completion constructs an operation state, instantiates a receiver, suspends the coroutine, calls `start`, fires `set_value` on the receiver, emplaces the result into a `variant`, and resumes the coroutine. For a 64 KB read with a 4 KB kernel buffer, this is sixteen iterations. On a buffered stream where most completions are synchronous, that is sixteen operation states, sixteen receivers, sixteen suspensions, sixteen resumptions. To copy bytes that are already in user-space memory.
+Under the sender protocol, each iteration of such a loop executes the protocol sequence of Section 6 independently - even when the operation completes synchronously. Each synchronous completion constructs an operation state, instantiates a receiver, suspends the coroutine, calls `start`, fires `set_value` on the receiver, emplaces the result into a `variant`, and resumes the coroutine. For a 64 KB read with a 4 KB kernel buffer, this is sixteen iterations. On a buffered stream where most completions are synchronous, that is sixteen operation states, sixteen receivers, sixteen suspensions, sixteen resumptions - for data already in user-space memory.
+
+The sender model's construction-before-launch separation is a strength during pipeline building: aggregate state, let the optimizer see the full graph. Inside a composed I/O loop, the pipeline is already built and running. The protocol steps that serve construction-phase visibility persist into execution where they are no longer needed.
 
 If the protocol can detect that the result is already available, the coroutine need not suspend. The suspension and resumption disappear. If the protocol can skip connection when the result is available, the operation state and the receiver disappear - the machinery that shuttles a value across a suspension boundary ceases to exist when no boundary exists. If the protocol expresses readiness through a single boolean - true: the value is here, take it directly; false: the value requires work, suspend, resume when ready - both cases are handled through one mechanism.
 
@@ -359,6 +361,8 @@ The awaitable protocol has this property. `await_ready() == true` is the pointer
 
 ## 12. Closing The Gap
 
+The desire for immediately-ready asynchronous facilities is not new. [P0159R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0159r0.html)<sup>[13]</sup> (2015) proposed `make_ready_future` specifically to avoid suspension when the result is already available - the same concern documented in Sections 6-8 of this paper. The sender model did not overlook the synchronous case. It did not optimize for it, and its architecture does not allow optimizing for it - even inside a running pipeline where the construction-before-launch property that motivates the design is no longer needed.
+
 The sender model, as specified, does not match the awaitable model for synchronous I/O through the generic `sender-awaitable` path that every sender inherits. A concrete sender can sidestep that path by providing its own member `as_awaitable`<sup>[3]</sup> - a manual customization that is lost under type erasure. The modifications below are what would lift the costs from the generic protocol itself, for every sender, including type-erased senders. Each modification addresses one layer of the gap; together they trace the full distance between the two protocols.
 
 ### 12.1. A Readiness Query
@@ -373,11 +377,11 @@ To skip that path, a readiness query is required. A trait, a tag, or a constexpr
 
 With a readiness query in place, `sender-awaitable::await_ready()` can return `true` when the sender advertises synchronous completion. The coroutine no longer suspends.
 
-But `connect` was already called in the `sender-awaitable` constructor.<sup>[3]</sup> The operation state was already materialized. The receiver was already wired. The `variant` was already allocated. The suspension was saved. The ceremony was not.
+But `connect` was already called in the `sender-awaitable` constructor.<sup>[3]</sup> The operation state was already materialized. The receiver was already wired. The `variant` was already allocated. The suspension was saved. The remaining protocol steps were not.
 
 ### 12.3. Deferred Connection
 
-To skip the ceremony, `connect` must be moved from the `sender-awaitable` constructor into `await_suspend`, where it can be bypassed when `await_ready()` returns `true`.
+To skip those steps, `connect` must be moved from the `sender-awaitable` constructor into `await_suspend`, where it can be bypassed when `await_ready()` returns `true`.
 
 But the value needs to come from somewhere. `await_resume` must return the result. If `connect` and `start` did not execute, no receiver received the value. The sender needs a second value-delivery mechanism - a `get_value()` member, a direct extraction path, a way to produce the result without constructing an operation state, wiring a receiver, calling `start`, routing through `set_value`, and emplacing into a `variant`.
 
@@ -456,7 +460,7 @@ Each modification in the sender column has a direct counterpart in the awaitable
 
 **"P4126R2 is unshipped. The bridge cost is hypothetical."** Two of the awaitable column's four zeros in Section 10 depend on P4126R2.<sup>[10]</sup> The dependency is real. It is an argument for collaboration. Callback handles would allow sender pipelines to consume awaitables for free. The core finding (Sections 6-8) rests on normative text; the bridge zeros are the prize collaboration unlocks.
 
-**"A sender can provide a member `as_awaitable` and skip the ceremony. No protocol change is needed."** True. `[exec.as.awaitable]` uses a sender's own `as_awaitable` when the sender provides one, in preference to constructing the generic `sender-awaitable`:<sup>[3]</sup>
+**"A sender can provide a member `as_awaitable` and skip the protocol sequence. No protocol change is needed."** True. `[exec.as.awaitable]` uses a sender's own `as_awaitable` when the sender provides one, in preference to constructing the generic `sender-awaitable`:<sup>[3]</sup>
 
 ```cpp
 // [exec.as.awaitable], reduced to the relevant branch
@@ -482,7 +486,7 @@ The scope is the coroutine consumer. A sender pipeline never enters `as_awaitabl
 
 **"The protocol cannot know at compile time whether a given co_await will always complete synchronously. The operation state must be constructed because the protocol must handle the general case."** The awaitable protocol handles this case exactly. `await_ready()` is evaluated at runtime: if the result is available, return `true` - no suspension; if work is required, return `false` - suspend. The protocol does not need compile-time knowledge. It asks the operation at the point of evaluation. For senders that are always synchronous (like `inline-sender`), the property is known at compile time - a constexpr trait could express it. The sender model has no such trait; Section 12.1 describes one. The "cannot know" argument applies equally to awaitables, yet an awaitable whose `await_ready()` depends on runtime state handles both cases through the same three-member protocol: when ready, no suspension, no operation state, no receiver; when not ready, suspend, resume when ready. One protocol, two behaviors, selected at the point of evaluation.
 
-**"The optimizer eliminates the ceremony."** The suspension is observable behavior independent of optimization. When `await_ready()` returns `false`, the coroutine suspends and other coroutines in the executor's queue may run. The scheduling interleave is a behavioral property that `std::execution::task` already ships. A conforming implementation cannot return `true` from `sender-awaitable::await_ready()` when `[exec.as.awaitable]` specifies `false`.<sup>[3]</sup> An implementation that does so is non-conforming. An implementation that wishes to do so requires a specification change - which is Section 12.1.
+**"The optimizer eliminates the protocol overhead."** The suspension is observable behavior independent of optimization. When `await_ready()` returns `false`, the coroutine suspends and other coroutines in the executor's queue may run. The scheduling interleave is a behavioral property that `std::execution::task` already ships. A conforming implementation cannot return `true` from `sender-awaitable::await_ready()` when `[exec.as.awaitable]` specifies `false`.<sup>[3]</sup> An implementation that does so is non-conforming. An implementation that wishes to do so requires a specification change - which is Section 12.1.
 
 **"Operation state construction delivers structured concurrency guarantees."** Genuine for asynchronous operations where the coroutine suspends and work executes concurrently. For a synchronous write where the data is in the string before `co_await` evaluates, there is no concurrent lifetime to manage. The operation state guarantees a property that was never at risk.
 
@@ -492,11 +496,11 @@ The scope is the coroutine consumer. A sender pipeline never enters `as_awaitabl
 
 **"Unconditional suspension is the sound default."** The awaitable protocol solved this in C++20 with a single boolean. `await_ready()` provides the override. The sender protocol has no equivalent conditional path.
 
-**"The composed algorithm is sequential - real composition requires parallelism."** Sequential composition over a single stream is expressed as a coroutine loop. Parallel composition across multiple streams - scatter-gather, concurrent requests, fan-out/fan-in - is expressed through the sender algebra via the bridge of Section 9. Sequential I/O composition is the dominant pattern in protocol implementations (TLS, HTTP, WebSocket, SMTP, DNS resolution). Each layer is a coroutine composing awaitables, and each inner await that completes synchronously pays the ceremony independently under the sender protocol. The multiplier is proportional to the protocol's depth: HTTP over TLS over TCP is three layers of composed coroutines, each with its own `read_some` loop, each iteration paying independently.
+**"The composed algorithm is sequential - real composition requires parallelism."** Sequential composition over a single stream is expressed as a coroutine loop. Parallel composition across multiple streams - scatter-gather, concurrent requests, fan-out/fan-in - is expressed through the sender algebra via the bridge of Section 9. Sequential I/O composition is the dominant pattern in protocol implementations (TLS, HTTP, WebSocket, SMTP, DNS resolution). Each layer is a coroutine composing awaitables, and each inner await that completes synchronously executes the protocol sequence independently under the sender protocol. The multiplier is proportional to the protocol's depth: HTTP over TLS over TCP is three layers of composed coroutines, each with its own `read_some` loop, each iteration paying independently.
 
 **"The composed read loop has no cancellation propagation."** Stop tokens propagate transparently through `io_env` - the execution environment bundle passed to every IoAwaitable via `await_suspend(coroutine_handle<>, io_env const*)`.<sup>[7]</sup> Each child operation inherits the caller's stop token without explicit wiring. Every stream operation observes the stop token and may complete early with an operation-cancelled error. The mechanism is defined in P4003R4<sup>[7]</sup>.
 
-**"The bridge concedes the dependency."** The bridge operates in both directions. P4093R2<sup>[9]</sup> bridges IoAwaitables into sender pipelines. P4092R2<sup>[11]</sup> bridges senders into coroutine-native code without `execution::task`. Section 10 shows the cost is asymmetric: if I/O is an awaitable, both consumers pay zero; if I/O is a sender, coroutines pay the ceremony.
+**"The bridge concedes the dependency."** The bridge operates in both directions. P4093R2<sup>[9]</sup> bridges IoAwaitables into sender pipelines. P4092R2<sup>[11]</sup> bridges senders into coroutine-native code without `execution::task`. Section 10 shows the cost is asymmetric: if I/O is an awaitable, both consumers pay zero; if I/O is a sender, coroutines pay the protocol overhead.
 
 **"The comparison measures the wrong case."** Synchronous completion is not a corner case in I/O. Buffered writes, cached reads, DNS cache hits, and in-memory operations complete synchronously. A protocol that penalizes the common fast path compounds the cost across thousands of operations per connection.
 
@@ -524,9 +528,9 @@ The synchronous write traces three protocol steps under awaitables and seven und
 
 Synchronous completion is not a corner case. Buffered writes, cached reads, DNS cache hits, and in-memory operations complete synchronously. Composed I/O algorithms - `read` looping `read_some`, TLS looping encrypted reads, HTTP sequencing headers and bodies - pay the per-operation cost at every iteration that completes without suspending. The multiplier is proportional to the protocol stack's depth.
 
-The two protocols interoperate. IoAwaitables enter sender pipelines through `as_sender`;<sup>[9]</sup> senders enter coroutine-native code through `await_sender`.<sup>[11]</sup> P4126R2's callback handles<sup>[10]</sup> eliminate the bridge's allocation cost. If I/O primitives are awaitables, both coroutine consumers and sender-pipeline consumers pay zero protocol overhead. If I/O primitives are senders, coroutine consumers pay the ceremony.
+The two protocols interoperate. IoAwaitables enter sender pipelines through `as_sender`;<sup>[9]</sup> senders enter coroutine-native code through `await_sender`.<sup>[11]</sup> P4126R2's callback handles<sup>[10]</sup> eliminate the bridge's allocation cost. If I/O primitives are awaitables, both coroutine consumers and sender-pipeline consumers pay zero protocol overhead. If I/O primitives are senders, coroutine consumers pay the protocol overhead.
 
-A protocol that cannot express "the result is already here" will always pay to shuttle the result across a boundary that does not exist.
+A protocol that cannot express "the result is already here" will always pay to shuttle the result across a suspension boundary that the synchronous case does not require.
 
 ## Acknowledgements
 
@@ -557,3 +561,5 @@ Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for `std::executi
 [11] [P4092R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r2.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
 [12] [P4088R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r2.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
+
+[13] [P0159R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0159r0.html) - "Draft of Technical Specification for C++ Extensions for Concurrency" (Artur Laksberg, 2015). Section "futures.make_ready_future" documents the need for immediately-ready asynchronous facilities.
