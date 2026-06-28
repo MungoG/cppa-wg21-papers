@@ -23,6 +23,10 @@ Section 2 documents what [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/
 
 ## Revision History
 
+### R2: June 2026
+
+- Added note (Voutilainen) on P2300's non-intrusive continuation-style extensibility.
+
 ### R1: May 2026 (pre-Brno mailing)
 
 - Corrected P2469R0 author list (added Allsop, Hodges, Morgenstern).
@@ -240,7 +244,7 @@ The ownership contract specifies two dispositions: resume or destroy. This is a 
 
 On the axis of algorithmic composition - `retry`, `when_all`, `upon_error`, chaining operations generically into higher-level workflows - the Networking TS had no generic mechanism. Each composed operation required a hand-written state machine. Boost.Beast (Boost 1.66, 2017) deployed three layers of composed asynchronous operations - socket reads into HTTP parsing into WebSocket framing - and every layer required its own state machine, its own intermediate completion handler, and its own lifetime management. The composition worked. It was deployed. It scaled from low-level to high-level. But it was genuinely difficult to write, difficult to review, and difficult to get right. The authors wrote those state machines and can attest to the cost.
 
-[P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[1]</sup> was right that this was ad-hoc. Senders provide a generic composition algebra that the Networking TS did not have. That is a real achievement.
+[P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[1]</sup> was right that this was ad-hoc. Senders provide a generic composition algebra that the Networking TS did not have. That is a real achievement. The sender model also handles continuation-style extensibility non-intrusively - a fiber-style wait that yields to an event loop can be implemented as a custom sender consumer, requiring no changes to existing algorithms or pipelines. Voutilainen demonstrated this in a Qt adaptation of [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[8]</sup> ([qtstdexec.h](https://git.qt.io/vivoutil/libunifex-with-qt/-/blob/main/qtstdexec.h?ref_type=heads#L223-242)), where a helper function consumes a sender and blocks only a fiber-like thread-of-execution rather than a whole thread.
 
 Coroutines address the same axis differently. `co_await` replaces the state machine. A composed read that required a hundred-line state machine in the callback model is a ten-line coroutine body. The coroutine frame holds the state. The compiler manages the suspension points. C++20 was ratified in 2020.
 
