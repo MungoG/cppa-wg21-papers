@@ -33,7 +33,14 @@ This paper asks LEWG to advance the _IoAwaitable_ protocol as a standard corouti
 ## Revision History
 
 ### R4: July 2026 (post-Brno mailing)
-* TBD
+
+* Abstract rewritten. Expanded from a brief committee ask to a full abstract: problem statement, three named concerns, two-argument `await_suspend` as the key mechanism, LEWG ask moved to end.
+* Section 2 commentary replaced with description of the eight standard facilities and what users build against them. Companion protocol description expanded to name four alternatives evaluated in P4172R0.
+* Section 3 introduction replaced with structural overview mapping subsections 3.1-3.5 to their concerns. Section 3.1 reworded from rhetorical questions to specification language.
+* Section 4 introduction replaced with structural overview of six facilities (4.1-4.6). Generic P4172R0 cross-references replaced with specific section citations (5.1, 5.2, 7, 8) and substantive descriptions. Added P4127R0 citation in Section 4.5.
+* Section 5 opening paragraph added defining structured concurrency and the three-phase ownership chain. Bold emphatic conclusion replaced with declarative summary.
+* Section 6: bare superscript references to P4090R0 and P4091R0 expanded to substantive inline descriptions. Added P4172R0 Section 6.2 citation for type erasure analysis.
+* Section 7 conclusion expanded from one sentence to four paragraphs: protocol description, adoption benefits (TAPS, bridge papers P4092R0/P4093R0), consequences of non-adoption, and the LEWG ask.
 
 ### R3: May 2026 (pre-Brno mailing)
 
