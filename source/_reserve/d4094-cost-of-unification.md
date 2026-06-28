@@ -1,7 +1,7 @@
 ---
 title: "The Unification of Executors and P0443"
-document: P4094R2
-date: 2026-05-01
+document: P4094R3
+date: 2026-06-28
 intent: info
 audience: WG21
 reply-to:
@@ -13,11 +13,21 @@ reply-to:
 
 The unification of three working executor models had unanticipated downstream consequences.
 
-In 2014, three deployed executor models - networking, GPU dispatch, and thread pools - were unified into [P0443R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0443r0.html)<sup>[1]</sup>, which went through fourteen revisions, was never deployed as unified, and was replaced by [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>. This paper examines the published record for the evidence that supported the unification decision and documents a terminology shift that erased the continuation framing from the API surface of [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>. Section 6 defines two framings of `execute(F&&)` - the work framing and the continuation framing - that subsequent papers in this series apply.
+In 2014, SG1 directed the authors of three deployed executor models - networking, GPU dispatch, and thread pools - to find a single abstraction. The result, [P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>, went through fourteen revisions and was never deployed as unified. This paper searches the published record for the empirical evidence that supported the unification decision and documents a terminology shift that erased the continuation framing from the API surface. The paper defines two framings of `execute(F&&)` - the work framing and the continuation framing - that subsequent papers in this series apply.
 
 ---
 
 ## Revision History
+
+### R2: June 2026
+
+- Corrected Facebook deployment characterization in Section 5.5; distinguished per-organization deployments.
+- Clarified P2300's lineage from P0443's scheduler/sender/receiver components via libunifex.
+- Added P2235R0 and the role of outsider papers in the P0443-to-P2300 transition (Section 2.4).
+- Removed Section 7.3 (mischaracterized P0285's shared-context argument).
+- Converted open questions in Section 5 to declarative findings.
+- Added conclusion section.
+- Structural and prose improvements throughout.
 
 ### R1: May 2026 (pre-Brno mailing)
 
@@ -47,7 +57,7 @@ This paper examines the published record. That effort requires re-examining cons
 
 The author is a co-author of [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[6]</sup>, "Response to P2464: The Networking TS is baked, P2300 Sender/Receiver is not," which is cited in this paper. The reader should be aware that the author had a prior published position on the relationship between the Networking TS and [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>.
 
-The author's research method is systematic search of the published record - WG21 papers, published poll outcomes, public blog posts, conference talks, and public mailing list archives. Section 4 of this paper documents the absence of certain analyses from the published record. The author acknowledges that absence of evidence is not evidence of absence. Committee discussions occur in rooms, hallways, dinners, and private channels that leave no public trace. A cost/benefit analysis may have been conducted and never written down. A survey may have been taken and never published. The author cannot prove that these things did not happen. If a reader is aware of a document, analysis, or discussion that this paper's research did not reach, the author welcomes the correction and will update the record in a future revision.
+The author's research method is systematic search of the published record - WG21 papers, published poll outcomes, public blog posts, conference talks, and public mailing list archives. Absence of evidence is not evidence of absence. Committee discussions occur in rooms, hallways, and private channels that leave no public trace. If a reader is aware of a document or discussion that this paper's research did not reach, the author welcomes the correction and will update the record in a future revision.
 
 This paper asks for nothing.
 
@@ -67,7 +77,7 @@ By 2014, three independent executor proposals existed, each deployed in its doma
 
 **Mysen (thread pools).** [N4414](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4414.pdf)<sup>[10]</sup>. Executors as handles to thread pools for submitting units of work. The execution context is a work queue: threads pull tasks and execute them in user space. Designed for Google's internal infrastructure. Deployed at Google.
 
-Each model worked. Each was deployed. Each served its domain. The requirements on executors differed across domains - networking needed continuation scheduling, GPU dispatch needed bulk execution with shape parameters, thread pools needed simple work submission.
+Each was deployed in its domain. The requirements on executors differed across domains - networking needed continuation scheduling, GPU dispatch needed bulk execution with shape parameters, thread pools needed simple work submission.
 
 ### 2.2 The Direction to Unify
 
@@ -87,6 +97,7 @@ Kohlhoff and Allsop described the direction retrospectively in [P1791R0](https:/
 | SG1 Redmond                                                                 | 2014 | "Start with Mysen's proposal" - directed to unify ([N4199](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4199.html)<sup>[11]</sup>) | Straw poll, no prototype    |
 | [P0443R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0443r0.html)<sup>[1]</sup>                         | 2016 | "Unifies three separate executor design tracks"     | No prototype, no experiment |
 | [P0761R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0761r2.pdf)<sup>[13]</sup>                        | 2018 | Design document published                           | No analysis of domain loss  |
+| [P2235R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2235r0.html)<sup>[37]</sup>                       | 2020 | Outsider challenge: "disentangling schedulers and executors" | Published, LEWG adopted direction |
 | [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>                      | 2020 | Final unified proposal                              | Never deployed as unified   |
 
 ### 2.3 What Unification Meant
@@ -103,6 +114,8 @@ Over the next four years, [P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/p
 
 [P2400R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2400r2.html)<sup>[16]</sup>, the Library Evolution report for Summer 2021, stated: "we had consensus that we want to proceed with P2300 instead of P0443." [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> was adopted for C++26 at the St. Louis meeting in 2024<sup>[17]</sup>.
 
+Concurrently, papers from outside the P0443 author group challenged the compromise. [P2235R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2235r0.html)<sup>[37]</sup> (Voutilainen, 2020) argued that executors and schedulers were fundamentally different concepts and proposed removing the implicit cross-concept bridging in P0443. [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[19]</sup> (Voutilainen, 2021) argued that P0443 executors lacked generic error handling. Both came from an author with no stake in the P0443 compromise. Voutilainen has noted that these papers, by providing independent technical arguments against the P0443 architecture, encouraged the P2300 authors to propose a design unconstrained by P0443's compromise history.
+
 ### 2.5 The Arc
 
 Three deployed models became one unified proposal ([P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>). The unified proposal was never deployed as unified. It was replaced by a second proposal ([P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>). [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> was adopted. The entire arc - from SG1's direction to [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>'s adoption - spans roughly a decade. This paper examines the decision that started the arc.
@@ -111,7 +124,7 @@ Three deployed models became one unified proposal ([P0443](https://www.open-std.
 
 ## 3. The Rationale for Unification
 
-The committee articulated several rationales for unification. Each is presented here in full, with the original language, and validated as reasonable. The people who made this decision were experienced practitioners working under real constraints. The decision was not careless.
+The committee articulated several rationales for unification. Each is presented here in full, with the original language, and validated as reasonable. The people who made this decision were experienced practitioners working under real constraints.
 
 ### 3.1 Shared Execution Contexts
 
@@ -119,7 +132,7 @@ Kohlhoff wrote in [P0285R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/
 
 > "the underlying execution context, such as a thread pool, may apply to all use cases. As users, we want to be able to have a single thread pool object that can be used for all of the above use cases. In real world applications, the use cases do not always exist in isolation."
 
-The desire to avoid resource duplication is a real engineering concern. Applications do mix I/O and computation. A networking execution context and a general-purpose thread pool are architecturally different - one blocks on an OS reactor, the other pulls from a work queue - but the desire to share resources across subsystems is genuine. Section 7.3 examines whether "single thread pool" describes one thing or two. For now, the rationale is presented as stated.
+The desire to avoid resource duplication is a real engineering concern. Applications do mix I/O and computation. A networking execution context and a general-purpose thread pool are architecturally different - one blocks on an OS reactor, the other pulls from a work queue - but the desire to share resources across subsystems is genuine.
 
 ### 3.2 Multiplicative Explosion
 
@@ -209,7 +222,7 @@ Every assertion in the left column is reasonable. Every source in the middle col
 
 In 2014, the costs of unification were hypothetical. In 2026, some are observable. The schedule is a fact. The revision count is a fact. The features that were added and removed are documented in published papers. The polls are published. The deployments are published.
 
-This section presents what is now measurable and asks whether each measurement constitutes a cost. The counterfactuals - what would have happened without unification - remain unmeasurable. This paper says so where it applies.
+This section presents what is now measurable. The counterfactuals - what would have happened without unification - remain unmeasurable. The paper says so where it applies.
 
 ### 5.1 Did Unification Delay Networking?
 
@@ -224,7 +237,7 @@ This section presents what is now measurable and asks whether each measurement c
 - [P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[18]</sup> (October 2021): Poll 3 (stop pursuing the Networking TS) reached no consensus. The chair gave conditional guidance: adopt sender/receiver, address TLS.
 - 2026: networking is not in the C++ standard. Twenty-one years from [N1925](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1925.pdf)<sup>[21]</sup>.
 
-The coupling between networking and executors is documented in published papers. The timeline is observable. The committee did not vote to stop the Networking TS; it gave conditional guidance that required a redesign the architect did not pursue. Is this a cost of unification, or would networking have been delayed regardless? This paper cannot prove causation.
+The coupling between networking and executors is documented in published papers. The timeline is observable. The committee did not vote to stop the Networking TS; it gave conditional guidance that required a redesign the architect did not pursue. The published record does not establish whether networking would have been delayed regardless. It establishes that the coupling existed and that networking has not shipped.
 
 ### 5.2 Did Unification Consume Committee Bandwidth?
 
@@ -236,13 +249,13 @@ The coupling between networking and executors is documented in published papers.
 - [P1658R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1658r0.pdf)<sup>[25]</sup> (2019): documents the controversy around `require_concept` and interface-changing properties, recommends eliminating them.
 - The property system (`require`/`prefer`) was built across multiple revisions and then discarded entirely when [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> replaced it with CPO queries.
 
-Is fourteen revisions and 100+ papers evidence of healthy design evolution, or is it evidence that the problem was ill-posed? Is discarding the property system a normal course correction, or is it evidence that the unified interface could not stabilize?
+The iteration count is a fact. The property system was built across multiple revisions and discarded entirely. Whether the iteration indicates healthy design evolution or an ill-posed problem is a question the published record does not resolve.
 
 ### 5.3 Did Domain-Specific Semantics Survive?
 
 *Partially measurable.* [P2403R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2403r0.pdf)<sup>[15]</sup> documents what [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> removed from [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>. Section 6 of this paper documents the terminology shift from continuation-scheduling primitives (`dispatch`/`post`/`defer`) to work-submission (`execute`). [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[6]</sup> acknowledges "some reduction in usability, due to the increased complexity of the unified interface." [P1791R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1791r0.html)<sup>[12]</sup> states that "requirements that were not universal" were removed during unification.
 
-Was the removal a necessary simplification, or did it erase something the domains needed?
+The removal is documented. Whether it was a necessary simplification or an erasure of domain-specific requirements is not settled by the published record.
 
 ### 5.4 Could the Domains Have Shipped Independently?
 
@@ -250,9 +263,9 @@ Was the removal a necessary simplification, or did it erase something the domain
 
 ### 5.5 Was the Unified Model Ever Deployed as Unified?
 
-*Measurable.* [P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup> was never deployed as a unified model. [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> replaced it. [P2470R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2470r0.pdf)<sup>[20]</sup> documents [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> deployments at Facebook, NVIDIA, and Bloomberg - primarily for sender/receiver composition, GPU dispatch, and infrastructure. No published paper documents a deployment where a single [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> scheduler serves networking, GPU dispatch, and thread pool use cases simultaneously in one application.
+*Measurable.* [P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup> as a whole was never deployed as a unified model - the executor parts were missing. Most of what ended up in [P2300R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2300r0.html) was already in [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>: [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> was started as a stand-alone proposal that took the scheduler/sender/receiver parts and omitted the rest. Facebook's libunifex provided the deployed implementation of those parts. [P2300R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2300r0.html) states: "This proposal draws heavily from our field experience with libunifex."
 
-Does the absence of a unified deployment mean the unification was unnecessary, or does it mean the deployment has not yet happened?
+[P2470R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2470r0.pdf)<sup>[20]</sup> documents deployments at Facebook, NVIDIA, and Bloomberg. Each served a specific need within one organization: Facebook deployed libunifex for asynchronous composition in its mobile applications (Messenger, Instagram, Facebook). NVIDIA deployed for GPU dispatch. Bloomberg experimented with infrastructure use cases. Corporate adoption demonstrates that a model is viable for a given use case. It does not demonstrate that the design is optimal across domains - a corporation can adopt a solution that is adequate for its requirements and report success. No published paper documents a deployment where a single [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> scheduler serves networking, GPU dispatch, and thread pool use cases simultaneously in one application. [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> replaced [P0443](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>.
 
 ### 5.6 Did the "One Model" Premise Achieve Consensus?
 
@@ -260,20 +273,19 @@ Does the absence of a unified deployment mean the unification was unnecessary, o
 
 The selected comments in [P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[18]</sup> show the range of views. One strongly-in-favor comment reads: "There should be one model." Another reads: "I'd be willing to have more specialized models (like the Networking TS/Asio model) for specific components, as long as they could interoperate with the sender/receiver model."
 
-Does "no consensus, leaning in favor" constitute sufficient basis for a decade-long design commitment?
+The one-model premise was tested by poll in 2021 and did not achieve consensus. The committee proceeded with [P2300](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> regardless.
 
 ### 5.7 Summary
 
 | Question                         | 2014 Assertion                                                    | 2026 Outcome                                                              |
 | -------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Shared thread pool needed?       | "single thread pool for all use cases" (P0285R0)                  | No survey; reactor and work queue are architecturally different (7.3)      |
-| N x M explosion?                 | Hypothetical `parallel_for` snippet (P0761R2)                     | No measurement from a real codebase                                       |
-| Domain semantics preserved?      | "serves the use cases of those independent proposals" (P0443R0)   | dispatch/post/defer renamed to execute (Section 6); properties removed    |
-| Networking blocked?              | (not discussed in 2014)                                           | 21 years from N1925; Poll 3 (stop pursuing): no consensus; conditional guidance not met |
-| Unified model deployed?          | (not discussed in 2014)                                           | P0443 never deployed as unified; P2300 deployed for sender/receiver       |
-| One model consensus?             | (not polled until 2021)                                           | SF:4 / WF:9 / N:5 / WA:5 / SA:1 - no consensus (P2453R0)                |
-| Iteration cost?                  | (not estimated)                                                   | 14 revisions, 100+ papers, property system built and discarded            |
-| Usability cost?                  | (not estimated)                                                   | "some reduction in usability" (P2469R0); no measurement of magnitude      |
+| N x M explosion?                 | Hypothetical `parallel_for` snippet (P0761R2)                     | No measurement from a real standard library implementation                |
+| Domain semantics preserved?      | "serves the use cases of those independent proposals" (P0443R0)   | dispatch/post/defer renamed to execute; continuation property removed     |
+| Networking blocked?              | Not discussed in 2014                                             | 21 years from N1925; networking not in the standard                       |
+| Unified model deployed?          | Not discussed in 2014                                             | P0443 never deployed as unified; P2300 deployed per-domain                |
+| One model consensus?             | Not polled until 2021                                             | SF:4 / WF:9 / N:5 / WA:5 / SA:1 - no consensus                          |
+| Iteration cost?                  | Not estimated                                                     | 14 revisions, 100+ papers, property system built and discarded            |
+| Usability cost?                  | Not estimated                                                     | "some reduction in usability" (P2469R0); magnitude not measured           |
 
 ---
 
@@ -325,6 +337,8 @@ Three papers drove the second stage:
 
 The `continuation`/`not_continuation` properties were removed along with every other interface-changing property. A vestigial `relationship_t` property survived in [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup>, but the continuation as a first-class concept was gone. That is the second stage.
 
+Two stages, two years apart, different authors. The result is the same: the continuation framing left the API surface.
+
 **What the published record does not contain:**
 
 - No paper in the chain discusses the shift from the continuation framing to the work framing.
@@ -333,7 +347,7 @@ The `continuation`/`not_continuation` properties were removed along with every o
 - No straw poll asks whether the framing change is acceptable.
 - No paper evaluates whether the deficiencies of `execute(F&&)` - no error channel, no lifecycle, no composition - are properties of the work framing rather than properties of the underlying operation.
 
-No published paper in the causal chain discusses the framing change. No straw poll addresses it. The work framing emerged as a side effect of two simplification efforts. That is the record.
+Five absences. No published paper in the causal chain discusses the framing change. No straw poll addresses it. The work framing emerged as a side effect of two simplification efforts. That is the record.
 
 ### 6.3 How Rationale Is Lost Across Paper Boundaries
 
@@ -346,6 +360,8 @@ At Stage 1, the continuation framing survived. [P0688R0](https://www.open-std.or
 At Stage 2, the continuation framing was not carried forward into the analysis. [P1525R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1525r0.pdf)<sup>[28]</sup> inherited `execute` and analyzed it as work submission. [P1660R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1660r0.pdf)<sup>[29]</sup> inherited `execute` and defined it as eagerly submitting work. Neither cited [P0113R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0113r0.html)<sup>[26]</sup>'s continuation definitions. Neither restated the rationale that the callable is a resumption handle rather than a unit of work. The Stage 2 authors understood continuations - [P1194R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1194r0.html)<sup>[33]</sup>, "The Compromise Executors Proposal" (Howes, Niebler, Shoop, Lelbach, Hollman, 2018), explicitly states "Receivers are Continuations," and several of its authors co-authored [P1525R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1525r0.pdf)<sup>[28]</sup> and [P1660R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1660r0.pdf)<sup>[29]</sup>. The continuation concept was relocated to the sender/receiver framework rather than preserved in the `execute` API. What the published record does not contain is an analysis of this shift - no paper discusses why the continuation framing for `execute` was dropped, what was gained, or what was lost.
 
 The continuation framing for `execute` was carried by institutional knowledge rather than by the API surface or the type system. When the property hint was removed and the continuation concept relocated to receivers, the framing for the basis operation dropped out of the published analysis. This is not a criticism of any individual author - the authors understood the concept and chose to place it elsewhere. It is a structural property of multi-paper, multi-author standardization: when a design decision is made deliberately but the rationale is not published, it becomes invisible to future readers of the record.
+
+The concept survived. The record of why it mattered did not.
 
 ### 6.4 The Two Framings
 
@@ -379,7 +395,7 @@ The committee has shipped or voted to ship multiple design approaches for the sa
 | Formatted output   | `iostream` and `std::format`/`std::print`                                                                   | Shipped   |
 | Async task types   | `std::execution::task` ([P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[34]</sup>) is simultaneously a coroutine and a sender    | In-flight |
 
-Three precedents. This paper does not inflate the list. The `task` precedent is the sharpest - the committee has already voted to ship a type that fuses two async models into one. Is "one model for async execution" consistent with the committee's practice in parallel execution and formatted output?
+Three precedents. This paper does not inflate the list. The `task` precedent is the sharpest - the committee has already voted to ship a type that fuses two async models into one. The committee's practice in parallel execution and formatted output is multiple approaches for the same domain.
 
 ### 7.2 Would Multiple Models Be Harder to Teach?
 
@@ -389,27 +405,19 @@ The published record contains no measurement of teachability for any executor de
 
 The "harder to teach" argument is asserted in both directions - proponents of unification say one model is easier to teach; proponents of domain-specific models say a smaller model that matches the student's domain is easier to teach. Neither side has measured it.
 
-Is "harder to teach" a cost that can be assessed without evidence? The committee uses teachability as a criterion for design decisions, but the published record contains no methodology for evaluating it. This paper does not argue that teachability is irrelevant. It observes that it has never been measured, and that an unmeasured cost can be asserted for any position.
+The committee uses teachability as a criterion for design decisions. The published record contains no methodology for evaluating it. Teachability has never been measured for any executor design. An unmeasured cost can be asserted for any position.
 
-### 7.3 Would Applications Need Multiple Thread Pools?
-
-[P0285R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0285r0.html)<sup>[14]</sup> argued: "we want to be able to have a single thread pool object that can be used for all of the above use cases."
-
-A networking execution context and a general-purpose thread pool are architecturally different. A networking context blocks its threads on an OS reactor - `epoll_wait`, `GetQueuedCompletionStatus`, `kevent`. The threads are parked in the kernel waiting for I/O completions. A general-purpose thread pool is a work queue where threads pull tasks and execute them in user space. These have different blocking models, different scheduling properties, and different performance characteristics.
-
-An application that runs networking on an I/O reactor and parallel algorithms on a work-stealing pool is not using "two thread pools for the same purpose." It is using two different execution contexts for two different purposes. No survey was done to determine how many applications actually need a single context serving both.
-
-### 7.4 Are Interop Bridges Expensive?
+### 7.3 Are Interop Bridges Expensive?
 
 If models are separate, bridging between them has a cost. [P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf)<sup>[35]</sup> and [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf)<sup>[36]</sup> demonstrate coroutine-to-sender and sender-to-coroutine bridges. The implementations exist.
 
-Is the bridge cost bounded and acceptable, or does it accumulate into a tax that makes separate models impractical? The implementations are published.
+Whether the bridge cost is bounded and acceptable or accumulates into an impractical tax is an open question. The implementations are published.
 
-### 7.5 Would Independent Schedules Have Delivered Value Earlier?
+### 7.4 Would Independent Schedules Have Delivered Value Earlier?
 
 If each model ships for its domain when it is ready, networking ships when networking is ready. GPU dispatch ships when GPU dispatch is ready. Neither blocks the other.
 
-Is shipping three things on three schedules better than shipping one thing on one schedule?
+The published record does not contain a comparison of the two scheduling strategies.
 
 ---
 
@@ -441,15 +449,21 @@ A: Section 1 discloses this. The evidence in Sections 4 through 7 stands or fall
 
 ---
 
-This paper examined the published record for the evidence that supported the decision to unify three independent executor models into a single abstraction. The rationale is documented in Sections 2 and 3. The evidence is documented in Section 4. The observable outcomes are documented in Section 5. The framing change that the unification produced is documented in Section 6.
+## 9. Conclusion
 
-Good stewardship of the standard means revisiting consequential decisions when new evidence is available.
+The published record contains the rationale for unification but not the evidence that would have tested it. No prototype demonstrated that one abstraction could serve networking, GPU dispatch, and thread pools without domain loss. No survey measured the cost of separate models against the cost of merging them. No experiment compared approaches. The decision rested on assertions that were reasonable in 2014. In 2026, some of the outcomes are observable: fourteen revisions and a property system built and discarded, networking blocked for a decade, P0443 never deployed as a unified model, and a one-model premise that did not achieve consensus when finally polled.
+
+Independently of the scope question, a terminology shift changed what `execute(F&&)` means. The continuation framing - where the callable is a resumption handle and the OS performs the work - was the original framing, published in P0113R0 and carried through P0688R0 as a property hint. Two simplification efforts removed it. No paper in the causal chain discussed the shift. The work framing that replaced it imposed requirements on the executor - error channels, lifecycle, composition - that the continuation framing does not require, because a continuation carries no result and the caller has already returned. Section 6 defines both framings. Subsequent papers in this series apply them.
+
+When the committee unifies independently deployed abstractions, the cost falls on the domains whose requirements do not survive the merge. The domains that shaped the replacement carry their semantics forward. The domains that did not shape it lose theirs. The continuation framing survived in deployed code - Asio, the Networking TS, Boost.Beast. It did not survive in the published record of the unified proposal.
+
+Good stewardship of the standard means revisiting consequential decisions when new evidence is available. The evidence is now available. The record is now complete.
 
 ---
 
 ## Acknowledgments
 
-The author thanks Chris Kohlhoff for the executor model that started the journey and for the candid retrospective in [P1791R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1791r0.html)<sup>[12]</sup>; Jared Hoberock, Michael Garland, and Chris Mysen for [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup> and [P0761R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0761r2.pdf)<sup>[13]</sup>; Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>; Kirk Shoop additionally for institutional context about the committee's intent behind the October 2021 polls and the collaborative process that preceded them; Ville Voutilainen for [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[19]</sup>; Bryce Adelstein Lelbach for the published poll outcomes in [P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[18]</sup> and [P2400R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2400r2.html)<sup>[16]</sup>; Detlef Vollmann for [P1256R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1256r0.html)<sup>[23]</sup>; Jamie Allsop, Richard Hodges, and Klemens Morgenstern for co-authoring [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[6]</sup>; and Steve Gerbino for feedback on this paper.
+The author thanks Chris Kohlhoff for the executor model that started the journey and for the candid retrospective in [P1791R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1791r0.html)<sup>[12]</sup>; Jared Hoberock, Michael Garland, and Chris Mysen for [P0443R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0443r14.html)<sup>[3]</sup> and [P0761R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0761r2.pdf)<sup>[13]</sup>; Eric Niebler, Kirk Shoop, Lewis Baker, and their collaborators for [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup>; Kirk Shoop additionally for institutional context about the committee's intent behind the October 2021 polls and the collaborative process that preceded them; Ville Voutilainen for [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[19]</sup>, for review of this paper, for correcting the deployment characterization, and for providing the account of how [P2235R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2235r0.html)<sup>[37]</sup> and [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[19]</sup> influenced the P0443-to-P2300 transition; Bryce Adelstein Lelbach for the published poll outcomes in [P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[18]</sup> and [P2400R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2400r2.html)<sup>[16]</sup>; Detlef Vollmann for [P1256R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1256r0.html)<sup>[23]</sup>; Jamie Allsop, Richard Hodges, and Klemens Morgenstern for co-authoring [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[6]</sup>; and Steve Gerbino for feedback on this paper.
 
 ---
 
@@ -526,3 +540,5 @@ The author thanks Chris Kohlhoff for the executor model that started the journey
 [35] [P4092R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r0.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
 
 [36] [P4093R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r0.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
+
+[37] [P2235R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2235r0.html) - "Disentangling schedulers and executors" (Ville Voutilainen, 2020).
