@@ -1,6 +1,6 @@
 ---
 title: "The Return of Networking TS Executors in P3552"
-document: P4286R0
+document: P4286R1
 date: 2026-07-01
 intent: info
 audience: SG1, LEWG
@@ -12,11 +12,18 @@ reply-to:
 
 The executor property rejected in 2021 returned, in 2026, as a requirement.
 
-In 2021 the committee set aside the Networking TS; one stated deficiency was that its executors had no way to report a failure. In 2026 `std::execution::task` requires the schedulers that drive it to have no way to report a failure. The two constraints have the same shape. This paper traces the path from one to the other through the distinction between scheduling work and scheduling a continuation.
+In 2021 the committee set aside the Networking TS; one stated deficiency was that its executors had no way to report a failure. In 2026 `std::execution::task` requires the schedulers that drive it to have no way to report a failure. The two constraints have the same shape. This paper traces the path from one to the other through the distinction between scheduling work and scheduling a continuation. P4094, P4095, and P4096 identified that distinction before P3941R4 established the infallibility requirement. P3941R4 confirms the framing analysis.
 
 ---
 
 ## Revision History
+
+### R1: July 2026
+
+- Stated the validation thesis in the abstract and disclosure.
+- Removed tangential material in Section 2.
+- Added chronological note in Section 3.
+- Tone adjustments.
 
 ### R0: July 2026 (post-Brno mailing)
 
@@ -30,9 +37,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author developed and maintains [Capy](https://github.com/cppalliance/capy)<sup>[1]</sup> and [Corosio](https://github.com/cppalliance/corosio)<sup>[2]</sup>, coroutine-native I/O libraries under the C++ Alliance. The author has a stake in the coroutine model's adoption.
 
-This paper traces the path from the executor error channel rejected in 2021 to the infallible scheduling requirement adopted in 2026.
-
-This paper rests on three earlier papers in the same series ([P4094R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r1.pdf)<sup>[3]</sup>, [P4095R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r1.pdf)<sup>[4]</sup>, [P4096R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r1.pdf)<sup>[5]</sup>), which document the framing distinction the analysis below uses.
+Three earlier papers in this series ([P4094R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r1.pdf)<sup>[3]</sup>, [P4095R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r1.pdf)<sup>[4]</sup>, [P4096R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r1.pdf)<sup>[5]</sup>) identified the work/continuation framing distinction before P3941R4 was written. This paper shows that P3941R4's infallibility requirement confirms the analysis those papers established.
 
 This paper asks for nothing.
 
@@ -50,21 +55,19 @@ The first deficiency the paper named was error propagation. Errors arising durin
 
 > "The implication is that no generic code can respond to asynchronous errors in a portable way."
 
-In 2021, [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[8]</sup>, written on behalf of the Finnish national body, applied the same standard to the Networking TS and reached three deficiencies. The first was the absence of an error channel. In October 2021, LEWG polled electronically on the Networking TS ([P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[14]</sup>). The poll on discontinuing the TS reached no consensus; a second poll on basing networking on the sender/receiver model reached weak consensus in favor, and the committee's asynchronous work moved toward P2300. A networking library with more than a decade of field deployment was set aside, and a missing error channel led the list of reasons.
-
-The replacement was not narrow. A separate poll in the same session asked whether the sender/receiver model was "a good basis for most asynchronous use cases, including networking, parallelism, and GPUs"<sup>[14]</sup>. The poll reached consensus in favor. The model that resolved the missing error channel was adopted as the networking foundation. The infallible scheduling constraint that P3941R4 now imposes on schedulers used with `affine_on` applies to the exact domain where the same constraint was called a deficiency.
+In 2021, [P2464R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2464r0.html)<sup>[8]</sup>, written on behalf of the Finnish national body, applied the same standard to the Networking TS and reached three deficiencies. The first was the absence of an error channel. In October 2021, LEWG polled electronically on the Networking TS ([P2453R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2453r0.html)<sup>[14]</sup>). The poll on discontinuing the TS reached no consensus; a second poll on basing networking on the sender/receiver model reached weak consensus in favor, and the committee's asynchronous work moved toward P2300. The Networking TS was set aside, and a missing error channel led the list of reasons.
 
 ## 3. The Framing
 
 Why was the missing channel a deficiency? [P4094R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4094r1.pdf)<sup>[3]</sup> documents that `execute(F&&)` replaced three older primitives - `dispatch`, `post`, and `defer` - that scheduled a continuation rather than submitting work. The replacement was the executor unification itself: P0443 reconciled the Networking TS executors descended from Kohlhoff's Asio with the parallel algorithms executors, and collapsed both lineages into a single `execute(F&&)`. The framing determines whether the missing channel is a defect. Two readings of the same signature follow. Under the work framing, the callable is a unit of work, the caller is still running, and a missing error channel strands any failure with nowhere to go. Under the continuation framing, the callable is a resumption handle, the caller has suspended or returned, and there is no live caller waiting to receive an error.
 
-[P4095R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r1.pdf)<sup>[4]</sup> and [P4096R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r1.pdf)<sup>[5]</sup> show that both P1525R0 and P2464R0 analyzed the operation under the work framing alone. The continuation framing - Kohlhoff's original definition in [P0113R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0113r0.html)<sup>[9]</sup> - had been erased from the API surface by the time either paper was written.
+[P4095R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4095r1.pdf)<sup>[4]</sup> and [P4096R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4096r1.pdf)<sup>[5]</sup> show that both P1525R0 and P2464R0 analyzed the operation under the work framing alone. P4094R1, P4095R1, and P4096R1 predate P3941R4. The continuation framing - Kohlhoff's original definition in [P0113R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0113r0.html)<sup>[9]</sup> - had been erased from the API surface by the time either paper was written.
 
 P1525R0's own definition confirms the framing it assumed:
 
 > "For the purpose of this document, by 'one-way execute,' we mean a void-returning function that accepts a nullary Invocable and eagerly submits it for execution on an execution agent that the executor creates for it."<sup>[6]</sup>
 
-"Eagerly submits." "Execution agent that the executor creates." The language is work submission throughout. The continuation primitives that `execute` replaced - `dispatch`, `post`, `defer` - do not appear in P1525R0. P0443's revision history documents the collapse across fourteen revisions; P1525R0's four authors were active participants in the executor discussion that produced it. Three of the four co-authored P2300<sup>[10]</sup>. The continuation framing documented in P0113R0 was in the public record throughout.
+"Eagerly submits." "Execution agent that the executor creates." The language is work submission throughout. The continuation primitives that `execute` replaced - `dispatch`, `post`, `defer` - do not appear in P1525R0. P1525R0's four authors participated in the executor unification that collapsed those primitives; three of the four co-authored P2300<sup>[10]</sup>. The authors who analyzed `execute(F&&)` under the work framing were the same authors who had collapsed the continuation framing into it. The continuation framing documented in P0113R0 remained in the public record.
 
 Under the continuation framing, an infallible scheduling operation is not a defect. It is the correct shape. A suspended coroutine does not need a channel to receive an error, because it is not running to act on one.
 
@@ -132,7 +135,7 @@ Two independent lines of work confirm this. The executor lineage - P0443R14 thro
 
 Convergence from unrelated starting points eliminates the explanation that the shape is an artifact of any one model's expressiveness. The sender/receiver model did not produce the constraint; neither did the coroutine model. The caller's state produced it, and each model re-encoded what was already there. Kohlhoff's continuation-framed executor carried the same shape in Asio over two decades ago - P0113R0 documented it, but the design predates either model.
 
-**The committee rediscovered that continuations need a continuation-framed executor.**
+P4094, P4095, and P4096 identified the framing distinction before P3941R4 was written. P3941R4 confirmed it. **The committee rediscovered that continuations need a continuation-framed executor.**
 
 ## Acknowledgments
 
