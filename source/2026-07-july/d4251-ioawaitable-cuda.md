@@ -54,7 +54,7 @@ These are real. They stand without qualification. These properties are strongest
 
 Four APIs that move bytes across different boundaries share a common async completion model:
 
-**CUDA `cudaMemcpyAsync`.**<sup>[18]</sup> Bytes between host and device. Completion via `cudaLaunchHostFunc` callback.<sup>[9]</sup>
+**CUDA `cudaMemcpyAsync`.**<sup>[6]</sup> Bytes between host and device. Completion via `cudaLaunchHostFunc` callback.<sup>[7]</sup>
 
 **NCCL `ncclAllReduce`.** Bytes between GPUs over NVLink or InfiniBand. Completion via CUDA stream synchronization.
 
@@ -68,7 +68,7 @@ These four APIs span different hardware boundaries - PCIe, NVLink, InfiniBand, E
 
 The type vocabulary builds from this pattern:
 
-The `IoAwaitable` concept requires `await_suspend(coroutine_handle<>, io_env const*)` - the execution environment flows into each operation at the suspension point. The concept is defined in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html).<sup>[46]</sup>
+The `IoAwaitable` concept requires `await_suspend(coroutine_handle<>, io_env const*)` - the execution environment flows into each operation at the suspension point. The concept is defined in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html)<sup>[8]</sup>.
 
 The compound result type `io_result<std::size_t>` delivers both status and byte count via structured bindings:
 
@@ -78,7 +78,7 @@ auto [ec, n] = co_await stream.write_some(buf);
 
 The `WriteStream` concept requires `write_some(buffers)` returning an `IoAwaitable` whose `await_resume` returns `io_result<std::size_t>`. The `WriteSink` concept refines `WriteStream`, adding `write(buffers)` for complete-buffer writes and `write_eof()` for graceful shutdown.
 
-The type-erased wrappers `any_write_stream` and `any_write_sink` wrap any `WriteStream` or `WriteSink` (respectively) behind a vtable with fixed-size entries: `await_ready`, `await_suspend`, `await_resume`, and `destroy`. Because `await_suspend` takes `coroutine_handle<>` - already type-erased by the language - the vtable has a fixed, compile-time-known size. Section 9 analyzes the structural consequences; Section 10 draws the ABI conclusion.
+The type-erased wrappers `any_write_stream` and `any_write_sink` wrap any `WriteStream` or `WriteSink` (respectively) behind a vtable whose per-operation entries - `await_ready`, `await_suspend`, `await_resume`, and `destroy` - have fixed signatures. Because `await_suspend` takes `coroutine_handle<>` - already type-erased by the language - the awaitable has a fixed, compile-time-known size, so the wrapper preallocates a single awaitable buffer at construction and reuses it for every operation. Section 9 analyzes the structural consequences; Section 10 draws the ABI conclusion.
 
 P2300R10<sup>[3]</sup> agrees with the user-facing pattern: "we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code."
 
@@ -95,7 +95,7 @@ concept IoAwaitable =
     };
 ```
 
-The `io_env`<sup>[13]</sup> bundles three properties:
+The `io_env`<sup>[9]</sup> bundles three properties:
 
 ```cpp
 struct io_env
@@ -107,7 +107,7 @@ struct io_env
 };
 ```
 
-The `executor_ref`<sup>[14]</sup> is a type-erased executor with `dispatch(continuation&)` returning `coroutine_handle<>` for symmetric transfer<sup>[15]</sup>, and `post(continuation&)` for deferred execution. The `continuation`<sup>[16]</sup> type is a simple intrusive-list node:
+The `executor_ref`<sup>[10]</sup> is a type-erased executor with `dispatch(continuation&)` returning `coroutine_handle<>` for symmetric transfer<sup>[11]</sup>, and `post(continuation&)` for deferred execution. The `continuation`<sup>[12]</sup> type is a simple intrusive-list node:
 
 ```cpp
 struct continuation
@@ -117,25 +117,25 @@ struct continuation
 };
 ```
 
-The `io_env` flows forward through `co_await` chains via `task`'s<sup>[17]</sup> `await_transform`, which wraps each child awaitable and passes the environment into its `await_suspend`. The critical difference from a hand-rolled awaitable: the awaitable knows which executor to resume on, carries a cancellation token, and has access to the frame allocator.
+The `io_env` flows forward through `co_await` chains via `task`'s<sup>[13]</sup> `await_transform`, which wraps each child awaitable and passes the environment into its `await_suspend`. The critical difference from a hand-rolled awaitable: the awaitable knows which executor to resume on, carries a cancellation token, and has access to the frame allocator.
 
 These three properties - executor affinity, cancellation, and frame allocation control - are the same concerns that `std::execution` addresses through a different mechanism. The IoAwaitable protocol provides them in a form designed for byte-oriented I/O, where type-erased streams and compound results are the natural vocabulary.
 
-The full execution model built on this protocol is specified in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html).<sup>[46]</sup> That paper defines the launch functions that connect coroutine chains to the rest of the program: `run_async` starts a coroutine from regular code (the topmost caller that cannot `co_await`), and `run` switches executor, stop token, or allocator for a subtask from within a coroutine. IoAwaitables are lazy - submission happens in `await_suspend`, not at construction. The two-phase invocation of launch functions ensures the frame allocator is cached before the child coroutine's frame is allocated. P4003R3 also demonstrates a `counting_scope` built from launch function handlers, providing spawn, cancel, and join-before-destruction - the same structured concurrency guarantees that `std::execution`'s `counting_scope` provides, expressed through the IoAwaitable protocol's own primitives.
+The full execution model built on this protocol is specified in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html)<sup>[8]</sup>. That paper defines the launch functions that connect coroutine chains to the rest of the program: `run_async` starts a coroutine from regular code (the topmost caller that cannot `co_await`), and `run` switches executor, stop token, or allocator for a subtask from within a coroutine. IoAwaitables are lazy - submission happens in `await_suspend`, not at construction. The two-phase invocation of launch functions ensures the frame allocator is cached before the child coroutine's frame is allocated. P4003R3 also demonstrates a `counting_scope` built from launch function handlers, providing spawn, cancel, and join-before-destruction - the same structured concurrency guarantees that `std::execution`'s `counting_scope` provides, expressed through the IoAwaitable protocol's own primitives.
 
 **Question for the reader:** Does this forward-propagation model - where the execution environment flows into each awaitable via `await_suspend` - address the concerns that GPU schedulers have about coroutine integration? Are there additional properties a GPU-aware awaitable would need?
 
 ## 5. The Bridge: GPU Completion Notification
 
-CUDA streams are in-order queues where operations execute sequentially.<sup>[6]</sup> When GPU work completes, the host needs notification. Three mechanisms exist, and the IoAwaitable protocol is independent of which one a given awaitable uses:
+CUDA streams are in-order queues where operations execute sequentially.<sup>[14]</sup> When GPU work completes, the host needs notification. Three mechanisms exist, and the IoAwaitable protocol is independent of which one a given awaitable uses:
 
-- **Polling**: a service thread loops `cudaEventQuery` on a recorded event.<sup>[7]</sup> Costs a spinning thread, but stays stable as the number of worker threads grows.
-- **Blocking**: a service thread runs `cudaStreamSynchronize`.<sup>[8]</sup> Costs one parked thread per outstanding wait, but keeps the worker threads free.
-- **Callback**: `cudaLaunchHostFunc` enqueues a host function into the stream.<sup>[9]</sup> No busy-wait and the simplest to wire up, but a single CUDA-internal worker services every callback across all streams, so it scales poorly as the number of worker threads grows.
+- **Polling**: a service thread loops `cudaEventQuery` on a recorded event.<sup>[15]</sup> Costs a spinning thread, but stays stable as the number of worker threads grows.
+- **Blocking**: a service thread runs `cudaStreamSynchronize`.<sup>[16]</sup> Costs one parked thread per outstanding wait, but keeps the worker threads free.
+- **Callback**: `cudaLaunchHostFunc` enqueues a host function into the stream.<sup>[7]</sup> No busy-wait and the simplest to wire up, but a single CUDA-internal worker services every callback across all streams, so it scales poorly as the number of worker threads grows.
 
-`cudaLaunchHostFunc` is the recommended replacement for the deprecated `cudaStreamAddCallback`.<sup>[6]</sup> Its host function fires on a dedicated internal CPU thread created by the CUDA driver, not the application thread.<sup>[10]</sup><sup>[11]</sup> It cannot call CUDA APIs and must not create transitive dependencies on outstanding CUDA work.
+`cudaLaunchHostFunc` is the recommended replacement for the deprecated `cudaStreamAddCallback`.<sup>[14]</sup> Its host function fires on a dedicated internal CPU thread created by the CUDA driver, not the application thread.<sup>[17]</sup><sup>[18]</sup> It cannot call CUDA APIs and must not create transitive dependencies on outstanding CUDA work.
 
-The choice among the three is a scaling tradeoff, not a correctness one. All three satisfy `IoAwaitable` and, driving the same GPU pipeline, produce identical results at runtime; the accompanying notification-strategies example<sup>[54]</sup> demonstrates this directly. A CHEP 2026 report on trigger scheduling<sup>[55]</sup> finds that the callback handler scales poorly as the worker-thread count grows, while event polling and deferred synchronization remain stable. In a multi-threaded framework, prefer polling or deferred synchronization; reach for the callback for its simplicity in low-concurrency settings.
+The choice among the three is a scaling tradeoff, not a correctness one. All three satisfy `IoAwaitable` and, driving the same GPU pipeline, produce identical results at runtime; the accompanying notification-strategies example<sup>[19]</sup> demonstrates this directly. A CHEP 2026 report on trigger scheduling<sup>[20]</sup> finds that the callback handler scales poorly as the worker-thread count grows, while event polling and deferred synchronization remain stable. In a multi-threaded framework, prefer polling or deferred synchronization; reach for the callback for its simplicity in low-concurrency settings.
 
 This is the same structural pattern as epoll, IOCP, or io_uring completions arriving on arbitrary threads. In all cases, an async operation completes on a thread that is not the application's, and the application must dispatch the result to the correct execution context. This is the exact problem that Capy's executor-affinity dispatch was designed to solve.
 
@@ -182,7 +182,7 @@ deferred_sync_awaitable::await_suspend(
 }
 ```
 
-The remainder of this paper uses the callback mechanism as the running example because it is the simplest to present; the polling and deferred-synchronization awaitables appear in full in the accompanying example.<sup>[54]</sup>
+The remainder of this paper uses the callback mechanism as the running example because it is the simplest to present; the polling and deferred-synchronization awaitables appear in full in the accompanying example.<sup>[19]</sup>
 
 ## 6. Hand-Rolled Awaitables
 
@@ -217,7 +217,7 @@ This works. But `resume()` executes on the CUDA driver callback thread. There is
 
 ## 7. `cuda_stream`: Data Movement as IoAwaitables
 
-The `cuda_stream` class wraps a CUDA stream handle and provides data-movement member functions that return IoAwaitables. The class follows the Rule of Five (copy deleted, move implemented, null-guarded destructor). The helper function `make_cuda_error`, defined by the accompanying demonstration<sup>[54]</sup> rather than by Capy, converts a `cudaError_t` to `std::error_code` via a CUDA error category.
+The `cuda_stream` class wraps a CUDA stream handle and provides data-movement member functions that return IoAwaitables. The class follows the Rule of Five (copy deleted, move implemented, null-guarded destructor). The helper function `make_cuda_error`, defined by the accompanying demonstration<sup>[19]</sup> rather than by Capy, converts a `cudaError_t` to `std::error_code` via a CUDA error category.
 
 The key mechanism is `resume_ctx`: a pre-allocated member that captures the executor and continuation for `cudaLaunchHostFunc`. The `on_complete` callback posts the continuation back to the application's executor, providing the executor-affinity dispatch that the hand-rolled awaitable in Section 6 lacks.
 
@@ -333,11 +333,11 @@ public:
 };
 ```
 
-The `resume_ctx` is a pre-allocated member of `cuda_stream`, not heap-allocated per operation. This is safe because the coroutine suspends on each `co_await`, so only one operation is in-flight per `cuda_stream` at a time. The CUDA Programming Guide<sup>[6]</sup> confirms that operations in a stream execute in enqueue order, and the CUDA Runtime API documentation<sup>[9]</sup> states that `cudaLaunchHostFunc` callbacks block later work in the stream until they return.<sup>[47]</sup> The pre-allocated `resume_ctx` is never accessed concurrently. This is the same one-at-a-time invariant that Capy's sockets rely on for their pre-allocated op states in the networking domain.
+The `resume_ctx` is a pre-allocated member of `cuda_stream`, not heap-allocated per operation. This is safe because the coroutine suspends on each `co_await`, so only one operation is in-flight per `cuda_stream` at a time. The CUDA Programming Guide<sup>[14]</sup> confirms that operations in a stream execute in enqueue order, and the CUDA Runtime API documentation<sup>[7]</sup> states that `cudaLaunchHostFunc` callbacks block later work in the stream until they return.<sup>[21]</sup> The pre-allocated `resume_ctx` is never accessed concurrently. This is the same one-at-a-time invariant that Capy's sockets rely on for their pre-allocated op states in the networking domain.
 
-`cudaLaunchHostFunc` has documented constraints that production code must respect. The callback must not call CUDA APIs or synchronize on outstanding CUDA work.<sup>[9]</sup> A single CUDA-internal worker thread may service all callbacks across all streams; on loaded systems, OS scheduling can starve this thread, producing latency spikes up to 12ms between callback completion and stream resumption.<sup>[48]</sup> If the callback blocks on a user lock while the CUDA launch queue is full, the enqueuing thread blocks too, producing deadlock.<sup>[49]</sup> Notification is unidirectional: `cudaLaunchHostFunc` provides stream-to-CPU notification only and cannot make the stream wait for a CPU-side signal.<sup>[50]</sup> These constraints apply equally to any pattern that uses `cudaLaunchHostFunc` for completion notification, including the hand-rolled awaitable in Section 6 and any sender-based wrapper that uses the same mechanism. They do not invalidate the pattern but they bound its applicability in high-throughput pipelines. They are specific to the callback mechanism: the polling and deferred-synchronization awaitables of Section 5 sidestep all four. A CHEP 2026 scaling measurement<sup>[55]</sup> favors those alternatives as the worker-thread count grows, and CERN's traccc port<sup>[34]</sup> implements all three strategies over this one protocol so the mechanism can be selected per deployment. The IoAwaitable protocol is the same in every case; only the notification source changes.
+`cudaLaunchHostFunc` has documented constraints that production code must respect. The callback must not call CUDA APIs or synchronize on outstanding CUDA work.<sup>[7]</sup> A single CUDA-internal worker thread may service all callbacks across all streams; on loaded systems, OS scheduling can starve this thread, producing latency spikes up to 12ms between callback completion and stream resumption.<sup>[22]</sup> If the callback blocks on a user lock while the CUDA launch queue is full, the enqueuing thread blocks too, producing deadlock.<sup>[23]</sup> Notification is unidirectional: `cudaLaunchHostFunc` provides stream-to-CPU notification only and cannot make the stream wait for a CPU-side signal.<sup>[24]</sup> These constraints apply equally to any pattern that uses `cudaLaunchHostFunc` for completion notification, including the hand-rolled awaitable in Section 6 and any sender-based wrapper that uses the same mechanism. They do not invalidate the pattern but they bound its applicability in high-throughput pipelines. They are specific to the callback mechanism: the polling and deferred-synchronization awaitables of Section 5 sidestep all four. A CHEP 2026 scaling measurement<sup>[20]</sup> favors those alternatives as the worker-thread count grows, and CERN's traccc port<sup>[25]</sup> implements all three strategies over this one protocol so the mechanism can be selected per deployment. The IoAwaitable protocol is the same in every case; only the notification source changes.
 
-One caveat: `cudaMemcpyAsync` is only truly asynchronous with pinned (page-locked) memory.<sup>[19]</sup> With pageable memory allocated via `malloc` or `new`, the call blocks the host thread despite the `Async` suffix.<sup>[20]</sup> For multi-gigabyte model weight transfers, this distinction matters.
+One caveat: `cudaMemcpyAsync` is only truly asynchronous with pinned (page-locked) memory.<sup>[26]</sup> With pageable memory allocated via `malloc` or `new`, the call blocks the host thread despite the `Async` suffix.<sup>[27]</sup> For multi-gigabyte model weight transfers, this distinction matters.
 
 ### NCCL interop
 
@@ -494,17 +494,17 @@ any_write_stream dest(&sock);  // non-owning
 co_await ingest(dest, payload);  // -> network
 ```
 
-The algorithm in `protocol.cpp` is compiled once. At link time, swap the transport. No recompilation. Zero per-operation allocation in all cases because `await_suspend` takes `coroutine_handle<>` - the caller is already type-erased by the language. Section 10 traces the design lineage and the ABI consequence.
+The algorithm in `protocol.cpp` is compiled once. At link time, swap the transport. No recompilation. Zero per-operation allocation in all cases: because `await_suspend` takes `coroutine_handle<>` - the caller is already type-erased by the language - the awaitable is a fixed compile-time size, so the type-erased wrapper preallocates its awaitable storage once at construction and reuses it for every operation. Section 10 traces the design lineage and the ABI consequence.
 
 ## 9. The Type Erasure Asymmetry
 
 The link-time polymorphism shown in Section 8 is not an ergonomic convenience. It is a structural property of how the two models interact with the type system.
 
-**Awaitable under type erasure.** `await_suspend` takes `coroutine_handle<>` - type-erased by the language itself. The awaitable has a fixed, compile-time-known size. The coroutine frame absorbs it. The vtable for `any_write_sink` has four fixed-size entries. Result: zero per-operation allocation, even through a virtual stream interface.
+**Awaitable under type erasure.** `await_suspend` takes `coroutine_handle<>` - type-erased by the language itself. The awaitable has a fixed, compile-time-known size. The type-erased wrapper preallocates one awaitable buffer at construction and placement-constructs each operation into it; its per-operation vtable entries - `await_ready`, `await_suspend`, `await_resume`, `destroy` - have fixed signatures. Result: zero per-operation allocation, even through a virtual stream interface.
 
-**Sender under type erasure.** `connect(sender, receiver)` produces an operation state whose type depends on both the sender and the receiver. Under type erasure (`any_sender`), the receiver's type is unknown at compile time. The operation state's size is unknown. The coroutine frame cannot absorb it. `any_sender::connect` must heap-allocate. stdexec mitigates this with a 64-byte small buffer optimization, but stdexec's own `system_context` produces operation states of 72-152 bytes - exceeding its own buffer.<sup>[45]</sup>
+**Sender under type erasure.** `connect(sender, receiver)` produces an operation state whose type depends on both the sender and the receiver. Under type erasure (`any_sender`), the receiver's type is unknown at compile time. The operation state's size is unknown. The coroutine frame cannot absorb it. `any_sender::connect` must heap-allocate.<sup>[28]</sup> stdexec mitigates this with a 64-byte small buffer optimization,<sup>[29]</sup> but a nested `starts_on` operation state under `any_sender`/`any_receiver` double erasure is estimated at 72-152 bytes - the schedule operation state, the result variant, the `starts_on` glue, and the erasure wrappers - exceeding that buffer, so the allocation stands.
 
-Benchmark data (20M operations, single thread)<sup>[44]</sup>:
+Benchmark data (20M operations, single thread)<sup>[30]</sup>:
 
 | Stream type | Coroutine (Capy) | Sender pipeline |
 |---|---|---|
@@ -521,7 +521,7 @@ The same asymmetry determines which model can provide a stable binary interface 
 
 The type erasure asymmetry in Section 9 has a consequence the committee has wanted for decades: an ABI-stable interface for async I/O.
 
-The vtable for `any_write_stream` has four fixed-size entries: `await_ready`, `await_suspend`, `await_resume`, and `destroy`. The signature `await_suspend(coroutine_handle<>, io_env const*)` is fixed because `coroutine_handle<>` is type-erased by the language itself. The vtable size is known at compile time. The interface can be compiled into a shared library (`.so`/`.dll`) and the implementation swapped without recompiling the consumer.
+The type-erased wrapper's per-operation vtable entries - `await_ready`, `await_suspend`, `await_resume`, and `destroy` - have fixed signatures. The signature `await_suspend(coroutine_handle<>, io_env const*)` is fixed because `coroutine_handle<>` is type-erased by the language itself. The awaitable size and vtable layout are known at compile time. The interface can be compiled into a shared library (`.so`/`.dll`) and the implementation swapped without recompiling the consumer.
 
 Sender pipelines cannot provide this property. `connect(sender, receiver)` produces an operation state whose type and size depend on both the sender and the receiver. Every new sender/receiver combination produces a new type - a new ABI surface. There is no fixed vtable. Changing the I/O implementation changes the type, which forces recompilation of every consumer.
 
@@ -531,11 +531,11 @@ This is ABI stability achieved not through heroic engineering or policy constrai
 
 This is the same design trajectory that produced Thrust and C++17 parallel algorithms - a standard interface over hardware-specific implementation.
 
-**Thrust (2009).** GPU parallel algorithms behind an STL-compatible interface. Customers wrote to the STL vocabulary, ran on NVIDIA's GPU. The interface was vendor-neutral: customers could retarget to TBB or OpenMP. N3408 (2012) carried this into C++17 parallel algorithms.<sup>[3]</sup>
+**Thrust (2009).** GPU parallel algorithms behind an STL-compatible interface. Customers wrote to the STL vocabulary, ran on NVIDIA's GPU. The interface was vendor-neutral: customers could retarget to TBB or OpenMP. N3408 (2012) carried this into C++17 parallel algorithms.<sup>[31]</sup>
 
 **C++17 parallel algorithms.** Standard interface, hardware-specific implementation. Write `std::sort(std::execution::par, ...)`, link against NVIDIA's implementation or Intel's. The standard owns the interface; the vendor owns the implementation.
 
-**IoAwaitable streams.** Write `ingest(any_write_stream&, payload)`, link against NVIDIA's `cuda_device_stream`, AMD's ROCm transport, an RDMA transport, or TCP. Same pattern, applied to data transport instead of parallel algorithms. The abstraction level rises again; the application code stays the same. A demonstration accompanies this paper<sup>[54]</sup> in which the same `ingest` handler is compiled once and exercised against both `cuda_device_stream` and an in-memory `WriteStream`.
+**IoAwaitable streams.** Write `ingest(any_write_stream&, payload)`, link against NVIDIA's `cuda_device_stream`, AMD's ROCm transport, an RDMA transport, or TCP. Same pattern, applied to data transport instead of parallel algorithms. The abstraction level rises again; the application code stays the same. A demonstration accompanies this paper<sup>[19]</sup> in which the same `ingest` handler is compiled once and exercised against both `cuda_device_stream` and an in-memory `WriteStream`.
 
 ### Security patching without recompilation
 
@@ -551,7 +551,7 @@ An inference server receives HTTP requests (TCP transport), dispatches to GPU co
 
 Byte-oriented operations deliver results as a compound pair: status plus byte count. The pattern spans hardware boundaries. A POSIX `read` returns `(errno, bytes_read)`. A `cudaMemcpyAsync` completion delivers `cudaError_t` alongside the transfer count. An RDMA work completion returns `(wr_id, status, byte_len)`. Both values are always present. A `read` that returns 0 bytes with no error means EOF. A `read` that returns `ECONNRESET` with 47 bytes means 47 bytes arrived before the peer reset the connection. The byte count is not redundant with the error code.
 
-P2300R10<sup>[3]</sup> Section 5.8 acknowledges this: "This begs the question of how they can be used to represent async operations that partially succeed."
+P2300R10<sup>[3]</sup> Section 4.14, titled "Senders can represent partial success," poses this directly: "This begs the question of how they can be used to represent async operations that partially succeed." P2300R10 answers it by passing both the error code and the result through the value channel. The cost of that answer is what the rest of this section examines.
 
 The sender model provides three completion channels: `set_value`, `set_error`, and `set_stopped`. A compound I/O result must be routed to one of them:
 
@@ -559,7 +559,7 @@ The sender model provides three completion channels: `set_value`, `set_error`, a
 - Route the error through `set_error`: the byte count is lost.
 - Route through `set_stopped`: both values are lost.
 
-The best available option is routing both through `set_value` as a compound type. But this means I/O errors bypass the `set_error` channel, disadvantaging sender algorithms that operate on error and stopped channels. P4091R1<sup>[43]</sup> documents all six positions that have been proposed; each carries a cost.
+The best available option is routing both through `set_value` as a compound type. But this means I/O errors bypass the `set_error` channel, disadvantaging sender algorithms that operate on error and stopped channels. P4091R1<sup>[32]</sup> documents all six positions that have been proposed; each carries a cost.
 
 The coroutine version sidesteps the channel choice entirely:
 
@@ -616,7 +616,7 @@ The RDMA completion channel exposes a plain file descriptor (`ibv_comp_channel.f
 
 The stdexec repository focuses on compute scheduling; HPC networking integration is not yet represented. The Maxwell FDTD example uses MPI for communication, invoked manually inside `then()` callbacks - the network I/O is not expressed as senders. Coroutine-based integration could complement stdexec here: NCCL, RDMA, and NVLink all use runtime completion models (streams, callbacks, file descriptors) that map naturally to the IoAwaitable pattern, providing the data-movement layer that compute scheduling sits on top of.
 
-The closest project to sender-based HPC networking in active development is LCI (Lightweight Communication Interface), a C++17 async communication library with libibverbs and libfabric backends and prototype GPU-Direct RDMA, published at SC'25.<sup>[51]</sup> HPX is actively migrating its parallel runtime to stdexec senders, with LCI providing the RDMA transport underneath. This is sender-adjacent HPC networking through a runtime wrapper rather than direct sender composition over the wire protocol, but it suggests the space is being explored.
+The closest project to sender-based HPC networking in active development is LCI (Lightweight Communication Interface), a C++17 async communication library with libibverbs and libfabric backends and prototype GPU-Direct RDMA, published at SC'25.<sup>[33]</sup> HPX is actively migrating its parallel runtime to stdexec senders, with LCI providing the RDMA transport underneath. This is sender-adjacent HPC networking through a runtime wrapper rather than direct sender composition over the wire protocol, but it suggests the space is being explored.
 
 **Question for the reader:** Is there a per-operation planning decision in HPC networking that benefits from compile-time type visibility of the send/receive calls themselves? For communication patterns known at compile time, the answer may be yes. For data-dependent communication patterns determined at runtime, the question is open.
 
@@ -624,7 +624,7 @@ The closest project to sender-based HPC networking in active development is LCI 
 
 The sender/receiver model has been deployed at scale for compute scheduling and infrastructure (Section 2). The question is whether it has been deployed for byte-oriented data movement - the domain this paper examines.
 
-The largest production deployment of the sender/receiver model is Meta's libunifex, operating at massive scale. Their internal guidance is instructive. From GitHub issue #586<sup>[21]</sup> (December 2023):
+The largest production deployment of the sender/receiver model is Meta's libunifex, operating at massive scale. Their internal guidance is instructive. From GitHub issue #586<sup>[34]</sup> (December 2023):
 
 > "Our experience at Meta has been that coroutines are easier to read, write, debug, and just generally maintain than composition-of-sender algorithms-style code. The cost of that ease is basically overhead; coroutines don't optimize as well as raw senders (either for size or speed). The advice we give to internal teams adopting Unifex is that they should prefer coroutines until they know that the overheads are unacceptable, at which point they can refactor to the lower-level abstraction of raw senders."
 
@@ -643,7 +643,7 @@ A survey of sender-based networking projects outside Meta:
 
 None are production-grade. The most complete (uring_exec) is a single developer's project with a TCP echo server. P2300R10's<sup>[3]</sup> own HTTP server example is explicitly labeled pseudocode.
 
-SG14, the study group for low-latency systems practitioners, has formally recommended ([P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf))<sup>[22]</sup>: "Networking (SG4) should not be built on top of P2300."
+SG14, the study group for low-latency systems practitioners, has formally recommended ([P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf))<sup>[35]</sup>: "Networking (SG4) should not be built on top of P2300."
 
 The gap between networking ambition and deployed evidence suggests that data movement and compute dispatch have different enough completion models that a single abstraction does not serve both optimally. The independent validation in Section 14 shows where each model fits naturally. The bridge between models (Section 17) connects the two domains without requiring either to subsume the other.
 
@@ -651,19 +651,19 @@ The gap between networking ambition and deployed evidence suggests that data mov
 
 Several independent projects have arrived at the same design: coroutine-based async completion for GPU and HPC data movement. The notification mechanism that bridges GPU completion to coroutine resumption varies - a host-function callback (`cudaLaunchHostFunc`, or its driver-level equivalent `cuLaunchHostFunc`), event polling, or deferred stream synchronization - but the coroutine completion model is common to all of them. The callback is the most frequently chosen bridge in the projects below because it is the simplest; it is not the only one in use.
 
-**cuda-oxide (NVIDIA Labs, Rust).**<sup>[35]</sup> NVIDIA's own research lab implemented the same mechanism in Rust. Their `DeviceFuture` submits GPU work, enqueues a `cuLaunchHostFunc` callback that sets an `AtomicBool` and wakes a Tokio `Waker`, and the async runtime resumes the task on the next poll. Zero busy-wait. The three-state machine (Idle, Executing, Complete) is structurally identical to a network socket future. When NVIDIA's own research lab arrives at the same `cudaLaunchHostFunc`-to-async-runtime pattern independently, in a different language, the convergence is a data point about where the pattern fits naturally.
+**cuda-oxide (NVIDIA Labs, Rust).**<sup>[36]</sup> NVIDIA's own research lab implemented the same mechanism in Rust. Their `DeviceFuture` submits GPU work, enqueues a `cuLaunchHostFunc` callback that sets an `AtomicBool` and wakes a Tokio `Waker`, and the async runtime resumes the task on the next poll. Zero busy-wait. The three-state machine (Idle, Executing, Complete) is structurally identical to a network socket future. When NVIDIA's own research lab arrives at the same `cudaLaunchHostFunc`-to-async-runtime pattern independently, in a different language, the convergence is a data point about where the pattern fits naturally.
 
-**CERN wp1.7-traccc.**<sup>[34]</sup> As part of its wp1.7 work package evaluating C++20 coroutines for task scheduling, CERN ported the traccc GPU track-reconstruction pipeline from stdexec to Capy. It implements its CUDA completion strategies behind a single `await_strategy` selector - among them a `cudaLaunchHostFunc` callback, event polling, and deferred `cudaStreamSynchronize` - each an awaitable with the signature `await_suspend(std::coroutine_handle<>, boost::capy::io_env const*)` that posts the coroutine handle back to `env->executor`. That a real reconstruction workload exercises all three notification mechanisms over one protocol is the most concrete evidence in this survey that the coroutine model is not bound to the callback.
+**CERN wp1.7-traccc.**<sup>[25]</sup> As part of its wp1.7 work package evaluating C++20 coroutines for task scheduling, CERN ported the traccc GPU track-reconstruction pipeline from stdexec to Capy. It implements its CUDA completion strategies behind a single `await_strategy` selector - among them a `cudaLaunchHostFunc` callback, event polling, and deferred `cudaStreamSynchronize` - each an awaitable with the signature `await_suspend(std::coroutine_handle<>, boost::capy::io_env const*)` that posts the coroutine handle back to `env->executor`. That a real reconstruction workload exercises all three notification mechanisms over one protocol is the most concrete evidence in this survey that the coroutine model is not bound to the callback.
 
-**Taro (University of Wisconsin-Madison).**<sup>[36]</sup> A C++20 coroutine task-graph system for CPU-GPU workloads. GPU tasks suspend the CPU thread via coroutines when waiting for GPU completion, allowing other tasks to run. Uses `cudaLaunchHostFunc` for the callback. Published at Euro-Par 2024 and presented at CppCon 2023. Reported 40-80% speedup over blocking approaches.
+**Taro (University of Wisconsin-Madison).**<sup>[37]</sup> A C++20 coroutine task-graph system for CPU-GPU workloads. GPU tasks suspend the CPU thread via coroutines when waiting for GPU completion, allowing other tasks to run. Uses `cudaLaunchHostFunc` for the callback. Published at Euro-Par 2024 (as TaroRTL) and presented at CppCon 2023. TaroRTL reported a 40-80% speedup over RTLflow, a state-of-the-art GPU-accelerated RTL simulator.
 
-**async-cuda (Oddity AI, Rust, production).**<sup>[37]</sup> A production library whose authors state: "Since the GPU is just another I/O device (from the point of view of your program), the async model actually fits surprisingly well."
+**async-cuda (Oddity AI, Rust, production).**<sup>[38]</sup> A production library whose authors state: "Since the GPU is just another I/O device (from the point of view of your program), the async model actually fits surprisingly well."
 
-**Schr&ouml;dinger Desmond (production, GTC 2024).**<sup>[38]</sup> The Desmond molecular dynamics engine uses C++ coroutines to overlap multiple GPU simulations. Coroutines suspend when a simulation hits a serial bottleneck, allowing another simulation to use the GPU. Presented at GTC 2024. Achieved up to 2.02x speedup in FEP+ drug discovery workloads. Coroutines were chosen because they could "retrofit into existing CUDA code without complex code restructuring."
+**Schr&ouml;dinger Desmond (production, GTC 2024).**<sup>[39]</sup> The Desmond molecular dynamics engine uses C++ coroutines to overlap multiple GPU simulations. Coroutines suspend when a simulation hits a serial bottleneck, allowing another simulation to use the GPU. Presented at GTC 2024. Achieved up to 2.02x speedup in FEP+ drug discovery workloads. Coroutines were chosen because they could "retrofit into existing CUDA code without complex code restructuring."
 
-**TTG/PaRSEC (DOE Exascale Computing Project).**<sup>[39]</sup> A template task graph framework where `co_await ttg::device::select(...)` and `co_await ttg::device::wait(...)` are the primary mechanism for GPU task dispatch. Supports CUDA, HIP/ROCm, and Intel Level Zero. The project states that "the use of coroutines is the primary reason why TTG requires C++20 support."
+**TTG/PaRSEC (DOE Exascale Computing Project).**<sup>[40]</sup> A template task graph framework where `co_await ttg::device::select(...)` and `co_await ttg::device::wait(...)` are the primary mechanism for GPU task dispatch. Supports CUDA, HIP/ROCm, and Intel Level Zero. The project states that "the use of coroutines is the primary reason why TTG requires C++20 support."
 
-**RDMA coroutine libraries.** Three independent projects wrap RDMA verbs as coroutine awaitables: RDMA++ (rdmapp)<sup>[40]</sup> wraps libibverbs with C++20 coroutines using `ibv_comp_channel` fd; Loom<sup>[41]</sup> provides C++23 typed bindings over libfabric with `co_await ep.async_receive(buf, asio::use_awaitable)`; and FORD<sup>[42]</sup> (USENIX FAST 2022) implements coroutine-enabled distributed transactions over one-sided RDMA, spawning multiple follow-on systems (Motor, CREST at ASPLOS 2026).
+**RDMA coroutine libraries.** Three independent projects wrap RDMA verbs as coroutine awaitables: RDMA++ (rdmapp)<sup>[41]</sup> wraps libibverbs with C++20 coroutines using `ibv_comp_channel` fd; Loom<sup>[42]</sup> provides C++23 typed bindings over libfabric with `co_await ep.async_receive(buf, asio::use_awaitable)`; and FORD<sup>[43]</sup> (USENIX FAST 2022) implements coroutine-enabled distributed transactions over one-sided RDMA, spawning multiple follow-on systems (Motor, CREST at ASPLOS 2026).
 
 These projects span GPU compute, molecular dynamics, high-energy physics, RDMA networking, and distributed systems. They were built by independent teams with no coordination. The convergence on coroutine-based async completion for data movement is a data point about where the pattern fits naturally. Several of these projects (Taro, TTG/PaRSEC, Desmond) also demonstrate coroutine-based kernel dispatch and GPU pipeline orchestration in production, placing that evidence in the record without this paper needing to reproduce it.
 
@@ -671,9 +671,9 @@ These projects span GPU compute, molecular dynamics, high-energy physics, RDMA n
 
 ## 15. CUDA Graphs
 
-Sender pipelines provide compile-time `operation_state` fusion. [P3425R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3425r1.html)<sup>[23]</sup> documents 8 bytes saved per nesting level via constant pointer offsets. This is real.
+Sender pipelines provide compile-time `operation_state` fusion. [P3425R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3425r1.html)<sup>[44]</sup> documents 8 bytes saved per nesting level via constant pointer offsets. This is real.
 
-CUDA Graphs<sup>[24]</sup> provide GPU-side work-graph optimization at the driver level. The driver sees SM count, memory bandwidth, occupancy, and hardware topology. Stream capture<sup>[8]</sup> records kernel DAGs:
+CUDA Graphs<sup>[45]</sup> provide GPU-side work-graph optimization at the driver level. The driver sees SM count, memory bandwidth, occupancy, and hardware topology. Stream capture<sup>[16]</sup> records kernel DAGs:
 
 ```c
 cudaStreamBeginCapture(stream,
@@ -688,13 +688,13 @@ cudaGraphLaunch(instance, stream);
 
 The quantitative picture:
 
-- Graph replay: approximately 2.5 us for the entire graph on CUDA 12.6+.<sup>[25]</sup>
-- For 100 sequential kernels: stream launch approximately 400 us vs graph launch approximately 2.5 us - a 160x reduction.<sup>[25]</sup>
-- In DALLE2 inference (740 kernels, 3.4ms GPU time), 75% of end-to-end latency is CPU launch delays.<sup>[26]</sup>
+- Graph replay: approximately 2.5 us for the entire graph on CUDA 12.6+.<sup>[46]</sup>
+- For 100 sequential kernels: stream launch approximately 400 us vs graph launch approximately 2.5 us - a 160x reduction.<sup>[46]</sup>
+- In DALLE2 inference (740 kernels, 3.4ms GPU time), 75% of end-to-end latency is CPU launch delays.<sup>[47]</sup>
 
-CUDA Graphs and sender compile-time fusion optimize different layers. CUDA Graphs eliminate per-kernel CPU-GPU dispatch round trips at the driver level - language transitions, runtime processing, driver operations totaling 20-200 us per kernel in DL applications.<sup>[25]</sup> Sender fusion eliminates host-side C++ abstraction overhead - allocations, virtual dispatch, type erasure - at the language level. nvexec intercepts sender algorithms and replaces them with CUDA kernel launches on streams, but does not automatically batch them into CUDA Graphs; per-kernel host launch overhead remains unless CUDA Graphs are used separately.<sup>[12]</sup> These are complementary optimizations, not substitutes.
+CUDA Graphs and sender compile-time fusion optimize different layers. CUDA Graphs eliminate per-kernel CPU-GPU dispatch round trips at the driver level - language transitions, runtime processing, driver operations totaling 20-200 us per kernel in DL applications.<sup>[46]</sup> Sender fusion eliminates host-side C++ abstraction overhead - allocations, virtual dispatch, type erasure - at the language level. nvexec intercepts sender algorithms and replaces them with CUDA kernel launches on streams, but does not automatically batch them into CUDA Graphs; per-kernel host launch overhead remains unless CUDA Graphs are used separately.<sup>[48]</sup> These are complementary optimizations, not substitutes.
 
-CUDA Graph replay composes naturally with coroutine-based data movement: the coroutine provides the outer loop with data-dependent control flow (memcpy in, graph launch, memcpy out, check result), and the pre-captured graph is the inner optimized hot path. Schr&ouml;dinger's Desmond engine (GTC 2024)<sup>[38]</sup> demonstrates this composition in production, using coroutines to overlap multiple GPU simulations around CUDA Graph replay with up to 2.02x speedup in drug discovery workloads.
+CUDA Graph replay composes naturally with coroutine-based data movement: the coroutine provides the outer loop with data-dependent control flow (memcpy in, graph launch, memcpy out, check result), and the pre-captured graph is the inner optimized hot path. Schr&ouml;dinger's Desmond engine (GTC 2024)<sup>[39]</sup> demonstrates this composition in production, using coroutines to overlap multiple GPU simulations around CUDA Graph replay with up to 2.02x speedup in drug discovery workloads.
 
 **Question for the reader:** Sender fusion and CUDA Graphs optimize at different layers. Does sender fusion provide value in combination with CUDA Graphs, or does graph capture at the driver level subsume the host-side optimization? Are there GPU workloads where coroutine orchestration around pre-captured graphs would be useful, or does this pattern miss something fundamental about how GPU pipelines are structured?
 
@@ -704,13 +704,13 @@ Each coroutine suspension potentially allocates a frame. Sender `operation_state
 
 ### HALO
 
-Heap Allocation eLision Optimization<sup>[27]</sup> allows the compiler to place the coroutine frame in the caller's frame when the lifetime is provably bounded. Capy's `task` is annotated with `[[clang::coro_await_elidable]]`<sup>[28]</sup> to enable this.
+Heap Allocation eLision Optimization<sup>[49]</sup> allows the compiler to place the coroutine frame in the caller's frame when the lifetime is provably bounded. Capy's `task` is annotated with `[[clang::coro_await_elidable]]`<sup>[50]</sup> to enable this.
 
-HALO is fragile: the attribute was introduced<sup>[29]</sup> because "real-world Task types are rarely simple enough for CoroElide's SSA analysis." Confirmed regressions in Clang 19-20.<sup>[30]</sup> Correctness bug with `suspend_never`.<sup>[31]</sup> Parentheses around a `co_await` operand silently break elision.<sup>[32]</sup> Clang-only. HALO is nice when it fires. It is not something to rely on.
+HALO is fragile: the attribute was introduced<sup>[51]</sup> because "real-world Task types are rarely simple enough for CoroElide's SSA analysis." Confirmed regressions in Clang 19-20.<sup>[52]</sup> Correctness bug with `suspend_never`.<sup>[53]</sup> Parentheses around a `co_await` operand silently break elision.<sup>[54]</sup> Clang-only. HALO is nice when it fires. It is not something to rely on.
 
 ### PMR pools
 
-Capy's `io_env` carries a `std::pmr::memory_resource*`.<sup>[33]</sup> Thread-local recycling pools amortize allocation cost to near zero. This is reliable, portable, and works regardless of compiler optimization.
+Capy's `io_env` carries a `std::pmr::memory_resource*`.<sup>[55]</sup> Thread-local recycling pools amortize allocation cost to near zero. This is reliable, portable, and works regardless of compiler optimization.
 
 | Operation | Time |
 |---|---|
@@ -722,9 +722,9 @@ Capy's `io_env` carries a `std::pmr::memory_resource*`.<sup>[33]</sup> Thread-lo
 | Conv2d forward (A100, BS=1) | 24,000 ns |
 | NCCL AllReduce (600B model) | 1,000,000,000+ ns |
 
-A coroutine frame allocation with a PMR pool is 200x-100,000x cheaper than the GPU operations it orchestrates. For a 900B-parameter model's AllReduce that takes seconds, the 5 ns frame allocation is nine orders of magnitude smaller.
+A coroutine frame allocation with a PMR pool is roughly two to nine orders of magnitude cheaper than the GPU operations it orchestrates. For a 600B-parameter model's AllReduce that takes seconds, the 5 ns frame allocation is nine orders of magnitude smaller.
 
-One caveat: the latency table assumes GPU operations in the microsecond-to-second range. For high-frequency kernel dispatch where individual kernel execution times approach the sub-microsecond regime, the frame allocation cost relative to the operation cost may be different. Additionally, `cudaLaunchHostFunc` callback latency can spike to 12ms on loaded multi-GPU systems,<sup>[48]</sup> which means the callback dispatch latency can dominate both frame allocation and the GPU operation itself. The 2-5 ns frame allocation cost is not always the relevant comparison.
+One caveat: the latency table assumes GPU operations in the microsecond-to-second range. For high-frequency kernel dispatch where individual kernel execution times approach the sub-microsecond regime, the frame allocation cost relative to the operation cost may be different. Additionally, `cudaLaunchHostFunc` callback latency can spike to 12ms on loaded multi-GPU systems,<sup>[22]</sup> which means the callback dispatch latency can dominate both frame allocation and the GPU operation itself. The 2-5 ns frame allocation cost is not always the relevant comparison.
 
 **Question for the reader:** Is our assumption about the relative cost of frame allocation accurate at GPU workload scale? Are there scenarios in high-frequency kernel dispatch where coroutine frame allocation becomes a measurable bottleneck?
 
@@ -732,7 +732,7 @@ One caveat: the latency table assumes GPU operations in the microsecond-to-secon
 
 The preceding sections argue that senders and IoAwaitables each serve a domain well: senders for GPU kernel dispatch and heterogeneous scheduling, IoAwaitables for byte-oriented I/O and type-erased streams. The bridge is where the domains meet.
 
-Capy provides two bridge functions with working implementations in its bench and example code<sup>[54]</sup>: `await_sender`<sup>[52]</sup> consumes a sender from within a coroutine via `co_await`, and `as_sender`<sup>[53]</sup> wraps an IoAwaitable as a P2300 sender for use in a sender pipeline. Both compile and run today. One bridge direction currently relies on behavior the standard would need to bless; [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf)<sup>[52]</sup> and [P4093R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r1.pdf)<sup>[53]</sup> are the dedicated design papers for each direction.
+Capy provides two bridge functions with working implementations in its bench and example code<sup>[19]</sup>: `await_sender`<sup>[56]</sup> consumes a sender from within a coroutine via `co_await`, and `as_sender`<sup>[57]</sup> wraps an IoAwaitable as a P2300R10 sender for use in a sender pipeline. Both compile and run today. One bridge direction currently relies on behavior the standard would need to bless; [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf)<sup>[56]</sup> and [P4093R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r1.pdf)<sup>[57]</sup> are the dedicated design papers for each direction.
 
 `await_sender` is the natural bridge for the common case: a coroutine that performs I/O and dispatches to a GPU scheduler. An inference pipeline that uses each model in its natural domain:
 
@@ -810,29 +810,29 @@ The preceding sections present convergent findings. This section addresses fores
 
 **Awaitables commit to eager execution.** Awaitables are lazy. `write_some` returns an inert object. No `cudaMemcpyAsync` is issued, no syscall is made, until `co_await` triggers `await_suspend`. The trigger is explicit in both models: senders do no work until `start()` is called; awaitables do no work until `co_await` is evaluated. A coroutine can capture the awaitable, defer the `co_await`, and decide at runtime whether to submit the operation. This concern does not distinguish the two models.
 
-**The scheduler cannot see the full task graph.** Sender pipelines compose as a graph the scheduler can inspect before `start()`. This is valuable for GPU kernel dispatch where the work graph is known ahead of time - CUDA Graphs (Section 15) exploit this property at the driver level, achieving 160x launch-overhead reduction for 100 sequential kernels.<sup>[25]</sup> Data movement is different. The next transfer depends on the result of the previous one: how many bytes arrived, whether the peer reset the connection, whether the RDMA completion carried an error. There is no static graph to inspect because control flow branches on runtime data. NCCL topology discovery, RDMA memory registration, and NVLink channel selection are all runtime decisions driven by hardware probing (Section 12). Coroutine control flow - `if`, `for`, `while` - is the natural expression of data-dependent sequential decisions.
+**The scheduler cannot see the full task graph.** Sender pipelines compose as a graph the scheduler can inspect before `start()`. This is valuable for GPU kernel dispatch where the work graph is known ahead of time - CUDA Graphs (Section 15) exploit this property at the driver level, achieving 160x launch-overhead reduction for 100 sequential kernels.<sup>[46]</sup> Data movement is different. The next transfer depends on the result of the previous one: how many bytes arrived, whether the peer reset the connection, whether the RDMA completion carried an error. There is no static graph to inspect because control flow branches on runtime data. NCCL topology discovery, RDMA memory registration, and NVLink channel selection are all runtime decisions driven by hardware probing (Section 12). Coroutine control flow - `if`, `for`, `while` - is the natural expression of data-dependent sequential decisions.
 
 **Senders separate description from execution; coroutines conflate them.** The separation is valuable when the same algorithm can run on CPU or GPU by swapping the scheduler. The Maxwell FDTD benchmark demonstrates this: identical sender code achieves parity with raw CUDA on GPU and runs correctly on a CPU thread pool (Section 2). Data movement operations are bound to specific hardware resources at submission time. A `cudaMemcpyAsync` targets a specific CUDA stream on a specific device. An `ibv_post_send` targets a specific queue pair on a specific HCA. A `read` targets a specific file descriptor. The description cannot be retargeted by swapping a scheduler because the operation is bound to the resource. For compute dispatch, description-execution separation enables scheduler-agnostic portability. For data transport, the binding to hardware resources makes the separation vacuous.
 
 ### 18.2 Consumer Choice and Return Types
 
-**Data movement operations should return senders so the caller can choose how to consume them.** The choice is symmetric. `as_sender`<sup>[53]</sup> wraps an awaitable for sender pipeline consumption. `await_sender`<sup>[52]</sup> wraps a sender for coroutine consumption. Neither return type gives every consumer zero-cost access. Returning a sender forces a per-operation allocation under type erasure (Section 9: 57 ns/op, 1 alloc/op). Returning an awaitable preserves zero-allocation type erasure (Section 9: 36 ns/op, 0 alloc/op) and gives sender pipeline consumers access through `as_sender`. The question is which consumer bears the cost. For data movement where the protocol handler is compiled once against a type-erased stream (Section 8), the type-erased consumer is the common case. P4088R1<sup>[44]</sup> Section 10 documents the full design fork analysis.
+**Data movement operations should return senders so the caller can choose how to consume them.** The choice is symmetric. `as_sender`<sup>[57]</sup> wraps an awaitable for sender pipeline consumption. `await_sender`<sup>[56]</sup> wraps a sender for coroutine consumption. Neither return type gives every consumer zero-cost access. Returning a sender forces a per-operation allocation under type erasure (Section 9: 57 ns/op, 1 alloc/op). Returning an awaitable preserves zero-allocation type erasure (Section 9: 36 ns/op, 0 alloc/op) and gives sender pipeline consumers access through `as_sender`. The question is which consumer bears the cost. For data movement where the protocol handler is compiled once against a type-erased stream (Section 8), the type-erased consumer is the common case. P4088R1<sup>[30]</sup> Section 10 documents the full design fork analysis.
 
-**The bridge proves senders are more fundamental.** The bridge is symmetric. `as_sender`<sup>[53]</sup> wraps an awaitable for sender consumption. `await_sender`<sup>[52]</sup> wraps a sender for coroutine consumption. CPU and GPU interact through memory copies; that does not make one side more fundamental. The bridge is evidence of complementarity between models that serve different domains - compute dispatch and data transport - not evidence of hierarchy. P4088R1<sup>[44]</sup> Section 9 addresses this directly.
+**The bridge proves senders are more fundamental.** The bridge is symmetric. `as_sender`<sup>[57]</sup> wraps an awaitable for sender consumption. `await_sender`<sup>[56]</sup> wraps a sender for coroutine consumption. CPU and GPU interact through memory copies; that does not make one side more fundamental. The bridge is evidence of complementarity between models that serve different domains - compute dispatch and data transport - not evidence of hierarchy. P4088R1<sup>[30]</sup> Section 9 addresses this directly.
 
 ### 18.3 Type Erasure and Allocation
 
-**Type erasure should be opt-in, not baked into the abstraction.** Byte-oriented data movement is a domain where the transport is inherently runtime-determined. An inference server does not know at compile time whether input arrives over TCP, RDMA, or NVLink - the transport depends on the deployment topology, which is discovered at communicator creation time via `ncclCommInitRank` or equivalent (Section 12). Type erasure is the natural interface for this domain, not an optional convenience. Senders' compile-time visibility optimizes for static dispatch, which is not the bottleneck when every operation crosses a kernel boundary (1,000-5,000 ns) or a PCIe bus (10,000+ ns). This is the same design trajectory traced in Section 10. P4088R1<sup>[44]</sup> Section 7.1 documents the structural mechanism.
+**Type erasure should be opt-in, not baked into the abstraction.** Byte-oriented data movement is a domain where the transport is inherently runtime-determined. An inference server does not know at compile time whether input arrives over TCP, RDMA, or NVLink - the transport depends on the deployment topology, which is discovered at communicator creation time via `ncclCommInitRank` or equivalent (Section 12). Type erasure is the natural interface for this domain, not an optional convenience. Senders' compile-time visibility optimizes for static dispatch, which is not the bottleneck when every operation crosses a kernel boundary (1,000-5,000 ns) or a PCIe bus (10,000+ ns). This is the same design trajectory traced in Section 10. P4088R1<sup>[30]</sup> Section 7.1 documents the structural mechanism.
 
-**Coroutine frames allocate; sender operation states do not.** Acknowledged. Sender `operation_state` is a compile-time construct with no heap allocation. Coroutine frames allocate. PMR pools amortize this to near zero (Section 16). The relevant comparison for data movement is total allocation across the stream's lifetime. Under type erasure, the sender model allocates once per `any_sender::connect` (Section 9). The coroutine model allocates once per frame (Section 9). For N operations through a type-erased stream, the coroutine model allocates once; the sender model allocates N times. P4088R1<sup>[44]</sup> Sections 4 and 7.9 cover the general case.
+**Coroutine frames allocate; sender operation states do not.** Acknowledged. Sender `operation_state` is a compile-time construct with no heap allocation. Coroutine frames allocate. PMR pools amortize this to near zero (Section 16). The relevant comparison for data movement is total allocation across the stream's lifetime. Under type erasure, the sender model allocates once per `any_sender::connect` (Section 9). The coroutine model allocates once per frame (Section 9). For N operations through a type-erased stream, the coroutine model allocates once; the sender model allocates N times. P4088R1<sup>[30]</sup> Sections 4 and 7.9 cover the general case.
 
-**Compile-time optimization is lost.** Coroutine handles are opaque; the compiler cannot see through `resume()`. Sender pipelines are fully visible, statically dispatched, inlinable. This visibility matters for GPU kernel dispatch where individual operations cost nanoseconds and the compiler can fuse host-side abstraction overhead (Section 2). The latency scale of data movement dwarfs indirect-call overhead (Section 16). The optimization target for data movement is allocation elimination under type erasure (Section 9), not call devirtualization. P4088R1<sup>[44]</sup> Section 4 documents the optimization barrier.
+**Compile-time optimization is lost.** Coroutine handles are opaque; the compiler cannot see through `resume()`. Sender pipelines are fully visible, statically dispatched, inlinable. This visibility matters for GPU kernel dispatch where individual operations cost nanoseconds and the compiler can fuse host-side abstraction overhead (Section 2). The latency scale of data movement dwarfs indirect-call overhead (Section 16). The optimization target for data movement is allocation elimination under type erasure (Section 9), not call devirtualization. P4088R1<sup>[30]</sup> Section 4 documents the optimization barrier.
 
 ### 18.4 Composition and Algorithms
 
-**Senders provide 30 generic algorithms; awaitables provide none.** The awaitable composition mechanism is the language's own control flow: `if`, `for`, `while`, `try/catch`, structured bindings. These compose naturally with data-dependent decisions - the `if(ec == errc::connection_reset)` in Section 11 is a branch on runtime data that determines the next operation. For GPU dispatch where the full work graph must be visible to the scheduler before launch, the sender composition algebra is justified (Section 2). For data movement where each operation depends on the result of the previous one, ordinary control flow is the natural mechanism and is debuggable with standard tools. P4088R1<sup>[44]</sup> Section 2.2 compares the two vocabularies.
+**Senders provide 30 generic algorithms; awaitables provide none.** The awaitable composition mechanism is the language's own control flow: `if`, `for`, `while`, `try/catch`, structured bindings. These compose naturally with data-dependent decisions - the `if(ec == errc::connection_reset)` in Section 11 is a branch on runtime data that determines the next operation. For GPU dispatch where the full work graph must be visible to the scheduler before launch, the sender composition algebra is justified (Section 2). For data movement where each operation depends on the result of the previous one, ordinary control flow is the natural mechanism and is debuggable with standard tools. P4088R1<sup>[30]</sup> Section 2.2 compares the two vocabularies.
 
-**Compound results can be routed through set_value.** Route `(error_code, bytes_transferred)` through `set_value` as a compound type. This is physically possible. It is also what Section 11 documents: if all data-movement results route through `set_value`, then `set_error` and `set_stopped` are vestigial for these operations. The three-channel model's value - that different channels enable different downstream algorithms (`retry`, `upon_error`) - is nullified. P2300R10<sup>[3]</sup> Section 5.8 acknowledges: "This begs the question of how they can be used to represent async operations that partially succeed." The three channels match GPU kernel dispatch, where `cudaErrorLaunchFailure` is fatal and carries no partial result. Byte-oriented operations produce compound results where both status and byte count are always present. P4091R1<sup>[43]</sup> analyzes all six positions.
+**Compound results can be routed through set_value.** Route `(error_code, bytes_transferred)` through `set_value` as a compound type. This is physically possible. It is also what Section 11 documents: if all data-movement results route through `set_value`, then `set_error` and `set_stopped` are vestigial for these operations. The three-channel model's value - that different channels enable different downstream algorithms (`retry`, `upon_error`) - is nullified. P2300R10<sup>[3]</sup> Section 4.14, "Senders can represent partial success," poses the question - "This begs the question of how they can be used to represent async operations that partially succeed" - and answers it with exactly this value-channel routing. The three channels match GPU kernel dispatch, where `cudaErrorLaunchFailure` is fatal and carries no partial result. Byte-oriented operations produce compound results where both status and byte count are always present. P4091R1<sup>[32]</sup> analyzes all six positions.
 
 ### 18.5 Scope and Evidence
 
@@ -846,7 +846,7 @@ The preceding sections present convergent findings. This section addresses fores
 
 ## 19. Conclusion
 
-A protocol handler compiled once links against TCP, RDMA, or GPU device memory without recompilation. This is possible because byte-oriented data movement - host-device memcpy, inter-GPU collectives over NVLink, RDMA transfers between nodes, and TCP sockets - shares a common async completion model that the IoAwaitable protocol captures with zero per-operation allocation. The CUDA Programming Guide confirms that single-stream callbacks are strictly serialized,<sup>[6]</sup> enabling the same pre-allocated op-state pattern that networking sockets use. Independent projects at NVIDIA Research (cuda-oxide),<sup>[35]</sup> CERN,<sup>[34]</sup> the University of Wisconsin-Madison (Taro),<sup>[36]</sup> and Schr&ouml;dinger (Desmond)<sup>[38]</sup> have converged on coroutine-based completion for data movement without coordination. The notification mechanism is a free variable the protocol does not fix: CERN's traccc port<sup>[34]</sup> implements the callback, event polling, and deferred synchronization as interchangeable awaitables, and a CHEP 2026 measurement<sup>[55]</sup> finds the callback the worst-scaling of the three under many worker threads.
+A protocol handler compiled once links against TCP, RDMA, or GPU device memory without recompilation. This is possible because byte-oriented data movement - host-device memcpy, inter-GPU collectives over NVLink, RDMA transfers between nodes, and TCP sockets - shares a common async completion model that the IoAwaitable protocol captures with zero per-operation allocation. The CUDA Programming Guide confirms that single-stream callbacks are strictly serialized,<sup>[14]</sup> enabling the same pre-allocated op-state pattern that networking sockets use. Independent projects at NVIDIA Research (cuda-oxide),<sup>[36]</sup> CERN,<sup>[25]</sup> the University of Wisconsin-Madison (Taro),<sup>[37]</sup> and Schr&ouml;dinger (Desmond)<sup>[39]</sup> have converged on coroutine-based completion for data movement without coordination. The notification mechanism is a free variable the protocol does not fix: CERN's traccc port<sup>[25]</sup> implements the callback, event polling, and deferred synchronization as interchangeable awaitables, and a CHEP 2026 measurement<sup>[20]</sup> finds the callback the worst-scaling of the three under many worker threads.
 
 `cudaLaunchHostFunc` has documented limitations (Section 7) that bound the applicability of the callback mechanism in high-throughput GPU pipelines. Those limitations are specific to the callback: the protocol equally admits event polling and deferred synchronization, which sidestep them where they bite.
 
@@ -854,9 +854,9 @@ A protocol handler compiled once links against TCP, RDMA, or GPU device memory w
 
 Independent projects (Taro, TTG/PaRSEC, Desmond) have demonstrated the extension of the coroutine pattern to kernel dispatch and GPU pipeline orchestration in production, placing that evidence in the record alongside this paper's byte-movement analysis.
 
-Bridges (`await_sender`<sup>[52]</sup>, `as_sender`<sup>[53]</sup>) connect the two models where the domains meet. A networking coroutine consumes a GPU sender for compute dispatch. A sender pipeline wraps an IoAwaitable for composition. Neither model needs to subsume the other. Each serves the domain where its design choices pay off: senders for compute dispatch where compile-time work graphs and scheduler-agnostic portability deliver their full value, awaitables for data transport where type-erased streams, zero-allocation link-time polymorphism, and ABI stability (Section 10) are the natural interface. The abstraction level rises; the application code stays the same.
+Bridges (`await_sender`<sup>[56]</sup>, `as_sender`<sup>[57]</sup>) connect the two models where the domains meet. A networking coroutine consumes a GPU sender for compute dispatch. A sender pipeline wraps an IoAwaitable for composition. Neither model needs to subsume the other. Each serves the domain where its design choices pay off: senders for compute dispatch where compile-time work graphs and scheduler-agnostic portability deliver their full value, awaitables for data transport where type-erased streams, zero-allocation link-time polymorphism, and ABI stability (Section 10) are the natural interface. The abstraction level rises; the application code stays the same.
 
-This convergent evidence supports the standardization of the IoAwaitable protocol proposed in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html).<sup>[46]</sup> The committee should not assume senders are the only viable model for GPU async when GPU practitioners are independently choosing coroutines for data movement. The IoAwaitable protocol provides the minimal execution model - executor affinity, cancellation, frame allocation - that these convergent projects need from the standard. Standardizing it gives the ecosystem a stable foundation without requiring either model to subsume the other.
+This convergent evidence supports the standardization of the IoAwaitable protocol proposed in [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html)<sup>[8]</sup>. The committee should not assume senders are the only viable model for GPU async when GPU practitioners are independently choosing coroutines for data movement. The IoAwaitable protocol provides the minimal execution model - executor affinity, cancellation, frame allocation - that these convergent projects need from the standard. Standardizing it gives the ecosystem a stable foundation without requiring either model to subsume the other.
 
 ## Acknowledgements
 
@@ -880,102 +880,106 @@ This paper was generated with AI assistance (Claude, via Cursor).
 
 [5] [NVIDIA/stdexec](https://github.com/NVIDIA/stdexec) - Reference implementation of `std::execution`.
 
-[6] [CUDA Programming Guide: Asynchronous Concurrent Execution](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html) (NVIDIA, 2024).
+[6] [CUDA Runtime API: Memory Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html) (NVIDIA, 2024).
 
-[7] [CUDA Runtime API: Event Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EVENT.html) (NVIDIA, 2024).
+[7] [CUDA Runtime API: Execution Control](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html) (NVIDIA, 2024).
 
-[8] [CUDA Runtime API: Stream Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html) (NVIDIA, 2024).
+[8] [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-[9] [CUDA Runtime API: Execution Control](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html) (NVIDIA, 2024).
+[9] [Capy io_env](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/ex/io_env.hpp) (C++ Alliance).
 
-[10] [CUDA Handbook: Stream Callbacks](https://www.cudahandbook.com/2012/09/stream-callbacks/) (Nicholas Wilt, 2012).
+[10] [Capy executor_ref](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/ex/executor_ref.hpp) (C++ Alliance).
 
-[11] [Stack Overflow: Exception Handling in cudaLaunchHostFunc Callbacks](https://stackoverflow.com/questions/75145603/catching-an-exception-thrown-from-a-callback-in-cudalaunchhostfunc) (2023).
+[11] [Understanding Symmetric Transfer](https://lewissbaker.github.io/2020/05/11/understanding_symmetric_transfer) (Lewis Baker, 2020).
 
-[12] [DeepWiki: nvexec GPU Execution](https://deepwiki.com/NVIDIA/stdexec/6-gpu-execution-with-nvexec).
+[12] [Capy continuation](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/continuation.hpp) (C++ Alliance).
 
-[13] [Capy io_env](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/ex/io_env.hpp) (C++ Alliance).
+[13] [Capy task](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/task.hpp) (C++ Alliance).
 
-[14] [Capy executor_ref](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/ex/executor_ref.hpp) (C++ Alliance).
+[14] [CUDA Programming Guide: Asynchronous Concurrent Execution](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html) (NVIDIA, 2024).
 
-[15] [Understanding Symmetric Transfer](https://lewissbaker.github.io/2020/05/11/understanding_symmetric_transfer) (Lewis Baker, 2020).
+[15] [CUDA Runtime API: Event Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EVENT.html) (NVIDIA, 2024).
 
-[16] [Capy continuation](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/continuation.hpp) (C++ Alliance).
+[16] [CUDA Runtime API: Stream Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__STREAM.html) (NVIDIA, 2024).
 
-[17] [Capy task](https://github.com/cppalliance/capy/blob/98be9fdd59b2099b2f4f3a0f2abd4f3d4034d0a6/include/boost/capy/task.hpp) (C++ Alliance).
+[17] [CUDA Handbook: Stream Callbacks](https://www.cudahandbook.com/2012/09/stream-callbacks/) (Nicholas Wilt, 2012).
 
-[18] [CUDA Runtime API: Memory Management](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__MEMORY.html) (NVIDIA, 2024).
+[18] [Stack Overflow: Exception Handling in cudaLaunchHostFunc Callbacks](https://stackoverflow.com/questions/75145603/catching-an-exception-thrown-from-a-callback-in-cudalaunchhostfunc) (2023).
 
-[19] [CUDA Programming Guide: Page-Locked Host Memory](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/understanding-memory.html) (NVIDIA, 2024).
+[19] [Accompanying examples](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example) - the compileable demonstrations for this paper, pinned at commit `a226b79` of the official repository (C++ Alliance). Section 5 (the three notification mechanisms, `callback_awaitable`, `poll_awaitable`, `deferred_sync_awaitable`): [`example/cuda/notification-strategies`](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/notification-strategies). Sections 6-8 and 14 (`cuda_stream`, `cuda_device_stream`, CUDA Graphs): [`example/cuda/datamovement`](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/datamovement). Section 16 (the `await_sender` bridge, `handle_request`): [`example/cuda/pipeline/cuda_pipeline.cu`](https://github.com/cppalliance/capy/blob/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/pipeline/cuda_pipeline.cu). Sections 10-11 (compound results and HPC-fabric signatures): [`example/fabrics/fabrics.cpp`](https://github.com/cppalliance/capy/blob/a226b793a3409f07723d2e90dd154e7461fffe89/example/fabrics/fabrics.cpp).
 
-[20] [CUDA Runtime API: API Synchronization Behavior](https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html) (NVIDIA, 2024).
+[20] [Scheduling for Next Generation Triggers](https://indico.cern.ch/event/1471803/contributions/6967272/) - CHEP 2026 (E. Cano, M. Fila, A. Krasznahorkay, 2026).
 
-[21] [libunifex Issue #586](https://github.com/facebookexperimental/libunifex/issues/586#issuecomment-1845934903) - Meta internal guidance on senders vs coroutines (Ian Petersen, 2023).
+[21] [Stack Overflow: CUDA Graph host execution nodes in different streams](https://stackoverflow.com/questions/75739969/is-it-possible-to-execute-more-than-one-cuda-graphs-host-execution-node-in-diff) - Robert Crovella (NVIDIA) on single-stream callback serialization (2023).
 
-[22] [P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf) - "The SG14 Priority List for C++29/32" (Michael Wong, 2026).
+[22] [NVIDIA Developer Forums: cuLaunchHostFunc overhead latency](https://forums.developer.nvidia.com/t/culaunchhostfunc-overhead-latency-usage-cpu-gpu-signaling/327066) - Latency spikes up to 12ms on loaded A100/H100 systems (2024).
 
-[23] [P3425R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3425r1.html) - "Reducing operation-state sizes for subobject child operations" (Lewis Baker, 2025).
+[23] [NVIDIA Developer Forums: Do stream callbacks hold CUDA-internal locks?](https://forums.developer.nvidia.com/t/do-stream-callbacks-hold-any-cuda-internal-locks/337769) - Deadlock risk with user locks in callbacks (2024).
 
-[24] [CUDA Programming Guide: CUDA Graphs](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html) (NVIDIA, 2024).
+[24] [Multipath Memory Access: Breaking Host-GPU Bandwidth Bottlenecks in LLM Serving](https://arxiv.org/html/2512.16056v2) - cudaLaunchHostFunc unidirectional notification limitation (2025).
 
-[25] [NVIDIA CUDA Graph Best Practices: Quantitative Benefits](https://docs.nvidia.com/dl-cuda-graph/cuda-graph-basics/cuda-graph.html) (NVIDIA, 2024).
+[25] [cern-nextgen/wp1.7-traccc PR #18](https://github.com/cern-nextgen/wp1.7-traccc/pull/18) - CERN port of the traccc GPU track-reconstruction pipeline from stdexec to Capy, implementing callback, event-polling, and deferred-synchronization await strategies as IoAwaitables behind a single selector (2026).
 
-[26] [PyGraph: Robust Compiler Support for CUDA Graphs in PyTorch](https://arxiv.org/html/2503.19779v3) (2025).
+[26] [CUDA Programming Guide: Page-Locked Host Memory](https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/understanding-memory.html) (NVIDIA, 2024).
 
-[27] [P0981R0](https://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p0981r0.html) - "Halo: coroutine Heap Allocation eLision Optimization: the joint response" (Richard Smith, Gor Nishanov, 2018).
+[27] [CUDA Runtime API: API Synchronization Behavior](https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html) (NVIDIA, 2024).
 
-[28] [Clang Attribute Reference: coro_await_elidable](https://clang.llvm.org/docs/AttributeReference.html#coro-await-elidable) (LLVM).
+[28] [P4123R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4123r0.pdf) - "The Cost of Senders for Coroutine I/O" (Vinnie Falco, 2026).
 
-[29] [LLVM PR #99282: Introduce coro_await_elidable](https://github.com/llvm/llvm-project/pull/99282) (Chuanqi Xu, 2024).
+[29] [NVIDIA/stdexec any_sender_of.hpp](https://github.com/NVIDIA/stdexec/blob/main/include/exec/any_sender_of.hpp) - 64-byte small-buffer optimization for type-erased sender operation states.
 
-[30] [LLVM Issue #64586: CoroElide failures and regressions](https://github.com/llvm/llvm-project/issues/64586).
+[30] [P4088R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r1.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
 
-[31] [LLVM Issue #188230: HALO + suspend_never bad-free](https://github.com/llvm/llvm-project/issues/188230).
+[31] [N3408](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3408.pdf) - "Parallelizing the Standard Algorithms Library" (Jared Hoberock, Michael Garland, Olivier Giroux, Vinod Grover, Ujval Kapasi, Jaydeep Marathe, 2012).
 
-[32] [LLVM Issue #178256: Parentheses break coro_await_elidable](https://github.com/llvm/llvm-project/issues/178256).
+[32] [P4091R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r1.pdf) - "Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026).
 
-[33] [std::pmr::memory_resource](https://en.cppreference.com/w/cpp/memory/memory_resource) (cppreference).
+[33] [LCI: A Lightweight Communication Interface](https://arxiv.org/html/2505.01864v2) - C++17 async communication library with libibverbs and libfabric backends, prototype GPU-Direct RDMA, SC'25 (2025).
 
-[34] [cern-nextgen/wp1.7-traccc PR #18](https://github.com/cern-nextgen/wp1.7-traccc/pull/18) - CERN port of the traccc GPU track-reconstruction pipeline from stdexec to Capy, implementing callback, event-polling, and deferred-synchronization await strategies as IoAwaitables behind a single selector (2026).
+[34] [libunifex Issue #586](https://github.com/facebookexperimental/libunifex/issues/586#issuecomment-1845934903) - Meta internal guidance on senders vs coroutines (Ian Petersen, 2023).
 
-[35] [cuda-oxide: The DeviceOperation Model](https://nvlabs.github.io/cuda-oxide/async-programming/the-device-operation-model.html) - NVIDIA Labs async GPU programming in Rust (2026).
+[35] [P4029R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4029r0.pdf) - "The SG14 Priority List for C++29/32" (Michael Wong, 2026).
 
-[36] [Taro](https://github.com/dian-lun-lin/taro) - C++20 coroutine task-graph system for CPU-GPU workloads (Dian-Lun Lin, University of Wisconsin-Madison, 2024).
+[36] [cuda-oxide: The DeviceOperation Model](https://nvlabs.github.io/cuda-oxide/async-programming/the-device-operation-model.html) - NVIDIA Labs async GPU programming in Rust (2026).
 
-[37] [async-cuda](https://github.com/oddity-ai/async-cuda) - Async CUDA for Rust (Oddity AI, 2024).
+[37] [Taro](https://github.com/dian-lun-lin/taro) - C++20 coroutine task-graph system for CPU-GPU workloads (Dian-Lun Lin, University of Wisconsin-Madison, 2024).
 
-[38] [Optimizing Drug Discovery with CUDA Graphs, Coroutines, and GPU Workflows](https://developer.nvidia.com/blog/optimizing-drug-discovery-with-cuda-graphs-coroutines-and-gpu-workflows/) - NVIDIA Developer Blog (Jiqun Tu, Ellery Russell, 2024).
+[38] [async-cuda](https://github.com/oddity-ai/async-cuda) - Async CUDA for Rust (Oddity AI, 2024).
 
-[39] [TTG (Template Task Graph)](https://github.com/TESSEorg/ttg) - C++20 coroutine-based heterogeneous task graph on PaRSEC (2024).
+[39] [Optimizing Drug Discovery with CUDA Graphs, Coroutines, and GPU Workflows](https://developer.nvidia.com/blog/optimizing-drug-discovery-with-cuda-graphs-coroutines-and-gpu-workflows/) - NVIDIA Developer Blog (Jiqun Tu, Ellery Russell, 2024).
 
-[40] [rdmapp](https://github.com/howardlau1999/rdmapp) - C++20 coroutine wrapper for libibverbs (2024).
+[40] [TTG (Template Task Graph)](https://github.com/TESSEorg/ttg) - C++20 coroutine-based heterogeneous task graph on PaRSEC (2024).
 
-[41] [Loom](https://github.com/sielicki/loom) - C++23 typed interface over libfabric with Asio coroutine integration.
+[41] [rdmapp](https://github.com/howardlau1999/rdmapp) - C++20 coroutine wrapper for libibverbs (2024).
 
-[42] [FORD](https://github.com/minghust/ford) - Coroutine-enabled distributed transactions over one-sided RDMA (USENIX FAST 2022).
+[42] [Loom](https://github.com/sielicki/loom) - C++23 typed interface over libfabric with Asio coroutine integration.
 
-[43] [P4091R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4091r1.pdf) - "Error Models of Regular C++ and the Sender Sub-Language" (Vinnie Falco, 2026).
+[43] [FORD](https://github.com/minghust/ford) - Coroutine-enabled distributed transactions over one-sided RDMA (USENIX FAST 2022).
 
-[44] [P4088R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4088r1.pdf) - "What C++20 Coroutines Already Buy The Standard" (Vinnie Falco, 2026).
+[44] [P3425R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3425r1.html) - "Reducing operation-state sizes for subobject child operations" (Lewis Baker, 2025).
 
-[45] [P4123R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4123r0.pdf) - "The Cost of Senders for Coroutine I/O" (Vinnie Falco, 2026).
+[45] [CUDA Programming Guide: CUDA Graphs](https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html) (NVIDIA, 2024).
 
-[46] [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.html) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+[46] [NVIDIA CUDA Graph Best Practices: Quantitative Benefits](https://docs.nvidia.com/dl-cuda-graph/cuda-graph-basics/cuda-graph.html) (NVIDIA, 2024).
 
-[47] [Stack Overflow: CUDA Graph host execution nodes in different streams](https://stackoverflow.com/questions/75739969/is-it-possible-to-execute-more-than-one-cuda-graphs-host-execution-node-in-diff) - Robert Crovella (NVIDIA) on single-stream callback serialization (2023).
+[47] [PyGraph: Robust Compiler Support for CUDA Graphs in PyTorch](https://arxiv.org/html/2503.19779v3) (2025).
 
-[48] [NVIDIA Developer Forums: cuLaunchHostFunc overhead latency](https://forums.developer.nvidia.com/t/culaunchhostfunc-overhead-latency-usage-cpu-gpu-signaling/327066) - Latency spikes up to 12ms on loaded A100/H100 systems (2024).
+[48] [DeepWiki: nvexec GPU Execution](https://deepwiki.com/NVIDIA/stdexec/6-gpu-execution-with-nvexec).
 
-[49] [NVIDIA Developer Forums: Do stream callbacks hold CUDA-internal locks?](https://forums.developer.nvidia.com/t/do-stream-callbacks-hold-any-cuda-internal-locks/337769) - Deadlock risk with user locks in callbacks (2024).
+[49] [P0981R0](https://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p0981r0.html) - "Halo: coroutine Heap Allocation eLision Optimization: the joint response" (Richard Smith, Gor Nishanov, 2018).
 
-[50] [Multipath Memory Access: Breaking Host-GPU Bandwidth Bottlenecks in LLM Serving](https://arxiv.org/html/2512.16056v2) - cudaLaunchHostFunc unidirectional notification limitation (2025).
+[50] [Clang Attribute Reference: coro_await_elidable](https://clang.llvm.org/docs/AttributeReference.html#coro-await-elidable) (LLVM).
 
-[51] [LCI: A Lightweight Communication Interface](https://arxiv.org/html/2505.01864v2) - C++17 async communication library with libibverbs and libfabric backends, prototype GPU-Direct RDMA, SC'25 (2025).
+[51] [LLVM PR #99282: Introduce coro_await_elidable](https://github.com/llvm/llvm-project/pull/99282) (Chuanqi Xu, 2024).
 
-[52] [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
+[52] [LLVM Issue #64586: CoroElide failures and regressions](https://github.com/llvm/llvm-project/issues/64586).
 
-[53] [P4093R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r1.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
+[53] [LLVM Issue #188230: HALO + suspend_never bad-free](https://github.com/llvm/llvm-project/issues/188230).
 
-[54] [Accompanying examples](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example) - the compileable demonstrations for this paper, pinned at commit `a226b79` of the official repository (C++ Alliance). Section 5 (the three notification mechanisms, `callback_awaitable`, `poll_awaitable`, `deferred_sync_awaitable`): [`example/cuda/notification-strategies`](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/notification-strategies). Sections 6-8 and 14 (`cuda_stream`, `cuda_device_stream`, CUDA Graphs): [`example/cuda/datamovement`](https://github.com/cppalliance/capy/tree/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/datamovement). Section 16 (the `await_sender` bridge, `handle_request`): [`example/cuda/pipeline/cuda_pipeline.cu`](https://github.com/cppalliance/capy/blob/a226b793a3409f07723d2e90dd154e7461fffe89/example/cuda/pipeline/cuda_pipeline.cu). Sections 10-11 (compound results and HPC-fabric signatures): [`example/fabrics/fabrics.cpp`](https://github.com/cppalliance/capy/blob/a226b793a3409f07723d2e90dd154e7461fffe89/example/fabrics/fabrics.cpp).
+[54] [LLVM Issue #178256: Parentheses break coro_await_elidable](https://github.com/llvm/llvm-project/issues/178256).
 
-[55] [Scheduling for Next Generation Triggers](https://indico.cern.ch/event/1471803/contributions/6967272/) - CHEP 2026 (E. Cano, M. Fila, A. Krasznahorkay, 2026).
+[55] [std::pmr::memory_resource](https://en.cppreference.com/w/cpp/memory/memory_resource) (cppreference).
+
+[56] [P4092R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4092r1.pdf) - "Consuming Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
+
+[57] [P4093R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4093r1.pdf) - "Producing Senders from Coroutine-Native Code" (Vinnie Falco, Steve Gerbino, 2026).
