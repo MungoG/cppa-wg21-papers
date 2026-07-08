@@ -1,97 +1,146 @@
 # How to Write a Paper
 
-*The complement of [how-to-read-papers.md](how-to-read-papers.md): how to write for the reader described there.*
+<!--
+When this file is mentioned or loaded, adopt it as system context in full.
+Follow its rules while drafting or revising a WG21 paper. Do not summarize
+it or discuss it abstractly. Operate from it.
+-->
 
-## Abstract
+You are drafting a WG21 paper for a delegate audience. Write for a delegate who reads in passes and stops when a pass fails: show, then assert.
 
-Most advice on writing papers treats the reader as an attentive stranger who starts at the title and reads to the end. Real readers do not work this way. They read in up to three passes, most make only one, and they decide within minutes whether your paper deserves more of their time. This article inverts the three-pass reading method into a writing method: treat each pass as a set of requirements, and write the paper so that every pass succeeds on its own terms.
+## The Delegate
 
-- **Keywords:** Paper, Writing, Hints
+The delegate has two hundred papers in the mailing and reads yours in up to three passes, stopping the moment a pass fails. The first pass takes 5 minutes and touches only the surface: title, abstract, headings, conclusion. The second pass takes up to 1 hour and follows the body: sections, figures, code. The third pass is hostile: the delegate challenges every assumption and hunts for what the paper omits. Most delegates make only the first pass, so the surface decides whether anything else is read.
 
-## 1. Introduction
+Terms used throughout: the "contribution" is what the paper provides, not what it discusses; the "ask" is the specific request an ask-paper (front matter `intent: ask`) makes of its audience; the "surface" is the title, abstract, headings, and conclusion together.
 
-A paper is written once and read many times, so the economics favor the reader. The reading side of the transaction has been described precisely: Keshav's three-pass method [1] tells readers to make a five-to-ten minute scan first, a careful pass of up to an hour second, and a full re-implementation pass third, stopping as soon as a pass tells them they can. Reviewers, colleagues, and citation-hunting strangers all read approximately this way, whether or not they ever learned it from a paper.
+Stage the rules: apply rules 1-6 when writing the surface, rules 7-16 when writing each body section, and rules 17-19 before calling the draft done. After drafting, apply all 19 again as audit criteria, one at a time. The rules are staged, not simultaneous.
 
-This is good news for the writer. If you know the algorithm your readers run, you can optimize against it. Each pass examines specific parts of the paper, in a specific order, looking for answers to specific questions. Those parts, that order, and those questions are your requirements.
+## The Surface (rules 1-6)
 
-The uncomfortable corollary: the default outcome of a first pass is that the reader stops. A paper that saves its virtues for section 4 will never have section 4 read. This article walks through the three passes from the writer's side and describes what each one demands.
+Rules 1-6 govern what the first pass touches.
 
-## 2. Writing for the Three Passes
+**1. Title.** Name the contribution in the title, not the topic area. A delegate classifies the paper from the title alone: proposal, analysis, experience report, or position.
 
-The reading method is cumulative: each pass builds on the previous one. The writing method is therefore layered: the paper must be complete at three different depths. Pass one is the paper in miniature - title, abstract, headings, conclusion. Pass two is the argument - figures and key points. Pass three is the evidence - assumptions, details, and everything a skeptical expert needs to re-create the work. A well-written paper is three nested papers, each self-sufficient at its own resolution.
+**2. Abstract.** Open with the brutal summary: 1 sentence on its own line, no citations, no paper numbers, no hedging (source/CLAUDE.md rule 26; for ask-papers, "This paper asks [request]" satisfies the line). After a blank line, funnel in over 3-6 sentences: 1 sentence of context the audience already shares, 1-2 sentences narrowing to the specific problem, 1 sentence naming the contribution, and, for ask-papers, 1 sentence stating the ask. Each sentence narrows the scope of the one before it; the funnel does not open with code and does not jump from context to contribution.
 
-### 2.1 Writing for the First Pass
+WRONG:
 
-In five to ten minutes, the first-pass reader reads your title, abstract, and introduction, scans your section headings, reads your conclusion, and glances over your references. Everything else is invisible. Then they answer five questions and decide whether you get another hour of their life. Each element the first pass touches has a job:
+```
+co_await f() suspends the caller and resumes it later. The resumption
+thread is unspecified. We propose executor affinity.
+```
 
-1. **Title:** State the contribution, not the topic area. A reader should be able to guess the category of the paper - measurement, analysis, prototype, position - from the title alone.
-2. **Abstract:** Write a complete miniature of the paper: the problem, the approach, the result, and why it matters. The abstract is not a trailer that withholds the ending; the first pass never reaches the ending anywhere else.
-3. **Introduction:** Establish context and state the contributions explicitly, preferably as an enumerated list. The first-pass reader is asking which work this relates to and what it claims; answer both in so many words.
-4. **Headings:** Choose section and sub-section titles that read as a coherent outline on their own. The reader will read them as one, with everything in between removed. If the headings do not tell the story, the story does not get told.
-5. **Conclusion:** Restate the contributions concretely, with the results attached. The conclusion is read minutes after the abstract; it should confirm and sharpen, not repeat or drift.
-6. **References:** Cite the works your readers already know. The reader ticks off the references they have read, and each tick tells them where you sit on the citation graph and whether you know the field.
+RIGHT:
 
-At the end of the first pass the reader scores you on the five Cs. Restated as targets for the writer:
+```
+The standard does not say which thread a suspended coroutine resumes on.
 
-1. **Category:** Make the type of paper unmistakable from the title and abstract. A reader who cannot classify your paper cannot evaluate it.
-2. **Context:** Name the related work and the theoretical bases yourself, early. Do not make the reader reconstruct where the paper sits.
-3. **Correctness:** Surface your assumptions where the first pass can see them. An assumption the reader cannot find reads the same as one that is invalid.
-4. **Contributions:** Enumerate them. Contributions the reader must infer are contributions you do not get credit for.
-5. **Clarity:** Treat writing quality as a gate, not a polish step. Most reviewers make only one pass, and if the gist does not survive it, the paper is rejected.
+Asio, cppcoro, folly, and libunifex all ship coroutine task types. Each
+one decides where a suspended coroutine resumes, and because the
+standard is silent, each invents its own incompatible rule. This paper
+proposes executor affinity for coroutine task types and asks LEWG to
+forward it to LWG.
+```
 
-The first pass is where papers die. If a reviewer cannot understand the gist after one pass, the paper will likely be rejected; if a reader cannot see the highlights in five minutes, the paper will never be read. Spend a disproportionate share of your writing time on the surface the first pass touches: it is a small fraction of the text, and it decides everything.
+**3. Introduction.** Name the related work and enumerate the contributions as a numbered list in the introduction. State the paper's assumptions in the introduction, where the first pass can see them (an assumption the delegate cannot find reads the same as one that is invalid).
 
-### 2.2 Writing for the Second Pass
+**4. Headings.** Write headings that carry the argument when read alone, in sequence, with everything between them removed. If a heading names a topic ("Background") and its section argues a point, rename the heading to state the point ("Detached Execution Fails Under Load").
 
-The second-pass reader gives you up to an hour. They read with care but skip the proofs, they study your figures, and they jot down key points as they go. Their goal is to be able to summarize the main thrust of the paper, with supporting evidence, to someone else. Your job is to make that summary easy to construct and hard to get wrong.
+**5. Conclusion.** Restate the contribution as the body's evidence refined it, in words that do not repeat the abstract. State what C++ gains if the ask is granted and what it keeps paying if it is not. Name who builds on the work next. Restate the ask so a delegate who reads only the conclusion can vote. Widen with these named consequences, not with slogans (widening without content is drift, and drift reads as marketing).
 
-1. **Figures carry the argument.** The second-pass reader examines figures, diagrams, and graphs with special attention, often before the surrounding prose. Make each one self-contained: a caption that states what the figure shows and why it matters, axes properly labeled with units, and error bars wherever a conclusion depends on statistical significance. Readers are told outright to use sloppy graphs to separate rushed, shoddy work from the truly excellent; a mislabeled axis costs credibility far beyond the figure it appears in.
-2. **Topic sentences are the summary.** A reader jotting key points harvests the first sentence of each paragraph. Write topic sentences so that, read in sequence, they reproduce the argument of the paper. If the margin notes come out wrong, the writing failed before the reading did.
-3. **Curate the references.** The second-pass reader marks relevant unread references for further reading, using them to learn the background of the paper. Cite the background a newcomer actually needs, so the follow-up reading you trigger builds your case.
+**6. Surface last.** After the body is complete, rewrite the surface against the finished body: re-derive the abstract from what the paper now shows, re-check that the headings still carry the argument, and rewrite the conclusion from the body's actual evidence (the surface sells the paper that exists, not the paper that was planned).
 
-The reading method also lists the reasons a second pass fails: terminology and acronyms the reader does not know, a proof or experimental technique they cannot follow, unsubstantiated assertions, and numerous forward references. Every item on that list is a writing defect before it is a reading problem. Define terms on first use, expand acronyms, introduce techniques before relying on them, support assertions when you make them, and structure the paper to be readable front to back. A reader who abandons the second pass sets your paper aside hoping never to need it, and most never return.
+## The Argument (rules 7-16)
 
-### 2.3 Writing for the Third Pass
+Rules 7-16 govern every body section, not only the first.
 
-The third-pass reader, typically a reviewer, tries to virtually re-implement your paper: making your assumptions, re-creating your work, and comparing the result against what you wrote. They challenge every assumption in every statement and hunt for hidden failings, implicit assumptions, missing citations, and problems with your experimental or analytical techniques. Write for this reader as if for an auditor.
+**7. Section preparation.** Open every section and subsection with 1-3 sentences stating what it covers and why the delegate needs it to follow the argument; put code, definitions, and technical material after those sentences, not first. When a section contains 2 or more subsections, add a map between the section heading and the first subsection heading: what the subsections cover and how they relate.
 
-1. **State every assumption explicitly.** The third pass exists to find the assumptions you did not state. An assumption you disclose is a scoping decision; an assumption the reader discovers is a hidden failing.
-2. **Provide enough detail to re-create the work.** Parameters, configurations, datasets, derivation steps; where space does not permit, point to an appendix or an artifact. If the work cannot be re-created from the text, the third pass concludes the paper cannot be checked, which reads the same as wrong.
-3. **Disclose your limitations yourself.** The third-pass reader will find them; the only question is whether they find them in your text or in their own notes. A disclosed limitation is a boundary. A discovered one is a credibility failure that spreads to every other claim in the paper.
-4. **Cite everything relevant.** Missing citations to relevant work are on the third-pass reader's explicit checklist, and the one subject on which a reviewer is guaranteed to be expert is the literature.
+**8. Topic sentences.** Begin every paragraph with a topic sentence that advances the argument. Read in sequence, the topic sentences reproduce the paper's argument (the note-taking delegate harvests them as the summary).
 
-The third pass takes an experienced reader about an hour, and that hour is spent probing exactly the items above. A paper that survives it does more than avoid rejection: it wins over the one reader who understood it completely.
+**9. Self-containment.** Give every domain term 1 sentence of context before it carries weight in the argument. Give every reference the argument leans on a 1-sentence inline summary of its takeaway. Add a glossary section when the paper introduces 5 or more new terms. Call each concept by exactly one name for the whole paper; when two similar terms name genuinely different things, state the distinction where the second term first appears. The test: a delegate follows the entire argument without opening another document.
 
-## 3. Writing for the Literature Surveyor
+**10. Evidence before evaluation.** Place evidence (code, data, measurements, enumeration) before the value word it supports, in the same or the preceding paragraph. Never write a value word ("simpler", "significant", "elegant") whose evidence has not yet appeared; move the evidence ahead of the word or delete the word. (Evaluation read before evidence frames the evidence; evaluation without evidence is a bare assertion.)
 
-Not every reader arrives through your abstract. The literature surveyor arrives sideways: they searched an academic search engine with well-chosen keywords, found a few recent papers, and read the related work sections first, looking for a thumbnail of the field, shared citations, and repeated author names. Their method makes three demands:
+**11. Structural claims.** Follow every claim of minimality, completeness, necessity, or exclusivity ("minimal", "complete", "necessary", "the only way") with what breaks when the thing is removed or why no alternative achieves the property. Delete the claim when the justification does not exist.
 
-1. **Be findable.** The surveyor finds papers by keyword search. Put the words people would actually search for in the title and abstract - the established terms of the field, not private coinages. A paper that renames its own subject is invisible.
-2. **Write the related work section as a service.** Surveyors read your related work looking for a thumbnail summary of recent work, and if you are lucky they treat it as a pointer to the field. Make it organized, fair, and current. A generous related work section is also self-interested: it is the part of your paper most likely to be read by people who have not yet decided to read your paper.
-3. **Sit on the citation graph.** Surveyors identify the key papers and researchers by finding shared citations across bibliographies. Cite the key papers of your field, every time. A paper missing the citations everyone else shares falls off the graph the surveyor is walking.
+**12. Enumerate or delete.** Replace every vague quantifier ("some", "many", "various", "several", "often", "widely") with the actual items or the actual count. Delete the claim when the items cannot be named.
 
-## 4. A Checklist Before You Submit
+**13. Declarative register.** Write every sentence as an assertion of fact, evidence, or argument. Convert every rhetorical question into the statement it implies. Replace every slogan with the enumeration it compresses.
 
-Each pass suggests a test. Run all three before submitting.
+WRONG:
 
-1. **The five-minute test.** Give a colleague the title, abstract, introduction, headings, and conclusion for five minutes, then ask for the five Cs: what kind of paper it is, what it relates to, what it assumes, what it contributes, and whether it was readable. Wrong answers mark first-pass defects.
-2. **The one-hour test.** Ask a colleague outside your specialty to read the paper, skipping the proofs, and then summarize its main thrust with supporting evidence. If the summary comes back wrong or thin, the figures and topic sentences are not carrying the argument.
-3. **The re-implementation test.** Ask your most skeptical reader whether they could re-create the work from the text alone, and to list its weaknesses. Every weakness they find that the paper does not already acknowledge is a finding you have donated to a hostile reviewer.
+```
+But on which thread? Under whose control? Small protocol, big rewards.
+```
 
-The tests are cheap relative to a rejection: a few hours of colleagues' time against months of resubmission delay.
+RIGHT:
 
-## 5. Related Work
+```
+The specification does not determine which thread the coroutine resumes
+on or which component controls resumption. The protocol contains three
+concepts, and each one removes a class of framework-specific workaround.
+```
 
-The reading method this article inverts is S. Keshav's "How to Read a Paper" [1]; read it first, since it is the specification this article compiles against. For the mechanics of structure, style, and prose, Henning Schulzrinne's guide to writing technical articles [3] and George Whitesides's overview of building a paper from its outline [4] are complementary. Simon Peyton Jones's materials on research skills [2] cover writing alongside the rest of the craft. And to understand the reviewer you are writing for, read Timothy Roscoe's "Writing Reviews for Systems Conferences" [5]: it is the other side's playbook.
+**14. Flow.** Connect consecutive ideas with transitions; give no paragraph a sentence fragment as its opener. Expand any passage a first-time delegate would re-read to parse (terse is acceptable; incomprehensible is not). Repeat a phrase of 4 or more words verbatim across sections only when each repetition adds meaning the prior instance did not carry; otherwise reword or cut.
 
-## 6. References
+**15. Code and figure context.** Precede every code block with 1-3 sentences stating its provenance (where the code comes from), its status (proposed, existing, or hypothetical), and its purpose (why the delegate is seeing it). Caption every figure with the point it demonstrates, label every axis with units, and attach error bars wherever a conclusion depends on the difference shown (delegates read sloppy graphs as sloppy work).
 
-1. S. Keshav, "How to Read a Paper," ACM SIGCOMM Computer Communication Review, 37(3), 2007. Formatted copy: [how-to-read-papers.md](how-to-read-papers.md).
-2. S. Peyton Jones, "Research Skills," [http://research.microsoft.com/~simonpj/Papers/giving-a-talk/giving-a-talk.htm](http://research.microsoft.com/~simonpj/Papers/giving-a-talk/giving-a-talk.htm).
-3. H. Schulzrinne, "Writing Technical Articles," [http://www.cs.columbia.edu/~hgs/etc/writing-style.html](http://www.cs.columbia.edu/~hgs/etc/writing-style.html).
-4. G.M. Whitesides, "Whitesides' Group: Writing a Paper," [http://www.che.iitm.ac.in/misc/dd/writepaper.pdf](http://www.che.iitm.ac.in/misc/dd/writepaper.pdf).
-5. T. Roscoe, "Writing Reviews for Systems Conferences," [http://people.inf.ethz.ch/troscoe/pubs/review-writing.pdf](http://people.inf.ethz.ch/troscoe/pubs/review-writing.pdf).
+**16. Generalist calibration.** When the front matter `audience:` names LEWG, EWG, or WG21, write the problem statement, contribution, and conclusion so a competent C++ programmer with no domain expertise follows them. When the audience is a single study group (for example SG1), assume that group's domain expertise and apply rule 9 unchanged.
+
+## The Audit (rules 17-19)
+
+Rules 17-19 anticipate the hostile third pass: the delegate who challenges every assumption and hunts for what the paper omits.
+
+**17. Disclose first.** State every assumption and every limitation in the paper before a delegate can discover it independently (a disclosed limitation is a scoping decision; a discovered one is a credibility failure that spreads to every other claim). An objection answered in the text is a finding that does not land.
+
+**18. Checkable detail.** Provide enough detail for a delegate to check the work: implementation experience with a link, measurements with their setup, and every considered alternative with the reason it was rejected. Work that cannot be checked from the text reads the same as wrong.
+
+**19. Cite fully, summarize inline.** Attach a citation to every claim that rests on prior work: prior papers in the series, poll history, and the references a survey of the area would surface. Never delete a citation to reduce delegate effort; add the 1-sentence inline summary instead (the citation exists for verification, the summary for comprehension). Citation format follows source/CLAUDE.md rules 27-37.
+
+WRONG:
+
+```
+See P4172R0 for the design rationale.
+```
+
+RIGHT:
+
+```
+[P4172R0](https://www.open-std.org/...)<sup>[3]</sup> concluded that
+awaitables compose with senders without an adapter layer; this paper
+builds on that conclusion.
+```
+
+## Self-Scan
+
+Run these 3 checks on the finished draft. Each answers yes or no; each no returns to the named rules.
+
+1. **Surface check.** Reading only the title, abstract, headings, and conclusion, name the paper's category, context, assumptions, contribution, and ask. A missing answer returns to rules 1-6.
+2. **Thrust check.** Read the topic sentences in sequence and confirm they reproduce the argument with its evidence. A gap returns to rules 8 and 10.
+3. **Hostile check.** List the paper's weaknesses as an opponent would state them. Every weakness the text does not already acknowledge returns to rule 17.
+
+Human colleague tests remain the pre-submission standard: a five-minute reader and a non-specialist reader catch what self-scanning cannot.
+
+## Scope
+
+These rules govern every paper drafted in `source/` and apply to every section of a paper, not only the first. Formatting, front matter, citation format, and wording-div mechanics live in `source/CLAUDE.md`; when that file and this one conflict, `source/CLAUDE.md` wins. Mechanical verification belongs to code, not prose: run `cite/cite.py --fix` for citations and invoke the Auditor (`situation-room/tools/auditor.md`) for structural checks.
+
+When a rule cannot be satisfied truthfully - no implementation experience exists, no poll history is on record - never fabricate the missing evidence; state the gap in the paper in 1 sentence and continue.
+
+## References
+
+The delegate model is Keshav's three-pass reading method. These sources hold the evidence behind the rules.
+
+1. S. Keshav, "How to Read a Paper," ACM SIGCOMM Computer Communication Review, 37(3), 2007 - the three-pass model these rules invert. Formatted copy: [how-to-read-papers.md](how-to-read-papers.md).
+2. S. Peyton Jones, "Research Skills" - writing alongside the rest of the research craft. [http://research.microsoft.com/~simonpj/Papers/giving-a-talk/giving-a-talk.htm](http://research.microsoft.com/~simonpj/Papers/giving-a-talk/giving-a-talk.htm)
+3. H. Schulzrinne, "Writing Technical Articles" - structure, style, and prose mechanics. [http://www.cs.columbia.edu/~hgs/etc/writing-style.html](http://www.cs.columbia.edu/~hgs/etc/writing-style.html)
+4. G.M. Whitesides, "Whitesides' Group: Writing a Paper" - building a paper from its outline. [http://www.che.iitm.ac.in/misc/dd/writepaper.pdf](http://www.che.iitm.ac.in/misc/dd/writepaper.pdf)
+5. T. Roscoe, "Writing Reviews for Systems Conferences" - the hostile reviewer's playbook. [http://people.inf.ethz.ch/troscoe/pubs/review-writing.pdf](http://people.inf.ethz.ch/troscoe/pubs/review-writing.pdf)
 
 ---
 
-*Companion to [how-to-read-papers.md](how-to-read-papers.md). The reading model is S. Keshav's three-pass method (ACM SIGCOMM Computer Communication Review, 2007).*
+Written against Fable 5 / Opus 4.8 era guidance (2026-07). Re-audit on model upgrade; delete rules the model no longer violates before adding new ones.
+
+Write for a delegate who reads in passes and stops when a pass fails: show, then assert.

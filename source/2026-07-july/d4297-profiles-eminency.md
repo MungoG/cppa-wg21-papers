@@ -43,8 +43,6 @@ This paper takes no position on the technical merits of implicit contract assert
 
 The authors work only from the published record: papers in the public mailings, public vendor documentation, and public meeting artifacts. Committee-internal deliberations - wiki minutes, reflector threads, hallway conversations - are neither cited nor characterized in this paper. This is a real limitation: the room may contain answers the record does not.
 
-This paper uses machine-assisted drafting.
-
 This paper proposes no wording. It asks EWG to decide the architecture question explicitly.
 
 ---
