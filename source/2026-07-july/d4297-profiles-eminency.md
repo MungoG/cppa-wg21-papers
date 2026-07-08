@@ -21,7 +21,7 @@ A proposal for addressing undefined behavior in the C++ standard bundles two thi
 
 ### R0: July 2026
 
-- Initial version.
+- Initial version. An earlier working draft circulated before publication asked EWG to defer case-by-case wording review pending implementation and deployment experience; this published version withdraws that request. The review proceeds on its merits, and the ask is stated in Section 10 as three polls.
 
 ---
 
