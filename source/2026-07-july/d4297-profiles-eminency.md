@@ -11,7 +11,7 @@ reply-to:
 
 ## Abstract
 
-This paper asks EWG to decide directly whether Profiles sit above or below P3100's machinery, before case-by-case wording review settles that architecture by default.
+This paper asks EWG to defer case-by-case wording review of P3100, and to decide whether Profiles sit above or below P3100's machinery only when implementation and deployment experience exists for both - not now, and not by default.
 
 A proposal whose authors state that every existing implementation of C++ already conforms to its wording is deciding which safety framework governs C++. [P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf)<sup>[1]</sup> redefines Profiles as "a named configuration preset" layered over its own machinery of implicit contract assertions. In a P3100-first design, users select a profile name, and that name selects settings in P3100's machinery. In a Profiles-first design, the profile itself owns the guarantee and the response to a failed check. That is the architecture decision: which safety feature users configure directly, and which feature sits underneath it.
 
@@ -19,7 +19,7 @@ This paper argues that WG21 is adopting that decision indirectly. P3100R6 states
 
 The public evidence points the other way. Using only public vendor documentation, the paper shows that deployed safety practice - the Core Guidelines checkers and hardened standard libraries in three implementations - takes the form of named check-sets with fixed failure responses. That is the form the Profiles model describes. It is not the implicit-contract-assertion-and-Labels machinery that P3100 proposes, and none of that machinery ships. By a disclosed and re-runnable full-text search of the 2025 and 2026 mailings through 2026-05, the paper finds no published WG21 paper that contests the redefinition. This is a statement about the public record only; it does not characterize objections that may have been raised in committee-internal discussion.
 
-Section 10 sets out the ask in full, with the deployment evidence behind it.
+The ask is stated in full in Section 10, as three polls: deciding which architecture governs safety configuration requires implementation and deployment experience with both; the layering will be decided by explicit poll on that experience, not by accumulation of wording approvals; and case-by-case review of P3100 is deferred until that experience is reported in a published paper.
 
 ---
 
@@ -43,7 +43,7 @@ This paper takes no position on the technical merits of implicit contract assert
 
 The authors work only from the published record: papers in the public mailings, public vendor documentation, and public meeting artifacts. Committee-internal deliberations - wiki minutes, reflector threads, hallway conversations - are neither cited nor characterized in this paper. This is a real limitation: the room may contain answers the record does not.
 
-This paper proposes no wording. It asks EWG to decide the architecture question explicitly.
+This paper proposes no wording. It asks EWG to defer the architecture question until field experience can answer it, and to defer P3100's case-by-case wording review so that the question stays open in the meantime.
 
 ---
 
@@ -64,7 +64,7 @@ Two architectures are possible, and at the top they are mutually exclusive:
 
 P3100R6 answers the question in its own favor. Section 4.4 defines Profiles as "a higher-level feature building on top of" its tools, and defines a concrete profile as "a named configuration preset". This paper is not about whether that answer is technically right. It is about how that answer is becoming the committee's default: not through the paper's technical content, but through the way it moves through the committee's process.
 
-The paper measures the two architectures by deployment. In this context, the deployed model should have the stronger claim to be the user-facing safety framework. This is the committee's own standard, written into its direction paper and restated for C++ safety work specifically by three senior committee members, one of whom is an author of this paper; Section 6 quotes both sources and discloses their provenance: Direction Group opinions, not adopted policy. A reader who rejects that standard will still find every fact in this paper accurate, but is not obliged to accept its conclusion. A reader who accepts the standard will find that the conclusion follows from the facts.
+The paper measures the two architectures by deployment. In this context, the architecture decision should follow field experience rather than precede it. This is the committee's own standard, written into its direction paper and restated for C++ safety work specifically by three senior committee members, one of whom is an author of this paper; Section 6 quotes both sources and discloses their provenance: Direction Group opinions, not adopted policy. A reader who rejects that standard will still find every fact in this paper accurate, but is not obliged to accept its conclusion. A reader who accepts the standard will find that the conclusion follows from the facts.
 
 The evidence comes from five public source classes: P3100R6 and its companion papers, Profiles papers, direction and poll records, vendor deployment documentation, and a disclosed search of the public WG21 paper record.
 
@@ -76,7 +76,7 @@ This paper contributes five things:
 4. It compares the two architectures with deployed practice (Section 6).
 5. It reports what the public WG21 paper record does not contain (Section 7).
 
-Stated briefly: a fundamental architecture decision is being made through a series of low-stakes polls about a paper that requires no change to any existing implementation, and the public record, measured by the committee's own standard, supports the opposite architecture.
+Stated briefly: a fundamental architecture decision is being made through a series of low-stakes polls about a paper that requires no change to any existing implementation, and by the committee's own standard the decision is premature: neither architecture has the field experience that would ground it.
 
 ---
 
@@ -254,9 +254,13 @@ Complementarity is not a symmetric relationship here, and P3100R6 says so. Secti
 
 Every input to this paper is the proposal's own published text, the public mailings, and public vendor documentation, and the one absence claim ships with a re-runnable method (Section 7). The proposal's technical achievements are recorded in Section 3. The reader who disputes the conclusion can dispute it against the same sources.
 
-### "Everything advances this way; P3100's trail is not special." Generality is the reason to decide directly
+### "Deferring P3100 is Profiles advocacy by other means." The ask binds both architectures
 
-Correct, and the paper's own precedent concedes it: P0443R14 accumulated committee direction the same way, and it was not a safety paper. This paper does not claim the proposal's process is aberrant, and it attributes no intent to anyone. The claim is narrower: an ordinary accumulation is settling an extraordinary question - which safety framework users configure directly - that has never been polled as a question. That the mechanism is general is not a defense of the outcome; it is the reason the direct decision is worth taking while it is cheap. The committee has walked back accumulated direction before (Section 5), and each time the correction cost years and arrived from outside. Deciding now costs a poll.
+The deferral prefers neither architecture; it prevents both from winning without evidence. Section 6 states the symmetry this paper stands on: the Profiles framework of P3589R2 is exactly as undeployed as P3100's machinery. The polls of Section 10 enforce it. The first requires implementation and deployment experience with both specifications before either governs. The second forecloses a Profiles-by-default outcome as firmly as a P3100-by-default one. The third defers P3100's review alone for a reason of posture, not preference: only P3100 has a review process in motion, so only P3100 can settle the architecture by default today. A Profiles framework paper positioned to do the same would earn the same deferral, on the same standard.
+
+### "Everything advances this way; P3100's trail is not special." Generality is the reason to stop the default
+
+Correct, and the paper's own precedent concedes it: P0443R14 accumulated committee direction the same way, and it was not a safety paper. This paper does not claim the proposal's process is aberrant, and it attributes no intent to anyone. The claim is narrower: an ordinary accumulation is settling an extraordinary question - which safety framework users configure directly - that has never been polled as a question. That the mechanism is general is not a defense of the outcome; it is the reason to stop the default while stopping is cheap. The committee has walked back accumulated direction before (Section 5), and each time the correction cost years and arrived from outside. Keeping the question open costs a poll.
 
 ---
 
@@ -274,15 +278,23 @@ P3100's distinctive machinery has no such record. Its base facility, the Contrac
 
 **4. No published paper contests the redefinition.** The interaction question was named as open in January 2025 (P3608R0); the proposal answered it in June 2025; through the 2026-05 mailing, and by the disclosed, re-runnable search method of Section 7, no published WG21 paper contests the answer. This is a claim about the public record only. It does not speak to objections that may have been raised in committee-internal discussion, which this paper does not cite. Section 4 explains the mechanism behind the public silence: a paper with no normative effect creates no moment - no wording to object to, no forwarding poll, no deadline - that demands a published answer.
 
-**5. Therefore this paper asks EWG to decide the architecture question explicitly.** Whether Profiles sit above P3100's machinery or below it is a fundamental design question, with a decade of field evidence bearing on it. EWG can decide it directly, on that evidence, before case-by-case wording review converts it into 77 small approvals that are individually easy and collectively expensive to reverse.
+**5. Therefore this paper asks EWG to defer the architecture question until field experience exists, and to keep case-by-case wording review from settling it by default in the meantime.** Whether Profiles sit above P3100's machinery or below it is a fundamental design question, and the committee holds no implementation or deployment experience with either specification as written (Section 6). The decade of field evidence bears on the form a safety framework takes - named guarantees with fixed failure responses - not on either proposal's machinery as specified. Locking the architecture now, by an adoption poll in either direction or by 77 approvals that are individually easy and collectively expensive to reverse, would repeat the pattern Section 5 documents: consensus advancing while deployment evidence stays at zero, with the costs surfacing afterward, in the field. The committee's own standard is to build gradually on previous work; P3608R0 states it for this domain: "Ship the stable and mature existing practice. Don't ship wild guesses." Neither specification is yet existing practice.
 
-The question is direct: should Profiles be the user-facing safety framework, with P3100's tools underneath it, or should Profiles be presets over P3100's machinery?
+The question is direct: should Profiles be the user-facing safety framework, with P3100's tools underneath it, or should Profiles be presets over P3100's machinery? This paper's answer is that WG21 cannot yet know, and should say so on the record. It proposes three polls.
 
----
+> **Poll 1.** Deciding whether the Profiles framework (P3589R2) or implicit contract assertions (P3100) govern C++ safety configuration requires implementation and deployment experience with both.
 
-## Acknowledgments
+> **Poll 2.** The layering of Profiles and implicit contract assertions (P3100) is undecided; EWG will decide it by explicit poll, on implementation and deployment experience, not by accumulation of case-by-case wording approvals.
 
-The verbatim extraction and cross-checking of P3100R6's text, the verification of paper numbers and titles against the public indexes, the deployment documentation survey, and the mailing-corpus absence search were performed with machine assistance and verified against the cited sources.
+> **Poll 3.** EWG defers case-by-case wording review of P3100 until implementation and deployment experience with its implicit contract assertions is reported in a published paper.
+
+The first poll states the principle, and it binds both architectures. Its paper numbers are load-bearing: a decade of Core Guidelines checkers and hardened libraries is experience with the named-guarantee form, not with P3589R2's proposed syntax, and GCC's experimental contracts implementation is experience with P2900's runtime, not with implicit assertions over 77 cases of undefined behavior. Implementation and deployment travel as a pair because either alone is already claimable today.
+
+The second poll converts the principle into process. Its premise is what Table 1 shows - no poll has decided the layering - and its commitment cuts in both directions: a Profiles framework arriving with accumulated endorsements would face the same explicit ballot as P3100's accumulated wording approvals. The accumulation it excludes is the review process the Croydon poll created, named by its effect.
+
+The third poll acts, and it is deliberately the only asymmetric step. It defers P3100's review alone because only P3100 has a review process in motion; it is the only proposal currently positioned to settle the architecture by default. The poll does not overturn the Croydon poll; it times it. Its gate is objective, and it is the same standard of evidence this paper holds itself to: experience reported in a published paper, where the search of Section 7 could find it.
+
+Three escalating polls are themselves a sequence of small consensus steps, and the authors do not pretend otherwise. The difference is on the face of each poll: every one names the architecture question it touches. A named question can be debated, amended, or voted down. A default cannot.
 
 ---
 
