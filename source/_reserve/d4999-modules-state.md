@@ -12,7 +12,7 @@ reply-to:
 
 C++20 modules have full compiler support from one vendor, partial support from two, one production build system, and an adoption rate of 4.1%.
 
-Six years after P1103R3 was adopted at Kona, the three major compilers all implement named modules, but they differ in completeness, in how modules are enabled, and in whether they ship pre-built standard-library artifacts. CMake with Ninja is the only widely deployed build-system combination. Neither vcpkg nor Conan can distribute modularized libraries. No major open-source library ecosystem ships module interfaces. The committee has refined the specification through C++23 and C++26 and added `import std;`, but the gap between the standard and its deployment remains open. This paper documents what the record shows.
+Since C++20 was published in December 2020, the three major compilers have all implemented named modules, but they differ in completeness, in how modules are enabled, and in whether they ship pre-built standard-library artifacts. MSVC is production-ready; Clang and GCC require manual bootstrapping for `import std;`. CMake 3.28 with Ninja is the most-deployed build-system combination for modules; vcpkg and Conan cannot distribute BMIs. Of 2,587 tracked projects, 107 have module support. The committee has refined the specification through C++23 and C++26. This paper documents what the record shows.
 
 ---
 
@@ -47,7 +47,7 @@ This paper asks for nothing.
 
 ## 2. One Compiler Ships Production Modules
 
-C++20 modules were adopted via [P1103R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1103r3.pdf)<sup>[1]</sup> at Kona in March 2019. This section documents what each major compiler ships six years later. The three implementations differ in completeness, in how modules are enabled, and in whether they ship pre-built standard-library module artifacts.
+C++20 modules were adopted via [P1103R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1103r3.pdf)<sup>[1]</sup> at Kona in February 2019. This section documents what each major compiler ships as of July 2026. The three implementations differ in completeness, in how modules are enabled, and in whether they ship pre-built standard-library module artifacts.
 
 ### 2.1 MSVC
 
@@ -71,7 +71,7 @@ GCC has supported named modules in experimental form since GCC 11, but modules r
 
 Three documented gaps remain in the GCC 16.1 implementation<sup>[9]</sup>: private module fragments emit an error rather than compiling; module partition visibility rules are not enforced, allowing definitions to leak outside the module; and textual merging of reachable global-module entities is incomplete. `import std;` works since GCC 15 with libstdc++, but the standard-library module must be manually compiled from `bits/std.cc` before use, and no distribution ships pre-compiled `.gcm` files<sup>[9]</sup>.
 
-GCC treats modules as experimental six years after C++20 was published. The separate opt-in flag means that a developer writing standard C++20 code does not get modules unless they know to ask.
+GCC treats modules as experimental more than five years after C++20 was published. The separate opt-in flag means that a developer writing standard C++20 code does not get modules unless they know to ask.
 
 ### 2.4 Summary
 
@@ -94,7 +94,7 @@ Build systems must solve a problem that traditional compilation does not present
 
 ### 3.1 CMake and Ninja
 
-CMake is the most widely deployed build system with C++20 module support. Named modules exited experimental status in CMake 3.28 (November 2023)<sup>[11]</sup>. CMake uses [P1689R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1689r5.html)<sup>[12]</sup> dependency scanning: the compiler outputs a JSON file describing which modules each source provides and requires, and CMake generates Ninja `dyndep` files to update the build graph dynamically. This requires Ninja 1.11 or later; Makefile generators are not supported because they lack the dynamic dependency mechanism<sup>[11]</sup>.
+CMake has the largest user base among build systems with C++20 module support. Named modules exited experimental status in CMake 3.28 (December 2023)<sup>[11]</sup>. CMake uses [P1689R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p1689r5.html)<sup>[12]</sup> dependency scanning: the compiler outputs a JSON file describing which modules each source provides and requires, and CMake generates Ninja `dyndep` files to update the build graph dynamically. This requires Ninja 1.11 or later; Makefile generators are not supported because they lack the dynamic dependency mechanism<sup>[11]</sup>.
 
 `import std;` support is experimental since CMake 3.30<sup>[11]</sup>. Header units are not supported. CMake can install module interface source files via `FILE_SET CXX_MODULES` for the Ninja generator, but the Visual Studio generator has no support for exporting or installing module information<sup>[11]</sup>.
 
@@ -116,13 +116,13 @@ build2 takes a different approach from CMake: it uses GCC's module mapper protoc
 
 Neither vcpkg nor Conan has a native workflow for distributing modularized libraries. vcpkg's tracking discussion for C++20 module support has been open since 2021. Conan published an analysis of the packaging problem in October 2023<sup>[17]</sup>, identifying the fundamental constraint: BMIs are compiler-version-specific and cannot be portably distributed.
 
-The industry consensus is to ship module interface source files and compile BMIs locally. This approach works but adds compilation overhead for consumers and contradicts the pre-built binary model that package managers are designed to provide.
+The Conan team<sup>[17]</sup> and CMake documentation<sup>[11]</sup> both describe the same workaround: ship module interface source files and compile BMIs locally. This approach works but adds compilation overhead for consumers and contradicts the pre-built binary model that package managers are designed to provide.
 
 ### 3.4 IDE Support
 
 CLion provides the most mature IDE support for modules, with auto-import added in CLion 2026.1. Visual Studio's IntelliSense uses a separate frontend and can report false errors on valid module code. clangd supports modules experimentally behind `--experimental-modules-support`. The VS Code cpptools extension depends on EDG for module support, which remains incomplete.
 
-CMake with Ninja is the only widely deployed build-system combination for C++20 modules. build2 and xmake provide alternatives with different trade-offs. Package managers cannot distribute binary module interfaces, and no cross-compiler BMI format exists.
+CMake 3.28 with Ninja 1.11 is the most-deployed build-system combination for C++20 modules. build2 and xmake provide working alternatives with different design trade-offs. No package manager distributes binary module interfaces, and no cross-compiler BMI format exists.
 
 ## 4. import std Shipped in C++23 but Deploys on One Platform
 
@@ -130,7 +130,7 @@ CMake with Ninja is the only widely deployed build-system combination for C++20 
 
 ### 4.1 From P0581 to P2465
 
-The first proposal for modularizing the standard library was [P0581R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0581r0.pdf)<sup>[18]</sup> (Gabriel Dos Reis, 2017), which proposed a hierarchical decomposition into partitions such as `std.fundamental`, `std.core`, `std.io`, and `std.concurrency`. In July 2021, Bjarne Stroustrup argued in [P2412R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2412r0.pdf)<sup>[19]</sup> that the committee could "spend years discussing" fine-grained decomposition and proposed getting a minimal `import std;` into C++23 without further delay.
+The first proposal for modularizing the standard library was [P0581R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0581r0.pdf)<sup>[18]</sup> (Gabriel Dos Reis, Billy O'Neal, Stephan T. Lavavej, Jonathan Wakely, 2017), which proposed a hierarchical decomposition into partitions such as `std.fundamental`, `std.core`, `std.io`, and `std.threading`. In July 2021, Bjarne Stroustrup argued in [P2412R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2412r0.pdf)<sup>[19]</sup> that the committee could "spend years discussing" fine-grained decomposition and proposed getting a minimal `import std;` into C++23 without further delay.
 
 [P2465R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2465r3.pdf)<sup>[2]</sup> (Stephan T. Lavavej, Gabriel Dos Reis, Bjarne Stroustrup, Jonathan Wakely, 2022) implemented that strategy. It specifies two modules: `import std;` exports all declarations in namespace `std` from the C++ library headers plus global `operator new` and `operator delete`; `import std.compat;` adds the global-namespace C library names such as `::fopen` and `::printf`. Macros are not exported. LEWG approved the design in October 2021; LWG approved the wording in February 2022; CWG approved in March 2022; plenary adopted the paper for C++23 in July 2022<sup>[2]</sup>.
 
@@ -152,7 +152,7 @@ All three implementations support `import std;` in C++20 mode as an extension, p
 
 MSVC is the only implementation where `import std;` is documented as production-ready. libc++ and libstdc++ provide the source files but require manual compilation, and no Linux distribution ships pre-compiled module artifacts.
 
-## 5. Adoption Measures 4.1% of Tracked Projects
+## 5. Tracked Adoption Stands at 4.1%
 
 This section measures adoption through published experience reports, aggregate tracking data, and developer surveys. Absences are evidence: when a major library does not ship module interfaces, that is a data point about the state of adoption.
 
@@ -162,13 +162,13 @@ The most detailed published migration account is Wolfgang Bangerth's report on c
 
 A 2026 analysis of the tooling landscape observed: "Every successful module adoption I've seen had the same thing: one person who understood P1689R5... That person is the module adoption. When they go on vacation, the build breaks and nobody knows why"<sup>[8]</sup>.
 
-Conference talks at CppCon 2024, C++ on Sea 2024, and CppCon 2025 continue to frame modules as exploratory. No identified talk describes a completed large-scale production migration.
+Modules-related talks at CppCon 2024 and CppCon 2025 focused on build-system integration, compiler status, and practical considerations rather than reporting completed production migrations.
 
 ### 5.2 Library Adoption
 
 The community tracking site arewemodulesyet.org reports that 107 of 2,587 tracked C++ projects have module support, a rate of 4.1%<sup>[21]</sup>.
 
-The fmt formatting library is the only widely used library that ships a module interface (`import fmt;`), and it works reliably only with Clang<sup>[21]</sup>. No other major library ecosystem ships module interfaces:
+The fmt formatting library ships a module interface (`import fmt;`), the only tracked library to do so, and it works reliably only with Clang<sup>[21]</sup>. No other major library ships module interfaces:
 
 *Table 4: Module adoption status of major C++ libraries as of July 2026.*
 
@@ -201,9 +201,9 @@ Three modules papers were adopted for C++26:
 
 | Paper | Title | Effect |
 |-------|-------|--------|
-| [P3034R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3034r1.pdf)<sup>[26]</sup> | Module Declarations Should Not Be Macros | Prohibits macro expansion in module names (DR against C++20) |
-| [P3618R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3618r0.pdf)<sup>[27]</sup> | Allow Attaching main to the Global Module | Allows `main` in a module unit |
-| [P3868R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3868r1.pdf)<sup>[28]</sup> | Allow #line Before Module Declarations | Fixes P1857R3 strictness (DR against C++20) |
+| [P3034R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3034r1.html)<sup>[26]</sup> | Module Declarations Shouldn't be Macros | Prohibits macro expansion in module names (DR against C++20) |
+| [P3618R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3618r0.html)<sup>[27]</sup> | Allow attaching main to the global module | Allows `main` in a module unit |
+| [P3868R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3868r1.html)<sup>[28]</sup> | Allow #line before module declarations | Fixes P1857R3 strictness (DR against C++20) |
 
 The CWG issues list contains 22 module-related entries, of which 15 have been resolved across C++23 and C++26 and 7 remain active.
 
@@ -219,15 +219,19 @@ SG15 (Tooling) evolved from a Modules Ecosystem Technical Report effort ([P1688R
 
 The committee has refined the modules specification through two standard cycles, added `import std;` to C++23, and continued to address defects through C++26. The ecosystem tooling that P1689 and SG15 address - dependency formats, module metadata, build-system interoperability - remains outside the International Standard.
 
-## 7. The Standard Describes a Compilation Model the Ecosystem Has Not Delivered
+## 7. What the Record Shows
 
-Six years after C++20 shipped modules, the record shows a feature whose specification is stable but whose deployment infrastructure is not. MSVC is the only compiler that provides production-ready named modules, header units, and `import std;` without manual bootstrapping. Clang supports named modules for production use but requires manual intervention for the standard-library module and header units. GCC keeps modules behind a separate flag and documents three implementation gaps.
+The record as of July 2026 is summarized below.
 
-CMake with Ninja is the only widely deployed build-system combination for modules. Package managers cannot distribute binary module interfaces. No Linux distribution ships pre-compiled standard-library module artifacts. Of 2,587 tracked C++ projects, 107 (4.1%) have module support. No major library ecosystem - Boost, Qt, Abseil, folly, range-v3 - ships module interfaces. The ISO C++ Developer Survey 2024 found that modules have the lowest planned adoption rate among the three major C++20 features.
+MSVC provides production-ready named modules, header units, and `import std;` without manual bootstrapping. On Windows, MSVC with MSBuild or CMake and the Visual Studio installer constitute a complete, working modules toolchain. Clang supports named modules for production use but requires manual intervention for the standard-library module and header units. GCC keeps modules behind a separate `-fmodules` flag and documents three implementation gaps.
 
-The committee has continued to refine the specification: 15 CWG issues resolved, three papers adopted for C++26, and `import std;` added to C++23 via P2465R3. The ecosystem tooling work - P1689, P2656, module metadata formats - proceeds through SG15 but remains outside the International Standard.
+CMake 3.28 with Ninja 1.11 is the most-deployed build-system combination for modules. build2 0.17.0 and xmake offer alternative paths with different trade-offs; xmake supports header units across all three compilers. Meson and Bazel remain experimental. vcpkg and Conan cannot distribute BMIs; the Conan team and CMake documentation both describe shipping module interface sources and compiling BMIs locally as the current practice<sup>[17]</sup><sup>[11]</sup>. No Linux distribution ships pre-compiled standard-library module artifacts.
 
-The gap between the standard and its deployment is the defining characteristic of C++ modules in 2026. The specification describes a compilation model. The ecosystem has not yet built the infrastructure to deliver it.
+Of 2,587 tracked C++ projects, 107 (4.1%) have module support<sup>[21]</sup>. The tracking data does not report a trend, so whether this figure is rising, flat, or declining is not known. No major library ecosystem - Boost, Qt, Abseil, folly, range-v3 - ships module interfaces. The ISO C++ Developer Survey 2024 found that 29.25% of respondents planned to allow modules in the next 12 months, the lowest rate among the three major C++20 features<sup>[22]</sup>.
+
+The committee has resolved 15 CWG issues on modules, adopted three papers for C++26, and added `import std;` to C++23 via [P2465R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2465r3.pdf)<sup>[2]</sup>. The ecosystem tooling work - P1689R5, P2656R3, module metadata formats - proceeds through SG15 but remains outside the International Standard.
+
+The specification is stable. Compiler support ranges from production-ready (MSVC) to experimental (GCC). The build-system, packaging, and distribution infrastructure that connects the specification to working deployments varies by platform and toolchain.
 
 ---
 
@@ -265,13 +269,13 @@ The arewemodulesyet.org project provided the aggregate library-adoption data. Wo
 
 [14] [xmake](https://xmake.io/examples/cpp/cxx-modules.html) - "C++ Modules" (xmake, 2026).
 
-[15] [Meson #5024](https://github.com/mesonbuild/meson/issues/5024) - "Support C++20 modules" (Meson, 2019).
+[15] [Meson #5024](https://github.com/mesonbuild/meson/issues/5024) - "C++20 modules are in: discussing a sane (experimental) design for Meson" (Meson, 2019).
 
-[16] [Bazel 9.0.0](https://github.com/bazelbuild/bazel/releases/tag/9.0.0) (Bazel, 2025).
+[16] [Bazel 9.0.0](https://github.com/bazelbuild/bazel/releases/tag/9.0.0) (Bazel, 2026).
 
 [17] [Conan Blog](https://blog.conan.io/2023/10/17/modules-the-packaging-story.html) - "C++ Modules: The Packaging Story" (Conan, 2023).
 
-[18] [P0581R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0581r0.pdf) - "Standard Library Modules" (Gabriel Dos Reis, 2017).
+[18] [P0581R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0581r0.pdf) - "Standard Library Modules" (Gabriel Dos Reis, Billy O'Neal, Stephan T. Lavavej, Jonathan Wakely, 2017).
 
 [19] [P2412R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2412r0.pdf) - "Minimal module support for the standard library" (Bjarne Stroustrup, 2021).
 
@@ -287,11 +291,11 @@ The arewemodulesyet.org project provided the aggregate library-adoption data. Wo
 
 [25] [P1502R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1502r1.html) - "Standard Library Header Units for C++20" (Richard Smith, 2019).
 
-[26] [P3034R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3034r1.pdf) - "Module Declarations Shouldn't Be Macros" (Michael Spencer, 2024).
+[26] [P3034R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3034r1.html) - "Module Declarations Shouldn't be Macros" (Michael Spencer, 2024).
 
-[27] [P3618R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3618r0.pdf) - "Allow attaching main to the global module" (Michael Spencer, 2025).
+[27] [P3618R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3618r0.html) - "Allow attaching main to the global module" (Michael Spencer, 2025).
 
-[28] [P3868R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3868r1.pdf) - "Allow #line before module declarations" (Michael Spencer, 2025).
+[28] [P3868R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3868r1.html) - "Allow #line before module declarations" (Michael Spencer, 2025).
 
 [29] [P1688R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1688r0.html) - "Towards a C++ Ecosystem Technical Report" (Bryce Adelstein Lelbach, 2019).
 
