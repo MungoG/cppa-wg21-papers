@@ -10,9 +10,15 @@ reply-to:
 
 ## Abstract
 
-A proposal that by its own account changes nothing is settling which safety framework governs C++.
+A proposal that its own authors say changes nothing is deciding which safety framework governs C++.
 
-[P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf)<sup>[1]</sup> defines Profiles as "a named configuration preset" over its framework of implicit contract assertions, and states that all existing implementations of C++ already conform to its proposed wording. This paper examines how that architectural claim is advancing. The method is the public record: the proposal's own text and self-reported history, the published poll trail, vendor documentation, and a disclosed full-text search of the 2025 and 2026 mailings. The findings: six self-reported polls, none of which adopts anything; a per-clause review process that was voted at Sofia and, in the proposal's own words, never ran; a no-normative-effect design that lowers the stakes of every poll taken about it; a deployment record that runs opposite to the proposed hierarchy; and no published paper that contests the recasting. The conclusion is stated plainly in Section 10: the question of which framework governs safety configuration is being settled by accretion, the published record does not support the direction being locked in, and a question of this order is worth deciding as a question.
+[P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf)<sup>[1]</sup> redefines Profiles as "a named configuration preset" layered over its own machinery of implicit contract assertions. In a P3100-first design, users select a profile name, and that name selects settings in P3100's machinery. In a Profiles-first design, the profile itself owns the guarantee and the response to a failed check. That is the architecture decision: which safety feature users configure directly, and which feature sits underneath it.
+
+This paper argues that WG21 is adopting that decision indirectly. P3100R6 states that all existing implementations of C++ already conform to its proposed wording, so each poll about it looks low-risk. Working only from P3100R6's own self-reported history, the paper reconstructs six polls - direction, vehicle, diagram, target, and review - none of which adopted the architecture. Case-by-case wording review of 77 undefined-behavior cases can turn that record into many small approvals. Each approval is too narrow to ask which architecture WG21 wants, and each one makes the architecture harder to reopen later.
+
+The public evidence points the other way. Using only public vendor documentation, the paper shows that deployed safety practice - the Core Guidelines checkers and hardened standard libraries in three implementations - takes the form of named check-sets with fixed failure responses. That is the form the Profiles model describes. It is not the implicit-contract-assertion-and-Labels machinery that P3100 proposes, and none of that machinery ships. By a disclosed and re-runnable full-text search of the 2025 and 2026 mailings through 2026-05, the paper finds no published WG21 paper that contests the redefinition. This is a statement about the public record only; it does not characterize objections that may have been raised in committee-internal discussion.
+
+The paper asks WG21 to decide the architecture question directly - whether Profiles sit above or below P3100's machinery - on the deployment evidence, rather than let case-by-case wording review settle it by default. Section 10 states the full case with the evidence attached.
 
 ---
 
@@ -42,25 +48,38 @@ This paper asks for nothing.
 
 ## 2. Introduction
 
-Two bodies of safety work are converging on one question. [P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf)<sup>[1]</sup> ("A framework for systematically addressing undefined behaviour in the C++ Standard", Doumler and Berne) enumerates 80 cases of core language undefined behavior and proposes to guard the 77 runtime-checkable cases with implicit contract assertions, configured through the Labels facility proposed in [P3400R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3400r3.pdf)<sup>[3]</sup>. The Profiles work - the framework in [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf)<sup>[4]</sup> (Dos Reis) and the individual profiles in [P3081R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3081r2.pdf)<sup>[5]</sup> (Sutter), [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[6]</sup> (Stroustrup), and others - proposes named, enforceable guarantees with the framework as the user-facing configuration mechanism. The question the two bodies of work now share: which one is the architecture, and which one is a feature inside the other's architecture?
+Two bodies of C++ safety work now compete to answer one question: how should users configure safety guarantees?
 
-P3100R6 answers that question in its Section 4.4: Profiles are "a higher-level feature building on top of" its tools, and a concrete profile is "a named configuration preset". This paper is about how that answer is advancing through the committee - not through the paper's technical content, but through its procedural posture.
+The first is [P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf)<sup>[1]</sup> ("A framework for systematically addressing undefined behaviour in the C++ Standard", Doumler and Berne). It enumerates 80 cases of core language undefined behavior and proposes to guard the 77 runtime-checkable cases with implicit contract assertions, configured through the Labels facility proposed in [P3400R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3400r3.pdf)<sup>[3]</sup>.
+
+The second is the Profiles work: the framework in [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf)<sup>[4]</sup> (Dos Reis) and the individual profiles in [P3081R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3081r2.pdf)<sup>[5]</sup> (Sutter), [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf)<sup>[6]</sup> (Stroustrup), and others. It proposes named, enforceable safety guarantees, with the Profiles framework as the feature the user configures directly.
+
+The practical question is whether users configure safety by choosing named Profiles directly, or by choosing named presets over P3100's lower-level settings.
+
+Two architectures are possible, and at the top they are mutually exclusive:
+
+- **P3100-first.** P3100's machinery is the foundation. A profile is a named preset that selects from that machinery's settings.
+- **Profiles-first.** The Profiles framework is the foundation. It owns the guarantees and the response to a failed check, and P3100's tools sit underneath it.
+
+P3100R6 answers the question in its own favor. Section 4.4 defines Profiles as "a higher-level feature building on top of" its tools, and defines a concrete profile as "a named configuration preset". This paper is not about whether that answer is technically right. It is about how that answer is becoming the committee's default: not through the paper's technical content, but through the way it moves through the committee's process.
+
+The paper measures the two architectures by deployment. In this context, the deployed model should have the stronger claim to be the user-facing safety framework. This is the committee's own standard, written into its direction paper and restated for C++ safety work specifically by three senior committee members; Section 6 quotes both sources and discloses that they are Direction Group opinions rather than adopted policy. A reader who rejects that standard will still find every fact in this paper accurate, but is not obliged to accept its conclusion. A reader who accepts the standard will find that the conclusion follows from the facts.
+
+The evidence comes from five public source classes: P3100R6 and its companion papers, Profiles papers, direction and poll records, vendor deployment documentation, and a disclosed search of the public WG21 paper record.
 
 This paper contributes five things:
 
-1. It documents the recasting from the proposal's own text (Section 3).
-2. It identifies the proposal's no-normative-effect posture and the procedural effect that posture has (Section 4).
-3. It reconstructs the proposal's advancement from its own self-reported poll history, and names the mechanism that advancement follows (Section 5).
-4. It assembles the public deployment record of the two candidate architectures (Section 6).
-5. It verifies, by a disclosed and re-runnable method, that no published WG21 paper contests the recasting, and that none outside the proposal's own companion papers engages it (Section 7).
+1. It documents what P3100R6 says about Profiles (Section 3).
+2. It explains why no-required-behavior wording changes process incentives (Section 4).
+3. It reconstructs what the polls did and did not decide (Section 5).
+4. It compares the two architectures with deployed practice (Section 6).
+5. It reports what the public WG21 paper record does not contain (Section 7).
 
-One evaluative standard is used, and it is stated now so the reader can weigh everything below against it: seniority among safety frameworks is earned by deployment. The standard is the committee's own, written in its direction paper and restated in this problem domain by three senior committee members (Section 6 quotes both). Readers who reject that standard will find the facts in this paper unchanged but the conclusion unearned; readers who accept it will find the conclusion follows.
-
-The conclusion, in brief: a first-order architecture decision is being settled through an accumulation of low-stakes polls about a paper that, by its own account, changes nothing - and the published record, measured by the committee's own standard, supports the opposite hierarchy. The full statement, with the evidence attached, is Section 10.
+Stated briefly: a fundamental architecture decision is being made through a series of low-stakes polls about a paper that, by its own account, changes nothing, and the public record, measured by the committee's own standard, supports the opposite architecture. Section 10 states the full case with the evidence attached.
 
 ---
 
-## 3. The Claim: Profiles as a Preset over the Framework
+## 3. The Claim: P3100 Makes Profiles a Preset over Its Machinery
 
 P3100R6 earns three acknowledgments before any analysis. First, its Appendix A enumerates every case of explicit core language undefined behavior in the standard - 80 cases, categorized and classified by diagnosability, and useful to every safety effort regardless of vehicle. Second, its five evaluation semantics - ignore, observe, enforce, quick-enforce, and the new assume - give one coherent vocabulary to a landscape of existing vendor mechanisms: it maps `-ftrapv`, `-fwrapv`, and the sanitizers into that model<sup>[1]</sup>. Third, its wording is engineered for backward compatibility: no existing implementation is invalidated by it. These are real achievements.
 
@@ -88,7 +107,7 @@ Together, Section 4.4, Figure 4, Section 5.6, and Section 7.2 are a seniority cl
 
 ---
 
-## 4. The Posture: A Change That Changes Nothing
+## 4. The Posture: No Required Behavior Does Not Mean No Architectural Effect
 
 Section 5.2 of P3100R6 states the proposal's conformance posture:
 
@@ -100,7 +119,7 @@ This design has a legitimate engineering rationale: it makes the wording adoptab
 
 ---
 
-## 5. The Procedure: Six Polls, None of Them Adoption
+## 5. The Procedure: Six Polls Advanced the Paper, but None Adopted the Architecture
 
 P3100R6's Section 2, "History and polls", self-reports what it presents as the proposal's complete committee trail; no independent public enumeration exists to check it against. Table 1 reproduces every poll in it, quoted from the paper, with the tallies the paper itself gives.
 
@@ -133,7 +152,7 @@ The committee has run the consensus-without-deployment pattern before. In 2014, 
 
 ---
 
-## 6. The Record: What Ships and What Does Not
+## 6. The Record: Deployed Practice Looks Like Named Profiles, Not P3100 Machinery
 
 The standard this paper measures by comes from the committee's direction paper. [P2000R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2000r5.pdf)<sup>[11]</sup> ("Direction for ISO C++", the Direction Group, February 2026): "We change the language and standard library by gradually building on previous work or by providing a better alternative to an existing feature." Either disjunct grounds the same test - a proposal is measured against the practice that exists, whether it builds on that practice or claims to better it. Three committee members stated the test in this exact domain: [P3608R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3608r0.html)<sup>[12]</sup> (Voutilainen, Wakely, Dos Reis, January 2025) observes that "the standard library hardening is existing practice, and comes with very positive field experience reports. Two out of three of our major library vendors already ship it", and closes: "Ship the stable and mature existing practice. Don't ship wild guesses." Its proposed C++26 shipping set was the general profiles framework, library hardening ([P3471R4](https://open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3471r4.html)<sup>[13]</sup>), and one profile enabling that hardening - the framework in the set, the substrate machinery out of it.
 
@@ -169,7 +188,7 @@ Measured by the direction paper's test, the question of this section is which ar
 
 ---
 
-## 7. The Silence: No Published Answer
+## 7. The Silence: No Published Paper Found by This Search Contests the Redefinition
 
 The recasting has been in print since June 2025 - first on slide 53 of [P3754R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3754r0.pdf)<sup>[30]</sup> ("Configurable Profiles - Named configuration presets"), endorsed by the Sofia diagram poll, then in P3100R4 (August 2025) and every revision since. Through the 2026-05 mailing, no published WG21 paper contests it, and none outside the proposal's own companion papers engages it.
 
@@ -187,7 +206,7 @@ The gap is structural, and Section 4 explains it. A paper with no normative effe
 
 ---
 
-## 8. The Cost: What the Recasting Forecloses
+## 8. The Cost: What Profiles Lose If They Become Presets
 
 The costs below are stated as design costs, from the published texts. Each is what the preset architecture removes from the Profiles design space if it becomes the settled premise.
 
@@ -202,19 +221,19 @@ The costs below are stated as design costs, from the published texts. Each is wh
 
 Each heading below is an objection this paper expects, stated in its strongest form; each response draws only on evidence already presented.
 
-### "Nothing normative changes, so nothing is decided."
+### "Nothing normative changes, so nothing is decided." The architecture still changes
 
 This is the proposal's own strongest defense, and Section 4 concedes its premise: the wording obligates no implementation to do anything. What it decides is architecture, not behavior. Section 7.2 states that one configuration feature must be specified in terms of the other - that is a decision, and the proposal makes it in Labels' favor. Section 5.6 already executed a piece of it, withdrawing an API that another paper's published wording depends on. And the proposed wording amends [defns.undefined] and adds [basic.contract.implicit], so that every case of undefined behavior definitionally carries an implicit precondition assertion that it does not occur<sup>[1]</sup>. Definitions are the part of the standard every later paper must write against. A change to what undefined behavior *is* does not need runtime effects to have consequences.
 
-### "Direction polls are just encouragement; the real decision comes later."
+### "Direction polls are just encouragement; the real decision comes later." The defaults arrive earlier
 
 The real decision arrives at a room whose defaults the direction polls have set. By the time an adoption poll exists, the recasting will have six recorded consensus results and 77 case-by-case approvals behind it, and the burden of proof will sit on whoever contests the accumulated record. The Sofia diagram poll illustrates the conversion: a poll about the basis of a stalled, editor-curated white paper now functions, in the proposal's history section, as EWG endorsement of the strategy behind an IS-track proposal. Encouragement compounds. That is what Section 5 documents.
 
-### "The framework and Profiles are complementary; the layering is a detail."
+### "The framework and Profiles are complementary; the layering is a detail." The layering decides configuration ownership
 
 Complementary on whose terms? Section 7.2 of P3100R6 states the terms question directly and answers it: one feature must be specified in terms of the other, and the paper's architecture places Labels underneath. P3081R1 took the complementary path in print - it adopted the substrate's API into its own wording - and Section 5.6 of P3100R6 then withdrew that API. Complementarity without settled configuration ownership has already produced one stranded dependency. The layering is not a detail; it is the decision.
 
-### "This analysis is itself procedural alarmism."
+### "This analysis is itself procedural alarmism." The sources are public and checkable
 
 Every input to this paper is the proposal's own published text, the public mailings, and public vendor documentation, and the one absence claim ships with a re-runnable method (Section 7). The proposal's technical achievements are recorded in Section 3. The reader who disputes the conclusion can dispute it against the same sources.
 
@@ -222,15 +241,21 @@ Every input to this paper is the proposal's own published text, the public maili
 
 ## 10. Conclusion
 
-P3100R6 recasts Profiles as "a named configuration preset" over a substrate of implicit contract assertions (its Section 4.4 and Figure 4). Its own text states that all existing implementations of C++ already conform to its proposed wording (Section 5.2). Stated plainly: that combination is a decision procedure. A paper that by its own account changes nothing has accumulated six polls - direction, vehicle, diagram, target, and review, never adoption - and case-by-case review will now convert that direction into 77 small consensus determinations, individually easy and collectively expensive to reverse. What the procedure settles is which framework is senior.
+This paper's case reduces to five points.
 
-The published record, measured by the committee's own existing-practice standard, runs the other way. Neither specification is deployed, and the deployed practice sides with one of them. Hardened standard libraries in three implementations and a decade of Core Guidelines checkers ship as named check-sets with vendor-defined failure responses - the shape the Profiles model describes - with production deployment documented by Apple and Google. The substrate's distinctive machinery has no such record: its base facility has one opt-in compiler implementation, released this April under an experimental label; the framework built on top of it claims no implementation experience in its own text; the fifth evaluation semantic it requires is in no shipping compiler's contracts support; and the Labels facility it routes configuration through is described by the proposal itself in the future tense.
+**1. P3100R6 makes an architectural claim about Profiles.** It defines Profiles as "a named configuration preset" that sits on top of its own machinery of implicit contract assertions (Section 4.4 and Figure 4). In that design, P3100's machinery is the feature users configure indirectly, and a profile is a name for selected P3100 settings.
 
-And the recasting has advanced without a single published paper contesting it. The interaction question was named as open in January 2025; the proposal answered it in June 2025; through the 2026-05 mailing, nothing in print has answered back. The no-normative-effect posture gave the room no moment that demanded an answer - that is the mechanism, and it is still running.
+**2. That claim is advancing through direction and review polls, not through a direct architecture decision.** P3100R6 states that all existing implementations of C++ already conform to its proposed wording (Section 5.2), so each poll about it looks low-risk. The proposal has accumulated six recorded consensus results - direction, vehicle, diagram, target, and review, never adoption (Section 5). The Croydon poll now routes it into case-by-case wording review of 77 undefined-behavior cases. Each case is a small, reasonable question; none of them is the architecture question; and each approval makes the architecture harder to reverse.
 
-This paper's contributions, restated with their results: the recasting is documented from the proposal's own text (Section 3); the no-op posture and its procedural effect are named (Section 4); the ratchet is reconstructed entirely from the proposal's self-reported history (Section 5); the deployment record of the two architectures points opposite to the proposed hierarchy (Section 6); and the absence of any published contest is verified by a disclosed method (Section 7).
+**3. The public deployment evidence points the other way.** Neither specification is deployed, but the practice that is deployed matches one of the two. A decade of Core Guidelines checkers and hardened standard libraries in three implementations ship as named check-sets with vendor-defined failure responses. That is the form the Profiles model describes, with production use documented by Apple and Google (Section 6).
 
-Seniority among safety frameworks is earned by deployment. On the record assembled here, the architecture the Profiles model describes is the one the deployed practice already embodies, and the substrate's machinery has not yet begun to earn it. Which framework governs safety configuration in C++ is a first-order design question with a decade of field evidence bearing on it. It is worth deciding as a question, on that evidence, rather than inheriting as the accumulated side effect of polls about a paper that changes nothing.
+P3100's distinctive machinery has no such record. Its base facility, the Contracts feature of P2900R14, has one opt-in compiler implementation, GCC 16.1, released in April 2026 under an experimental label. The framework built on top of it claims no implementation experience in its own text. The fifth evaluation semantic it requires (assume) is in no shipping compiler's contracts support. The Labels facility it routes configuration through is described by the proposal itself in the future tense. One qualification belongs here: C++26 already specifies standard library hardening in contract terms (P3471R4), so the specification has assigned hardening's future to P3100's machinery. What the field has deployed so far is the named-guarantee form, not that machinery.
+
+**4. No published paper contests the redefinition.** The interaction question was named as open in January 2025 (P3608R0); the proposal answered it in June 2025; through the 2026-05 mailing, and by the disclosed, re-runnable search method of Section 7, no published WG21 paper contests the answer. This is a claim about the public record only. It does not speak to objections that may have been raised in committee-internal discussion, which this paper does not cite. Section 4 explains the mechanism behind the public silence: a paper with no normative effect creates no moment - no wording to object to, no forwarding poll, no deadline - that demands a published answer.
+
+**5. Therefore WG21 should decide the architecture question explicitly.** Whether Profiles sit above P3100's machinery or below it is a fundamental design question, with a decade of field evidence bearing on it. WG21 should decide it directly, on that evidence, before case-by-case wording review converts it into 77 small approvals that are individually easy and collectively expensive to reverse.
+
+The decision should be direct: should Profiles be the user-facing safety framework, with P3100's tools underneath it, or should Profiles be presets over P3100's machinery?
 
 ---
 
