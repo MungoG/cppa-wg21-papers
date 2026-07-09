@@ -62,6 +62,8 @@ P3100R6 answers the question in its own favor. Section 4.4 defines Profiles as "
 
 P3100R6 contains two things that can be evaluated separately. The first is wording: 77 runtime-checkable cases of undefined behavior, each with a proposed wording transformation. The second is an architecture claim: that Profiles are a higher-level feature building on top of P3100's machinery (Section 4.4, Figure 4, Section 7.2). The wording transformations do not depend on this claim; each case stands on its own technical merits regardless of whether Profiles sit above or below P3100's machinery. The claim depends on the wording and cannot advance without it. This paper calls the architecture claim a rider - a separable claim that travels with the wording review and borrows credibility from each approval, but that the review never directly examines or polls.
 
+Cultural note for non-US readers: *rider* is a US legislative term for a provision attached to a larger bill so that it passes without a vote of its own. The word carries a mildly pejorative connotation of something enacted by attachment rather than direct scrutiny.
+
 The evidence comes from five kinds of public sources: P3100R6 and its companion papers, Profiles papers, direction and poll records, vendor deployment documentation, and a disclosed search of the public WG21 paper record.
 
 This paper contributes five things:
