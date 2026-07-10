@@ -13,7 +13,7 @@ reply-to:
 
 This paper asks EWG to sever an unreviewed architecture claim from the wording it rides on, so that the wording proceeds and the claim gets its own paper and poll.
 
-A proposal for addressing undefined behavior in the C++ standard bundles two things that can be evaluated separately: wording transformations for 77 runtime-checkable cases of UB, and a claim that Profiles are a higher-level feature building on top of the proposal's machinery. The wording is headed into case-by-case review; the architecture claim rides along without its own ballot. Working only from the proposal's own history and public vendor documentation, this paper reconstructs six polls - about direction, about process, about a diagram, never about the architecture. It shows that the layering question is substantive, contested, and grounded in a decade of field evidence on both sides. No published WG21 paper contests the characterization; the paper's search method is in Section 7 and anyone can re-run it. Section 10 proposes three polls: a scope ruling that wording approvals do not adopt the layering, a process commitment that the layering requires a dedicated paper and explicit poll, and an intent statement that EWG will weigh deployment experience when that poll is taken.
+A proposal for addressing undefined behavior in the C++ standard bundles two things that can be evaluated separately: wording transformations for 77 runtime-checkable cases of UB, and a claim that Profiles are a higher-level feature building on top of the proposal's machinery. The wording is headed into case-by-case review; the architecture claim rides along without its own ballot. Without explicit input from EWG, approval of those review outcomes may close the evolution path for Profiles. Working only from the proposal's own history and public vendor documentation, this paper reconstructs six polls - about direction, about process, about a diagram, never about the architecture. It shows that the layering question is substantive, contested, and grounded in a decade of field evidence on both sides. No published WG21 paper contests the characterization; the paper's search method is in Section 7 and anyone can re-run it. Section 10 proposes three polls: a scope ruling that wording approvals do not adopt the layering, a process commitment that the layering requires a dedicated paper and explicit poll, and an intent statement that EWG will weigh deployment experience when that poll is taken.
 
 ---
 
@@ -74,7 +74,7 @@ This paper contributes five things:
 4. It shows that the layering question is substantive, contested, and grounded in a decade of field evidence (Section 6).
 5. It reports what the public WG21 paper record does not contain (Section 7).
 
-P3100 bundles reviewable wording with an unreviewed architecture claim. This paper asks EWG to sever them - let the wording proceed on its merits, and require the architecture claim to be decided by its own paper and poll.
+P3100 bundles reviewable wording with an unreviewed architecture claim. Without explicit input from EWG, approving the outcomes of the case-by-case review may close the evolution path for Profiles. This paper asks EWG to sever them - let the wording proceed on its merits, and require the architecture claim to be decided by its own paper and poll.
 
 ---
 
