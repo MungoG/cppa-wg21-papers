@@ -172,6 +172,10 @@ The absence of a published response is structural. A paper with no normative eff
 
 Each heading below is an objection this paper expects, stated in its strongest form; each response draws only on evidence already presented.
 
+### "These polls are tautological; wording review obviously covers only its own wording." Then affirming it costs nothing
+
+If the separation were self-evident, Poll 1 would cost nothing and merely record what everyone already believes; it is not, because Section 3 shows accumulated wording approvals settling the Section 4.4 layering without a ballot, and interrupting that default now is cheap where reversing it later has cost the committee years.
+
 ### "Nothing normative changes, so nothing is decided." The architecture still changes
 
 This is the proposal's own strongest defense, and Section 3 concedes its premise: the wording obligates no implementation to do anything. What it decides is architecture, not behavior. P3100R6's Section 7.2 says that if both features are kept, one must be specified in terms of the other, and the proposal makes that choice in Labels' favor. Its Section 5.6 already executed a piece of it, withdrawing an API that another paper's published wording depends on. And the proposed wording amends [defns.undefined] and adds [basic.contract.implicit], so that every case of undefined behavior definitionally carries an implicit precondition assertion that it does not occur<sup>[2]</sup>. Definitions are the part of the standard every later paper must write against. A change to what undefined behavior *is* does not need runtime effects to have consequences.
