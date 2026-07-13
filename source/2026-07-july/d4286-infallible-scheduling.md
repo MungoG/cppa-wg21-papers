@@ -1,6 +1,6 @@
 ---
 title: "The Return of Networking TS Executors in P3552"
-document: P4286R1
+document: P4286R0
 date: 2026-07-01
 intent: info
 audience: SG1, LEWG
@@ -17,13 +17,6 @@ In 2021 the committee set aside the Networking TS; one stated deficiency was tha
 ---
 
 ## Revision History
-
-### R1: July 2026
-
-- Stated the validation thesis in the abstract and disclosure.
-- Removed tangential material in Section 2.
-- Added chronological note in Section 3.
-- Tone adjustments.
 
 ### R0: July 2026 (post-Brno mailing)
 
