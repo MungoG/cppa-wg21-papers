@@ -1,6 +1,6 @@
 # WG21 Paper Style Rules - Ambient Guardrails
 
-Rules that must fire during writing, not just during audit. For mechanical verification (citations, formatting, structure, prose hygiene), invoke the Auditor: `situation-room/tools/auditor.md`. For citation and reference verification, run `cite/cite.py --fix`. Structural and argumentation rules (the delegate's three passes, funnels, evidence discipline) live in `../how-to-write-papers.md` - load it alongside this file when drafting or revising a paper.
+Rules that must fire during writing, not just during audit. For mechanical verification (citations, formatting, structure, prose hygiene), invoke the Auditor: `situation-room/tools/auditor.md`. For citation and reference verification, run `cite/cite.py --fix`.
 
 ## Formatting
 
