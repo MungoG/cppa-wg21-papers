@@ -3,9 +3,10 @@ title: "Hasta la Vista, Undefined Behavior: Why Implicit Contract Violations Sho
 document: D4310R0
 date: 2026-07-13
 intent: info
-audience: EWG, SG21
+audience: EWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Ville Voutilainen <ville.voutilainen@gmail.com>"
 ---
 
 <!-- P3100R8 source: p3100r8.md -->
@@ -14,7 +15,7 @@ reply-to:
 
 For a detected core-language violation, the terminating response - invoke the handler, then terminate - is the default the evidence supports.
 
-The proposal to treat runtime-checkable core-language undefined behaviour as checked assertions that invoke a violation handler raises the question of whether, after the handler runs, execution continues past the violation or the program terminates. Separating the handler from the continuation past the violation isolates the only contested part, since the handler, a hook that logs the violation, is preserved by every response, so a terminating response loses no telemetry. No implementation yet answers the question, so the comparison reasons from deployed analogues, where every hardened implementation surveyed terminates or traps and none continues by default, and Bloomberg's own log-and-continue facility is an adoption aid confined to library-level checks rather than core-language undefined behaviour. Continuing also carries an exception-handling cost the reference implementers decline to incur, runs against the decision C++26 already adopted for standard-library hardening, and is the execution on undefined or corrupted state that the security literature treats as the more dangerous failure. The terminating response adds no new semantic, reusing the C++26 enforce semantic and the existing termination rule, and it leaves the meaning of noexcept unchanged. This default holds across both classes of check, while a narrower finding, that a continuing semantic should not be a portable guarantee every implementation carries, is scoped only to the class whose continuation is undefined. For the class that continues into a defined result, such as a signed overflow specified to wrap, the continuation question is left open. If a continuing response is retained, the deployed precedents give it one shape, an opt-in and non-portable facility bounded to an adoption period rather than a default. Because the finding concerns the response itself, it holds whether the Contracts facility or the Profiles framework owns the configuration of the checks, and the paper places the record for the committee's use without a request.
+The proposal to treat runtime-checkable core-language undefined behaviour as checked assertions that invoke a violation handler raises the question of whether, after the handler runs, execution continues past the violation or the program terminates. Separating the handler from the continuation past the violation isolates the only contested part, since the handler, a hook that logs the violation, is preserved by every response, so a terminating response loses no telemetry. No implementation yet answers the question, so the comparison reasons from deployed analogues: every hardened implementation surveyed makes termination or trapping its production default, and the continue modes that ship, such as UBSan's recover mode and Bloomberg's own log-and-continue facility, are documented as testing or adoption aids, the latter confined to library-level checks rather than to core-language undefined behaviour. Continuing past a state the language leaves undefined runs against the decision C++26 already adopted for standard-library hardening, and is the execution on undefined or corrupted state that the security literature treats as the more dangerous failure. Where the continuation is a handler whose exception escapes the checked expression, it also forces exception-handling machinery around every checked operation, a cost the reference implementers decline to incur and one that fall-through continuation does not carry. The terminating response adds no new semantic, reusing the C++26 enforce semantic and the existing termination rule, and it leaves the meaning of noexcept unchanged. This default holds across both classes of check, while a narrower finding, that a continuing semantic should not be a portable guarantee every implementation carries, is scoped only to the class whose continuation is undefined. For the class that continues into a defined result, such as a signed overflow specified to wrap, the continuation question is left open. The analysis does not withdraw the option a power user may need: a continuing response remains available, and the deployed precedents give it a defensible shape, an explicit, non-portable opt-in bounded to an adoption period rather than a default. Because the finding concerns the response itself, it holds whether the Contracts facility or the Profiles framework owns the configuration of the checks, and the paper places the record for the committee's use without a request.
 
 ---
 
@@ -36,7 +37,7 @@ The intent of this paper is `info`. It argues a position, that a terminating res
 
 This paper changes nothing in ratified C++26. C++26 Contracts (P2900R14<sup>[1]</sup>) are treated as fixed: the four evaluation semantics, the single violation handler, and the deliberate allowance that a handler may throw from an explicit contract assertion all stand unchanged. The question here belongs to the open C++29 work on implicit assertions (P3100R8<sup>[2]</sup>), and the paper addresses only that.
 
-One limitation is disclosed up front. The comparison rests on a deployment survey and on the class of core-language checks whose continuation is undefined; it concedes in Section 5 the narrower class where continuation is defined. And no compiler yet implements implicit contract assertions with any semantic, so the paper reasons from deployed analogues, not from a conforming implementation of the feature itself. As of the July 2026 mailing, P3100R8<sup>[2]</sup> reports no implementation or deployment experience with the proposed implicit assertions, and the GCC, Clang, and MSVC C++26 status pages list no implementation of them.
+One limitation is disclosed up front. The comparison rests on a deployment survey and on the class of core-language checks whose continuation is undefined; it concedes in Section 6 the narrower class where continuation is defined. And no compiler yet implements implicit contract assertions with any semantic, so the paper reasons from deployed analogues, not from a conforming implementation of the feature itself. As of the July 2026 mailing, P3100R8<sup>[2]</sup> reports no implementation or deployment experience with the proposed implicit assertions, and the GCC, Clang, and MSVC C++26 status pages list no implementation of them.
 
 This paper is one of a set in the July 2026 mailing on runtime-checking configuration. P4306R0<sup>[3]</sup> compares the configuration-ownership models on the public record, and P4297R0<sup>[4]</sup> asks EWG to decide the ownership relationship by an explicit poll. This paper is scoped to the response question and cross-references those rather than repeating them.
 
@@ -46,7 +47,41 @@ This paper asks for nothing.
 
 ---
 
-## 2. Two questions inside the one word 'observe'
+## 2. Introduction
+
+C++26 Contracts (P2900R14<sup>[1]</sup>) define the evaluation semantics and the single violation handler this paper takes as fixed. P3100R8<sup>[2]</sup> proposes to extend that machinery to the runtime-checkable cases of core-language undefined behaviour, and P3878R1, adopted into C++26, already settled the parallel question for standard-library hardening. Two companions cover the neighbouring ground: P4306R0<sup>[3]</sup> compares the configuration-ownership models, and P4297R0<sup>[4]</sup> asks EWG to decide the ownership relationship. The question none of them resolves is the one taken up here: after the violation handler runs on a detected core-language violation, does execution continue past the violation or does the program terminate?
+
+The contributions are:
+
+1. A separation of the `observe` semantic into two independent parts, the handler invocation (the hook) and the continue-past-violation response (the continuation), showing that the hook and every telemetry need it serves survive a terminating response unchanged (Section 3).
+2. A survey of deployed hardened implementations, finding that every one terminates or traps on a detected core-language violation and none makes continuation its production default (Section 4).
+3. Two further findings against a continuing default: it carries an exception-handling cost the reference implementers decline to incur, and it runs against P3878R1, the decision C++26 already adopted for the adjacent case (Section 5).
+4. A terminating response expressed by reusing the C++26 `enforce` semantic and the existing termination rule, adding no new semantic and leaving the meaning of `noexcept` unchanged (Section 7).
+5. The shape a continuing response takes if the committee retains one: an opt-in, non-portable facility bounded to an adoption period, not a default (Section 8).
+6. A demonstration that the finding is independent of the configuration question, holding whether the Contracts facility or the Profiles framework owns the selection (Section 10).
+
+The analysis rests on three assumptions, each stated where it is used and gathered here for the reader who reads only the surface:
+
+- No compiler yet implements implicit contract assertions with any semantic, so the comparison reasons from deployed analogues rather than from a conforming implementation.
+- The strong finding covers the class of core-language checks whose continuation is undefined; the class whose continuation is into a defined result (Section 6) is treated separately, and the continuation question there is left open.
+- C++26 as ratified is fixed; the question belongs to the open C++29 work on implicit assertions.
+
+The recurring terms carry one meaning throughout:
+
+| Term | Meaning |
+|---|---|
+| hook | The handler invocation: the contract-violation handler is called and logs the violation. Preserved by every response discussed here. |
+| continuation | The continue-past-violation response: after the handler returns, execution proceeds past the violation. |
+| `ignore` | Evaluation semantic under which the assertion has no effect. |
+| `observe` | Evaluation semantic under which the handler is invoked and, on a normal return, execution continues. |
+| `enforce` | Evaluation semantic under which the handler is invoked and the program is then contract-terminated. |
+| `quick-enforce` | Evaluation semantic under which the program is contract-terminated without invoking the handler. |
+| `assume` | The fifth semantic P3100R8 adds, preserving today's undefined behaviour as an escape hatch. |
+| terminating response | Invoke the handler for its telemetry, then terminate: the `enforce` semantic together with the rule that a handler throw at a non-throwing boundary terminates. |
+
+---
+
+## 3. Two questions inside the one word 'observe'
 
 This section separates the parts of the `observe` semantic, because the stated semantic treats as one decision what is really two. A reader who knows the C++26 Contracts model can skip to the last paragraph.
 
@@ -64,11 +99,11 @@ The terminating response preserves the hook. Under `enforce`, the handler is inv
 
 ---
 
-## 3. What ships, terminates
+## 4. What ships, terminates
 
 This section reports what deployed hardening does on a detected core-language violation. The pattern is uniform.
 
-Table 1. Response to a detected violation in deployed hardened implementations. Every entry terminates or traps; none continues by default.
+Table 1. Response to a detected violation in deployed hardened implementations, in their production configurations. Every entry terminates or traps; none makes continuation its production default.
 
 | Implementation | Response on violation | Source |
 |---|---|---|
@@ -82,7 +117,7 @@ Table 1. Response to a detected violation in deployed hardened implementations. 
 | UBSan (production guidance) | trap (`-fsanitize-trap`); recover is "meant for testing purposes" | <sup>[11]</sup> |
 | Abseil `CHECK`, Folly `XCHECK`, WebKit `RELEASE_ASSERT` | terminate | <sup>[12]</sup> |
 
-The survey covers standard-library hardening modes, production sanitizer configurations, and critical-assertion facilities - the implementations that check for core-language violations in production. It does not cover availability-first domains that might rationally choose a different response. libc++ `observe` and Bloomberg `bsls_review` also ship a non-default continue mode documented as adoption-only; Table 1 records the default response, and those modes are examined in Section 7.
+The survey covers standard-library hardening modes, production sanitizer configurations, and critical-assertion facilities - the implementations that check for core-language violations in production. It does not cover availability-first domains that might rationally choose a different response. libc++ `observe` and Bloomberg `bsls_review` also ship a non-default continue mode documented as adoption-only; Table 1 records the default response, and those modes are examined in Section 8.
 
 Every surveyed implementation that detected a core-language violation and chose a response chose termination. Zero chose continuation as a production default. The absence of a conforming implementation of implicit contract assertions is symmetrical - no compiler has one with any semantic. The deployment analogues are not symmetrical: the terminating response has nine deployed analogues that selected it; the continuing response has none as a production default. The precedent is asymmetrical.
 
@@ -94,13 +129,13 @@ The deployment record therefore establishes one fact: on a detected core-languag
 
 ---
 
-## 4. The cost, and the rule it already breaks
+## 5. The cost, and the rule it already breaks
 
 This section adds two findings to the deployment record: the continuation carries a cost the reference implementers decline to incur, and it runs against a decision the committee has already adopted for C++26.
 
 The cost of continuing is not a matter of a branch. Turning a core-language operation into a checked operation that can invoke a handler and continue requires exception-handling machinery around the check: because whether the program's handler is `noexcept` is a link-time decision, P2900R14<sup>[1]</sup> Section 3.6.6 notes that "the compiler ... has to generate the correct instructions for exception handling around every contract assertion." The implementers who ship hardening declined this. P3191R0<sup>[15]</sup>, from the libc++ team, sets the production requirement that a contract violation "should generate no code at all beyond the equivalent of a branch and a `__builtin_trap()`," with "no exception-handling code being generated around contract predicates," and describes the handler-and-object path as "a lot of code and data being generated for a single assertion." The committee's own response to this cost was to add the `quick-enforce` semantic, which skips the handler entirely, recorded in P3198R0<sup>[16]</sup>. The isolated cost of the continuation over a trap has not been published as a measured figure; what the record shows is that the reference implementers decline the continuation path in production and the committee added a semantic to avoid its overhead.
 
-The committee has also already decided this question for the adjacent case. P3878R1<sup>[17]</sup>, adopted into C++26, established that a standard-library hardened precondition may not be evaluated with a non-terminating semantic, on the reasoning that continuing past such a check "can result in violations of hardened preconditions being undefined behaviour, rather than guaranteed to be diagnosed, which defeats the purpose of using a hardened implementation." For the core-language checks whose continuation is likewise undefined, a detected null dereference or out-of-bounds access, the same reasoning applies one level down; it does not reach the class in Section 5, where continuation is into a defined result. One disclosure belongs here: the lead author of P3878R1 is a co-author of this paper's companions, though the decision was the whole committee's, and the argument stands on the deployment record and the security literature that follow even if the precedent is set aside.
+The committee has also already decided this question for the adjacent case. P3878R1<sup>[17]</sup>, adopted into C++26, established that a standard-library hardened precondition may not be evaluated with a non-terminating semantic, on the reasoning that continuing past such a check "can result in violations of hardened preconditions being undefined behaviour, rather than guaranteed to be diagnosed, which defeats the purpose of using a hardened implementation." For the core-language checks whose continuation is likewise undefined, a detected null dereference or out-of-bounds access, the same reasoning applies one level down; it does not reach the class in Section 6, where continuation is into a defined result. One disclosure belongs here: the lead author of P3878R1 is a co-author of this paper's companions, though the decision was the whole committee's, and the argument stands on the deployment record and the security literature that follow even if the precedent is set aside.
 
 On this premise, the present analysis and the Contracts proposal agree, though they reach a different conclusion about the default. Doumler and Berne write in P3097R2<sup>[18]</sup> that once a program
 
@@ -108,23 +143,23 @@ On this premise, the present analysis and the Contracts proposal agree, though t
 
 They keep the `observe` semantic available nonetheless; the same hazard is the reason a corrupted-state continuation should not be the default. The agreement is on the danger; the resolution is where the two diverge.
 
-The security literature is consistent with it. Microsoft's fail-fast documentation states that on a detected corruption "no exception handlers are invoked because the program is expected to be in a corrupted state."<sup>[19]</sup> The glibc maintainers removed even the backtrace from the heap-corruption path, on the reasoning that "doing more work at this point risks ... enabling code execution exploits."<sup>[20]</sup> The CERT C++ secure-coding rule ERR56-CPP states that "a violated invariant leaves the program in a state where graceful continued execution is likely to introduce security vulnerabilities."<sup>[21]</sup> Work on exception unwinding as an exploit surface (CHOP, NDSS 2023<sup>[22]</sup>) shows that running the unwinder over corrupted state can defeat shadow stacks. No published incident names a C++ contract-violation handler, because C++26 Contracts are not yet deployed; the evidence here is transfer from mechanisms that faced the identical choice and chose to terminate. This security argument is strongest where continuation runs on corrupted or undefined state; for the defined-replacement class of Section 5, it does not apply. For the checks whose continuation is undefined but whose violation is not memory corruption, the transfer is from the principle rather than from the mechanism: the state is undefined, and executing further on undefined state is what the fail-stop doctrine treats as the hazard.
+The security literature is consistent with it. Microsoft's fail-fast documentation states that on a detected corruption "no exception handlers are invoked because the program is expected to be in a corrupted state."<sup>[19]</sup> The glibc maintainers removed even the backtrace from the heap-corruption path, on the reasoning that "doing more work at this point risks ... enabling code execution exploits."<sup>[20]</sup> The CERT C++ secure-coding rule ERR56-CPP states that "a violated invariant leaves the program in a state where graceful continued execution is likely to introduce security vulnerabilities."<sup>[21]</sup> Work on exception unwinding as an exploit surface (CHOP, NDSS 2023<sup>[22]</sup>) shows that running the unwinder over corrupted state can defeat shadow stacks. No published incident names a C++ contract-violation handler, because C++26 Contracts are not yet deployed; the evidence here is transfer from mechanisms that faced the identical choice and chose to terminate. This security argument is strongest where continuation runs on corrupted or undefined state; for the defined-replacement class of Section 6, it does not apply. For the checks whose continuation is undefined but whose violation is not memory corruption, the transfer is from the principle rather than from the mechanism: the state is undefined, and executing further on undefined state is what the fail-stop doctrine treats as the hazard.
 
 ---
 
-## 5. Where continuing is defined
+## 6. Where continuing is defined
 
-One class of core-language checks continues into defined behaviour, and the objection in Section 4 does not reach it.
+One class of core-language checks continues into defined behaviour, and the objection in Section 5 does not reach it.
 
-Not every core-language check continues into undefined behaviour. P3100R8<sup>[2]</sup> gives a defined replacement to cases such as signed-integer overflow, which can be specified to produce a wrapped result, so that continuing after the check yields a defined value rather than undefined behaviour. For that class, the objection in Section 4 does not apply, because continuation is into defined behaviour, and `observe` there is coherent.
+Not every core-language check continues into undefined behaviour. P3100R8<sup>[2]</sup> gives a defined replacement to cases such as signed-integer overflow, which can be specified to produce a wrapped result, so that continuing after the check yields a defined value rather than undefined behaviour. For that class, the objection in Section 5 does not apply, because continuation is into defined behaviour, and `observe` there is coherent.
 
 What the concession does not supply is a deployed user. The field's response to signed overflow is either `-fwrapv`, which defines wraparound with no handler and no log, or `-ftrapv`, which terminates. P3100R8<sup>[2]</sup> Section 5.4 maps the first to the `ignore` semantic and the second to `quick-enforce`; neither is the log-and-continue that `observe` would add. So even in the class where continuation is defined, the deployed responses are silent replacement and termination, and no surveyed deployment logs and continues by default. The question the evidence leaves standing is who requires that response; no surveyed deployment answers it. Where a deployer selects a continuing semantic for this defined class, that is a defensible choice; the finding here is limited to the class whose continuation is undefined.
 
-A second constraint applies to the defined-replacement class regardless of the safety objection: the cost. If any implicit assertion can be evaluated with a continuing semantic, the exception-handling machinery the reference implementers decline in Section 4 must be generated around every checked operation, because whether the deployer selects `observe` or a terminating semantic is a build-time or link-time decision unknown to the compiler at code-generation time. This makes the cost a property of the specification rather than of any deployer's choice: an implementation that offers `observe` must emit the machinery whether or not a given build selects it. The cost is also class-agnostic: it applies to a signed-overflow check that continues into a defined wrapped result just as it applies to an out-of-bounds check that continues into undefined behaviour. The implementers' objection in P3191R0<sup>[15]</sup> - "no exception-handling code being generated around contract predicates" - does not distinguish between the two classes, and the generated code cannot.
+A second constraint applies to the defined-replacement class regardless of the safety objection: the cost. If any implicit assertion can be evaluated with a continuing semantic, the exception-handling machinery the reference implementers decline in Section 5 must be generated around every checked operation, because whether the deployer selects `observe` or a terminating semantic is a build-time or link-time decision unknown to the compiler at code-generation time. This makes the cost a property of the specification rather than of any deployer's choice: an implementation that offers `observe` must emit the machinery whether or not a given build selects it. The cost is also class-agnostic: it applies to a signed-overflow check that continues into a defined wrapped result just as it applies to an out-of-bounds check that continues into undefined behaviour. The implementers' objection in P3191R0<sup>[15]</sup> - "no exception-handling code being generated around contract predicates" - does not distinguish between the two classes, and the generated code cannot.
 
 ---
 
-## 6. A terminating response
+## 7. A terminating response
 
 This section states the response the evidence supports and shows it in code, reusing the C++26 semantics without adding to them. It separates two claims the evidence supports to different degrees. The first is the default: a terminating response, invoke the handler then terminate, is what the deployment record and the committee's own recommendations support. The second is narrower, and the evidence supports it less strongly: whether a continuing response should remain available as a portable guarantee for the class of checks whose continuation is undefined. The default holds whichever way the second question is resolved.
 
@@ -138,9 +173,9 @@ The enforce default supported here is the one these authors already recommend. T
 
 > use the evaluation semantic `quick_enforce` or `enforce`, and emit a diagnostic if the evaluation semantic used in execution may be `observe` or `ignore`.
 
-Both recommendations state the terminating response as the default, and the default claim rests on the deployment record of Section 3 independently of the narrower question below.
+Both recommendations state the terminating response as the default, and the default claim rests on the deployment record of Section 4 independently of the narrower question below.
 
-The narrower claim concerns availability, not the default. Excluding the continuing semantic, removing it as a portable guarantee every implementation must carry, rests on the implementer evidence, the cost, and the committee's adopted decision for the adjacent case, and reaches only the class whose continuation is undefined. For the defined-replacement class of Section 5, where continuation yields a specified result, the question is open and the committee may reach a different answer. If a continuing response is retained, its shape is the opt-in, non-portable facility of Section 7, not a default.
+The narrower claim concerns availability, not the default. Excluding the continuing semantic, removing it as a portable guarantee every implementation must carry, rests on the implementer evidence, the cost, and the committee's adopted decision for the adjacent case, and reaches only the class whose continuation is undefined. For the defined-replacement class of Section 6, where continuation yields a specified result, the question is open and the committee may reach a different answer. If a continuing response is retained, its shape is the opt-in, non-portable facility of Section 8, not a default.
 
 Consider a detected overflow inside a function marked non-throwing, adapted from P3100R8<sup>[2]</sup> Section 5.5:
 
@@ -156,31 +191,31 @@ The `noexcept` operator has been part of the function type since P0012R1<sup>[28
 
 There is a second reason to contain the throw, visible without leaving the standard library. Turning a detected violation into a thrown exception unwinds the stack through code that did not anticipate a throw at that point, running destructors on objects whose invariants are momentarily broken, so a frequently benign overflow becomes a double-free or a half-destroyed object. The standard library already does not throw at these moments: `std::vector` reallocation uses `move_if_noexcept` so that a throwing move cannot corrupt the container mid-operation. Bloomberg's test infrastructure records the same collision from the other side: a commit notes that when a destructor "becomes implicitly `noexcept`, so throwing the test exception type out of the assert handler triggers a call to `terminate`," and the workaround is a non-throwing, terminating handler.<sup>[30]</sup> The terminating response is the one that does not manufacture this defect.
 
-The underlying problem is general. The exception-safety model of C++ rests on knowing which operations can throw; code is written to maintain its invariants across those operations and only those. A throwing implicit handler turns every core-language expression into a potential throw point, and no existing code was written to be exception-safe at those points. The result is not a recoverable exception but an unwinding through code that cannot maintain its invariants along the way, which is the condition the CHOP work<sup>[22]</sup> shows turns stack unwinding into a security vulnerability. Writing exception-safe code is possible when the set of throwing operations is known; it becomes effectively impossible when any expression can throw.
+The underlying problem is general, and it runs in four linked steps. First, the exception-safety model of C++ rests on knowing which operations can throw; code is written to maintain its invariants across those operations and only those. Second, a throwing implicit handler turns every core-language expression into a potential throw point, and no existing code was written to be exception-safe at those points. Third, the result is not a recoverable exception but an unwinding through code that cannot maintain its invariants along the way. Fourth, that unwinding over broken invariants is the condition the CHOP work<sup>[22]</sup> shows turns stack unwinding into a security vulnerability. The chain resolves the same way each time: writing exception-safe code is possible when the set of throwing operations is known, and effectively impossible when any expression can throw.
 
 The terminating response leaves build-time configurability intact. Under P3100R8's proposal, a deployer still selects among `enforce` (invoke the handler, then terminate), `quick-enforce` (trap without the handler), and `ignore` (no check) for an implicit core-language assertion, and keeps full control of the handler body. The same three choices remain under a Profiles-first architecture, where a profile selects the evaluation semantic for the checks it governs. What the finding narrows is the menu for one class of assertion, not the principle that the evaluation semantic is a build-time choice.
 
-The bifurcation this draws, implicit core-language assertions terminate while explicit contracts may still throw, is deliberate and defensible. It is the same line P3878R1<sup>[17]</sup> drew for hardening, and it rests on the difference the scope in Section 2 named: an author-written precondition can encode a recoverable condition, whereas a detected core-language violation means the program is already in a state the language does not define. This is also the answer to the objection that a bug is a bug and the semantics should be uniform: the committee has already treated the two differently, one level up.
+The bifurcation this draws, implicit core-language assertions terminate while explicit contracts may still throw, is deliberate and defensible. It is the same line P3878R1<sup>[17]</sup> drew for hardening, and it rests on the difference the scope in Section 3 named: an author-written precondition can encode a recoverable condition, whereas a detected core-language violation means the program is already in a state the language does not define. This is also the answer to the objection that a bug is a bug and the semantics should be uniform: the committee has already treated the two differently, one level up.
 
 ---
 
-## 7. If continuing must be possible
+## 8. If continuing must be possible
 
 This section addresses the case in which the committee concludes a continuing response must be available to someone. Where it is available, the deployed precedents share one shape: an opt-in, non-portable facility, bounded to an adoption period rather than a default or a portable guarantee.
 
 The case for a continuing response deserves its strongest statement, and two forms of it are real. The first is availability: a long-running service or a fault-tolerant embedded system may prefer bounded degradation to a hard stop, so that for such a system a violation that terminates is itself the failure. The second is migration: a large codebase that adds a new check needs a way to find the violations it surfaces before it enforces them, so that turning the check on does not stop a program that works today. Both are legitimate.
 
-The answer distinguishes them. The migration need is met by the hook without the continuation: the terminating response already invokes the handler and logs, so a team sees every violation before it enforces and moves from find to fix to enforce without ever running past a live violation. The availability need is real where continuation is into a defined result, the class of Section 5, and there the objection does not apply. Where continuation is into undefined behaviour, keeping the program running is not availability but execution on a corrupted state, which the security literature in Section 4 identifies as the more dangerous failure. What remains, a team that has weighed this and still chooses to continue past an undefined-state violation, is served by the facility below, not by a default.
+The answer distinguishes them. The migration need is met by the hook without the continuation: the terminating response already invokes the handler and logs, so a team sees every violation before it enforces and moves from find to fix to enforce without ever running past a live violation. The availability need is real where continuation is into a defined result, the class of Section 6, and there the objection does not apply. Where continuation is into undefined behaviour, keeping the program running is not availability but execution on a corrupted state, which the security literature in Section 5 identifies as the more dangerous failure. What remains, a team that has weighed this and still chooses to continue past an undefined-state violation, is served by the facility below, not by a default.
 
 A continuing response has a defensible shape, and the field already uses it. It is the shape of an explicit, non-default opt-in that its own documentation labels as undefined behaviour and disclaims. The libc++ `observe` semantic is documented in these terms: "Continuing execution after a hardening check fails results in undefined behavior; the `observe` semantic is meant to make adopting hardening easier but should not be used outside of the adoption period."<sup>[5]</sup> Bloomberg's `bsls_review` is the same idea deployed: an explicit, temporary downgrade from `assert` to log-and-continue while a newly tightened check is rolled out, on library-level checks rather than core-language undefined behaviour.<sup>[31]</sup><sup>[13]</sup> The .NET platform offers the closest full-lifecycle precedent: it once let managed code opt into catching corrupted-state exceptions, then discouraged it with an analyzer whose guidance is "the safest option is to allow the process to crash," and ultimately made the opt-in inert.<sup>[32]</sup>
 
-These precedents share three properties, and a continuing facility for core-language checks would need all three. It is opt-in, so the default remains the terminating response. It is non-portable and implementation-defined, so it does not become a guarantee every implementation must carry, which is what would re-import the cost in Section 4. And it is marked and disclaimed at the point of use, so that continuing past a detected violation is an affirmative choice recorded in the source, owned by whoever makes it, rather than a behaviour hidden in a default. A facility with those three properties answers the migration case that motivates `observe`, because the transitional need, to see violations before enforcing them, is met by the hook, which the terminating response already provides, and continuing during a rollout is a per-project, non-portable concern that a build already expresses today.
+These precedents share three properties, and a continuing facility for core-language checks would need all three. It is opt-in, so the default remains the terminating response. It is non-portable and implementation-defined, so it does not become a guarantee every implementation must carry, which is what would re-import the cost in Section 5. And it is marked and disclaimed at the point of use, so that continuing past a detected violation is an affirmative choice recorded in the source, owned by whoever makes it, rather than a behaviour hidden in a default. A facility with those three properties answers the migration case that motivates `observe`, because the transitional need, to see violations before enforcing them, is met by the hook, which the terminating response already provides, and continuing during a rollout is a per-project, non-portable concern that a build already expresses today.
 
 Whether such a facility should be built is a separate question; what matters is the shape: not the default, and not a portable semantic every implementation must support.
 
 ---
 
-## 8. Problems with this analysis
+## 9. Problems with this analysis
 
 This analysis has problems, and they are worth stating. It reasons from analogy rather than from a conforming implementation. It draws on security literature for a feature that is not a security feature. It proposes to restrict a semantic whose availability matters to teams with large legacy codebases. And the strongest deployed counter-example to its survey comes from the same institution whose co-authors recommend the default this analysis finds the evidence supports.
 
@@ -198,7 +233,7 @@ A large codebase that turns on a new check needs to find every violation it surf
 
 ### The fourth problem: Bloomberg's `bsls_review` is the deployed counter-example
 
-Bloomberg maintains `bsls_review`, a companion to `bsls_assert` that logs and continues while a newly tightened check is rolled out. As Section 3 records, Bloomberg confines log-and-continue to the library level in its own deployment - preconditions whose violation leaves the program in a state the library does not define but the language still does - and does not operate it on core-language undefined behaviour.<sup>[13]</sup> The boundary Bloomberg ships coincides with the terminating finding: log-and-continue only where the language still defines the resulting state, terminate on the core-language violations below it. The facility Section 7 describes, an explicit, non-portable opt-in bounded to an adoption period, is the shape `bsls_review` itself takes at the library level, so the counter-example marks the same line the finding does and preserves the same rollout mode. Libc++ documents its `observe` semantic in the same terms: "should not be used outside of the adoption period."<sup>[5]</sup> And the co-authors of Bloomberg's contracts framework recommend, in P3558R1<sup>[25]</sup>, "a default evaluation semantic, when nothing else is specified, of `enforce` for all core-language preconditions."
+Bloomberg maintains `bsls_review`, a companion to `bsls_assert` that logs and continues while a newly tightened check is rolled out. As Section 4 records, Bloomberg confines log-and-continue to the library level in its own deployment - preconditions whose violation leaves the program in a state the library does not define but the language still does - and does not operate it on core-language undefined behaviour.<sup>[13]</sup> The boundary Bloomberg ships coincides with the terminating finding: log-and-continue only where the language still defines the resulting state, terminate on the core-language violations below it. The facility Section 8 describes, an explicit, non-portable opt-in bounded to an adoption period, is the shape `bsls_review` itself takes at the library level, so the counter-example marks the same line the finding does and preserves the same rollout mode. Libc++ documents its `observe` semantic in the same terms: "should not be used outside of the adoption period."<sup>[5]</sup> And the co-authors of Bloomberg's contracts framework recommend, in P3558R1<sup>[25]</sup>, "a default evaluation semantic, when nothing else is specified, of `enforce` for all core-language preconditions."
 
 ### The fifth problem: the proposed restriction paternalizes the deployer
 
@@ -206,13 +241,13 @@ Restricting `observe` for implicit assertions tells every deployment that the co
 
 For the class it covers, the restriction also removes no coherent choice. The axiom that makes runtime-checkable undefined behaviour detectable at all, that undefined behaviour carries no specification of what follows, is the axiom that makes its continuation unspecifiable: the handler returns, and what executes next depends on a program state that has no defined meaning. By the standard that a component's test suite is its specification, there is nothing to specify past the violation, because a detected core-language violation falls outside every contract the tests express. Undefined behaviour cannot be documented, and its continuation cannot be specified either.
 
-This unspecifiability argument reaches only the class whose continuation is undefined. For the defined-replacement class of Section 5, where continuing yields a specified result such as a wrapped value, `observe` is coherent; the objection to it there is the cost in Section 5, and the argument here does not apply.
+This unspecifiability argument reaches only the class whose continuation is undefined. For the defined-replacement class of Section 6, where continuing yields a specified result such as a wrapped value, `observe` is coherent; the objection to it there is the cost in Section 6, and the argument here does not apply.
 
-In its throwing form the continuation also inverts a separation the language keeps elsewhere: the evaluation semantic is a deployment property chosen at build or link time, yet a throwing handler leaves `noexcept` reporting `true` while changing what that `true` guarantees (Section 6), letting a deployment decision govern the meaning of a type-system property, the separation the polymorphic-allocator model was built to preserve.
+In its throwing form the continuation also inverts a separation the language keeps elsewhere: the evaluation semantic is a deployment property chosen at build or link time, yet a throwing handler leaves `noexcept` reporting `true` while changing what that `true` guarantees (Section 7), letting a deployment decision govern the meaning of a type-system property, the separation the polymorphic-allocator model was built to preserve.
 
 ---
 
-## 9. The configuration question is separate
+## 10. The configuration question is separate
 
 The response question and the configuration question are independent, and a boundary between them is worth stating.
 
@@ -222,11 +257,11 @@ The layering is described here as the arrangement P3100R8 proposes; it is not re
 
 ---
 
-## 10. Conclusion
+## 11. Conclusion
 
 Of the responses to a detected core-language violation, one is in production use across every hardened implementation surveyed here, and it is the terminating response: invoke the handler, log, and terminate. The continuing response is not in production use for core-language undefined behaviour, carries a cost the reference implementers decline to incur, and runs against P3878R1<sup>[17]</sup>, the decision C++26 already adopted for the adjacent case. Where continuation is defined, the record still shows no deployment that logs and continues.
 
-The finding of this paper is that the terminating response is the one the evidence supports as the default, and that it can be had by reusing the C++26 `enforce` semantic and the existing termination rule, without a new semantic and without changing the meaning of `noexcept`. That default holds across both classes of check. The narrower finding, that a continuing response should not be a portable guarantee every implementation carries, is scoped to the class whose continuation is undefined; for the defined-replacement class of Section 5 the question is left open. If a continuing response is to exist for the undefined class, it belongs as an explicit, per-project opt-in outside the portable feature, not as a default. Whether to build such a facility is a question for the committee, not this paper. The record is placed here for the committee's use; the paper makes no request.
+The finding of this paper is that the terminating response is the one the evidence supports as the default, and that it can be had by reusing the C++26 `enforce` semantic and the existing termination rule, without a new semantic and without changing the meaning of `noexcept`. That default holds across both classes of check. The narrower finding, that a continuing response should not be a portable guarantee every implementation carries, is scoped to the class whose continuation is undefined; for the defined-replacement class of Section 6 the question is left open. If a continuing response is to exist for the undefined class, it belongs as an explicit, per-project opt-in outside the portable feature, not as a default. Whether to build such a facility is a question for the committee, not this paper. The record is placed here for the committee's use; the paper makes no request.
 
 ---
 

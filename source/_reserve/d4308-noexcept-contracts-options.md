@@ -3,9 +3,10 @@ title: "Eight Responses to a Throwing Implicit Contract Assertion"
 document: P4308R0
 date: 2026-07-13
 intent: info
-audience: EWG, SG21
+audience: EWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Ville Voutilainen <ville.voutilainen@gmail.com>"
 ---
 
 ## Abstract
