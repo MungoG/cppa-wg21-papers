@@ -6,12 +6,11 @@ intent: info
 audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
-  - "C++ Alliance Proposal Team"
 ---
 
 ## Abstract
 
-The committee has never operated a rule for what belongs in the standard library; this paper supplies one.
+The committee has never established a criteria for what belongs in the standard library; this paper supplies one.
 
 Each pre-meeting mailing now carries more than one hundred proposals, a volume the committee's own direction papers describe as unmanageable for any individual reader. Review capacity has not grown to match, and the release schedule is fixed, so the quantity that absorbs the growth is the review each paper receives. This paper describes a gate: a threshold evaluation, held before a proposal consumes review time, that asks whether the component belongs in the standard at all. For library components the paper supplies the gate's instruments - eight measurable quantities calibrated against the published record of past admissions. For language features the paper states the gate question and marks the space for delegates with compiler and teaching expertise to supply the instruments.
 
@@ -29,7 +28,7 @@ Each pre-meeting mailing now carries more than one hundred proposals, a volume t
 
 The author provides information and serves at the pleasure of the committee.
 
-The author developed and maintains [Corosio](https://github.com/cppalliance/corosio) and [Capy](https://github.com/cppalliance/capy), coroutine-native I/O libraries under the C++ Alliance, and is a co-author of [P2469R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[1]</sup>. The author's preferred asynchronous model competes with [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> (`std::execution`).
+The author developed and maintains [Corosio](https://github.com/cppalliance/corosio) and [Capy](https://github.com/cppalliance/capy), coroutine-native I/O libraries under the C++ Alliance, and is a co-author of [P2469R0](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[1]</sup>. The author's preferred coroutine-native execution model is a companion to [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[2]</sup> (`std::execution`).
 
 This paper places an admission model and its supporting evidence in the record. It is input to the criteria discussion that [P2000R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2000r4.pdf)<sup>[3]</sup> encouraged.
 
@@ -64,7 +63,7 @@ This section establishes the problem the gate addresses, in four steps: proposal
 
 ### 3.1 Volume Rose
 
-The Direction Group described the inflow in 2020: "One effect of this enthusiasm for C++ is to inundate us with a flood of proposals. The sheer volume of proposals leads to fewer proposals getting through the processes to get accepted. Some proposals become warped from the need to gain support in an environment where time to think and present ideas is limited" ([P2000R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2000r2.pdf)<sup>[10]</sup>). The same group had already quantified the load in [P0939R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0939r3.pdf)<sup>[11]</sup>, Section 7.2: "WG21 does not lack for proposals. The interest is high and the number of proposals of each mailing has grown to more than 100. That's unmanageable for an individual with a day job." [P2000R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2000r3.pdf)<sup>[12]</sup> adds the traffic figure: "The WG21 mailing lists alone produce in total between 1,000 and 3,000 messages a month, which is a large volume of traffic to keep on top of."
+The Direction Group described the inflow in 2020: "One effect of this enthusiasm for C++ is to inundate us with a flood of proposals. The sheer volume of proposals leads to fewer proposals getting through the processes to get accepted. Some proposals drift from the author's original design from the need to gain support in an environment where time to think and present ideas is limited" ([P2000R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2000r2.pdf)<sup>[10]</sup>). The same group had already quantified the load in [P0939R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0939r3.pdf)<sup>[11]</sup>, Section 7.2: "WG21 does not lack for proposals. The interest is high and the number of proposals of each mailing has grown to more than 100. That's unmanageable for an individual with a day job." [P2000R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2000r3.pdf)<sup>[12]</sup> adds the traffic figure: "The WG21 mailing lists alone produce in total between 1,000 and 3,000 messages a month, which is a large volume of traffic to keep on top of."
 
 The volume has not receded since those papers were written. The admin group reported in [N5005](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5005.pdf)<sup>[13]</sup> (January 2025): "The post-Wroc&lstrok;aw mailing had 167 papers, 107 of which were P-papers not counting multiple revisions, withdrawn papers, or papers adopted in Wroc&lstrok;aw."
 
