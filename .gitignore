@@ -8,6 +8,7 @@ node_modules/
 mermaid-filter.err
 .mermaid-config.json
 
+.cache/
 .pytest_cache/
 __pycache__/
 
