@@ -1,5 +1,5 @@
 ---
-title: "Response Options for Throwing Violation Handlers in Implicit Contract Assertions"
+title: "Eight Responses to a Throwing Implicit Contract Assertion"
 document: P4308R0
 date: 2026-07-13
 intent: info
