@@ -102,11 +102,12 @@ The variables below operationalize the model. Each is an order-of-magnitude inst
 |---|---|
 | $B$ | Marginal benefit per beneficiary per year of the standardized guarantee, measured against what a vendor opt-in already delivers |
 | $N(t)$ | Beneficiaries at time $t$ |
+| $W$ | Length in years of the adoption window over which $N(t)$ is non-negligible |
 | $\delta$ | Fraction of value forfeited to ossification once the design is frozen, $0 \le \delta \le 1$ |
 | $k$ | Specification and interaction complexity the slice spends |
 | $\tau$ | Annual cost per unit of complexity imposed on everything standardized around it |
 | $r$ | Time discount rate |
-| $\lambda$ | The return of the best alternative use of the same specification and maintenance capacity |
+| $\lambda$ | The return, per unit of specification and maintenance capacity, of the best alternative use of that capacity; $\lambda \ge 0$, since capacity can always be left unspent |
 
 ### 4.3 Formulas and their provenance
 
@@ -122,15 +123,15 @@ $$d(t) = (1-\delta)\,B\,N(t) \; - \; \tau k$$
 
 The value of the feature is the present value of that flow:
 
-$$D = \sum_{t} \frac{d(t)}{(1+r)^t}$$
+$$D = \sum_{t=1}^{\infty} \frac{d(t)}{(1+r)^t}$$
 
 and the admission rule is comparative, because specification and maintenance capacity are finite:
 
 $$\mathrm{ROC} = \frac{D}{k}, \qquad \text{admit iff } \mathrm{ROC} \ge \lambda$$
 
-Positive value is not the bar; $\lambda$, the return of the best alternative use of the same capacity, is the bar. Provenance: the deployment-experience input to $B$ and $N$ is the standard applied in P3608R0<sup>[7]</sup>, "the standard library hardening is existing practice, and comes with very positive field experience reports," a paper co-authored by an author on the Profiles side of the wider discussion; the tax input $\tau$ is measured against P3191R0<sup>[8]</sup> and P2900R14<sup>[1]</sup> Section 3.6.6 (Section 7).
+Positive value is not the bar; $\lambda$, the return of the best alternative use of the same capacity, is the bar. Because capacity can always be left unspent, $\lambda \ge 0$, so a feature with $D < 0$ fails the rule outright. Provenance: the deployment-experience input to $B$ and $N$ is the standard applied in P3608R0<sup>[7]</sup>, "the standard library hardening is existing practice, and comes with very positive field experience reports," a paper co-authored by an author on the Profiles side of the wider discussion; the tax input $\tau$ is measured against P3191R0<sup>[8]</sup> and P2900R14<sup>[1]</sup> Section 3.6.6 (Section 7).
 
-The model is ordinal. Its quantities are estimated to an order of magnitude, and the conclusions rest on the direction and rough size of the gaps, not on precise values. The finding of this section is the model itself: a standardization decision for the slice is admitted only if its Return on Complexity clears the return of the best competing use of the same capacity, and the sections that follow estimate the terms.
+The model is ordinal. Its quantities are estimated to an order of magnitude, and the conclusions rest on the direction and rough size of the gaps, not on precise values. Benefit and cost are compared on a common present-value scale, as in ordinary net-present-value reasoning; because the model is ordinal, only the sign and order-of-magnitude ratio of the two present values enter, not a currency figure, so the comparison requires benefit and cost to be rankable, not fungible. For the priced slice $k$ is a fixed scalar; cost scales with it by the definition of $\tau$, while the slice's benefit is estimated directly rather than as a function of $k$. Modeling $\delta$ as a constant fraction is likewise a simplification: ossification loss plausibly grows with the horizon, which would only deepen the discount on far-future benefit, so the constant form is again conservative. The finding of this section is the model itself: a standardization decision for the slice is admitted only if its Return on Complexity clears the return of the best competing use of the same capacity, and the sections that follow estimate the terms.
 
 ---
 
@@ -146,7 +147,7 @@ Bloomberg's BDE library ships the same capability as a separate facility, bsls_r
 
 What standardization would add on top of the vendor opt-in is portability: a guarantee that the continuing response behaves identically across GCC, Clang, and MSVC. For most language features portability is a real benefit, and Section 8 states when it is. For a transitional adoption aid it is close to worthless. A team continues past violations while it drains a backlog of latent findings from a codebase it is bringing under checking; that activity is per-codebase and per-build, expressed by a build setting the team already controls, and it does not require the setting to mean the same thing on a compiler the team is not using. The value of cross-vendor portability for a facility whose documented purpose is a temporary, local rollout is near zero.
 
-Setting $B \approx 0$ makes the rest of the arithmetic moot: with a near-zero numerator the present value $D$ cannot clear the threshold $\lambda$, whatever the reach. This is the marginal-value test returning the default answer. The finding of this section is that the standardized guarantee delivers, over the deployed vendor opt-in, only a portability whose value for a transitional facility is negligible, so $B \approx 0$ and the admission rule fails on the first term.
+Setting $B \approx 0$ makes the rest of the arithmetic moot: with the benefit near zero the present value $D$ falls to about $-\tau k / r$, a negative number that cannot clear the threshold $\lambda$, whatever the reach. This is the marginal-value test returning the default answer. The finding of this section is that the standardized guarantee delivers, over the deployed vendor opt-in, only a portability whose value for a transitional facility is negligible, so $B \approx 0$ and the admission rule fails on the first term.
 
 ---
 
@@ -156,15 +157,25 @@ Section 5 is sufficient on its own. This section sets that result aside, grants 
 
 The benefit stream decays. The beneficiaries $N(t)$ are codebases in an active adoption window - on a toolchain that implements the feature, carrying latent core-language undefined behavior they have not yet fixed, and continuing past it while they fix it. The deployed facilities describe this population's use of continuation as bounded: libc++ states observe "should not be used outside of the adoption period"<sup>[9]</sup>, and BDE frames review mode as "an interim step"<sup>[10]</sup>. The lifecycle those documents describe is to add a check, continue past its findings while they are triaged, and then promote to a terminating response once the code is clean. A codebase that completes that cycle leaves $N(t)$. The benefit is a spike during adoption that decays toward zero, and its present value is a finite sum:
 
-$$\text{PV(benefit)} = \sum_{t} \frac{(1-\delta)\,B\,N(t)}{(1+r)^t}, \qquad N(t) \to 0$$
+$$\text{PV(benefit)} = \sum_{t=1}^{\infty} \frac{(1-\delta)\,B\,N(t)}{(1+r)^t}, \qquad N(t) \to 0$$
 
 The cost stream does not decay. A semantic written into the standard is carried by every conforming implementation for as long as the standard exists. Its present value is a perpetuity:
 
-$$\text{PV(cost)} = \sum_{t} \frac{\tau k}{(1+r)^t} = \frac{\tau k}{r}$$
+$$\text{PV(cost)} = \sum_{t=1}^{\infty} \frac{\tau k}{(1+r)^t} = \frac{\tau k}{r}$$
 
-A decaying finite stream set against a perpetuity is the arithmetic of the mismatch: the benefit is collected by a shrinking population over a bounded interval, and the cost is paid by the whole installed base without end. Discounting does not rescue the benefit, because discounting shrinks the far-future cost too; the perpetuity is already the discounted value of the endless stream. The comparison is between a finite present value and $\tau k / r$, and Section 7 estimates $\tau k$ large enough that the perpetuity dominates.
+The closed form holds for $r > 0$, and the level shape is the right one: the costs located in Section 7 are recurring - per-release implementer maintenance, per-later-paper definitional coupling, per-programmer cognitive load - so a one-time specification cost would add to the perpetuity, not replace it. Holding $\tau k$ constant is moreover conservative: Section 7's coupling argument implies the tax grows as more of the standard is written around the semantic, which for a growth rate $g < r$ would replace $\tau k / r$ with the larger $\tau k /(r - g)$. The constant-cost perpetuity is a floor on the cost, not a ceiling.
 
-The delivery mechanism compounds the mismatch, because the standard is the least reversible way to ship a response. A vendor opt-in can be retired when the adoption-period rationale for it lapses; a build flag can be deprecated and removed. A standardized evaluation semantic, encoded in the meaning of core-language operations, is effectively permanent: the installed base and the stability expectations of the standard hold it in place. Matching the most permanent, least reversible delivery mechanism to the most transient, adoption-bounded need is the inefficiency stated in one line.
+A decaying finite stream and a perpetuity are both finite present values, so the comparison is one of magnitudes; the question is what magnitude the benefit would need. Let $P$ be the peak annual benefit, so $(1-\delta)\,B\,N(t) \le P$, with $N(t) = 0$ outside the adoption window of length $W$ the deployed facilities document. Then the benefit's present value is bounded:
+
+$$\text{PV(benefit)} \le P \sum_{t=1}^{W} \frac{1}{(1+r)^t} = \frac{P}{r}\left(1 - (1+r)^{-W}\right),$$
+
+so matching the perpetuity $\text{PV(cost)} = \tau k / r$ requires
+
+$$P \ge \frac{\tau k}{1 - (1+r)^{-W}}.$$
+
+For a three-year window at $r = 0.05$ that factor is about seven: the slice's peak annual benefit would have to exceed the entire annual cross-implementation tax sevenfold to break even, and the factor only grows as $r$ falls toward the rate appropriate to a standard's indefinite horizon. A transitional adoption aid, selected through a build setting the team already controls, does not deliver several times the whole standard-wide tax in a single year. Discounting does not rescue the benefit, because discounting shrinks the far-future cost too; the perpetuity is already the discounted value of the endless stream. Section 7 establishes that $\tau k$ is real and non-trivial, which is all the comparison now needs.
+
+The delivery mechanism compounds the mismatch, because the standard is the least reversible way to ship a response. A vendor opt-in can be retired when the adoption-period rationale for it lapses; a build flag can be deprecated and removed. A standardized evaluation semantic, encoded in the meaning of core-language operations, is effectively permanent: the installed base and the stability expectations of the standard hold it in place. A reversible mechanism caps the cost sum at its retirement date $T$, paying only $\sum_{t=1}^{T} \tau k /(1+r)^t = \frac{\tau k}{r}\left(1 - (1+r)^{-T}\right) < \frac{\tau k}{r}$; the standardized guarantee forgoes that cap and pays the full perpetuity. Its irreversibility is exactly that gap. Using the same $\tau k$ for the vendor mechanism understates the gap: by Section 7 a vendor opt-in avoids the standard-wide coupling and cognitive-load components of the tax. Matching the most permanent, least reversible delivery mechanism to the most transient, adoption-bounded need is the inefficiency stated in one line.
 
 The finding of this section is that the slice fails the model a second time, independently of Section 5: a benefit stream that the deployed facilities themselves scope to an adoption period is set against a perpetual cost carried by every implementation, through the least reversible mechanism available, so $\mathrm{ROC} < \lambda$ even when $B$ is granted to be positive.
 
