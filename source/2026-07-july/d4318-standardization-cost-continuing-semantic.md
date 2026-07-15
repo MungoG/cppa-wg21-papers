@@ -6,6 +6,7 @@ intent: info
 audience: EWG
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
+  - "Mungo Gill <mungo.gill@me.com>"
 ---
 
 ## Abstract
@@ -21,6 +22,26 @@ The model rejects the slice on two independent grounds. First, standardizing the
 That perpetual cost is not runtime overhead, which the ignore default sets to zero. It sits in implementer maintenance, in coupling to other parts of the standard, and in the concept every programmer must now carry.
 
 The paper prices only this continue-into-undefined slice. P3100R8's enumeration of undefined behavior and its terminating responses carry durable value and are not priced here.
+
+---
+
+## In Plain Terms
+
+This section states the argument for readers who skip the model in Sections 4 through 8.
+
+P3100R8 asks the compiler to insert a contract check at each core-language operation that can have undefined behavior. When a check fails, the chosen semantic decides what happens next. The observe semantic calls the violation handler and then lets the program continue past the failure. For a bad pointer dereference, an out-of-bounds access, or a use after an object's lifetime ends, "continue" means the program keeps running on state the language does not define.
+
+This paper prices one decision only: whether to standardize that continue-past-undefined response as a portable guarantee. A portable guarantee means every conforming compiler must provide it, and a program can rely on it behaving the same on GCC, Clang, and MSVC. The paper does not argue against the rest of P3100R8. It supports the list of undefined-behavior cases. It supports the responses that stop the program, enforce and quick-enforce. It supports calling the handler to log a violation. It contests only the portable guarantee to continue past undefined state.
+
+The first argument is that vendors already ship this. libc++ provides the observe semantic as a build option. Bloomberg's BDE ships the same capability as bsls_review. Both are opt-in flags. The vendor documentation for each says to use it only during an adoption period. A team can already continue past a detected violation today, without the standard requiring it. Standardizing the response would add one thing on top: portability across vendors. A team turns this on per codebase, through a build setting it already controls, on a compiler it has already chosen. Cross-vendor portability buys that team almost nothing.
+
+The second argument is that the benefit fades but the cost does not. A team turns on continuation while it works through the latent violations in a codebase it is bringing under checking. Once the code is clean, the team promotes the checks to a response that stops the program. The team then stops using continuation. The benefit lasts for that adoption window and then falls away. The cost runs the other way. A semantic written into the standard stays in every compiler for as long as the standard exists.
+
+The cost is not a runtime cost. The default semantic is ignore, so a program that does not select continuation pays nothing when it runs. The cost sits in three other places. First, implementer maintenance: to let an exception leave a checked expression, a compiler must generate exception-handling code around every such expression, and the libc++ team states in P3191R0 that it will not do this. Second, definitional coupling: a handler that may throw changes what the noexcept operator means, so noexcept no longer says an expression cannot throw, only that it cannot throw unless a contract is violated. Third, cognitive load: every C++ programmer now has to know this mode exists, whether or not they ever use it.
+
+The conclusion is that this one slice returns less than it costs. A vendor extension already carries the capability for the teams and the time that need it, and the vendor can retire it when the need passes. The standardized portable guarantee would carry it for every implementation and every programmer, permanently.
+
+This slice sets a decaying benefit against a perpetual cost.
 
 ---
 
@@ -249,7 +270,23 @@ It does not. Section 3 fixes the priced object as one slice: the continuing resp
 
 ---
 
-## 10. Conclusion
+## 10. Questions Worth Considering
+
+The analysis above raises questions readers might wish to consider. They request no poll and no committee action; they are questions to consider.
+
+- Why does the continuing response need to be a portable standard guarantee rather than a vendor extension? libc++<sup>[9]</sup> and Bloomberg's BDE<sup>[10]</sup> already ship it as an opt-in, and both document it as bounded to an adoption period.
+
+- What does cross-vendor portability add for a mode selected per-codebase through a build setting the team already controls, on a toolchain the team has chosen to use?
+
+- The deployed facilities scope continuation to an adoption window. What use case requires it to persist as a permanent guarantee that every conforming implementation carries?
+
+- Deployed practice terminates on the core-language-undefined class and continues only where the post-violation state is language-defined: BDE's bsls_review continues on the defined class while bsls_assert terminates on the harder one<sup>[10]</sup>. What justifies standardizing continuation on the class that deployed practice terminates on?
+
+- The reference implementers state they will not generate exception-handling code around contract predicates (P3191R0<sup>[8]</sup>). Who will carry the machinery the continuing response requires once it is a portable obligation on every implementation?
+
+---
+
+## 11. Conclusion
 
 The runtime checking of core-language undefined behavior is worth standardizing, and P3100R8's enumeration and terminating responses are the parts of that work with the reach to earn it. The continuing response for the class whose continuation is into undefined state, offered as a portable guarantee, is a different object, and priced on its own it does not earn standardization.
 
