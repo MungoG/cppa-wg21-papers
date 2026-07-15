@@ -223,9 +223,9 @@ The finding of this section is that standardization's usual payoff, conscripting
 
 ---
 
-## 9. Objections
+## 9. Possible Concerns
 
-Each heading below states an objection in its strongest form; each answer draws only on evidence already presented.
+Some possible objections to this analysis are addressed below.
 
 ### "The default is ignore, so the feature costs nothing"
 
