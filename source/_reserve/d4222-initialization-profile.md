@@ -45,7 +45,7 @@ Reading or writing an object before it is initialized is one of the oldest error
 
 ## 1. Introduction
 
-Uninitialized memory has been a source of error in C and C++ since the beginning, and no revision of either language has fully closed it. The initialization profile closes it for the code that opts in: no object is read or written before it is initialized, and the guarantee is enforced entirely at compile time with no run-time cost. The profile is foundational, because most other profiles and most ordinary code rely on the objects they touch being initialized. It should therefore be the easiest profile to define. It is not, because the rules governing initialization and uninitialized memory in C++ are more intricate than they first appear. The design goal is to isolate that intricacy so that ordinary code stays simple and the complexity falls only on the code that deliberately manipulates uninitialized memory.
+Uninitialized memory has been a source of error in C and C++ since the beginning, and no revision of either language has fully closed it. The initialization profile addresses this gap for the code that opts in. The profile is foundational, because most other profiles and most ordinary code rely on the objects they touch being initialized. It should therefore be the easiest profile to define. It is not, because the rules governing initialization and uninitialized memory in C++ are more intricate than they first appear. The design goal is to isolate that intricacy so that ordinary code stays simple and the complexity falls only on the code that deliberately manipulates uninitialized memory.
 
 An earlier design of the profile was reviewed by EWG<sup>[1]</sup>, and profiles are now processed by SG23. This revision emphasizes the rationale, weighs a few alternatives, and suggests simplifications; it is written to inform implementation work and to let readers gauge the profile's likely effect on existing code, so further design change is expected. With the exception of the concept-based overloading in Section 4.8 and some notational details still being matched to the latest specification, an implementation exists.
 
@@ -61,13 +61,12 @@ The design rests on a small set of requirements:
 - The design is usable by most developers without an understanding of tricky concepts or implementation detail, and existing well-written code works unmodified.
 - Code too complex for the profile can be expressed by suppressing the profile.
 - The initialization attributes do not modify the type system; they carry the information the profile's enforcement needs.
-- A program that does not violate the profile has the same meaning whether or not the profile is enforced.
 
 Use of profiles is optional. Code that cannot reasonably be expressed under the initialization profile can be written without the profile, or with the profile suppressed for the region that needs it. The guarantees most language rules already assume, that no uninitialized object is read from (or, for a class with an assignment operator, written to), are what this profile enforces.
 
 For arbitrarily complex code the "every object is initialized" property cannot be established statically, so the profile provides notation that carries enough information for every potential use of an uninitialized object to be detected at compile time. A profile is best specified by the guarantee it offers, here "no use of uninitialized objects," rather than by an enumeration of every affected construct (Section 8); the guarantee is what simplifies both understanding and use.
 
-The mechanisms are small: three attributes and one trivial function template. Most of the length of this paper is spent on rejected alternatives and on the cases that motivate the mechanisms, not on the mechanisms themselves. Had it not been for the need to manipulate uninitialized memory (Section 1.1), the profile would fit in a few pages. This profile is designed to fit the proposed profiles framework<sup>[2]</sup>.
+The mechanisms are small: three attributes and one trivial function template. The rejected alternatives and the cases that motivate the mechanisms occupy the sections that follow; had it not been for the need to manipulate uninitialized memory (Section 1.1), the profile would fit in a few pages. This profile is designed to fit the proposed profiles framework<sup>[2]</sup>.
 
 This paper contributes:
 
@@ -80,9 +79,9 @@ The design rests on three assumptions, stated here so a reader can test them aga
 
 ### 1.1. Buffers and memory pools
 
-The complexity the profile must absorb comes from a pattern C++ uses far more than most languages: performance-critical memory buffers and user-defined memory pools. When a buffer is filled under severe performance constraints, initializing it first with default values and overwriting them later adds overhead that some applications cannot afford, and the hardware support that would hide that overhead is not available everywhere. `std::vector` itself lives with this: it manages a mixture of initialized and uninitialized memory, usually through `construct_at()` and `destroy_at()`.
+The complexity the profile must absorb comes from performance-critical memory buffers and user-defined memory pools, a pattern C++ uses to a degree that Ada, Java, C#, and other garbage-collected languages do not. When a buffer is filled under severe performance constraints, initializing it first with default values and overwriting them later adds overhead that some applications cannot afford, and the hardware support that would hide that overhead is not available everywhere. `std::vector` itself lives with this: it manages a mixture of initialized and uninitialized memory, usually through `construct_at()` and `destroy_at()`.
 
-It is common for an allocator to hand out an uninitialized region of memory for some other class or function to manage. I would like a single abstraction to handle this, but we do not have one, and I suspect the range of uses is too broad for us to get one soon. I would love to be proven wrong, but I will proceed as though I will not. What we have is `void*`, a pointer to memory of unknown type (Section 4.3). Large uninitialized buffers are common for good reasons, and that use is why local variables were left uninitialized in C (I once asked Dennis). Consequently, the profile needs a concrete thing: a way to say that a pointer or smart pointer passed into or out of a function refers to an object that contains uninitialized memory, such as an array from an allocator.
+Allocators routinely hand out an uninitialized region of memory for some other class or function to manage. I would like a single abstraction to handle this, but we do not have one, and I suspect the range of uses is too broad for us to get one soon. I would love to be proven wrong, but I will proceed as though I will not. What we have is `void*`, a pointer to memory of unknown type (Section 4.3). Large uninitialized buffers are common for good reasons, and that use is why local variables were left uninitialized in C (I once asked Dennis). Consequently, the profile needs a concrete thing: a way to say that a pointer or smart pointer passed into or out of a function refers to an object that contains uninitialized memory, such as an array from an allocator.
 
 Two simpler designs were considered and rejected. Banning the passing of objects with directly accessible uninitialized memory, by requiring such data to be private members so that a class owns the obligation to initialize, would forbid passing pointers and spans to structs and arrays that have uninitialized members, and would require the profile to be suppressed across much existing critical code. Leaving programmers to suppress the profile with no in-code hint of why is unmanageable for some applications and compromises the profile's value. Neither is acceptable, so the profile provides explicit notation instead.
 
@@ -109,7 +108,7 @@ The profile offers a stronger guarantee at the cost of stricter rules of use. Ne
 
 ### 1.3. Static analysis without complex flow analysis
 
-The profile relies on static analysis, ideally in the compiler, to reject unsafe uses, and it is designed so that the analysis stays cheap. Most of the questions are local: "does this definition have an initializer?" A few require flow analysis: "is this uninitialized object constructed before use?" That second kind is what lets the profile handle buffers of uninitialized memory, as in the implementation of `std::vector`, and members initialized in a constructor body rather than in a member initializer.
+The profile relies on static analysis, ideally in the compiler, to reject unsafe uses, and it is designed so that the analysis stays cheap. One question is local - "does this definition have an initializer?" - and covers the majority of definitions. A second requires flow analysis: "is this uninitialized object constructed before use?" That second kind is what lets the profile handle buffers of uninitialized memory, as in the implementation of `std::vector`, and members initialized in a constructor body rather than in a member initializer.
 
 To keep the analysis affordable, every branch of a run-time conditional is treated as executed for the purpose of the guarantee. The alternative, global analysis or symbolic execution, is unaffordable, and adding run-time checks is ruled out by the zero-cost requirement. The profiles considered here, including this one, require only local static analysis. Random access into an uninitialized array is banned for the same reason: allowing it would make the initialize-before-use guarantee impossible to enforce statically (Section 5.4). Errors of misuse after initialization, such as access after deletion (Section 4.6), are left to other profiles.
 
@@ -120,7 +119,6 @@ Some languages take a different route. Ada and C# enforce that a variable is ass
 - Initialization and assignment can mean very different things.
 - The address of some memory can be passed out of a scope to be initialized elsewhere, for example in a separate translation unit.
 - Delayed initialization can confuse a reader, especially during maintenance.
-- Code must have the same meaning with and without the profile.
 - Some constructs, such as loops and conditionals, make it impossible to determine at compile time whether an object has been initialized.
 - Requiring the analysis to be exact, even where it is theoretically possible, would place a heavy burden on implementers.
 - A compiler that can delay initialization without changing semantics may already do so as an optimization.
@@ -217,7 +215,7 @@ The remaining option, letting the compiler silently remember that an object is u
 
 Two spelling questions have the same answer, and I think not to both. I do not spell it `[[profiles::uninit]]`, because the information it conveys is useful independently of the profile: it helps code review and will likely be used by other profiles and by people who do not enable this one. I do not spell it `[[uninitialized]]` either, because the longer form is verbose and invites an English-versus-American spelling problem; I tried the longer form for a while and found it a source of misspelling. Attributes are assumed to be optionally enforced, and for a profile "optionally enforced" means "enforced when the profile is opted into."
 
-### 4.2. `[[uninit]]` rules
+### 4.2. `[[uninit]]` rejects use before initialization
 
 The `[[uninit]]` attribute has six rules:
 
@@ -256,7 +254,7 @@ void f()
 
 Using `[[uninit]]` to suppress default initialization is possible in principle but would make code more error-prone rather than less, so it is not done.
 
-### 4.3. Pointers, references, and `void*`
+### 4.3. `[[ref_to_uninit]]` tracks uninitialized memory through pointers
 
 A reference cannot be uninitialized, and the profile requires the same of pointers; where feasible, a pointer that would be left uninitialized is initialized to `nullptr` instead. What still needs expressing is that the memory a pointer refers to is uninitialized. `[[uninit]]` cannot say this, because it is not the pointer or reference that is uninitialized but the memory it points to.
 
@@ -292,7 +290,7 @@ void* malloc [[ref_to_uninit]] ( std::size_t size );
 void* calloc( std::size_t num, std::size_t size );
 ```
 
-Whether adding `[[ref_to_uninit]]` to every allocator is manageable needs exploration, because system headers may not be modified for the benefit of C++ profiles. Where they are not, functions like `malloc()` are either called only under suppression or made known to the analyzer, which some implementations will already do as part of implementing erroneous behavior. The detailed rules for `[[ref_to_uninit]]` on a `void*` are:
+Whether adding `[[ref_to_uninit]]` to every allocator is manageable needs exploration, because system headers may not be modified for the benefit of C++ profiles. Where they are not, functions like `malloc()` are either called only under suppression or made known to the analyzer, which implementations that already diagnose erroneous behavior will do. The detailed rules for `[[ref_to_uninit]]` on a `void*` are:
 
 - By default a `void*` points to memory initialized to some type.
 - A `void*` marked `[[ref_to_uninit]]` must point to something `[[uninit]]`.
@@ -322,7 +320,7 @@ void g(int x)
 
 Making `[[uninit]]` part of the type system, like `const`, would break a great deal of old code and C libraries unless it were opt-in; when enforced, `[[uninit]]` is viral. I hope it becomes universal, but that will take time, and a gradual introduction is essential.
 
-### 4.4. Library support
+### 4.4. `construct_at()` and `now_init()` keep the attributes out of application code
 
 Containers like `std::vector` and slab or pool allocators store objects of a known type in "slots" of uninitialized memory rather than through `void*`. To avoid replicating the messy code that manages such slots, the standard library should supply the support directly:
 
@@ -339,7 +337,7 @@ template<class T> T* now_init(T* p [[ref_to_uninit]]) { return p; }
 
 This function cannot be compiled with the profile on, because it is a cast in disguise: it deliberately and explicitly breaks the enforcement. Compiled without the profile it is a no-op. If it could be written with the profile on, the profile would be flawed. Its value is that it lets a programmer avoid suppressing the whole profile and marks an easy-to-spot point for code review. Something like it is needed in any code that manages a mixture of initialized objects and uninitialized slots, such as a vector implementation (Section 4.6).
 
-### 4.5. Templates and `[[uninit]]`
+### 4.5. Template arguments are assumed initialized by default
 
 By default, objects of a template argument type are assumed initialized, which avoids chaos; uninitialized objects of such types are nonetheless possible and sometimes useful. `unique_ptr<T>` and `span<T>` are the important examples, and like built-in pointers they need the profile to distinguish initialized from uninitialized objects they point to. For a class that can return a pointer or reference to what it holds, there are three choices:
 
@@ -419,7 +417,7 @@ if (live_slot[x] == Live::init) {
 }
 ```
 
-Run-time testing, adding something like `Live` to a `Slot` and checking it on every access, would be simple but too expensive for many uses. The alternative is the vector pattern: keep the first part of a buffer initialized and the second part uninitialized, with a range check and operations that move the barrier between them. Here is a much-simplified sketch of the two cooperating templates. `Vector_memory` owns only uninitialized memory:
+Run-time testing, adding something like `Live` to a `Slot` and checking it on every access, would be simple but too expensive for latency-sensitive allocators and containers. The alternative is the vector pattern: keep the first part of a buffer initialized and the second part uninitialized, with a range check and operations that move the barrier between them. Here is a much-simplified sketch of the two cooperating templates. `Vector_memory` owns only uninitialized memory:
 
 ```cpp
 template<class T>
@@ -504,9 +502,9 @@ while (live) { // read into the buffer and process the messages stored as bytes
 
 Assigning to an uninitialized `std::byte`, as `read` must, is allowed. Beyond initialization, the code needs one explicit type conversion, from bytes to messages in `now_init()`, and must avoid range errors; this is the low-level code where suppression of guarantees is tempting and common even in "safe" languages. In performance-critical cases `Message` will usually have no destructor, since it is an access mechanism over a byte buffer, so `destroy(messages)` is a no-op. The profile confines the one unverifiable step to a single, reviewable `now_init()` call rather than to a suppressed region.
 
-### 4.7. Existing vocabulary types
+### 4.7. Vocabulary templates need the marks only at their boundaries
 
-Many vocabulary types are templates. Those that fully manage their own memory, like `std::vector`, are no separate problem. Others can be given uninitialized objects, and the profile must catch the misuse without breaking the large body of code that is not broken. Consider:
+The vocabulary types that matter here - `unique_ptr`, `span`, `vector`, and their relatives - are templates. Those that fully manage their own memory, like `std::vector`, are no separate problem. Others can be given uninitialized objects, and the profile must catch the misuse without breaking the large body of code that is not broken. Consider:
 
 ```cpp
 unique_ptr<T> p (new T);
@@ -556,7 +554,7 @@ uninitialized_fill(a2, 10); // OK
 
 This relies on the static analyzer seeing attributes such as `[[uninit]]` and `[[ref_to_uninit]]` when it checks a template argument, which requires-clauses allow. It does not make `[[uninit]]` part of the type system the way `const` is; doing that would let code under the profile mean something different from the same code compiled without it.
 
-### 4.8. Concept-based overloading
+### 4.8. Concept-based overloading turns on an unresolved type-deduction question
 
 This is the one part of the design without an implementation, and it turns on a type-deduction problem the implementers are still investigating. Defining a function template callable only with a `[[ref_to_uninit]]` argument is easy. For example, where `f(&ii)` is rejected because `ii` is initialized:
 
@@ -656,7 +654,7 @@ template<class T> class span {
 
 Concept-based overloading is the profile's one open design question, and the demonstration keeps it stated rather than resolved.
 
-### 4.9. Mixing initialized and uninitialized data
+### 4.9. Mixed initialized and uninitialized data requires suppression
 
 Passing along a value that is sometimes initialized and sometimes not is the hard residual case, and static analysis cannot resolve it perfectly. For example:
 
@@ -673,11 +671,11 @@ A guarantee that is incomplete, especially one that holds often, breeds overconf
 
 The profile's member-initialization rule is what lets a class carry the initialization guarantee to its users. A class with a constructor must have every member not marked `[[uninit]]` initialized by that constructor, and any member marked `[[uninit]]` must be initialized before it is exposed to users of the class. A class without a constructor must have every member initialized at the point of definition, unless the member is marked `[[uninit]]` there. Together these let a profile ensure type safety as it relates to initialization.
 
-### 5.1. Constructors
+### 5.1. Constructors must initialize every unmarked member
 
 A constructor that initializes every member is usually both the easiest form to use and the easiest for the compiler to validate. When a constructor is compiled with the profile requested, it is checked to initialize every member except those marked `[[uninit]]` or `[[ref_to_uninit]]`. If every translation unit is compiled with the profile, all is well; if not, as will be common for years, this check is still the best available. Reconciling different profiles across translation units and modules is the job of the profiles framework<sup>[2]</sup>, not of an individual profile. Complex code in a constructor can defeat static analysis and is rejected (Section 1.2); avoiding that is not hard.
 
-### 5.2. Member initializers
+### 5.2. Member initializers are the simplest path
 
 The simplest way to initialize a member is directly, in a member initializer or a member initializer list. For example, in the two direct forms the profile expects:
 
@@ -773,7 +771,7 @@ struct X {
 
 For an uninitialized class object, initialization uses `construct_at()` rather than plain assignment. The marks put the exposure of uninitialized memory into the interface, where a user and the analyzer can both see it.
 
-### 5.4. Classes without constructors
+### 5.4. Constructorless classes must initialize all members at definition
 
 Objects of a class without a constructor must have all members initialized in their definition. For example, where the `// error` lines are the definitions that leave a member uninitialized:
 
@@ -809,7 +807,7 @@ S y = {1, "foobar"};
 
 The rule of thumb is to not introduce a variable until there is an initializer for it.
 
-### 5.5. Arrays
+### 5.5. Arrays are initialized at definition or marked `[[uninit]]`
 
 Arrays, like structs, are either initialized in the definition or marked `[[uninit]]`. For example:
 
@@ -832,7 +830,7 @@ X arr4[20] [[uninit]];               // error if X has a default constructor
 ranges::uninitialized_fill(arr4, xval);
 ```
 
-### 5.6. Unions
+### 5.6. Unions cannot be delayed-initialized
 
 The simplest treatment of unions aligns with classes that have public members. Consider it, where the `// OK? (no)` lines are the delayed initializations the profile rejects:
 
@@ -861,7 +859,7 @@ To specify and implement the rules that clear `[[uninit]]` and `[[ref_to_uninit]
 - For ranges, use the `uninitialized_*()` family.
 - For more complex initialization, use functions marked `[[now_init]]` (Section 6.2).
 
-### 6.1. Possible generalizations
+### 6.1. Loop-based initialization is too complex for static proof
 
 Even simple-looking extensions are trickier than they appear, and the recurring obstacle is deciding what a completed initialization is. Consider whether range-for loops should be accepted, initializing an array in a loop:
 
@@ -910,7 +908,7 @@ span<X> s{*now_init(arr10)};
 
 This technique is not verifiable, but it is far more manageable than suppressing the profile, and it marks an obvious target for code review and deeper analysis.
 
-### 6.2. `[[now_init]]` and `[[must_init]]`
+### 6.2. `[[must_init]]` marks functions that must leave their argument initialized
 
 A pointer to uninitialized memory is often passed to a function that initializes it. For example:
 
@@ -930,7 +928,7 @@ Here `q`, like `p`, must point to something uninitialized on entry, but after th
 
 ## 7. Code that does not obey the initialization profile
 
-The C++ type system does not distinguish initialized objects from uninitialized memory; that is the profile's job. Some code does not obey the profile and probably never will, being C code or trusted old-style code, and there is a great deal of it, including some operating systems. Range errors can break this profile, as they can break others, but preventing them belongs to the invalidation and range profiles; they are assumed prevented here and are not treated.
+The C++ type system does not distinguish initialized objects from uninitialized memory; that is the profile's job. C code, trusted old-style C++, and code behind system headers does not obey the profile and probably never will. Range errors can break this profile, as they can break others, but preventing them belongs to the invalidation and range profiles; they are assumed prevented here and are not treated.
 
 The major problem is system headers. Annotating C-style code with `[[uninit]]` and `[[ref_to_uninit]]` is not difficult, but system headers and much other foundational C-style code are controlled by organizations that, at least in the short term, will not accept C++ attributes. This is a genuine and unresolved difficulty, and the profile's opt-in design is what keeps it from blocking adoption elsewhere.
 
@@ -994,13 +992,13 @@ What the body establishes is how little machinery the guarantee needs. The mecha
 
 The design provides a foundational guarantee that most other profiles and most ordinary code can rely on, in exchange for stricter rules only where uninitialized memory is deliberately used. Without it, the standing class of uninitialized-memory errors remains, alongside a C++26 response to them, erroneous behavior, whose reaction is implementation-defined and therefore not the hard guarantee foundational code needs.
 
-Two things are unfinished, and both are stated plainly so the reader can weigh them. The concept-based overloading of Section 4.8 has no implementation and turns on a type-deduction question the implementers are still investigating; if deduction strips the initialization mark, the fallback is a pair of intrinsics for tag dispatch. And the standard wording of Section 9 is an early draft with sections still to be written. The implementers investigating Section 4.8, the authors of the profiles framework, and whoever drafts the remaining wording build on this work next. The design is offered as input to that work, and refinement is expected.
+Two things are unfinished. The concept-based overloading of Section 4.8 has no implementation and turns on a type-deduction question the implementers are still investigating; if deduction strips the initialization mark, the fallback is a pair of intrinsics for tag dispatch. And the standard wording of Section 9 is an early draft with sections still to be written. The implementers investigating Section 4.8, the authors of the profiles framework, and whoever drafts the remaining wording build on this work next. The design is offered as input to that work, and refinement is expected.
 
 ## Disclosure
 
 The author provides information and serves at the pleasure of the committee.
 
-The author is affiliated with Columbia University and works on the C++ profiles effort. This paper presents the design of the initialization profile as input to implementation work and to readers assessing the profile's effect on existing code; further design change is expected. The profile is foundational to the profiles framework<sup>[2]</sup> and to other profiles, so its design choices have stakes beyond this paper. One genuine limitation of the approach is disclosed in the body and repeated here: the concept-based overloading of Section 4.8 has no implementation and depends on an unresolved type-deduction question, so the claim that the whole design is implemented holds with that one exception. This draft was produced with machine assistance.
+The author is affiliated with Columbia University and works on the C++ profiles effort. This paper presents the design of the initialization profile as input to implementation work and to readers assessing the profile's effect on existing code; further design change is expected. P3402<sup>[1]</sup> is the other active design for the same initialization profile, with different notation (`[[indeterminate]]` and `[[profiles::suppress]]` in place of `[[uninit]]`, `[[ref_to_uninit]]`, and `now_init()`); this paper and P3402 are companion efforts toward the same goal. The profile is foundational to the profiles framework<sup>[2]</sup> and to other profiles, so its design choices have stakes beyond this paper. One genuine limitation of the approach is disclosed in the body and repeated here: the concept-based overloading of Section 4.8 has no implementation and depends on an unresolved type-deduction question, so the claim that the whole design is implemented holds with that one exception. This draft was produced with machine assistance.
 
 This paper asks for nothing.
 
