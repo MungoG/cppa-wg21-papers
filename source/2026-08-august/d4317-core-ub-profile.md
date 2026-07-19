@@ -1,7 +1,7 @@
 ---
 title: "A Profile for Runtime-Checkable Core-Language Undefined Behavior: std::core_ub"
-document: P4317R0
-date: 2026-07-14
+document: P4317R1
+date: 2026-08-01
 intent: propose
 audience: EWG, SG22
 reply-to:
@@ -17,6 +17,10 @@ The C++ standard specifies a finite, enumerable set of core-language operations 
 ---
 
 ## Revision History
+
+### R1: August 2026
+
+- Added EuroLLVM 2026 evidence (Clang static analyzer bounds checking) to the implementation-status (Section 8), deployment-experience (Section 7), and enumeration (Appendix A) discussions.
 
 ### R0: July 2026
 
@@ -271,7 +275,7 @@ The polls in Section 9 ask EWG to record positions it has already taken. This se
 - SG23, Croydon, March 2026: 20-2 supporting the design principles of P3984R0<sup>[6]</sup>; 25-0 to focus on the framework for C++29; 18-0 to volunteer to EWG to drive the work (all for-against).
 - SG23, Brno, June 2026: 20/15/4/0/0, to encourage more work on the initialization profile of P4222R2<sup>[5]</sup>.
 
-**The deployment-experience standard, stated in the committee's own voice.** At Croydon, Gabriel Dos Reis: "We need real deployment experience, and this is not ready to forward." Timur Doumler has set the same bar for the machinery generally: "real deployment experience across different domains and companies." P3608R0<sup>[12]</sup> (Rationale), co-authored by Voutilainen, Wakely, and Dos Reis, applied it in this exact domain: "the standard library hardening is existing practice, and comes with very positive field experience reports."
+**The deployment-experience standard, stated in the committee's own voice.** At Croydon, Gabriel Dos Reis: "We need real deployment experience, and this is not ready to forward." Timur Doumler has set the same bar for the machinery generally: "real deployment experience across different domains and companies." P3608R0<sup>[12]</sup> (Rationale), co-authored by Voutilainen, Wakely, and Dos Reis, applied it in this exact domain: "the standard library hardening is existing practice, and comes with very positive field experience reports." Clang's static analyzer carried prototype bounds checkers from 2010; one reached production quality only in 2026, after years of stabilization against false positives<sup>[27]</sup>.
 
 Taken together, the record holds three positions: SD-10 governs evolution design, deployment experience is the standard for a safety feature, and Profiles is the endorsed direction with a four-year poll trail. The profile proposed here satisfies all three. The polls in Section 9 ask EWG to say so.
 
@@ -283,7 +287,7 @@ Each heading below states a concern in its strongest form; each answer draws onl
 
 ### The first concern: the profile has no implementation
 
-True, and stated plainly: `std::core_ub` is specified here, not shipped. Three facts bound the concern. First, the checking each guarded case requires is deployed technology today; the sanitizers and hardened libraries of Section 6 perform checks of exactly these kinds. Second, the checking instrumentation is the same work under either routing: an inserted bounds check or lifetime check serves a profile and an implicit contract assertion alike, so an implementation of the checks is not duplicated effort between the two proposals. Third, the framework the profile is specified on has a public Clang implementation. Applied evenly, the concern weighs the other way: the named-guarantee form the profile standardizes ships across the eight systems of Section 6, while the routing it declines ships nowhere.
+True, and stated plainly: `std::core_ub` is specified here, not shipped. Three facts bound the concern. First, the checking each guarded case requires is deployed technology today; the sanitizers and hardened libraries of Section 6 perform checks of exactly these kinds. Clang's `security.ArrayBound` checker already performs this bounds checking by symbolic execution, in the same toolchain that would implement the profile<sup>[27]</sup>. Second, the checking instrumentation is the same work under either routing: an inserted bounds check or lifetime check serves a profile and an implicit contract assertion alike, so an implementation of the checks is not duplicated effort between the two proposals. Third, the framework the profile is specified on has a public Clang implementation. Applied evenly, the concern weighs the other way: the named-guarantee form the profile standardizes ships across the eight systems of Section 6, while the routing it declines ships nowhere.
 
 ### The second concern: the deployed systems check library preconditions, not core-language cases
 
@@ -419,6 +423,8 @@ This paper is indebted to Bjarne Stroustrup, whose design of the Profiles concep
 
 [26] [P4310R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4310r0.pdf) - "Hasta la Vista, Undefined Behavior: Why Implicit Contract Violations Should Terminate" (Vinnie Falco, Ville Voutilainen, 2026).
 
+[27] [Bounds Checking with the Clang Static Analyzer](https://www.youtube.com/watch?v=QisZYmCW9Rc) - "Bounds Checking with the Clang Static Analyzer: Improvements and Insights" (Don&aacute;t Nagy, 2026).
+
 \newpage
 
 ## Appendix A: Enumeration of Guarded Operations
@@ -463,6 +469,8 @@ Checkable locally under the stated condition; otherwise they require instrumenta
 | `{expr.dynamic.cast.pointer.lifetime}` | [expr.dynamic.cast]/7 | null pointer case | Track lifetime and type, or ctor-dtor state; null check |
 | `{expr.static.cast.downcast.wrong.derived.type}` | [expr.static.cast]/11 | null pointer case | Track lifetime and type, or ctor-dtor state; null check |
 | `{expr.unary.dereference}` | [expr.unary.op]/1 | null pointer case | Track lifetime and type, and function address; null check |
+
+The Clang static analyzer already implements this strategy, tracking pointer provenance and dynamic allocation extent by symbolic execution<sup>[27]</sup>.
 
 ### A.3 Not locally checkable (52 cases)
 
