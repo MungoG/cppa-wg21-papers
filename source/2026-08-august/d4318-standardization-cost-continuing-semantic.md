@@ -1,6 +1,6 @@
 ---
 title: "Transient Benefit, Perpetual Cost: Implicit Core-Language Assertions"
-document: P4318
+document: P4318R0
 date: 2026-07-14
 intent: info
 audience: EWG

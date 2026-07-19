@@ -168,37 +168,7 @@ The point of the two cases is that the strategy column of Appendix A is not this
 
 ## 4. Coexistence with Legacy Assertion Facilities
 
-A safety mechanism does not arrive in an empty field. The standard `assert` macro and the many project-specific assertion facilities deployed across the C++ ecosystem already check preconditions and invariants, and a new mechanism should say how it sits alongside them. This section records that for completeness; it draws no comparison in the profile's favor.
-
-[P3290R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3290r4.pdf)<sup>[19]</sup> (Berne, Doumler, Lakos) identifies this need and proposes a path for the Contracts routing: a library API that lets legacy macros invoke the C++26 contract-violation handler, and an opt-in macro (`ASSERT_USES_CONTRACTS`) that routes the standard `assert` macro through that handler. The need is real and the paper names it well. Under the Profiles routing the same need is met through the profile's own response rather than the contract-violation handler; what follows is how, and where the profile deliberately stops short.
-
-### 4.1 How existing facilities respond to a failed check
-
-Deployed assertion facilities already share a dominant response to a failed check: they stop the program. Table 3 surveys representative facilities across the ecosystem.
-
-**Table 3.** Response to a failed check across deployed assertion facilities.
-
-| Facility | Default response | Continues past violation? | Replaceable handler? |
-|---|---|---|---|
-| C `assert` / `<cassert>` | diagnostic, then `abort()` | No | No (on/off via `NDEBUG`) |
-| glibc `_FORTIFY_SOURCE` | `__chk_fail()`, then `abort()` | No | No |
-| Bloomberg `bsls_assert` | log, then `abort()` (default) | No | Yes (handler must not return) |
-| Bloomberg `bsls_review` | log | Yes | Yes (handler may return) |
-| Abseil `ABSL_HARDENING_ASSERT` | immediate `abort()` | No | No |
-| GSL `Expects` / `Ensures` | `std::terminate()` | No | No (throw option removed) |
-| C++26 Contracts, `enforce` | handler, then terminate | No | Yes |
-
-Termination is the deployed norm for a detected violation. Log-and-continue - Bloomberg's `bsls_review` and the C++26 `observe` semantic - is deployed too, and is a first-class capability where it applies: staged rollout at the library level, where the post-violation state remains defined. It is not the shipping response to core-language undefined behavior, where the surveyed deployments terminate. The profile's terminating response (Section 2.3) is the posture these facilities take for the class it guards.
-
-### 4.2 Integration and the `assert` macro
-
-A legacy facility integrates with the profile by routing a failed check to whichever response the profile author selects in Section 2.3, in place of its own ad hoc termination. The integration point is the profile's response rather than the program-wide contract-violation handler, so ownership of the response stays with the safety feature. Granularity follows the framework: the profile's dominion runs to the end of the translation unit, and `[[profiles::suppress(std::core_ub)]]` gives a scope that needs a different response a local escape, without a separate preprocessor macro per header.
-
-The standard `assert` macro fits the same pattern. When `std::core_ub` is enforced and `assert(expr)` fails, the profile's selected response applies and the program ends rather than proceeding. An `assert` failure is not itself undefined behavior, so it is not covered by the profile's core guarantee (Section 2.1); the profile's treatment of `assert` is an extension of its response to the C library's own checking facility, on the same reasoning P3290R4 gives - that the standard's safety infrastructure should cover the checking facilities users already have.
-
-### 4.3 What the profile does not do
-
-The profile does not provide log-and-continue past a violated precondition for the core-language-undefined class, and it does not claim to. P3290R4 offers `handle_observed_contract_violation()`, which continues after the handler returns; the profile stops instead. This follows the deployed boundary: Bloomberg's `bsls_review`<sup>[20]</sup> logs and continues at the library level, where the post-violation state is defined, while `bsls_assert`<sup>[20]</sup> terminates where the post-violation state is language-undefined. The case for terminating on the core-language-undefined class, and the reading of that Bloomberg boundary it rests on, is set out in full in the companion P4310R0<sup>[26]</sup>. For the 15 guarded cases with a well-defined replacement (Appendix A.4), the operation has the profile-defined value and does not reach this boundary; for the remaining 62, termination is what every surveyed production deployment ships (Section 6). The handler still runs for logging and telemetry before termination; only continuation past language-undefined state is omitted.
+A safety mechanism does not arrive in an empty field: the standard `assert` macro and the many project-specific assertion facilities across the C++ ecosystem already check preconditions, and [P3290R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3290r4.pdf)<sup>[19]</sup> (Berne, Doumler, Lakos) names this coexistence need well, proposing a path for the Contracts routing in which legacy macros invoke the C++26 contract-violation handler. Under the Profiles routing the same need is met through the profile's own response (Section 2.3) rather than the program-wide handler, so ownership of the response stays with the safety feature: a legacy facility, including the standard `assert` macro, routes a failed check to whichever response the profile author selects, and `[[profiles::suppress(std::core_ub)]]` gives a local escape to any scope that needs different handling. Where the profile deliberately stops short is log-and-continue past a violated precondition for the core-language-undefined class, following the deployed boundary in which Bloomberg's `bsls_review`<sup>[20]</sup> logs and continues at the library level, where the post-violation state is defined, while `bsls_assert`<sup>[20]</sup> terminates where the state is language-undefined, the class this profile guards; the handler still runs for logging and telemetry before termination, and the full case for that boundary is set out in the companion P4310R0<sup>[26]</sup>.
 
 ---
 
@@ -265,15 +235,7 @@ The polls in Section 9 ask EWG to record positions it has already taken. This se
 
 **The Direction Group.** P3970R0<sup>[10]</sup> (January 2026) designates Profiles as the primary strategy for C++29 safety. Its authors are the full Direction Group.
 
-**The poll trail.** Thirteen successful polls over four years have supported the Profiles direction and framework. Counts are given as SF/F/N/A/SA (strongly favor / favor / neutral / against / strongly against) where the record preserves the full breakdown, and as for-against totals where only aggregates were recorded:
-
-- SG23, Kona, November 2022: 35-2 and 33-2 (for-against), to pursue the combination of runtime checking, library facilities, and static analysis, and to start from P2687R0<sup>[11]</sup>.
-- EWG, Issaquah, February 2023: 47-2 (for-against), supporting the Profiles direction of P2816R0<sup>[13]</sup>.
-- SG23, St. Louis, June 2024: 12/6/1/3/0, for the attribute syntax of P3447R0<sup>[14]</sup>.
-- SG23, Wroclaw, November 2024: a four-way priority poll of 19/11/6/9 (Profiles / both / neutral / the alternative); 23-1-0 to forward P3081R0<sup>[15]</sup> to EWG; 22-2-0 to give more time to the invalidation profile.
-- EWG, Sofia, June 2025: 16/14/11/2/0, EWG likes the approach of the P3589R2<sup>[3]</sup> framework; 31-2 (for-against), that P3700R0<sup>[16]</sup> is correct guidance for adding safety rules.
-- SG23, Croydon, March 2026: 20-2 supporting the design principles of P3984R0<sup>[6]</sup>; 25-0 to focus on the framework for C++29; 18-0 to volunteer to EWG to drive the work (all for-against).
-- SG23, Brno, June 2026: 20/15/4/0/0, to encourage more work on the initialization profile of P4222R2<sup>[5]</sup>.
+**The poll trail.** Thirteen successful polls over four years have consistently supported the Profiles direction and framework, from SG23 Kona (November 2022), which resolved to pursue runtime checking alongside library facilities and static analysis starting from P2687R0<sup>[11]</sup>, through the Profiles direction of P2816R0<sup>[13]</sup>, the attribute syntax of P3447R0<sup>[14]</sup>, the core safety profiles of P3081R0<sup>[15]</sup>, the safety-rule guidance of P3700R0<sup>[16]</sup>, and the P3589R2<sup>[3]</sup> framework, to the initialization profile of P4222R2<sup>[5]</sup> at SG23 Brno (June 2026); the margins ran from 20-2 to 47-2, and no poll failed to reach consensus in favor. The most recent, SG23 Croydon (March 2026), supported the design principles of P3984R0<sup>[6]</sup> (20-2), resolved to focus on the framework for C++29 (25-0), and volunteered to EWG to drive the work (18-0).
 
 **The deployment-experience standard, stated in the committee's own voice.** At Croydon, Gabriel Dos Reis: "We need real deployment experience, and this is not ready to forward." Timur Doumler has set the same bar for the machinery generally: "real deployment experience across different domains and companies." P3608R0<sup>[12]</sup> (Rationale), co-authored by Voutilainen, Wakely, and Dos Reis, applied it in this exact domain: "the standard library hardening is existing practice, and comes with very positive field experience reports." Clang's static analyzer carried prototype bounds checkers from 2010; one reached production quality only in 2026, after years of stabilization against false positives<sup>[27]</sup>.
 
