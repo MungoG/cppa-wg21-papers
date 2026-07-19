@@ -11,9 +11,9 @@ reply-to:
 
 ## Abstract
 
-A C++ design-by-contract facility can keep just two jobs in the language - binding a predicate to a declaration and naming the object that governs it - and express everything else as library code.
+In C++26 (P2900), a contract predicate is evaluated with the variables it reads treated as `const`, and an exception that escapes the predicate becomes a contract violation rather than propagating. Both behaviors are fixed by the language.
 
-C++26 specifies contracts in P2900, where constification and exception-to-violation translation are language rules the compiler performs; a program cannot vary them per assertion without a language change. This design keeps only those two jobs in the language: the compiler reads three compile-time properties off an assertion-control object and makes one runtime call on a violation, so constification, exception handling, the evaluation semantics, the violation handler, and the violation object all become ordinary library code. The common-case `pre`, `post`, and `contract_assert` syntax stays unchanged, with a checked, terminating default. The design is a synthesis of four published lines of work on a library surface P2900 already specifies, and library implementations of contract behavior with customizable violation handling already ship. New evaluation semantics are added library-side through an open configuration enumeration, so behavior the committee has treated as language design needs no language change, and an ignored assertion emits no code and never evaluates its predicate. Contracts are scoped to the assertions an author writes, while a separate `std::core_ub` profile owns core-language undefined behavior, keeping the two facilities independent peers so that contracts cannot become the substrate through which that behavior is configured. Compared against Stroustrup's design principles, the two designs differ on zero-overhead, compile-time resolution, general mechanisms, local inspection, and language integration; the paper presents the differences and invites the reader to judge, though with the reference implementation not yet complete this evaluation rests on the design and published prior work rather than on measured results. Its only substantive differences from the C++26 working draft, those two transforms now off by default and expressed as control-object properties, are separable and cheaper to relocate to the library while the draft is still unballoted.
+This paper describes a design in which they are configurable per assertion. The language keeps two jobs, binding a predicate to a declaration and naming an object that governs it, and the rest becomes ordinary library code: constification, exception handling, the evaluation semantics, the violation handler, and the violation object. The `pre`, `post`, and `contract_assert` syntax is unchanged, with a checked, terminating default. The design synthesizes four published proposals<sup>[4]</sup><sup>[5]</sup><sup>[2]</sup><sup>[3]</sup> on a library surface P2900 already specifies.
 
 ---
 
@@ -27,37 +27,28 @@ C++26 specifies contracts in P2900, where constification and exception-to-violat
 
 ## 1. Introduction
 
-C++26 adds contracts through P2900R14<sup>[1]</sup>: the `pre`, `post`, and `contract_assert` syntax, four evaluation semantics (`ignore`, `observe`, `enforce`, `quick_enforce`), and two transforms the compiler applies to the predicate. The first transform, constification, makes the objects a predicate reads `const` during the check. The second translates an exception that escapes the predicate into a contract violation. Both are properties of the language: the compiler performs them, and a program cannot vary them per assertion without a language change.
+C++26 adds contracts through P2900R14<sup>[1]</sup>: the `pre`, `post`, and `contract_assert` syntax, and four evaluation semantics (`ignore`, `observe`, `enforce`, `quick_enforce`). In P2900, variables inside a contract predicate are treated as `const`. Furthermore, an exception that escapes predicate evaluation does not propagate, but becomes a contract violation.
 
-The design described here keeps two jobs in the language and delegates the rest to a library. The two jobs are binding a predicate to a declaration and naming the object that governs the predicate. That object, an assertion-control object, exposes a few compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. Constification, exception handling, the evaluation semantics, the violation handler, and the violation object become ordinary library code. The syntax a programmer writes is unchanged in the common case: `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`.
-
-The design is a synthesis of published work. Gustafsson's P3968R0<sup>[4]</sup> delegates contract functionality to a library assertion object whose named members steer code generation. Berne's P3400R4<sup>[5]</sup> introduces assertion-control objects composed from compile-time labels. Voutilainen's P4005R0<sup>[2]</sup> and P4009R0<sup>[3]</sup> supply a guaranteed-enforced strand and a library-oriented semantic model. P2900R14<sup>[1]</sup> already specifies the violation handler and the violation object as library entities. Boost.Contract<sup>[19]</sup> and cppfront<sup>[20]</sup> implement contract behavior, including customizable violation handling, entirely in library code today.
+This paper proposes that constification and exception propagation become configurable per assertion rather than fixed parts of predicate evaluation. The design keeps two jobs in the language, binding a predicate to a declaration and naming the object that governs the predicate, and delegates the rest to a library. That object, an assertion-control object, exposes a few compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. Constification, exception handling, the evaluation semantics, the violation handler, and the violation object become ordinary library code. The syntax a programmer writes is unchanged in the common case: `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`.
 
 The contributions are:
 
 1. A minimal core-language contracts design: two syntactic jobs, a three-step compiler algorithm, and a library-owned response, specified at design granularity (Section 2).
-2. A mapping of the design onto the published prior work it unifies (Section 3).
+2. A statement of how the design relates to the C++26 working draft, and an account of what changing the draft costs at the current stage (Section 3).
 3. An architecture in which contracts and profiles are independent peers, so that no core-language undefined behavior is routed through the contract-violation handler (Section 4).
-4. A statement of how the design relates to the C++26 working draft, and an account of what changing the draft costs at the current stage (Section 5).
-5. A comparison of the design and P2900 against Stroustrup's design principles<sup>[22]</sup> (Section 6).
-6. The two strongest objections to the design, each answered from the evidence presented (Section 7).
-7. A reference-implementation plan built on existing compiler forks (Section 8).
+4. A reference-implementation plan built on existing compiler forks (Section 5).
 
-The design rests on one assumption: the language should carry only what only the language can do, and everything a library can do should be in a library. Section 6 compares both designs against that principle and the others in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>.
+The design rests on one assumption: the language should carry only what only the language can do, and everything a library can do should be in a library. Appendix B compares both designs against that principle and the others in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. Appendix A maps the design onto the published prior work it unifies.
 
 ---
 
 ## 2. Design
 
-This section specifies the design as a concept and an algorithm rather than wording: the guarantee the language part provides, the compile-time interface a control object exposes, the surface syntax, and the library that handles the response. Each subsection names the design principle its choice follows.
-
-The design has one central idea: the properties the compiler needs are compile-time queries on a type, and the response is a runtime call on a value of that type. Everything that can be a query or a call is one.
+This section specifies the design as a concept and an algorithm rather than wording: the guarantee the language part provides, the compile-time interface a control object exposes, the surface syntax, and the library that handles the response. The central idea is that the properties the compiler needs are compile-time queries on a type, and the response is a runtime call on a value of that type.
 
 ### 2.1 The two jobs
 
 The syntax `pre`, `post`, and `contract_assert` does exactly two things. It binds a predicate to a declaration or a statement, and it names an assertion-control object that governs the predicate. The predicate is an operand of the introducer, not an argument passed to a function. The compiler controls whether and when it is evaluated, so an ignored assertion never evaluates it (Section 2.8); a function call, by contrast, evaluates its arguments before the call runs.
-
-**Rationale:** Making the predicate an operand the compiler controls, rather than a function argument, is what lets the compiler skip it at compile time (Section 2.8), which no library call can do. It also keeps the facility working with the existing rules for a construct's operand, which follows the principle that a feature must fit syntactically and semantically into the language<sup>[22]</sup>.
 
 ### 2.2 The three-step compiler algorithm
 
@@ -74,8 +65,6 @@ For each contract assertion with control object of type `T` and a build-selected
 ```
 
 The configuration `cfg` is a compile-time constant within a translation unit, selected by an implementation-defined mechanism, as P2900's build-time semantic selection is chosen today. The three steps read three compile-time properties (`is_ignored`, `constify`, `assumable`) and make one runtime call. Nothing else about the assertion is a language rule.
-
-**Rationale:** Resolving ignoredness, constification, and assumability at compile time, and leaving only the response at run time, follows the principle of preferring compile-time resolution to run-time work<sup>[22]</sup>.
 
 ### 2.3 The assertion-control concept
 
@@ -106,8 +95,6 @@ concept assertion_control =
 
 The compiler reads only these member names and the call-operator signature. It does not depend on the contents of the `<contracts>` header. Gustafsson gives the reason: a dependency from the core compiler to the contents of a standard library header "is novel and something we usually want to avoid"<sup>[4]</sup>. P3968R0<sup>[4]</sup> reaches the same shape with boolean members named `constify`, `ignorable`, and `assumable`; P3400R4<sup>[5]</sup> reaches it with a `const` member the implementation may "query the value at any time."
 
-**Rationale:** A single general interface (a type with named members and a call operator) that any author can implement follows the principle of providing general mechanisms over special-purpose features<sup>[22]</sup>.
-
 ### 2.4 Surface syntax
 
 The control object is named with a template argument, and the common case has a default.
@@ -120,8 +107,6 @@ contract_assert(index < size);
 ```
 
 `pre(cond)` is `pre<std::contracts::default_v>(cond)`, and likewise for `post` and `contract_assert`. A program that never names a control object writes the P2900 syntax and gets a checked, terminating semantic by default.
-
-**Rationale:** Keeping the short, declaration-attached spelling in the language serves the principle of expressing important things in the language itself rather than through macros<sup>[22]</sup>. The greppable common form is available to tools and readers because it is one spelling, unlike a macro whose expansion varies by project.
 
 ### 2.5 The library owns the response
 
@@ -162,8 +147,6 @@ A build-time flag selects which semantic applies; a control object defines what 
 
 Extension is intrinsic. A platform or a user adds a configuration value in the reserved range and a library function that recognizes it; the compiler passes the selected `cfg` through without knowing its meaning. The semantics the committee has added or is debating illustrate the point. `quick_enforce` was added to P2900 by committee action; `noexcept-observe` and `noexcept-enforce` are proposed now in P4308R0 Option C<sup>[11]</sup> and implemented in experimental GCC and Clang branches. Under this design each is a library value, field-tested and then standardized from experience.
 
-**Rationale:** Adding a semantic by writing a function is the most familiar extension mechanism a C++ programmer has, and it follows the principle of general mechanisms over special-purpose features<sup>[22]</sup>.
-
 ### 2.6 Configuration vocabulary
 
 The standard defines the baseline vocabulary `ignore`, `observe`, `enforce`, and `quick_enforce`. The `evaluation_config` representation is an open enumeration with a reserved standard range and a reserved vendor-and-user range. A platform can define additional values without a language change, and library dispatch handles values it does not recognize by forwarding to the platform function. This delivers both behavioral configurability (what a semantic does) and vocabulary extensibility (adding a semantic), library-side.
@@ -202,39 +185,31 @@ struct mandatory {
 
 Because `is_ignored` is a compile-time query on the type, an ignored assertion produces no code and the predicate is never evaluated. A design that instead wraps the predicate in a library call, as in the plain-function form of P4009R0<sup>[3]</sup>, evaluates the predicate to make the call, even when the library ignores the result. The type-based form gives up nothing at the ignore configuration.
 
-**Rationale:** Emitting nothing for an ignored assertion is the zero-overhead principle: what a program does not use, it does not pay for<sup>[22]</sup>.
-
 The call operator receives the predicate text as `comment` and a `std::source_location`. The compiler holds the predicate text already, so a violation message can name the expression without the library reconstructing it from a bare `bool`.
 
 ### 2.9 Scope
 
 The design as specified here covers `pre`, `post`, and `contract_assert` on non-virtual functions and on statements. It does not cover old-value capture in postconditions or contracts on virtual functions. Both are the subjects of separate, already-prototyped extension papers: virtual functions in P3097R3<sup>[17]</sup> and postcondition captures in P3098R2<sup>[18]</sup>, with the caller-facing and callee-facing distinction the virtual-function work rests on developed in P3097R3<sup>[17]</sup>. Contracts on function pointers are not a special exclusion. Contracts attach to a declaration rather than to the function type, so an indirect call carries no declaration contract. The guaranteed-enforced strand of Section 2.7 is the mechanism when a check must run regardless of how the function is reached.
 
-**Rationale:** Deferring old-value capture and virtual functions to separate features follows the principle that C++ is a language built from composable parts<sup>[22]</sup>.
+---
+
+## 3. Relationship to the C++26 working draft
+
+Two differences are substantive. First, constification is a property of the control object rather than a language rule: `default_control` does not constify, so a predicate means what the same expression means in the function body, and a control object enables it by setting `constify` to true. Second, an exception that escapes a predicate propagates as an ordinary exception, stopped at a `noexcept` boundary as any exception is, rather than becoming a contract violation. Both behaviors remain available as control-object properties; they stop being imposed by the language.
+
+Both behaviors are separable, and the separation has implementation experience. P4005R0<sup>[2]</sup> reports "implementation experience with a mix of contract assertions with 'constification' and without" and, likewise, with and without converting an escaping predicate exception into a violation. Berne's P3261R0<sup>[7]</sup> enumerates removing constification as "Proposal 1: No const-ification," and P3592R0<sup>[8]</sup> proposes a `mutable` specifier "to simply turn off const-ification entirely within a contract assertion predicate." The design here makes the off state the default and the on state a control-object property.
+
+The committee has polled removal of these elements. At Hagenberg in February 2025, EWG polled "Remove constification" at SF:9 F:7 N:6 A:37 SA:14, consensus against, and "Remove P2900 from C++26" at SF:9 F:8 N:3 A:19 SA:41, consensus against (EWG poll record, Hagenberg, February 2025). Both polls asked about removal without a replacement in hand.
+
+The cost of these behaviors has been recorded since those polls. P4308R0<sup>[11]</sup> identifies a trilemma in which the `noexcept` operator's value, stack unwinding, and the meaning of `noexcept` cannot all be preserved at once when a predicate exception can escape a core-language check. P4306R0<sup>[10]</sup> records that converting predicate exceptions into violations requires the compiler to "generate the correct instructions for exception handling around every contract assertion," with an implementer noting the resulting backtrace "is useless." P4318R0<sup>[13]</sup> accounts for the standardization cost of a continuing semantic on the undefined class and finds it "returns less than it costs." A design in which an escaping exception propagates by default does not incur the trilemma or the exception-handling scaffolding, because there is no exception to convert.
+
+The stage of the cycle bears on the cost of change. As of this writing the C++26 Draft International Standard has not been balloted. Amending one of these behaviors in undeployed draft text changes text that no implementation ships as a default; amending it after the standard ships changes a deployed default. That technical cost is lower before the standard is published, and it falls on text that the removability evidence above shows is separable. Against it stands a process cost: revisiting an element the committee has twice declined to remove is itself work, borne whenever a settled question is reopened. Both are facts of the current stage, recorded without a recommendation.
 
 ---
 
-## 3. Relationship to prior work
+## 4. Contracts and profiles as independent peers
 
-This design does not originate the idea of a small contracts core with a library-carried response. It unifies four published lines of work, and it uses a library surface that P2900 already specifies.
-
-The assertion object with codegen-steering members is Gustafsson's. P3968R0<sup>[4]</sup> states the goal directly: "remove the dependency from the compiler to the standard library and delegate as much as possible of the functionality to library code for maximum flexibility," with the compiler reading boolean members named `constify`, `ignorable`, and `assumable` and calling an `operator()` on a violation. The `assertion_control` concept in Section 2.3 is the same shape with `is_ignored` in place of `ignorable`.
-
-The compile-time control object is Berne's. P3400R4<sup>[5]</sup> introduces "assertion-control objects ... composed from constexpr labels, that let developers customize contract-assertion behavior directly in C++ source code," whose logic "must execute at compile time so that it can influence code generation." P3400R4 is authored by a co-author of P2900 and P3100, and P4275R0<sup>[6]</sup> presents it to EWG with an explicit division into a core-language part with "very little library dependency" and library utilities that "most can be written by users themselves if needed." The design here adopts that division.
-
-The librarized semantics and the guaranteed-enforced strand are Voutilainen's. P4009R0<sup>[3]</sup> expresses the semantics as library functions, so that "adding new semantics and new functionality is simple and straightforward," and P4005R0<sup>[2]</sup> supplies a guaranteed-enforced form whose assertions carry "no 'constification' or other additional transform" and are ODR-affecting; the mangling "makes it safe to enable compiler optimizations based on knowledge of the results of guaranteed-enforced assertions." Section 2.7's `mandatory` control is that strand.
-
-The response is already a library in P2900. P2900R14<sup>[1]</sup> specifies the handler as "a function named `::handle_contract_violation`," provides `invoke_default_contract_violation_handler`, and defines the `contract_violation` object with properties "accessed by const, non-virtual member functions." The design moves the remaining piece, the branch that selects among semantics, into the same library.
-
-Library implementations of contract behavior exist and are shipping. Boost.Contract<sup>[19]</sup> supports "customizable actions on assertion failure (e.g., terminate the program or throw exceptions)" entirely in a library, and its author wrote in 2016 that "language support for Contract Programming remains the ultimate solution" because it provides "a more concise syntax, compiler optimizations, and put the contracts with function declaration instead of definitions"<sup>[9]</sup>. cppfront<sup>[20]</sup> ships contract groups with customizable violation handlers as library objects. P3294R2<sup>[16]</sup> describes the modern replacement for the preprocessor macros such libraries have relied on, where "a macro is a function that takes a token sequence and returns a token sequence."
-
-The design's contribution is not any one of these parts. It is the observation that they compose: the codegen properties of P3968R0 and P3400R4, the librarized semantics of P4009R0, the guaranteed-enforced strand of P4005R0, and the library handler of P2900 fit together into one facility.
-
----
-
-## 4. Architecture: contracts and profiles as independent peers
-
-This section states where the design places the response to core-language undefined behavior, and why that placement keeps two facilities independent. The question is one of ownership: which feature owns the response when a checked operation fails.
+The question here is one of ownership: which feature owns the response when a checked operation fails.
 
 A contract-violation handler that is invoked for core-language undefined behavior owns the response to that behavior. P4297R0<sup>[14]</sup> puts the ownership relation plainly: "Whoever owns the handler owns the response." If the response to a core-language operation, a signed-overflow check or a null-dereference check, is routed through the program-wide contract-violation handler, then the handler, and whoever configures it, determines what happens on that failure. The alternative is for the feature that guards the operation to own its guarantee.
 
@@ -246,66 +221,9 @@ This placement matches shipping practice. The log-and-continue behavior Bloomber
 
 ---
 
-## 5. Relationship to the C++26 working draft
+## 5. Implementation
 
-This section states how the design differs from the C++26 contracts in the working draft, and what aligning the draft with it would cost at the current stage.
-
-Two differences are substantive. First, constification is a property of the control object rather than a language rule: `default_control` does not constify, so a predicate means what the same expression means in the function body, and a control object enables it by setting `constify` to true. Second, exception-to-violation translation is off by default: a predicate exception propagates as an ordinary exception, stopped at a `noexcept` boundary as any exception is, rather than being converted into a violation. Both transforms remain available as control-object properties; they stop being imposed by the language.
-
-Both transforms are separable, and the separation has implementation experience. P4005R0<sup>[2]</sup> reports "implementation experience with a mix of contract assertions with 'constification' and without" and, likewise, with and without predicate-exception translation. Berne's P3261R0<sup>[7]</sup> enumerates removing constification as "Proposal 1: No const-ification," and P3592R0<sup>[8]</sup> proposes a `mutable` specifier "to simply turn off const-ification entirely within a contract assertion predicate." The design here makes the off state the default and the on state a control-object property.
-
-The committee has polled removal of these elements. At Hagenberg in February 2025, EWG polled "Remove constification" at SF:9 F:7 N:6 A:37 SA:14, consensus against, and "Remove P2900 from C++26" at SF:9 F:8 N:3 A:19 SA:41, consensus against (EWG poll record, Hagenberg, February 2025). Both polls asked about removal without a replacement in hand.
-
-The cost of the transforms has been recorded since those polls. P4308R0<sup>[11]</sup> identifies a trilemma in which the `noexcept` operator's value, stack unwinding, and the meaning of `noexcept` cannot all be preserved at once when a predicate exception can escape a core-language check. P4306R0<sup>[10]</sup> records that translating predicate exceptions requires the compiler to "generate the correct instructions for exception handling around every contract assertion," with an implementer noting the resulting backtrace "is useless." P4318R0<sup>[13]</sup> accounts for the standardization cost of a continuing semantic on the undefined class and finds it "returns less than it costs." A design that does not translate exceptions by default does not incur the trilemma or the exception-handling scaffolding, because there is no escaping exception to reconcile.
-
-The stage of the cycle bears on the cost of change. As of this writing the C++26 Draft International Standard has not been balloted. Amending a transform in undeployed draft text changes text that no implementation ships as a default; amending it after the standard ships changes a deployed default. That technical cost is lower before the standard is published, and it falls on text that the removability evidence above shows is separable. Against it stands a process cost: revisiting an element the committee has twice declined to remove is itself work, borne whenever a settled question is reopened. Both are facts of the current stage, recorded without a recommendation.
-
----
-
-## 6. Evaluation against the design principles
-
-This section compares the minimal core and P2900 against the principles in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. The principles are Stroustrup's; the comparison covers the principles on which the two designs differ. On the others, including expressing contracts in the language rather than in macros and driving the feature from real problems, the two designs are alike, because both keep the `pre`, `post`, and `contract_assert` syntax and address the same use cases. The P2900 column is left for the reader to fill in. Each row states the factual difference; the reader may judge whether a difference constitutes satisfaction of the principle or not.
-
-Table 1. Design-principle comparison: the principles on which P2900 and the minimal core differ.
-
-| Principle (D&E<sup>[22]</sup>) | P2900 | Minimal core | Difference |
-|---|---|---|---|
-| Zero-overhead: what is not used is not paid for | | Yes | P2900's default exception translation makes the compiler generate exception-handling code around every contract assertion<sup>[10]</sup>; the minimal core translates no exceptions by default, and an ignored assertion emits nothing (Section 2.8). |
-| Prefer compile-time to run-time resolution | | Yes | P2900 applies constification and exception translation as run-time transforms; the minimal core resolves ignoredness, constification, and assumability as compile-time queries on the control-object type (Section 2.2). |
-| Do not force one style | | Yes | P2900 fixes the semantics and their transforms in the language; the minimal core lets a platform or user add a semantic library-side (Section 2.5), so a log-and-continue style is expressible without committee action. |
-| General mechanisms over special-purpose features | | Yes | P2900 builds the semantics into the compiler; the minimal core selects a semantic by naming a different object, the most familiar extension mechanism in the language (Section 2.5). |
-| Verifiable by local inspection | | Yes | Under constification a predicate can bind a different overload than the same text in the body, so "overload resolution might quietly invoke different functions in the two contexts"<sup>[8]</sup>; the minimal core evaluates the predicate under the usual rules by default<sup>[2]</sup>. Build-time semantic selection remains in both, so the difference is the meaning of the expression, not the selected semantic. |
-| Integrate with the language, not a sub-language | | Yes | Constification is a new evaluation rule for a predicate; the minimal core reuses ordinary expression evaluation and an ordinary function call for the response. |
-
-The scoring for the minimal core is the scoring of its default control object. A control object that sets `constify` to true reintroduces the local-inspection cost for the assertions that name it, and one that translates exceptions reintroduces the exception-handling scaffolding, so those rows would read for such an object as they do for P2900. The difference the table records is that P2900 applies the two transforms unconditionally, while here they are opt-in per assertion and off by default.
-
-The P2900 column is blank because the answer depends on which cost the reader weighs higher. Constification protects against accidental mutation in predicates, a problem P3071R1<sup>[23]</sup> addresses. Whether that protection outweighs the local-inspection cost is a technical judgment. Exception translation preserves a single response path through the violation handler. Whether that uniformity outweighs the zero-overhead cost is the same kind of question. P2900's authors made deliberate trade-offs, and different weights on the same evidence yield different answers. Both are sound engineering. Build-time semantic selection, the property P2900's authors treat as central, is preserved in both designs and is not at issue in any row. The table records the differences. The reader scores them.
-
-The principle of providing a better alternative before removing an older facility<sup>[22]</sup> is addressed by Section 5: the alternative is specified here, so any change to the draft is a replacement rather than a removal.
-
----
-
-## 7. Objections
-
-This section states the two strongest objections to the design, each in its strongest form, and answers each from evidence already presented.
-
-### 7.1 "Contracts are a library problem, so no language change is warranted"
-
-The objection. If Boost.Contract<sup>[19]</sup> already provides preconditions, postconditions, and customizable failure actions, and libc++ already ships hardening built as close to contracts as possible without the language feature<sup>[15]</sup>, and P2900 already places the handler and violation object in the library, then a library delivers contracts and the standard should not add language machinery for them.
-
-The response, from the library author. The author of Boost.Contract, the most complete such library, wrote in 2016 that "language support for Contract Programming remains the ultimate solution even if Boost.Contract no longer uses crazy macros," because language support provides "a more concise syntax, compiler optimizations, and put the contracts with function declaration instead of definitions"<sup>[9]</sup>. Those three capabilities are what only the language can provide: a library predicate sits in the definition rather than the declaration; only the compiler can optimize on a guaranteed-enforced predicate, which is why P4005R0's assertions are ODR-affecting<sup>[2]</sup>; and a compiler that is to use a contract for quality-of-implementation must see it in the source rather than behind a library call. The minimal core keeps those three in the language, in its two syntactic jobs, and moves everything else to the library. It is the smallest design that keeps the three.
-
-### 7.2 "One common syntax is the point, and only P2900 provides it"
-
-The objection. Contracts are useful to static-analysis tools and documentation generators because everyone writes them the same way; a design that fragments the spelling, or that has no single short form, defeats that uniformity.
-
-The response. The minimal core keeps the single short form: `pre(cond)`, `post(r: cond)`, and `contract_assert(cond)` are the common spelling, and naming a control object is uncommon (Section 2.4). The uniformity the objection wants is a property of a facility that every toolchain implements. As of this writing, P2900 is implemented in experimental GCC and Clang branches but not across all major implementations, so portable code that must build on a toolchain without P2900 wraps its contracts in macros whose spelling varies by project, and the uniform, greppable form is not available in practice. A facility with a smaller language surface has a lower bar to implementation across toolchains, which is the condition under which a single greppable spelling actually exists. On this point the objection and the design want the same outcome.
-
----
-
-## 8. Implementation
-
-The pieces needed for a reference implementation exist, and this section states the plan and the components it builds on. The implementation is in progress, and a later revision will report results.
+A reference implementation is in progress; this section states the plan and the components it builds on, and a later revision will report results.
 
 The compiler part is a fork. The three-step algorithm (Section 2.2) is a small change to an existing P2900 compiler: the compiler already parses `pre`, `post`, and `contract_assert` and selects a semantic per build, so the change is to read the control-object's compile-time members and to call the control object rather than run a built-in semantic. The experimental GCC and Clang contracts branches on Compiler Explorer, which already implement the `noexcept-observe` and `noexcept-enforce` semantics<sup>[11]</sup>, and the GCC 16.1 experimental contracts implementation are the starting points.
 
@@ -313,29 +231,43 @@ The library part is a header. The `assertion_control` concept, `default_control`
 
 The peer profile is a second header. A `std::core_ub` profile modeled on P4317R0<sup>[12]</sup>, not routed through the contract-violation handler, demonstrates the architecture of Section 4 in code.
 
-Each demonstration maps to a claim: an ignored assertion emits no code and no exception-handling scaffolding; a predicate exception propagates without translation and `noexcept` keeps its meaning; a user-defined semantic is added with a library function and no compiler change; and no core-language undefined behavior is routed through the contract-violation handler. Old-value capture and contracts on virtual functions are out of scope for the reference implementation, consistent with Section 2.9; the P3097R3<sup>[17]</sup> and P3098R2<sup>[18]</sup> branches are the starting points if those are added later.
+Each demonstration maps to a claim: an ignored assertion emits no code and no exception-handling scaffolding; a predicate exception propagates without conversion and `noexcept` keeps its meaning; a user-defined semantic is added with a library function and no compiler change; and no core-language undefined behavior is routed through the contract-violation handler. Old-value capture and contracts on virtual functions are out of scope for the reference implementation, consistent with Section 2.9; the P3097R3<sup>[17]</sup> and P3098R2<sup>[18]</sup> branches are the starting points if those are added later.
 
 ---
 
-## 9. The default checked semantic
+## 6. The default checked semantic
 
-One design choice remains open: whether the default checked semantic, the one an unadorned `pre(cond)` gets, should be `enforce` or a non-throwing `enforce`. The choice interacts with the exception question. Because the design translates no exceptions by default, `enforce` already leaves `noexcept` with its usual meaning, which removes the reason a separate non-throwing semantic was introduced. A non-throwing default would nonetheless guarantee that a violation handler cannot itself throw across a `noexcept` boundary.
+One design choice remains open: whether the default checked semantic, the one an unadorned `pre(cond)` gets, should be `enforce` or a non-throwing `enforce`. The choice interacts with the exception question. Because an escaping exception propagates by default, `enforce` already leaves `noexcept` with its usual meaning, which removes the reason a separate non-throwing semantic was introduced. A non-throwing default would nonetheless guarantee that a violation handler cannot itself throw across a `noexcept` boundary.
 
-This design does not choose between them. A librarized design allows both to be prototyped as control objects, with the choice made from field experience. The two options carry different costs. `enforce` without translation preserves the ordinary exception behavior of the predicate and the usual meaning of `noexcept`, at the cost that a throwing handler under `enforce` interacts with `noexcept` as any throwing function does. A non-throwing default removes that interaction, at the cost of a second semantic to specify and a constraint on what a handler may do.
-
----
-
-## 10. Conclusion
-
-A contracts facility can put two things in the language, binding a predicate to a declaration and naming the object that governs it, and place everything else in a library. The compiler reads a few compile-time properties off the control-object type and makes one call on a violation; constification, exception handling, the semantics, the handler, and the violation object are library code. The resulting facility keeps the language capabilities that only the language can provide, a declaration-attached syntax, optimization on a guaranteed-enforced predicate, and a contract the compiler can see, and it drops the two transforms P2900 applies in the language.
-
-The record supports the design at each step. The assertion object with compiler-read members and the compile-time control object are published designs<sup>[4]</sup><sup>[5]</sup>. The librarized semantics and the guaranteed-enforced strand are published designs<sup>[3]</sup><sup>[2]</sup>. The handler and the violation object are already library entities in P2900<sup>[1]</sup>. Contract behavior, including customizable violation handling, ships in libraries today<sup>[19]</sup><sup>[20]</sup>. Compared against Stroustrup's principles<sup>[22]</sup>, the two designs differ on zero-overhead, compile-time resolution, general mechanisms, local inspection, and integration, and every one of those differences reduces to relocating a transform from the language to the library.
-
-What builds on this next is a reference implementation on the existing compiler forks (Section 8) and field prototyping of the open default-semantic question (Section 9). The consequence for C++ is a contracts facility with a smaller language surface, a zero-cost ignore configuration, a `noexcept` that keeps its meaning, and a lower bar to implementation across toolchains, which is the condition under which the single greppable spelling the feature was designed for actually exists.
+This design does not choose between them. A librarized design allows both to be prototyped as control objects, with the choice made from field experience. The two options carry different costs. `enforce` with a propagating exception preserves the ordinary exception behavior of the predicate and the usual meaning of `noexcept`, at the cost that a throwing handler under `enforce` interacts with `noexcept` as any throwing function does. A non-throwing default removes that interaction, at the cost of a second semantic to specify and a constraint on what a handler may do.
 
 ---
 
-## 11. Disclosure
+## 7. Objections
+
+The two strongest objections to the design, each answered from evidence already presented.
+
+### 7.1 "Contracts are a library problem, so no language change is warranted"
+
+The objection. If Boost.Contract<sup>[19]</sup> already provides preconditions, postconditions, and customizable failure actions, and libc++ already ships hardening built as close to contracts as possible without the language feature<sup>[15]</sup>, and P2900 already places the handler and violation object in the library, then a library delivers contracts and the standard should not add language machinery for them.
+
+The response, from the library author. The author of Boost.Contract wrote in 2016 that "language support for Contract Programming remains the ultimate solution even if Boost.Contract no longer uses crazy macros," because language support provides "a more concise syntax, compiler optimizations, and put the contracts with function declaration instead of definitions"<sup>[9]</sup>. Those three capabilities are what only the language can provide: a library predicate sits in the definition rather than the declaration; only the compiler can optimize on a guaranteed-enforced predicate, which is why P4005R0's assertions are ODR-affecting<sup>[2]</sup>; and a compiler that uses a contract for quality-of-implementation must see it in the source rather than behind a library call. The design keeps those three in the language, in its two syntactic jobs, and moves everything else to the library.
+
+### 7.2 "One common syntax is the point, and only P2900 provides it"
+
+The objection. Contracts are useful to static-analysis tools and documentation generators because everyone writes them the same way; a design that fragments the spelling, or that has no single short form, defeats that uniformity.
+
+The response. The design keeps the single short form: `pre(cond)`, `post(r: cond)`, and `contract_assert(cond)` are the common spelling, and naming a control object is uncommon (Section 2.4). The uniformity the objection wants is a property of a facility that every toolchain implements. As of this writing, P2900 is implemented in experimental GCC and Clang branches but not across all major implementations, so portable code that must build on a toolchain without P2900 wraps its contracts in macros whose spelling varies by project, and the uniform, greppable form is not available in practice. A facility with a smaller language surface has a lower bar to implementation across toolchains, which is the condition under which a single greppable spelling actually exists.
+
+---
+
+## 8. Conclusion
+
+A contracts facility can put two things in the language, binding a predicate to a declaration and naming the object that governs it, and place everything else in a library. The compiler reads a few compile-time properties off the control-object type and makes one call on a violation; constification, exception handling, the semantics, the handler, and the violation object are library code. The result keeps the capabilities only the language can provide, a declaration-attached syntax, optimization on a guaranteed-enforced predicate, and a contract the compiler can see, while making constification and exception propagation per-assertion properties that default off. A reference implementation on the existing compiler forks (Section 5) and field prototyping of the open default-semantic question (Section 6) are what build on this next.
+
+---
+
+## 9. Disclosure
 
 The authors provide information and serve at the pleasure of the committee.
 
@@ -345,7 +277,7 @@ This is an information paper.
 
 The authors have written companion papers on C++26 contracts and profiles, including P4306R0<sup>[10]</sup>, P4308R0<sup>[11]</sup>, P4317R0<sup>[12]</sup>, P4318R0<sup>[13]</sup>, and P4297R0<sup>[14]</sup>. This paper offers a design alternative to P2900<sup>[1]</sup>, which the authors did not write, and the authors have a stated preference for the profiles-based architecture of Section 4.
 
-One limitation is genuine and stated plainly: the reference implementation of Section 8 is not yet complete, so the evaluation in Section 6 rests on the design and on published prior work rather than on measured results from this design.
+One limitation is genuine and stated plainly: the reference implementation of Section 5 is not yet complete, so the evaluation in Appendix B rests on the design and on published prior work rather than on measured results from this design.
 
 This paper is one of a series of C++ Alliance papers on contracts and profiles, listed above.
 
@@ -411,7 +343,46 @@ The assertion object whose compiler-read members steer code generation is Bengt 
 
 ---
 
-## Appendix A: The assertion-control interface
+## Appendix A: Relationship to prior work
+
+This design does not originate the idea of a small contracts core with a library-carried response. It unifies four published lines of work, and it uses a library surface that P2900 already specifies.
+
+The assertion object with codegen-steering members is Gustafsson's. P3968R0<sup>[4]</sup> states the goal directly: "remove the dependency from the compiler to the standard library and delegate as much as possible of the functionality to library code for maximum flexibility," with the compiler reading boolean members named `constify`, `ignorable`, and `assumable` and calling an `operator()` on a violation. The `assertion_control` concept in Section 2.3 is the same shape with `is_ignored` in place of `ignorable`.
+
+The compile-time control object is Berne's. P3400R4<sup>[5]</sup> introduces "assertion-control objects ... composed from constexpr labels, that let developers customize contract-assertion behavior directly in C++ source code," whose logic "must execute at compile time so that it can influence code generation." P3400R4 is authored by a co-author of P2900 and P3100, and P4275R0<sup>[6]</sup> presents it to EWG with an explicit division into a core-language part with "very little library dependency" and library utilities that "most can be written by users themselves if needed." The design here adopts that division.
+
+The librarized semantics and the guaranteed-enforced strand are Voutilainen's. P4009R0<sup>[3]</sup> expresses the semantics as library functions, so that "adding new semantics and new functionality is simple and straightforward," and P4005R0<sup>[2]</sup> supplies a guaranteed-enforced form whose assertions carry "no 'constification' or other additional transform" and are ODR-affecting; the mangling "makes it safe to enable compiler optimizations based on knowledge of the results of guaranteed-enforced assertions." Section 2.7's `mandatory` control is that strand.
+
+The response is already a library in P2900. P2900R14<sup>[1]</sup> specifies the handler as "a function named `::handle_contract_violation`," provides `invoke_default_contract_violation_handler`, and defines the `contract_violation` object with properties "accessed by const, non-virtual member functions." The design moves the remaining piece, the branch that selects among semantics, into the same library.
+
+Library implementations of contract behavior exist and are shipping. Boost.Contract<sup>[19]</sup> supports "customizable actions on assertion failure (e.g., terminate the program or throw exceptions)" entirely in a library, and its author wrote in 2016 that "language support for Contract Programming remains the ultimate solution" because it provides "a more concise syntax, compiler optimizations, and put the contracts with function declaration instead of definitions"<sup>[9]</sup>. cppfront<sup>[20]</sup> ships contract groups with customizable violation handlers as library objects. P3294R2<sup>[16]</sup> describes the modern replacement for the preprocessor macros such libraries have relied on, where "a macro is a function that takes a token sequence and returns a token sequence."
+
+---
+
+## Appendix B: Evaluation against the design principles
+
+This appendix compares the minimal core and P2900 against the principles in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. The principles are Stroustrup's; the comparison covers the principles on which the two designs differ. On the others, including expressing contracts in the language rather than in macros and driving the feature from real problems, the two designs are alike, because both keep the `pre`, `post`, and `contract_assert` syntax and address the same use cases. The P2900 column is left for the reader to fill in. Each row states the factual difference; the reader may judge whether a difference constitutes satisfaction of the principle or not.
+
+Table 1. Design-principle comparison: the principles on which P2900 and the minimal core differ.
+
+| Principle (D&E<sup>[22]</sup>) | P2900 | Minimal core | Difference |
+|---|---|---|---|
+| Zero-overhead: what is not used is not paid for | | Yes | P2900's default conversion of an escaping exception into a violation makes the compiler generate exception-handling code around every contract assertion<sup>[10]</sup>; the minimal core lets an escaping exception propagate by default, and an ignored assertion emits nothing (Section 2.8). |
+| Prefer compile-time to run-time resolution | | Yes | P2900 applies constification, and converts an escaping exception into a violation, at run time; the minimal core resolves ignoredness, constification, and assumability as compile-time queries on the control-object type (Section 2.2). |
+| Do not force one style | | Yes | P2900 fixes the semantics and these behaviors in the language; the minimal core lets a platform or user add a semantic library-side (Section 2.5), so a log-and-continue style is expressible without committee action. |
+| General mechanisms over special-purpose features | | Yes | P2900 builds the semantics into the compiler; the minimal core selects a semantic by naming a different object, the most familiar extension mechanism in the language (Section 2.5). |
+| Verifiable by local inspection | | Yes | Under constification a predicate can bind a different overload than the same text in the body, so "overload resolution might quietly invoke different functions in the two contexts"<sup>[8]</sup>; the minimal core evaluates the predicate under the usual rules by default<sup>[2]</sup>. Build-time semantic selection remains in both, so the difference is the meaning of the expression, not the selected semantic. |
+| Integrate with the language, not a sub-language | | Yes | Constification is a new evaluation rule for a predicate; the minimal core reuses ordinary expression evaluation and an ordinary function call for the response. |
+
+The scoring for the minimal core is the scoring of its default control object. A control object that sets `constify` to true reintroduces the local-inspection cost for the assertions that name it, and one that converts an escaping exception into a violation reintroduces the exception-handling scaffolding, so those rows would read for such an object as they do for P2900. The difference the table records is that P2900 applies the two behaviors unconditionally, while here they are opt-in per assertion and off by default.
+
+The P2900 column is blank because the answer depends on which cost the reader weighs higher. Constification protects against accidental mutation in predicates, a problem P3071R1<sup>[23]</sup> addresses. Whether that protection outweighs the local-inspection cost is a technical judgment. Converting an escaping exception into a violation preserves a single response path through the violation handler. Whether that uniformity outweighs the zero-overhead cost is the same kind of question. P2900's authors made deliberate trade-offs, and different weights on the same evidence yield different answers. Both are sound engineering. Build-time semantic selection, the property P2900's authors treat as central, is preserved in both designs and is not at issue in any row. The table records the differences. The reader scores them.
+
+The principle of providing a better alternative before removing an older facility<sup>[22]</sup> is addressed by Section 3: the alternative is specified here, so any change to the draft is a replacement rather than a removal.
+
+---
+
+## Appendix C: The assertion-control interface
 
 The interface and the three control objects of Section 2, assembled as a single listing.
 
@@ -460,4 +431,3 @@ struct mandatory {  // guaranteed-enforced, optimizable
 
 }
 ```
-
