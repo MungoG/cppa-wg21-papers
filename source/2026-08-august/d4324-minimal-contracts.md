@@ -11,9 +11,9 @@ reply-to:
 
 ## Abstract
 
-In C++26 (P2900), a contract predicate is evaluated with the variables it reads treated as `const`, and an exception that escapes the predicate becomes a contract violation rather than propagating. Both behaviors are fixed by the language.
+In C++26 (P2900), a contract predicate is evaluated with the entities it names treated as `const`, and an exception that escapes the predicate becomes a contract violation rather than propagating. The language currently fixes both.
 
-This paper describes a design in which they become per-assertion policies rather than fixed rules. The language keeps two jobs, binding a predicate to a declaration and naming an object that governs it, and the rest becomes ordinary library code: constification, exception handling, the evaluation semantics, the violation handler, and the violation object. The `pre`, `post`, and `contract_assert` syntax is unchanged, with a checked, terminating default. The design synthesizes four published proposals<sup>[4]</sup><sup>[5]</sup><sup>[2]</sup><sup>[3]</sup> on a library surface P2900 already specifies.
+This paper makes them per-assertion policies. The language does two things: it binds a predicate to a declaration or statement, and it names an assertion-control object that governs the predicate. That object is an ordinary library type; it carries the constification and exception-handling policies and selects the evaluation semantic. The semantics join the violation handler and violation object that P2900 already specifies as library code. The `pre`, `post`, and `contract_assert` syntax is unchanged in the common case. The design synthesizes four published proposals<sup>[4]</sup><sup>[5]</sup><sup>[2]</sup><sup>[3]</sup> on that library surface.
 
 ---
 
@@ -27,24 +27,19 @@ This paper describes a design in which they become per-assertion policies rather
 
 ## 1. Introduction
 
-C++26 adds contracts through P2900R14<sup>[1]</sup>: the `pre`, `post`, and `contract_assert` syntax, and four evaluation semantics (`ignore`, `observe`, `enforce`, `quick_enforce`). In P2900, variables inside a contract predicate are treated as `const`. Furthermore, an exception that escapes predicate evaluation does not propagate, but becomes a contract violation.
+C++26 contracts (P2900R14<sup>[1]</sup>) fix two behaviors in every predicate: the predicate is constified, and an exception that escapes it becomes a contract violation. Both are language rules, the same for every assertion.
 
-This paper proposes that constification and exception propagation become configurable per assertion rather than fixed parts of predicate evaluation. The design keeps two jobs in the language, binding a predicate to a declaration and naming the object that governs the predicate, and delegates the rest to a library. That object, an assertion-control object, exposes a few compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. Constification, exception handling, the evaluation semantics, the violation handler, and the violation object become ordinary library code. The syntax a programmer writes is unchanged in the common case: `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`.
+This paper makes constification and exception propagation per-assertion policies. The language does two things: it binds a predicate to a declaration or statement, and it names an assertion-control object that governs it. The object exposes a few compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. The common syntax is unchanged, `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`; an assertion that needs a specific policy names it, as in `pre<review>(cond)`.
 
-Section 2 motivates why constification and exception propagation should be per-assertion policies rather than fixed language rules. The contributions are:
+Section 2 motivates the two policies. Section 3 specifies the design as a three-step compiler algorithm over the control object's compile-time properties. Section 4 relates the design to the C++26 working draft and the cost of changing it now. Section 5 turns to a separate question, the ownership of core-language undefined behavior, and places contracts and profiles as independent peers so that no such behavior is routed through the contract-violation handler. Section 6 gives a reference-implementation plan on existing compiler forks.
 
-1. A minimal core-language contracts design: two syntactic jobs, a three-step compiler algorithm, and a library-owned response, specified at design granularity (Section 3).
-2. A statement of how the design relates to the C++26 working draft, and an account of what changing the draft costs at the current stage (Section 4).
-3. An architecture in which contracts and profiles are independent peers, so that no core-language undefined behavior is routed through the contract-violation handler (Section 5).
-4. A reference-implementation plan built on existing compiler forks (Section 6).
-
-The design rests on one assumption: the language should carry only what only the language can do, and everything a library can do should be in a library. Appendix B compares both designs against that principle and the others in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. Appendix A maps the design onto the published prior work it unifies.
+The design rests on one principle: the language carries only what only the language can do, and everything else goes in a library. Appendix B compares both designs against that principle and the others in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. Appendix A maps the design onto the prior work it unifies.
 
 ---
 
 ## 2. Motivation
 
-P2900 fixes constification and exception-to-violation conversion as language rules applied to every predicate. This section shows in code what each costs, and why the design makes them per-assertion policies, with constification off by default.
+P2900 fixes constification and exception-to-violation conversion as language rules, the same for every predicate. Each has a cost in ordinary code: a predicate can silently call a different function than the body, and a predicate that reuses a throwing validation routine loses the exception the caller would otherwise catch. This section shows both, and why the design makes the two per-assertion policies with constification off by default.
 
 ### 2.1 Constification silently changes which function a predicate calls
 
@@ -65,7 +60,9 @@ void use(handle& h)
 
 For a const-correct type the two overloads observe the same state, so the result is the same and only the called function differs; the cost is that "the same sequence of tokens in immediate proximity ... mean different things," which P3071R1<sup>[23]</sup>, the proposal that made predicate entities `const`, itself calls "confusing." For a type whose overloads differ, the predicate checks something other than what the body relies on: "overload resolution might quietly invoke different functions in the two contexts"<sup>[8]</sup>. P2900's constification does not report either case. It errors only when no `const` overload exists at all, and silently switches when one does, so its alarm is inconsistent.
 
-The design makes constification a per-assertion policy (Section 3.2) that defaults off, so a predicate means what the same expression means in the body, and an author who wants constification opts in on the control object. Consistency between the predicate and the body also serves static analysis. Analyzers apply value numbering, which gives equivalent computations the same value number.<sup>[24]</sup> A constified predicate binds a different function than the body. The two then receive different value numbers, and the analyzer cannot establish that the predicate checks what the body relies on. Off by default, the predicate and the body carry the same value number, and the correspondence an analyzer needs is present.
+The design makes constification a per-assertion policy (Section 3.2) that defaults off, so a predicate means what the same expression means in the body, and an author who wants it opts in on the control object. This default is the more self-contained one. P2900 applies a single rule to every predicate, but the rule makes the predicate bind a different function than the same tokens in the body, so the predicate reads like ordinary code and is not. With the default here the predicate is ordinary code, with no separate rule to learn. Naming a control object, as in `pre<review>(cond)`, is a visible opt-in, the same indirection as an allocator or a comparator.
+
+Consistency also serves static analysis, and the evidence cuts both ways. An analyzer applies value numbering, which gives equivalent computations the same value number<sup>[24]</sup>. A constified predicate binds a different function than the body, so the two receive different value numbers and the analyzer cannot establish that the predicate checks what the body relies on; a tool aware of constification still sees two functions, so awareness does not close the gap. Off by default, the predicate and the body share a value number. Constification has the opposite benefit: it lets an analyzer trust that a parameter passed by `const` reference is not modified in the predicate, which P3261R0<sup>[7]</sup> gives as a reason to keep it. The two pull against each other, so the design leaves the choice per assertion. A build-wide flag cannot, since different assertions want different answers, and tying a predicate's meaning to a build-wide switch is the semantic instability P2834R1<sup>[25]</sup> calls "anathema."
 
 ### 2.2 Converting an escaping exception into a violation hides the real error
 
@@ -83,6 +80,8 @@ void configure(const settings& s)
 
 The caller can no longer catch the `std::invalid_argument` it would catch from the body, and the backtrace points into the contract machinery rather than the throw site, which an implementer records as "useless"<sup>[10]</sup>. Because any predicate might throw, the compiler must "generate the correct instructions for exception handling around every contract assertion"<sup>[10]</sup>, and that scaffolding is what raises the `noexcept` trilemma P4308R0<sup>[11]</sup> describes. With propagation as the default the exception behaves as it does in the body, `noexcept` keeps its meaning, and an assertion that cannot throw carries no scaffolding.
 
+The use cases are ordinary. A precondition often reuses a validation routine written for the body, and such routines commonly report malformed input by throwing; propagation lets the caller catch that exception where it would catch it from the body, instead of losing it to the violation handler. The value of an exception from a contract check reaching the caller is on record for the related case of a throwing handler, where a long-running service catches at a request boundary and abandons one suspect request while it keeps serving the rest (P3318R0<sup>[26]</sup>; P4308R0<sup>[11]</sup> §5.1).
+
 ### 2.3 What constification protects, and why it is a policy not a rule
 
 Constification is not without value: it catches a mutating call in a predicate. `std::unordered_map::operator[]` is the clearest case, because it is non-`const` and inserts a value-initialized element when the key is absent.
@@ -95,13 +94,15 @@ void f(std::unordered_map<int, int>& m, int k)
 }
 ```
 
-Here constification is the feature working as intended: it rejects a predicate that would mutate the container, a protection P3071R1<sup>[23]</sup> was written to provide. The design keeps that protection available rather than removing it. An author who wants it sets `constify` to true on the control object.
+Here constification is the feature working as intended: it rejects a predicate that would mutate the container, a protection P3071R1<sup>[23]</sup> was written to provide. The design keeps that protection available rather than removing it. An author who wants it sets `constify` to true on the control object. Today the escape from constification runs the other way, per expression: an author writes a `const_cast` wrapper, which P3261R0<sup>[7]</sup> notes "clearly conveys that the author ... is intentionally working around const-ification," or reaches for the `mutable` specifier P3592R0<sup>[8]</sup> proposes to turn it off for a whole predicate. The control object reaches the same place per assertion, with no cast in the expression, and it carries the exception and semantic policies through one object rather than one keyword per behavior.
 
 There is a real case for making constification the default. Contracts are a bug-finding feature, and requiring a predicate to hold on a `const` object makes an author confront code that is not const-correct: where no `const` path exists, constification errors rather than let the predicate bind a mutating call. On that view, awareness of a problem is worth more than agreement between the predicate and the body. The case has force, and the design does not dismiss it.
 
 The alarm is incomplete, however. Constification errors only when no `const` overload exists; when both exist, it switches silently and reports nothing (Section 2.1). It catches the ill-formed case and misses the divergence case, so it does not deliver the awareness the argument wants. A programmer who has not learned about constification reads the predicate as the body, and the default matches that reading. Which tradeoff to prefer is an engineering judgment; the design makes consistency the default and leaves constification one control-object property away.
 
-This keeps the question out of the "remove it or keep it" frame the committee has already settled: at Hagenberg, EWG declined to remove constification (Section 4). This design does not remove constification. It relocates the choice into a per-assertion policy and makes consistency the default.
+Making constification a control-object property adds a choice and removes nothing. An author who wants the guardrail keeps it with `constify` set to true; one who wants the predicate to read as ordinary code takes the default. P2900's single rule serves neither the second author nor the author of a non-const-correct API, and the per-assertion property serves both. The objection that configuring constification from outside the predicate is worse than P2900's fixed rule, whatever the default, is a different preference: one uniform evaluation rule, against the predicate meaning what ordinary code means. That is a difference in values, not a defect in either position. This design takes the second view and leaves the first available per assertion.
+
+This also keeps the question out of the "remove it or keep it" frame the committee has already settled: at Hagenberg, EWG declined to remove constification (Section 4). This design does not remove constification. It relocates the choice into a per-assertion policy and makes consistency the default.
 
 ### 2.4 A diagnosing default is not viable
 
@@ -115,11 +116,15 @@ This is the reason C++ has no `if (compiles(expr))` construct: asking whether co
 
 ## 3. Design
 
-This section specifies the design as a concept and an algorithm rather than wording: the guarantee the language part provides, the compile-time interface a control object exposes, the surface syntax, and the library that handles the response. The central idea is that the properties the compiler needs are compile-time queries on a type, and the response is a runtime call on a value of that type.
+This section specifies the design as an algorithm, not wording. It covers what the language guarantees, the compile-time interface the control object exposes, the syntax a programmer writes, and the library code that handles a violation. The compiler reads a few compile-time properties off the control-object type to decide what code to generate, and on a violation it makes one ordinary call on the control object. Everything else is library code.
 
 ### 3.1 The two jobs
 
-The syntax `pre`, `post`, and `contract_assert` does exactly two things. It binds a predicate to a declaration or a statement, and it names an assertion-control object that governs the predicate. The predicate is an operand of the introducer, not an argument passed to a function. The compiler controls whether and when it is evaluated, so an ignored assertion never evaluates it (Section 3.8); a function call, by contrast, evaluates its arguments before the call runs.
+`pre`, `post`, and `contract_assert` do two things. Binding a predicate to a declaration or statement is the first, and P2900 already does it. Naming an assertion-control object that governs the predicate is the second, and it is new: each assertion carries a control object whose compile-time properties the compiler reads.
+
+The compiler decides whether and when the predicate runs. An ignored assertion does not evaluate the predicate (Section 3.8); an enforced one does. That is P2900 behavior, not a change. It is also why the predicate is part of the construct rather than an argument to a function, which would evaluate it before the call. The control object's properties are read at compile time, before any evaluation, so they cost nothing at run time and do not conflict with an ignored assertion evaluating nothing.
+
+This is also why the control object names a type rather than wrapping the predicate. An in-predicate wrapper such as `unconst(pred(x))` cannot be an ordinary function: the call would evaluate `pred(x)` first, already constified, before `unconst` ran, so suppressing constification in the expression needs a language construct. A compile-time property on the type is read before evaluation and needs no new mechanism.
 
 ### 3.2 The three-step compiler algorithm
 
@@ -413,6 +418,10 @@ The assertion object whose compiler-read members steer code generation is Bengt 
 [23] [P3071R1](https://wg21.link/p3071r1) - "Protection against modifications in contracts" (Jens Maurer, 2024).
 
 [24] [Value numbering](https://en.wikipedia.org/wiki/Value_numbering) - "Value numbering", Wikipedia (retrieved 2026).
+
+[25] [P2834R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2834r1.pdf) - "Semantic Stability Across Contract-Checking Build Modes" (Joshua Berne, John Lakos, 2023).
+
+[26] [P3318R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3318r0.html) - "Throwing violation handlers, from an application programming perspective" (Ville Voutilainen, 2024).
 
 ---
 
