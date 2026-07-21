@@ -29,7 +29,7 @@ This paper makes them per-assertion policies. The language does two things: it b
 
 C++26 contracts (P2900R14<sup>[1]</sup>) impose two behaviors on every predicate: the predicate is constified, and an exception that escapes it becomes a contract violation. Both are language rules, the same for every assertion, and neither is configurable.
 
-This paper makes constification and exception propagation per-assertion policies. The language does two things: it binds a predicate to a declaration or statement, and it names an assertion-control object that governs it. The object exposes a few compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. The common syntax is unchanged, `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`; an assertion that needs a specific policy names it, as in `pre<review>(cond)`.
+This paper makes constification and exception propagation per-assertion policies. The language does two things: it binds a predicate to a declaration or statement, and it names an assertion-control object that governs it. The object exposes three compile-time properties the compiler reads during code generation, and one call operator it invokes on a violation. The common syntax is unchanged, `pre(cond)`, `post(r: cond)`, `contract_assert(cond)`; an assertion that needs a specific policy names it, as in `pre<review>(cond)`.
 
 The design rests on one principle: the language carries only what only the language can do, and everything else goes in a library. Appendix B compares both designs against that principle and the others in Stroustrup's *The Design and Evolution of C++*<sup>[22]</sup>. Appendix A maps the design onto the prior work it unifies.
 
@@ -57,9 +57,9 @@ void f(X& x)
 
 `check_valid` observes `x` and does not modify it, but it was written without `const` and the author of `f` cannot change it. The check is correct and it is the one the body relies on, yet constification rejects it. The P2900 authors' own rationale notes this cost: "non-const-correct APIs will not compile when used in a contract predicate"<sup>[30]</sup>. The only escape today is a `const_cast` in the predicate, and it is inadequate in three ways: coding standards such as the C++ Core Guidelines (ES.50) forbid casting away `const`; casting away constness reintroduces the mutation hazard constification exists to prevent, now on every call in the predicate rather than the one place the author examined; and in generic code the cast cannot be written by hand without reconstructing the parameter type for every entity the predicate names, `const_cast<std::add_lvalue_reference_t<decltype(x)>>(x)`<sup>[27]</sup>, a form the same rationale adopts as a macro to "avoid the suboptimal ergonomics of naked const_casts"<sup>[30]</sup>. Non-`const`-correct third-party APIs appear in code that wraps C libraries or predates const-correctness, and for that code a fixed rule makes a correct predicate uncompilable.
 
-We grant the harder half of the point at the outset. Where both a `const` and a non-`const` overload exist and the two do different things, no realistic example has been produced in which binding the non-`const` overload is the right thing for a predicate to do: if the non-`const` overload mutates, the precondition is wrong on its own terms; if it does not, the two overloads give the same result. P2900's authors make this argument, and it holds<sup>[7]</sup>. The cost of constification is therefore not that it binds the wrong overload in a well-written predicate. It is that a single rule cannot express the two situations that do arise: a correct predicate that will not compile, and a predicate whose meaning must match the body for a tool to reason about it.
+The concern is not that an author wants the non-`const` overload. When both overloads exist, no example has been produced in which a predicate needs the non-`const` one for its own sake, and a non-`const` overload that mutates has no place in a precondition<sup>[7]</sup>. The concern is the opposite: the author wants the predicate to resolve the way the identical expression resolves in ordinary code, and constification silently substitutes a different overload than plain resolution would pick. The same tokens then mean one thing in the predicate and another in the body, within the same scope, with nothing in the source marking the difference. That divergence, not a preference for either overload, is the cost.
 
-Constification changes which function the predicate binds even when both overloads are correct, and that change has a cost for static analysis. An analyzer establishes that a precondition guarantees what the body relies on by proving the two expressions compute the same value, and the standard technique for that proof is value numbering, which gives two computations the same value number only when it can prove they are equivalent<sup>[24]</sup>. A function call carries its callee into that value number: GCC's value numbering treats calls to different functions as unequal by construction, "If the calls are to different functions, then they clearly cannot be equal"<sup>[28]</sup>, and LLVM's global value numbering encodes the callee among a call's operands<sup>[29]</sup>. A constified predicate that calls `X::valid() const` where the body calls `X::valid()` receives a different value number from the body, so the analyzer cannot prove the precondition checks what the body uses; off, both call the same function and share a value number. The effect is observable on the experimental GCC contracts implementation: a predicate and a matching body condition are proven equivalent and the redundant check removed when constification is off, and are left as two separate calls when it is on<sup>[27]</sup>. This is a claim about what an optimizer or analyzer can prove from the two forms, not a measured cost; a companion measurement is future work.
+The divergence also burdens static analysis, and this holds even when both overloads are correct. An analyzer establishes that a precondition guarantees what the body relies on by proving the two expressions compute the same value, and the standard technique for that proof is value numbering, which gives two computations the same value number only when it can prove they are equivalent<sup>[24]</sup>. A function call carries its callee into that value number: GCC's value numbering treats calls to different functions as unequal by construction, "If the calls are to different functions, then they clearly cannot be equal"<sup>[28]</sup>, and LLVM's global value numbering encodes the callee among a call's operands<sup>[29]</sup>. A constified predicate that calls `X::valid() const` where the body calls `X::valid()` receives a different value number from the body, so the analyzer cannot prove the precondition checks what the body uses; off, both call the same function and share a value number. The effect is observable on the experimental GCC contracts implementation: a predicate and a matching body condition are proven equivalent and the redundant check removed when constification is off, and are left as two separate calls when it is on<sup>[27]</sup>. This is a claim about what an optimizer or analyzer can prove from the two forms, not a measured cost; a companion measurement is future work.
 
 Constification has the opposite benefit for the same tools: it lets an analyzer trust that a parameter passed by `const` reference is not modified in the predicate, which P3261R0<sup>[7]</sup> gives as a reason to keep it. The two pull against each other, so the choice belongs per assertion rather than to a single rule. The design makes constification a per-assertion policy (Section 3.4) that defaults off, so a predicate means what the same expression means in the body and an author who wants the guardrail opts in on the control object, the same visible indirection as an allocator or a comparator. A build-wide flag cannot make the choice, since different assertions want different answers, and tying a predicate's meaning to a build-wide switch is the semantic instability P2834R1<sup>[25]</sup> calls "anathema."
 
@@ -109,13 +109,13 @@ This also keeps the question out of the "remove it or keep it" frame the committ
 
 ## 3. Design
 
-The design attaches an assertion-control object to each predicate. The compiler reads a few compile-time properties from the object's type during code generation, and on a violation at run time it makes one call on the object.
+The design attaches an assertion-control object to each predicate. The compiler reads three compile-time properties from the control object during code generation, and on a violation it makes one call on it.
 
 ### 3.1 What the design adds
 
-`pre`, `post`, and `contract_assert` bind a predicate to a declaration or statement, and P2900 already does this. The design adds a second element: each assertion names an assertion-control object that governs its predicate. The object is a value of a stateless type that satisfies the `assertion_control` concept (Section 3.3), and its compile-time properties define whether the predicate is constified, whether the optimizer may assume it, and what happens on a violation. In the common case the object is a library-provided default and the syntax is unchanged.
+`pre`, `post`, and `contract_assert` bind a predicate to a declaration or statement, and P2900 already does this. The design adds a second element: each assertion names an assertion-control object that governs its predicate. The object is a value of a type that satisfies the `assertion_control` concept (Section 3.3), and its compile-time members define whether the predicate is constified, whether the optimizer may assume it, and what happens on a violation. In the common case the object is a library-provided default and the syntax is unchanged.
 
-The object works like a coroutine's `promise_type`: a type named in the construct whose members the compiler reads to decide what code to generate. Because those members are read at compile time, before any evaluation, an ignored assertion evaluates nothing and costs nothing at run time (Section 3.8), exactly as in P2900.
+The object works like a coroutine's `promise_type`: named in the construct, with members the compiler reads to decide what code to generate. Because those members are read at compile time, before any evaluation, an ignored assertion evaluates nothing and costs nothing at run time (Section 3.8), exactly as in P2900.
 
 ### 3.2 Surface syntax
 
@@ -132,7 +132,7 @@ contract_assert(index < size);
 
 ### 3.3 The assertion-control concept
 
-An assertion-control object is a value of a stateless type that satisfies the `assertion_control` concept, provided in `std::contracts`. The compiler reads three compile-time members from the type and invokes a call operator on the object when a violation occurs at run time.
+An assertion-control object is a value of a type that satisfies the `assertion_control` concept, provided in `std::contracts`. The compiler reads three compile-time members from the object and invokes its call operator when a violation occurs.
 
 ```cpp
 namespace std::contracts {
@@ -146,42 +146,36 @@ enum class violation_response { proceed, terminate };
 
 template <class T>
 concept assertion_control =
-  std::is_empty_v<T> &&
-  requires (T c, const char* comment, std::source_location loc, evaluation_config cfg) {
-    { T::is_ignored(cfg)      } -> std::same_as<bool>;          // step 1
-    { T::constify             } -> std::convertible_to<bool>;   // step 2
-    { T::assumable            } -> std::convertible_to<bool>;   // optimizer
-    { c(comment, loc, cfg)    } -> std::same_as<violation_response>;  // step 3
-  } &&
-  requires {   // the properties must be usable at compile time
-    typename std::bool_constant<T::constify>;
-    typename std::bool_constant<T::assumable>;
-    typename std::bool_constant<T::is_ignored(evaluation_config::enforce)>;
+  requires (const T c, const char* comment, std::source_location loc, evaluation_config cfg) {
+    { c.is_ignored(cfg)    } -> std::same_as<bool>;                // step 1
+    { c.constify           } -> std::convertible_to<bool>;         // step 2
+    { c.assumable          } -> std::convertible_to<bool>;         // optimizer
+    { c(comment, loc, cfg) } -> std::same_as<violation_response>;  // step 3
   };
 
 }
 ```
 
-The type is required to be empty because the compiler selects behavior from the type alone: it reads `constify`, `assumable`, and `is_ignored` as static properties and never from a stored value, so an instance could carry only state that code generation ignores. Emptiness states that fact in the type system and makes every object of the type interchangeable, so a reader verifies `pre<review>(cond)` by inspecting `review` alone. This is the standard's own meaning of stateless, the sense in which `allocator_traits::is_always_equal` reduces to `is_empty`, and it matches the empty tag types `std::nothrow_t` and `std::allocator_arg_t`. The second `requires` block forces `constify`, `assumable`, and `is_ignored` to be usable in a constant expression, so a type whose properties are not compile-time constants fails the concept rather than failing later during code generation.
+The concept constrains only the shape: the object exposes `is_ignored`, `constify`, and `assumable`, and a call operator. Following P3968R0<sup>[4]</sup>, the object named in an assertion-control-specifier is a `constexpr` object, and a contract cannot be formed from a reference to one, so the compiler reads its member values during code generation. The call operator is `constexpr`, so the same object drives a violation both at run time and during constant evaluation (Section 3.4). The type need not be empty; a control object may carry state, as P3968R0 allows for uses such as a mutable violation counter.
 
 The compiler reads only these member names and the call-operator signature. It does not depend on the contents of the `<contracts>` header. Gustafsson gives the reason: a dependency from the core compiler to the contents of a standard library header "is novel and something we usually want to avoid"<sup>[4]</sup>. P3968R0<sup>[4]</sup> reaches the same shape with boolean members named `constify`, `ignorable`, and `assumable`; P3400R4<sup>[5]</sup> reaches it with a `const` member the implementation may "query the value at any time."
 
 ### 3.4 The three-step compiler algorithm
 
-For each contract assertion with control object of type `T` and a build-selected configuration `cfg`, the compiler performs three steps.
+For each contract assertion with control object `c` and a build-selected configuration `cfg`, the compiler performs three steps.
 
 ```text
-1. If T::is_ignored(cfg) is true:
-       if T::assumable is true, emit an optimizer assumption of the predicate;
+1. If c.is_ignored(cfg) is true:
+       if c.assumable is true, emit an optimizer assumption of the predicate;
        otherwise emit nothing.
        Stop.
-2. If T::constify is true, evaluate the constified predicate; otherwise evaluate the predicate as written.
-3. If the predicate is violated, act on the violation:
-       at run time, call the control object with the violation data, and if the
-       call returns terminate, contract-terminate; otherwise proceed.
+2. If c.constify is true, evaluate the constified predicate; otherwise evaluate the predicate as written.
+3. If the predicate is violated, call c with the violation data:
+       if the call returns terminate, contract-terminate (at run time) or render
+       the program ill-formed (during constant evaluation); otherwise proceed.
 ```
 
-The configuration `cfg` is a compile-time constant within a translation unit, selected by an implementation-defined mechanism, as P2900's build-time semantic selection is chosen today. Step 3 differs between run time and constant evaluation. At run time the compiler calls the control object's `operator()`. During constant evaluation no call is made: as in P2900, the compiler itself produces the outcome, so a terminating configuration renders the program ill-formed and an observing configuration issues a diagnostic ([basic.contract.eval]<sup>[1]</sup>). The language specifies these three steps and nothing further about the assertion's behavior.
+The configuration `cfg` is a compile-time constant within a translation unit, selected by an implementation-defined mechanism, as P2900's build-time semantic selection is chosen today. Because the call operator is `constexpr`, step 3 runs the same way in both contexts: the compiler calls `c` and acts on the result, contract-terminating at run time or rendering the program ill-formed during constant evaluation when the call returns `terminate`. One limitation follows from placing the response in library code: during constant evaluation a control object cannot emit a compiler diagnostic, so an observing configuration proceeds without a message at compile time, where P2900's built-in observe semantic would warn ([basic.contract.eval]<sup>[1]</sup>). The terminating configurations are unaffected. The language specifies these three steps and nothing further about the assertion's behavior.
 
 ### 3.5 The default control object and the response
 
@@ -191,12 +185,16 @@ When an assertion names no control object, it uses `default_v`, the assertion-co
 namespace std::contracts {
 
 struct default_control {
-  static constexpr bool is_ignored(evaluation_config cfg) { return cfg == evaluation_config::ignore; }
-  static constexpr bool constify  = false;
-  static constexpr bool assumable = false;
+  constexpr bool is_ignored(evaluation_config cfg) const { return cfg == evaluation_config::ignore; }
+  bool constify  = false;
+  bool assumable = false;
 
-  violation_response operator()(const char* comment, std::source_location loc,
-                                evaluation_config cfg) const {
+  constexpr violation_response operator()(const char* comment, std::source_location loc,
+                                          evaluation_config cfg) const {
+    if consteval {   // compile time: no runtime handler, no library diagnostic
+      return cfg == evaluation_config::observe ? violation_response::proceed    // no message possible
+                                               : violation_response::terminate; // compiler makes it ill-formed
+    }
     switch (cfg) {
       case evaluation_config::observe:
         invoke_default_contract_violation_handler(/* built from comment, loc */);
@@ -228,16 +226,17 @@ Extension is intrinsic. A platform or a user adds a configuration value in the r
 
 ### 3.7 Worked control objects
 
-Two control objects show that behavior the committee has treated as language design is expressible as library code with no language change. Each is a constant instance of an empty type, so that `pre<review>` and `pre<mandatory>` name objects.
+Two control objects show that behavior the committee has treated as language design is expressible as library code with no language change. Each is a `constexpr` instance of its type, so that `pre<review>` and `pre<mandatory>` name objects.
 
 ```cpp
 // Log and continue at the library-defined level, always checked. The shape of
 // Bloomberg's bsls_review, expressed as a control object.
 struct review_t {
-  static constexpr bool is_ignored(evaluation_config) { return false; }
-  static constexpr bool constify  = true;
-  static constexpr bool assumable = false;
-  violation_response operator()(const char*, std::source_location, evaluation_config) const {
+  constexpr bool is_ignored(evaluation_config) const { return false; }
+  bool constify  = true;
+  bool assumable = false;
+  constexpr violation_response operator()(const char*, std::source_location, evaluation_config) const {
+    if consteval { return violation_response::proceed; }   // cannot log at compile time
     log_to_telemetry(/* ... */);
     return violation_response::proceed;
   }
@@ -246,10 +245,10 @@ inline constexpr review_t review{};
 
 // Guaranteed-enforced and optimizable, the strand of P4005R0.
 struct mandatory_t {
-  static constexpr bool is_ignored(evaluation_config) { return false; }
-  static constexpr bool constify  = false;
-  static constexpr bool assumable = true;
-  violation_response operator()(const char*, std::source_location, evaluation_config) const {
+  constexpr bool is_ignored(evaluation_config) const { return false; }
+  bool constify  = false;
+  bool assumable = true;
+  constexpr violation_response operator()(const char*, std::source_location, evaluation_config) const {
     return violation_response::terminate;
   }
 };
@@ -260,7 +259,7 @@ inline constexpr mandatory_t mandatory{};
 
 ### 3.8 Zero-cost ignore and diagnostic quality
 
-Because `is_ignored` is a compile-time query on the type, an ignored assertion produces no code and the predicate is never evaluated. A design that instead wraps the predicate in a library call, as in the plain-function form of P4009R0<sup>[3]</sup>, evaluates the predicate to make the call, even when the library ignores the result. The type-based form gives up nothing at the ignore configuration.
+Because `is_ignored` is a compile-time query on the control object, an ignored assertion produces no code and the predicate is never evaluated. A design that instead wraps the predicate in a library call, as in the plain-function form of P4009R0<sup>[3]</sup>, evaluates the predicate to make the call, even when the library ignores the result. The compile-time form gives up nothing at the ignore configuration.
 
 The call operator receives the predicate text as `comment` and a `std::source_location`. The compiler holds the predicate text already, so a violation message can name the expression without the library reconstructing it from a bare `bool`.
 
@@ -348,7 +347,7 @@ The response. The design keeps the single short form: `pre(cond)`, `post(r: cond
 
 ## 9. Conclusion
 
-A contracts facility can put two things in the language, binding a predicate to a declaration and naming the object that governs it, and place everything else in a library. The compiler reads a few compile-time properties from the control-object type and makes one call on a violation; constification, exception handling, the semantics, the handler, and the violation object are library code. The result keeps the capabilities only the language can provide, a declaration-attached syntax, optimization on a guaranteed-enforced predicate, and a contract the compiler can see, while making constification and exception propagation per-assertion properties that default off. A reference implementation on the existing compiler forks (Section 6) and field prototyping of the open default-semantic question (Section 7) are what build on this next.
+A contracts facility can put two things in the language, binding a predicate to a declaration and naming the object that governs it, and place everything else in a library. The compiler reads three compile-time properties from the control object and makes one call on a violation; constification, exception handling, the semantics, the handler, and the violation object are library code. The result keeps the capabilities only the language can provide, a declaration-attached syntax, optimization on a guaranteed-enforced predicate, and a contract the compiler can see, while making constification and exception propagation per-assertion properties that default off. A reference implementation on the existing compiler forks (Section 6) and field prototyping of the open default-semantic question (Section 7) are what build on this next.
 
 ---
 
@@ -467,7 +466,7 @@ Table 1. Design-principle comparison: the principles on which P2900 and the mini
 | Principle (D&E<sup>[22]</sup>) | P2900 | Minimal core | Difference |
 |---|---|---|---|
 | Zero-overhead: what is not used is not paid for | - | Yes | P2900's default conversion of an escaping exception into a violation makes the compiler generate exception-handling code around every contract assertion<sup>[10]</sup>; the minimal core lets an escaping exception propagate by default, and an ignored assertion emits nothing (Section 3.8). |
-| Prefer compile-time to run-time resolution | - | Yes | P2900 applies constification, and converts an escaping exception into a violation, at run time; the minimal core resolves ignoredness, constification, and assumability as compile-time queries on the control-object type (Section 3.4). |
+| Prefer compile-time to run-time resolution | - | Yes | P2900 applies constification, and converts an escaping exception into a violation, at run time; the minimal core resolves ignoredness, constification, and assumability as compile-time queries on the control object (Section 3.4). |
 | Do not force one style | - | Yes | P2900 fixes the semantics and these behaviors in the language; the minimal core lets a platform or user add a semantic library-side (Section 3.5), so a log-and-continue style is expressible without committee action. |
 | General mechanisms over special-purpose features | - | Yes | P2900 builds the semantics into the compiler; the minimal core selects a semantic by naming a different object, the most familiar extension mechanism in the language (Section 3.5). |
 | Verifiable by local inspection | - | Yes | Under constification a predicate can bind a different overload than the same text in the body, so "overload resolution might quietly invoke different functions in the two contexts"<sup>[8]</sup>; the minimal core evaluates the predicate under the usual rules by default<sup>[2]</sup>. Build-time semantic selection remains in both, so the difference is the meaning of the expression, not the selected semantic. |
@@ -497,41 +496,35 @@ enum class violation_response { proceed, terminate };
 
 template <class T>
 concept assertion_control =
-  std::is_empty_v<T> &&
-  requires (T c, const char* comment, std::source_location loc, evaluation_config cfg) {
-    { T::is_ignored(cfg)      } -> std::same_as<bool>;
-    { T::constify             } -> std::convertible_to<bool>;
-    { T::assumable            } -> std::convertible_to<bool>;
-    { c(comment, loc, cfg)    } -> std::same_as<violation_response>;
-  } &&
-  requires {
-    typename std::bool_constant<T::constify>;
-    typename std::bool_constant<T::assumable>;
-    typename std::bool_constant<T::is_ignored(evaluation_config::enforce)>;
+  requires (const T c, const char* comment, std::source_location loc, evaluation_config cfg) {
+    { c.is_ignored(cfg)    } -> std::same_as<bool>;
+    { c.constify           } -> std::convertible_to<bool>;
+    { c.assumable          } -> std::convertible_to<bool>;
+    { c(comment, loc, cfg) } -> std::same_as<violation_response>;
   };
 
 struct default_control {
-  static constexpr bool is_ignored(evaluation_config cfg) { return cfg == evaluation_config::ignore; }
-  static constexpr bool constify  = false;
-  static constexpr bool assumable = false;
-  violation_response operator()(const char* comment, std::source_location loc,
-                                evaluation_config cfg) const;
+  constexpr bool is_ignored(evaluation_config cfg) const { return cfg == evaluation_config::ignore; }
+  bool constify  = false;
+  bool assumable = false;
+  constexpr violation_response operator()(const char* comment, std::source_location loc,
+                                          evaluation_config cfg) const;
 };
 inline constexpr default_control default_v{};
 
 struct review_t {     // log-and-continue at the library level, always checked
-  static constexpr bool is_ignored(evaluation_config) { return false; }
-  static constexpr bool constify  = true;
-  static constexpr bool assumable = false;
-  violation_response operator()(const char*, std::source_location, evaluation_config) const;
+  constexpr bool is_ignored(evaluation_config) const { return false; }
+  bool constify  = true;
+  bool assumable = false;
+  constexpr violation_response operator()(const char*, std::source_location, evaluation_config) const;
 };
 inline constexpr review_t review{};
 
 struct mandatory_t {  // guaranteed-enforced, optimizable
-  static constexpr bool is_ignored(evaluation_config) { return false; }
-  static constexpr bool constify  = false;
-  static constexpr bool assumable = true;
-  violation_response operator()(const char*, std::source_location, evaluation_config) const;
+  constexpr bool is_ignored(evaluation_config) const { return false; }
+  bool constify  = false;
+  bool assumable = true;
+  constexpr violation_response operator()(const char*, std::source_location, evaluation_config) const;
 };
 inline constexpr mandatory_t mandatory{};
 
