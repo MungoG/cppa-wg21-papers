@@ -1,5 +1,5 @@
 ---
-title: "SD-4: Six Correctives Required By ISO Directives"
+title: "SD-4: Five Correctives Required By ISO Directives"
 document: P4130R0
 date: 2026-07-01
 intent: info
@@ -10,13 +10,13 @@ reply-to:
 
 ## Abstract
 
-[SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures)<sup>[1]</sup> places appointment authority, scheduling, and consensus determination in a single chain with no fixed terms, no confirmation, and no reconciliation requirement. The ISO/IEC Directives govern to the working-group level and provide a check for each. This paper proposes six correctives, each replacing a single passage of SD-4 with text that aligns the practice with the Directives. The convenor can adopt all six immediately.
+[SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures)<sup>[1]</sup> places appointment authority, scheduling, and consensus determination in a single chain with no fixed terms, no confirmation, and no reconciliation requirement. The ISO/IEC Directives govern to the working-group level and provide a check for each. This paper proposes five correctives, each replacing a single passage of SD-4 with text that aligns the practice with the Directives. The convenor can adopt all five immediately.
 
 ---
 
 ## Revision History
 
-### R0: July 2026 (post-Brno mailing)
+### R0: August 2026
 
 - Initial version.
 
@@ -46,7 +46,7 @@ The provisions create compounding effects, each amplified by the Bandwidth Gap: 
 
 ---
 
-## 3. Six Proposed Correctives
+## 3. Five Proposed Correctives
 
 Each corrective below replaces a single passage of SD-4 with text drawn from the ISO/IEC Directives.
 
@@ -98,19 +98,7 @@ The Directives direct objectors to a formal appeal process and attach no penalty
 
 :::
 
-### 3.5 The Information Seal
-
-SD-4's quotation prohibition has no basis in the Directives or in JTC 1 Standing Document 19<sup>[5]</sup>. WG14, WG5, and WG9 publish their minutes.
-
-:::wording
-
-<del>Meeting records of subgroup discussion, meeting wikis, and non-public committee email lists (aka reflectors), which often include personal positions and discussion. It is not allowed to quote from these publicly (e.g., in papers and blog posts) except that the following are allowed: (a) quoting straw poll questions and numeric results; and (b) quoting words or positions attributed to a specific person with that person's prior consent.</del>
-
-<ins>Meeting records are governed by the ISO/IEC Directives (1.8.2e, 1.9.2c) and JTC 1 Standing Document 19 Section 9.</ins>
-
-:::
-
-### 3.6 Silence As Consensus
+### 3.5 Silence As Consensus
 
 The Directives define consensus as "seeking to take into account the views of all parties concerned" (Directive 2.5.6)<sup>[4]</sup>; silence is the absence of a view, not its expression.
 
@@ -126,7 +114,7 @@ The Directives define consensus as "seeking to take into account the views of al
 
 ## 4. Conclusion
 
-These six correctives are not exhaustive, yet each provides immediate benefit. Each replaces a single passage in a document the convenor maintains and revises between meetings. Adopting all six requires no poll, no study group, and no national body ballot.
+These five correctives are not exhaustive, yet each provides immediate benefit. Each replaces a single passage in a document the convenor maintains and revises between meetings. Adopting all five requires no poll, no study group, and no national body ballot.
 
 ---
 
