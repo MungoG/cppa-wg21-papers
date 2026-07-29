@@ -1,6 +1,6 @@
 ---
 title: "Analysis of Contracts Papers"
-document: DxxxxR0
+document: P4330R0
 date: 2026-07-28
 intent: info
 audience: WG21
