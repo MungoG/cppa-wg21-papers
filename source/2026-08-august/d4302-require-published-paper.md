@@ -1,5 +1,5 @@
 ---
-title: "Require One Published Mailing Before Any Poll"
+title: "Any Delegate May Object to a Poll on an Unmailed Revision"
 document: P4302R1
 date: 2026-07-19
 intent: ask
@@ -12,7 +12,7 @@ reply-to:
 
 The committee takes recorded polls on paper revisions that were never published in a mailing.
 
-The pre-meeting mailing exists so every national body can review what the committee will decide before it decides. When the polled revision never appeared in a mailing, the delegates who prepared from the mailing prepared against text that is not the text being decided. The delegates who prepared most thoroughly lose the most. This paper documents the pattern at two consecutive meetings and proposes one bright-line rule: no poll on a paper unless the polled revision appeared in a pre-meeting mailing, with one narrow exception for wording corrections at the final meeting before a release. The purpose is to change what authors optimize for, not to block revisions. When the mailed revision is the only one that can be polled, authors make it their best revision. The committee then stops spending its scarcest resource, the prepared attention of its delegates, on text that will not survive to the vote.
+The pre-meeting mailing exists so every national body can review what the committee will decide before it decides. When the polled revision never appeared in a mailing, the delegates who prepared from the mailing prepared against text that is not the text being decided. The delegates who prepared most thoroughly lose the most. This paper documents the pattern at two consecutive meetings and proposes one rule with a checkable trigger: before polling a revision that did not appear in a pre-meeting mailing, the chair asks whether anyone objects to the poll being recorded, and any objection keeps the numbers out of the minutes. The poll may still be taken and the sense of the room minuted, and one narrow exception covers wording corrections at the final meeting before a release. The purpose is to change what authors optimize for, not to block revisions. When the mailed revision is the only one whose recorded poll is certain, authors make it their best revision. The committee then stops spending its scarcest resource, the prepared attention of its delegates, on text that will not survive to the vote.
 
 ---
 
@@ -20,11 +20,13 @@ The pre-meeting mailing exists so every national body can review what the commit
 
 ### R1: July 2026
 
-- Kept the bright-line rule unchanged.
+- Replaced the flat prohibition with an objection right, and retitled the paper to name it. The chair now asks before polling a revision that was not in a pre-meeting mailing, and any objection bars a tally from the record while leaving the poll and a qualitative note intact (Section 2, Section 11).
+- Added Section 2.2 on why the objection costs the objector nothing, which answers the silence recorded in Section 1.2.
+- Stated the honest cost of an objection right measured against a prohibition (Section 3), and why it adds no chair discretion (Section 8).
 - Added worked in-room examples (Section 2.1).
 - Added the qualitative-record distinction: a discussion summary is not a poll (Section 2, Section 11).
-- Recast Section 10 as "What About...?" and added three alternatives that reintroduce the problem: provisional polls, binding versus non-binding poll classes, and change-size objections.
-- Compressed the prose throughout, leaving Section 1 unchanged.
+- Recast Section 10 as "What About...?" and added the alternatives that reintroduce the problem: provisional polls, binding versus non-binding poll classes, and change-size objections. Added entries on an unopposed poll and on filibuster by repeated objection.
+- Compressed the prose throughout.
 
 ### R0: July 2026 (post-Brno mailing)
 
@@ -48,31 +50,31 @@ The authors of the in-meeting revisions in Section 5 did what was locally ration
 
 I prepared for the March 2026 Croydon meeting the way the process asks every delegate to prepare. I arrived with printed notes on nineteen papers in my areas: cross-referenced wording, specification-consistency checks, and questions for authors. During the meeting week, six of those nineteen changed under me. The notes I had prepared did not become partially outdated. They were structurally invalidated, because the wording and design had moved in ways that touched every point I had written down.
 
-I watched design compromises get locked into the working draft under time pressure, in versions no national body expert outside the room could have reviewed. I was a new delegate, and I could see no way to object that would not mark me as the person who delayed the room. So I said nothing.
+I watched design compromises get locked into the working draft under time pressure, in versions no national body expert outside the room could have reviewed. I was a new delegate, and I could see no way to object that would not mark me as the person who delayed the room. So I said nothing. Section 2.2 explains why the objection this paper proposes would have cost me nothing, which is the whole reason the mechanism can rest on it.
 
 The effect on my own behavior was immediate and measurable. I came to Croydon with notes on nineteen papers. I came to the next meeting with notes on none. No one decided to prepare less. I learned what the structure rewards. That is a single delegate after a single meeting. The argument of this paper is that the same incentive acts on every delegate who prepares thoroughly, and that its cumulative effect is the slow erosion of the committee's review capacity.
 
 ---
 
-## 2. The Rule: One Mailing Before Any Poll
+## 2. The Rule: An Objection Bars the Tally
 
-The rule is one sentence. No poll may be taken on a paper unless the revision under consideration appeared in a pre-meeting mailing published before the meeting at which the poll is taken.
+The rule is two sentences. Before a poll is taken on a paper revision that did not appear in a pre-meeting mailing, the chair asks whether any participant objects to the poll being recorded. If anyone objects, no tally enters the record: the poll may still be taken and the sense of the room minuted, but not the numbers.
 
-The trigger is the poll, not the presentation. Any document may be presented and discussed at any time: a draft on the committee wiki, a revision posted between mailings, a sketch on a whiteboard. Discussion is how the committee works, and nothing here restricts it. The rule engages only when the committee takes a poll, because the poll converts discussion into committee weight, a recorded position that later sessions treat as settled.
+The trigger is the record, not the poll, and not the presentation. Any document may be presented and discussed at any time: a draft on the committee wiki, a revision posted between mailings, a sketch on a whiteboard. Discussion is how the committee works, and nothing here restricts it. Nothing here restricts the poll either. The rule engages at the moment a counted result would enter the record, because the record is what converts discussion into committee weight, a position later sessions treat as settled. Material with no paper behind it is covered on the same terms: a poll on a slide deck shown in the room is a poll on something no mailing contains.
 
-A poll is a counted vote, recorded with a tally. A qualitative note is not a poll. A chair may record that a document was discussed and which way the room leaned, for example "strong support was expressed for the direction in Section 3," and nothing here restricts that. The line is the tally: SF/F/N/A/SA columns or a counted show of hands make it a poll, and a poll needs a mailed revision. A summary of sentiment does not.
+An objection costs the numbers and nothing else. A poll is a counted vote, recorded with a tally. A qualitative note is not a poll. A chair may record that a document was discussed and which way the room leaned, for example "strong support was expressed for the direction in Section 3," and that record stays available whether or not anyone objects. The line is the tally: SF/F/N/A/SA columns or a counted show of hands make it a poll, and a poll on an unmailed revision reaches the minutes only if no one objects. A summary of sentiment needs nobody's permission.
 
-The bright line asks one question: did the polled revision appear in a pre-meeting mailing, yes or no. It needs no judgment about whether a change is large or small, design or wording, normative or editorial. SD-4<sup>[5]</sup> already defines the pre-meeting mailing deadline through SD-7<sup>[6]</sup> as the Monday four weeks before a meeting, and states its purpose: "Requiring papers to be received on time ensures that national body experts have sufficient time to consider the proposals in advance and arrive at the meeting prepared to participate in a productive discussion." The rule extends that purpose from the agenda to the poll.
+The chair's question turns on one fact: did the polled revision appear in a pre-meeting mailing, yes or no. It needs no judgment about whether a change is large or small, design or wording, normative or editorial, and neither does the objection. SD-4<sup>[5]</sup> already defines the pre-meeting mailing deadline through SD-7<sup>[6]</sup> as the Monday four weeks before a meeting, and states its purpose: "Requiring papers to be received on time ensures that national body experts have sufficient time to consider the proposals in advance and arrive at the meeting prepared to participate in a productive discussion." The rule extends that purpose from the agenda to the record.
 
-One exception. At the last meeting before a standard's publication deadline, polls on wording corrections that preserve the mailed design are permitted. A wording correction preserves the mailed design when it adds, removes, or renames no public-facing interface, changes no observable behavior, and narrows or eliminates no option presented in the mailed revision. The exception exists at exactly one meeting because that is the only meeting where deferring a fix costs a full release. At every earlier meeting the next mailing is available, so even a wording correction can wait for it. Section 9 explains why the exception lives where the circular problem lives, and nowhere else.
+One exception. At the last meeting before a standard's publication deadline, an objection is not sustained against a poll on a wording correction that preserves the mailed design. A wording correction preserves the mailed design when it adds, removes, or renames no public-facing interface, changes no observable behavior, and narrows or eliminates no option presented in the mailed revision. The exception exists at exactly one meeting because that is the only meeting where deferring a fix costs a full release. At every earlier meeting the next mailing is available, so even a wording correction can wait for it. Section 9 explains why the exception lives where the circular problem lives, and nowhere else.
 
-SD-4<sup>[5]</sup> permits "followup papers to an on-time paper, such as late or in-meeting rebuttal/elaboration/update papers," and imposes no constraint on in-meeting revisions reaching a poll. This paper adds that constraint, scoped to the poll alone.
+SD-4<sup>[5]</sup> permits "followup papers to an on-time paper, such as late or in-meeting rebuttal/elaboration/update papers," and imposes no constraint on in-meeting revisions reaching a recorded poll. This paper adds that constraint, scoped to the record alone and triggered only when a participant asks for it.
 
 ### 2.1. The Rule in the Room
 
-The rule is meant to be applied without a ruling. A delegate states a fact anyone can check, and the poll waits.
+The rule is meant to be applied without a ruling. The chair asks a question with a checkable answer, and if anyone objects, the numbers wait for the next mailing.
 
-Normal case: the revision is mailed, the poll proceeds.
+Normal case: the revision is mailed, so there is nothing to ask.
 
 ```
 Chair:     We will poll P1234R3, which appeared in the February mailing.
@@ -80,17 +82,31 @@ Chair:     We will poll P1234R3, which appeared in the February mailing.
            (Poll taken and recorded.)
 ```
 
-Unmailed revision: the poll does not happen.
+Unmailed revision, no objection: the poll is recorded.
 
 ```
-Chair:     We will poll P1234R5.
-Delegate:  Point of order. R5 is not in a mailing. R3 is the last mailed revision.
-Chair:     Sustained. The poll will not be taken.
-           The minutes record that R5 was discussed and the room favored the
-           direction. The authors will publish R5 in the next mailing.
+Chair:     We will poll P1234R5. R5 is not in a mailing; R3 is the last mailed
+           revision. Is there any objection to recording this poll?
+           (No objection.)
+           "EWG approves the direction of P1234R5."
+           (Poll taken and recorded.)
 ```
 
-Next meeting: the revision is now mailed, the poll proceeds.
+Unmailed revision, one objection: the poll happens, the numbers do not.
+
+```
+Chair:     We will poll P1234R5. R5 is not in a mailing; R3 is the last mailed
+           revision. Is there any objection to recording this poll?
+Delegate:  I object.
+Chair:     Then the poll is not recorded. We will still take it to inform the
+           discussion.
+           "EWG approves the direction of P1234R5."
+           (Show of hands. No tally enters the minutes. The minutes record that
+           R5 was discussed and the room favored the direction. The authors will
+           publish R5 in the next mailing.)
+```
+
+Next meeting: the revision is now mailed, and the question does not arise.
 
 ```
 Chair:     P1234R5 appeared in the May mailing. We will poll it.
@@ -98,30 +114,49 @@ Chair:     P1234R5 appeared in the May mailing. We will poll it.
            (Poll taken and recorded.)
 ```
 
-Next meeting, the authors changed the paper: a fresh poll on the mailed revision.
+Last meeting before publication, a wording correction: the objection is not sustained.
 
 ```
-Chair:     The authors published P1234R6 in the May mailing, revised after the
-           March discussion. We will poll R6.
-           "EWG approves the direction of P1234R6."
-           (Poll taken on R6. The March discussion is backstory, not a pending item.)
+Chair:     P1234R7 corrects wording in the mailed R6. It renames no interface
+           and changes no behavior.
+Delegate:  I object. R7 is not in a mailing.
+Chair:     Not sustained. This is the final meeting before publication and R7 is
+           a wording correction that preserves the mailed design.
+           "LWG approves P1234R7 for the working draft."
+           (Poll taken and recorded.)
 ```
 
-No one decides whether the change was large or small. The room polls whatever mailed revision is in front of it.
+No one decides whether the change was large or small. The room polls whatever is in front of it, and the only question is whether the numbers may be written down. If the authors return in May with a fresh P1234R6 instead, the room polls R6 and the earlier discussion is backstory, not a pending item.
+
+### 2.2. Why the Objection Costs the Objector Nothing
+
+The mechanism depends on someone being willing to speak, and Section 1.2 records a delegate who was not. At Croydon I could see no way to object that would not mark me as the person who delayed the room, so I said nothing. A rule that rests on an objection has to answer why this objection is different. Four things make it cheap.
+
+It states a fact, not a position. The objector says that a revision is not in a mailing. Anyone can check the index in seconds, and the author cannot rebut it, because it is either true or it is not. There is no technical claim to defend, no design preference to justify, and no expertise required. The objection I did not raise at Croydon would have been to a design decision, on the merits, under deadline pressure, against authors who had lived with the problem for years. That is the expensive kind of objection. This is not that kind.
+
+It delays nothing. The presentation happened, the discussion happened, and the poll still happens. The chair records what the room thought. Nothing is stopped and no decision is postponed that the next mailing will not carry, so nothing in the exchange makes the objector the person who delayed the room.
+
+The chair asks first, so the objection answers a question the chair is obliged to put to the room rather than interrupting the proceedings. Saying nothing also stops being the invisible default it is today, because the silence becomes a choice made by everyone present rather than by the one delegate who thought about speaking.
+
+It is a stated entitlement. Writing the right into SD-4 changes what exercising it means. A delegate who objects is not making a personal intervention against an author but doing the thing the procedure names and expects, which is the difference between raising an eyebrow and casting a ballot.
 
 ---
 
 ## 3. The Incentive Inversion
 
-The first-order effect is a delay. A revision not ready by the mailing deadline waits one cycle to be polled. That is not the reason to adopt the rule. The reason is the second-order effect: the rule changes what authors optimize for, and that protects the committee's scarcest resource.
+The first-order effect is a risk. A revision not ready by the mailing deadline can still be presented, discussed, and polled, but whether the numbers survive into the record is no longer the author's to decide. That is not the reason to adopt the rule. The reason is the second-order effect: the rule changes what authors optimize for, and that protects the committee's scarcest resource.
 
 That resource is the prepared attention of its delegates. A national body expert who reads a paper in the mailing, cross-references its wording, and arrives ready to engage has spent hours that do not scale and cannot be recovered. Across every delegate who prepares and every paper in a mailing, preparation is the largest single investment the committee makes in the quality of the standard. The current structure wastes it.
 
-Consider what the structure rewards. An author who submits polished wording by the deadline exposes it to weeks of national body scrutiny. An author whose wording is still moving submits an incomplete revision, iterates in the room, and reaches the same poll with far less review. The second author is still acting in good faith. Waiting is what the structure rewards. Meanwhile the delegate who prepared against the mailed revision finds in the room that it has changed and the preparation no longer applies. Over enough cycles, the incentive shapes behavior.
+Consider what the structure rewards. An author who submits polished wording by the deadline exposes it to weeks of national body scrutiny. An author whose wording is still moving submits an incomplete revision, iterates in the room, and reaches the same recorded poll with far less review. The second author is still acting in good faith. Waiting is what the structure rewards. Meanwhile the delegate who prepared against the mailed revision finds in the room that it has changed and the preparation no longer applies. Over enough cycles, the incentive shapes behavior.
 
-The rule inverts both incentives through a short causal chain. First, if the mailed revision is the only one that can be polled, the mailing deadline decides whether a paper advances at the next meeting. Second, an author who wants the paper to advance then makes the mailed revision the strongest one, instead of treating the mailing as a checkpoint and the room as the place to finish. Third, the polled revision is the mailed revision, so the version a delegate studies is the version the committee votes, and preparation keeps its value. The delegate side has evidence: the record in Section 1 is a delegate who stopped preparing once preparation stopped paying. The author side is a prediction. Authors respond to the deadline that governs the outcome, and this rule moves that deadline to the mailing.
+The rule inverts both incentives through a short causal chain. First, if the mailed revision is the only one whose recorded poll is certain, the mailing deadline decides whether a paper can count on advancing at the next meeting. Second, an author who wants the paper to advance then makes the mailed revision the strongest one, instead of treating the mailing as a checkpoint and the room as the place to finish. Third, the polled revision is the mailed revision, so the version a delegate studies is the version the committee votes, and preparation keeps its value. The delegate side has evidence: the record in Section 1 is a delegate who stopped preparing once preparation stopped paying. The author side is a prediction. Authors respond to the deadline that governs the outcome, and this rule moves that deadline to the mailing.
 
-The prediction is that fewer papers wait a cycle. The rule reads as a delay, but it is an incentive to finish on time, and that produces more finished-on-time work. A rule that only blocked late revisions would slow the committee. A rule that makes early preparation the best path to a poll speeds it up, because the committee stops spending delegate preparation on text that will not survive to the vote. Whether the author-side incentive materializes is something the committee can observe after adopting the rule.
+An objection right is weaker than a prohibition, and the difference deserves stating rather than arguing away. A prohibition would make the mailing deadline decisive. The objection right makes it only reliable, because an author who misses the mailing is wagering that no participant will spend the few seconds it takes to object, and one participant settles the question. An author who cannot afford that wager mails on time, which is the behavior the rule exists to buy. An author willing to take it may still win.
+
+What the rule gives up in force it recovers in cost. It forbids nothing, so it never blocks a poll the room wanted recorded, and it asks nothing of a committee whose members are content. It engages exactly when someone present is willing to speak for the review chain that is absent, and no more often than that. A prohibition would also bind the case where every delegate in the room agrees the unmailed revision is fine, and that case needs no rule.
+
+The prediction is that fewer papers wait a cycle. The rule reads as a delay, but it is an incentive to finish on time, and that produces more finished-on-time work. A rule that only blocked late revisions would slow the committee. A rule that makes early preparation the surest path to a recorded poll speeds it up, because the committee stops spending delegate preparation on text that will not survive to the vote. Whether the author-side incentive materializes is something the committee can observe after adopting the rule.
 
 That is the whole argument. The evidence shows the cost at two consecutive meetings. The mechanism sections show why the incentive persists. Section 10 shows that the softer alternatives leave it in place.
 
@@ -151,7 +186,7 @@ The people who build the standard asked for the discipline P2138R4 proposed in 2
 
 ### 4.3. The C Committee Already Operates a Version of This
 
-The sibling C committee, ISO/IEC JTC1/SC22/WG14, operates a document deadline a WG21 delegate would recognize. WG14 Standing Document 1<sup>[10]</sup> sets the pre-meeting collection deadline at "four weeks prior to the meeting," and WG14's contributing guidance describes the practice: "papers submitted before a meeting's mailing deadline will be discussed at the meeting. Others will be discussed at the subsequent meeting." Scheduling stays at the convener's discretion, so this is a difference of degree, not an exceptionless rule. Still, a peer ISO committee producing a working standard already treats the pre-meeting deadline as the gate for what a meeting takes up. WG21's on-time-paper rule gates the agenda the same way. The proposed rule extends the gate to the poll.
+The sibling C committee, ISO/IEC JTC1/SC22/WG14, operates a document deadline a WG21 delegate would recognize. WG14 Standing Document 1<sup>[10]</sup> sets the pre-meeting collection deadline at "four weeks prior to the meeting," and WG14's contributing guidance describes the practice: "papers submitted before a meeting's mailing deadline will be discussed at the meeting. Others will be discussed at the subsequent meeting." Scheduling stays at the convener's discretion, so this is a difference of degree, not an exceptionless rule. Still, a peer ISO committee producing a working standard already treats the pre-meeting deadline as the gate for what a meeting takes up. WG21's on-time-paper rule gates the agenda the same way. The proposed rule extends the gate to the record.
 
 ---
 
@@ -179,7 +214,7 @@ The in-meeting revisions cross-referenced each other, so none could be reviewed 
 
 ### 5.4. Wording Corrections Are Not the Concern
 
-Other in-meeting revisions at Croydon were wording corrections that preserved a mailed design, and they are not the concern. [P3373R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3373r3.pdf)<sup>[23]</sup>, [P3981R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3981r2.html)<sup>[24]</sup>, [P3795R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3795r2.html)<sup>[25]</sup>, and [P3978R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3978r3.pdf)<sup>[26]</sup> each refine wording for a design already mailed in an earlier revision, adding, removing, or renaming no public interface. Section 9 explains why such corrections are permitted, and Section 2 draws the line that separates them from the design changes above.
+Other in-meeting revisions at Croydon were wording corrections that preserved a mailed design, and they are not the concern. [P3373R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3373r3.pdf)<sup>[23]</sup>, [P3981R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3981r2.html)<sup>[24]</sup>, [P3795R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3795r2.html)<sup>[25]</sup>, and [P3978R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3978r3.pdf)<sup>[26]</sup> each refine wording for a design already mailed in an earlier revision, adding, removing, or renaming no public interface. Section 9 explains why an objection is not sustained against such corrections at the final meeting, and Section 2 draws the line that separates them from the design changes above.
 
 ---
 
@@ -203,9 +238,9 @@ The poll names P3100R7. Three independent public checks confirm that no P3100R7 
 
 ### 6.2. Why the Rule Covers Every Poll, Not Only Wording Polls
 
-The Brno poll is why the rule triggers on any poll, not on normative-wording polls alone. This poll changed no wording. By its own text it approved an overall direction, committed the group to review every line item in telecons, and reserved reconsideration for the next meeting. A rule that governed only normative-wording polls would permit it. Yet it records a committee position, a consensus direction keyed to a named revision, and a recorded direction is a starting point later sessions build from. Even with reconsideration reserved, the review proceeds from an approved direction keyed to a revision the mailing chain never received.
+The Brno poll is why the objection right reaches any poll, not normative-wording polls alone. This poll changed no wording. By its own text it approved an overall direction, committed the group to review every line item in telecons, and reserved reconsideration for the next meeting. A rule that governed only normative-wording polls would have recorded it without a question asked. Yet it records a committee position, a consensus direction keyed to a named revision, and a recorded direction is a starting point later sessions build from. Even with reconsideration reserved, the review proceeds from an approved direction keyed to a revision the mailing chain never received.
 
-A rule that distinguished direction polls from wording polls would leave the loophole open: present an unmailed revision, take a direction poll, and let the accumulated weight carry the wording later. Kinds of poll are a taxonomy a determined process can work around. Whether the revision appeared in a mailing cannot be worked around. So the bright line is any poll on a paper, full stop.
+A rule that distinguished direction polls from wording polls would leave the loophole open: present an unmailed revision, take a direction poll, and let the accumulated weight carry the wording later. Kinds of poll are a taxonomy a determined process can work around. Whether the revision appeared in a mailing cannot be worked around. So the question the chair asks is owed on any poll on a paper, full stop.
 
 ### 6.3. The Same Gap at Two Meetings
 
@@ -241,35 +276,39 @@ A rule that turns on a judgment call carries three costs an objective test avoid
 
 The proposed rule has an objective test: did the polled revision appear in a mailing, yes or no. It is consistent across chairs, leaves nothing to interpret, and takes seconds to apply, so the general case cannot become a contest. Judgment survives in one place only, the final-meeting exception for wording corrections, bounded there by the definition in Section 2 and the group boundary in Section 9, which route any genuine design question back to an evolution group. The discretion sits at a single meeting, not across every poll at every meeting.
 
+The objection right does not put the judgment back. A chair who hears an objection weighs no argument and rules on no merits, but looks the revision up in the mailing index and lets the index answer. The objector needs no reason either, because the rule supplies it. The one place a chair still rules is the final-meeting exception, and the objection right narrows even that: a ruling is now needed only when three things hold at once, that it is the last meeting before publication, that a participant has objected, and that the author has invoked the wording-correction exception. Under a flat prohibition a chair would have to apply the exception every time it was reached. Under the objection right the chair applies it only when someone asks.
+
 P2138R4<sup>[7]</sup> is instructive. Its cooling period was sound, and Section 4 records majority support. Its bypass mechanism, however, required an explicit minuted decision by both the design group and the specification group, a judgment call when the process is most rushed. A mechanism that depends on discretion at the hardest moment invites objections a bright-line test does not. This rule keeps P2138R4's insight and drops the discretion.
 
 ---
 
 ## 9. The Circular Problem, and How the Rule Resolves It
 
-The rule has a circular problem, stated plainly. The train model ([P1000R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1000r2.pdf)<sup>[30]</sup>, "C++ IS schedule," and its current revision [P1000R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p1000r8.pdf)<sup>[31]</sup>) removes a feature not ready for a release rather than delaying the release: in P1000R2's words, "ship what's ready." Removing a feature from the working draft requires normative wording, a paper with deletions and feature-test-macro changes, and a poll to adopt it. If the removal is found necessary at the final meeting, its wording was by definition not in a pre-meeting mailing. A rule forbidding a poll on any unmailed revision would forbid the removal poll, disabling the train model's safety valve where it matters most.
+The rule has a circular problem, stated plainly. The train model ([P1000R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1000r2.pdf)<sup>[30]</sup>, "C++ IS schedule," and its current revision [P1000R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p1000r8.pdf)<sup>[31]</sup>) removes a feature not ready for a release rather than delaying the release: in P1000R2's words, "ship what's ready." Removing a feature from the working draft requires normative wording, a paper with deletions and feature-test-macro changes, and a poll to adopt it. If the removal is found necessary at the final meeting, its wording was by definition not in a pre-meeting mailing. One objection would then keep the adoption poll out of the record, and a removal that cannot be recorded is a removal that does not happen. A single participant could force a known defect into the release, disabling the train model's safety valve where it matters most.
 
-The final-meeting exception in Section 2 resolves this, and its scope is deliberate. At the last meeting before publication, polls on wording corrections that preserve the mailed design are permitted, and a removal that reverts the working draft to a known prior state is the cleanest correction: it adds no design, it withdraws one. The exception is confined to that meeting because that is the only meeting where waiting for the next mailing forfeits a release. At every earlier meeting the next mailing is available, so the circular problem does not arise and no exception is needed.
+The final-meeting exception in Section 2 resolves this, and its scope is deliberate. At the last meeting before publication, an objection is not sustained against a poll on a wording correction that preserves the mailed design, and a removal that reverts the working draft to a known prior state is the cleanest correction: it adds no design, it withdraws one. The exception is confined to that meeting because that is the only meeting where waiting for the next mailing forfeits a release. At every earlier meeting the next mailing is available, so the circular problem does not arise and no exception is needed.
 
-A second mechanism keeps the exception from stretching. CWG and LWG are specification groups; their task is to render an adopted design into wording. When specification review finds a design change is needed rather than a wording correction, the paper returns to EWG or LEWG, and it appears in the next pre-meeting mailing with a new revision number before any further poll. The group boundary is itself a bright line: wording corrections stay, design changes go back to evolution and therefore back to the mailing. Between the narrow final-meeting exception and the group boundary, the rule permits the removals the train model depends on without opening a general path for unmailed design changes to reach a poll.
+The exception could be omitted on the theory that no delegate would put himself on the record forcing a known defect into a release. That theory is probably correct, and the train model's safety valve should not rest on it. The exception makes the removal poll available as a guarantee rather than as a courtesy.
+
+A second mechanism keeps the exception from stretching. CWG and LWG are specification groups; their task is to render an adopted design into wording. When specification review finds a design change is needed rather than a wording correction, the paper returns to EWG or LEWG, and it appears in the next pre-meeting mailing with a new revision number before any recorded poll. The group boundary is itself a bright line: wording corrections stay, design changes go back to evolution and therefore back to the mailing. Between the narrow final-meeting exception and the group boundary, the rule permits the removals the train model depends on without opening a general path for unmailed design changes to reach the record.
 
 ---
 
 ## 10. What About...?
 
-The questions below are the reasonable ones a reader raises on first contact with the rule. Each is stated as fairly as the author can state it, then answered from evidence already in the paper. Several propose a softer alternative to the bright line. In each case the alternative's second-order effect brings the problem back.
+The questions below are the reasonable ones a reader raises on first contact with the rule. Each is stated as fairly as the author can state it, then answered from evidence already in the paper. Several propose a different mechanism. In each case the alternative's second-order effect brings the problem back.
 
 ### What about the author's own unmailed presentations?
 
-This is the clearest illustration of the boundary. The author has presented material to a study group that was not in a pre-meeting mailing, and no poll was taken on it. The rule triggers on the poll (Section 2), so it does not reach that presentation. Presenting an unmailed document, discussing it, and taking feedback are unrestricted. The constraint applies only when the committee converts discussion into committee weight through a poll. The author's presentation stays permitted, and the rule would equally forbid him a poll on any unmailed revision of his own papers.
+This is the clearest illustration of the boundary. The author has presented material to a study group that was not in a pre-meeting mailing, and no poll was taken on it. The rule triggers on the record (Section 2), so it does not reach that presentation. Presenting an unmailed document, discussing it, and taking feedback are unrestricted. The constraint applies only when the committee writes a counted result into the record. The author's presentation stays permitted, and the rule would equally expose him to an objection on any unmailed revision of his own papers.
 
 ### What about in-meeting iteration?
 
-The rule throws none of it away. A group already engaged with a paper can present revisions, discuss them, and refine wording across the meeting week, as today. The rule touches only the poll (Section 2), not presentation or discussion. An author may iterate all week and bring the result to a poll at the next meeting, after the revision has been in a mailing. All that goes away is converting same-week iteration into a recorded committee position before the review chain has seen it.
+The rule throws none of it away. A group already engaged with a paper can present revisions, discuss them, and refine wording across the meeting week, as today. The rule touches only the record (Section 2), not presentation, discussion, or the poll. An author may iterate all week, poll the result, and if anyone objects to recording it, bring the same revision to a recorded poll at the next meeting after it has been in a mailing. All that goes away is converting same-week iteration into a recorded committee position over the objection of someone present.
 
 ### What about study group straw polls?
 
-Study groups take polls, and many are quick reads of the room that guide discussion without recording a position on a paper: a show of hands on whether a direction is worth exploring, or which of two sketches to pursue. The rule aims at the poll that records a committee position on a specific revision, a direction approved, a paper forwarded, an option adopted, because that is the poll later sessions build on and the poll the Brno case turns on. A read of the room that records no position on a paper is unaffected. Where a study group wants to record a position on a specific revision, the rule asks only that the revision have been in a mailing first, the discipline it asks of every group.
+Study groups take polls, and many are quick reads of the room that guide discussion without recording a position on a paper: a show of hands on whether a direction is worth exploring, or which of two sketches to pursue. The rule aims at the poll that records a committee position on a specific revision, a direction approved, a paper forwarded, an option adopted, because that is the poll later sessions build on and the poll the Brno case turns on. A read of the room that records no position on a paper is unaffected. Where a study group wants to record a position on a specific revision, the rule asks only that the revision have been in a mailing first, or that no one present objects to recording it.
 
 ### What about letting chairs decide when re-review is needed?
 
@@ -277,15 +316,21 @@ Chairs do weigh how much has changed, and Section 8 is the answer: chair discret
 
 ### What about allowing the poll but labeling it provisional?
 
-The idea: poll the unmailed revision, mark the result non-binding, and let it become binding once the revision is mailed. It fails three ways. First, a provisional poll with SF/F/N/A/SA numbers in the minutes reads exactly like a binding one to anyone who opens the record a year later. Labels fade; numbers persist. Someone will cite "16-15-6-2-0" and drop the word provisional. Second, it contradicts Section 6.2. If a poll carries weight whatever its label, a "non-binding" category concedes that some polls do not, and that vocabulary will be used to wave away the very polls this paper documents. Third, it needs a confirmation step at the next meeting, and that step has no clean rule: what if the paper changed, is it the same poll, who decides whether re-discussion is required. Each question is a judgment call. The simpler mechanism costs none of this. Do not take the poll. Record the discussion (Section 2). Poll the mailed revision next time.
+The idea: poll the unmailed revision, mark the result non-binding, and let it become binding once the revision is mailed. It fails three ways, and the first two are why an objection removes the numbers rather than annotating them. First, a provisional poll with SF/F/N/A/SA numbers in the minutes reads exactly like a binding one to anyone who opens the record a year later. Labels fade; numbers persist. Someone will cite "16-15-6-2-0" and drop the word provisional. Second, it contradicts Section 6.2. If a poll carries weight whatever its label, a "non-binding" category concedes that some polls do not, and that vocabulary will be used to wave away the very polls this paper documents. Third, it needs a confirmation step at the next meeting, and that step has no clean rule: what if the paper changed, is it the same poll, who decides whether re-discussion is required. Each question is a judgment call. The mechanism in Section 2 costs none of this. Take the poll if the room wants it, record the discussion, and leave the numbers out. Nothing needs confirming later, because nothing provisional was written down.
 
 ### What about distinguishing binding from non-binding polls?
 
-The idea: make forwarding and adoption polls binding, direction and guidance polls non-binding, and apply the rule only to the binding kind. The Brno poll (Section 6) was a direction poll. Under this distinction it would be permitted, yet it recorded a committee position that later sessions build from. The distinction grants exactly the loophole the rule closes. It also needs someone to classify each poll before it is taken, a judgment call under time pressure, and an author can label any poll "just direction" to evade the rule and rely on the accumulated weight later.
+The idea: make forwarding and adoption polls binding, direction and guidance polls non-binding, and apply the rule only to the binding kind. The Brno poll (Section 6) was a direction poll. Under this distinction it would have been recorded with no question asked and no chance to object, yet it recorded a committee position that later sessions build from. The distinction grants exactly the loophole the rule closes. It also needs someone to classify each poll before it is taken, a judgment call under time pressure, and an author can label any poll "just direction" to evade the rule and rely on the accumulated weight later.
 
 ### What about letting anyone object that the change is too large?
 
-The idea: instead of checking mailing status, let any delegate object that a revision carries design changes since the last mailing, and revert on that objection. "Design change" versus "wording correction" is a judgment call, the exact one Section 8 rejects. In the room, under time pressure, the objector argues "design" and the author argues "wording," and the chair must rule. Mailing status avoids all of it and catches more: every design change produces a new revision, and every new revision was either mailed or not. Checking the mailing catches everything "design change" would, without anyone defining "design change."
+The idea: instead of asking about mailing status, let any delegate object that a revision carries design changes since the last mailing, and act on that objection. This paper adopts the objection and rejects this trigger for it. "Design change" versus "wording correction" is a judgment call, the exact one Section 8 rejects. In the room, under time pressure, the objector argues "design" and the author argues "wording," and the chair must rule. Mailing status avoids all of it and catches more: every design change produces a new revision, and every new revision was either mailed or not. So the objection turns on a fact anyone can look up rather than on a characterization anyone can dispute, and no one has to define "design change."
+
+### What about when nobody objects?
+
+Then the numbers are recorded, and that is the design. The rule exists so that the review chain which is not in the room has a representative in it. If no participant present is willing to be that representative, the committee has made a visible choice instead of following an invisible default, and it made the choice after the chair asked. That is not what happens today, where nothing is asked and nothing is chosen.
+
+A reader may answer that silence is not agreement, and in general it is not. The two positions are compatible on the point that matters. Silence here permits one procedural step, the writing down of a tally, and settles no technical question. The substance still requires the counted poll, and every delegate who votes in it votes explicitly. What silence never does under this rule is stand in for the vote itself.
 
 ### What about better stakeholder notification?
 
@@ -297,7 +342,7 @@ Specification review is real review by careful readers, and nothing here diminis
 
 ### What about the author's competing proposals?
 
-The conflict is real and disclosed in Section 13 so every reader can weigh the argument knowing it. Section 1 gives the structural reason it cuts the other way: a rushed `std::execution` that ships with defects would help the author's competing proposals, so proposing the discipline that reduces those defects is against his competitive interest. The rule is general, applies to every feature area including his own, and would have constrained his own ability to seek a poll on unmailed wording.
+The conflict is real and disclosed in Section 13 so every reader can weigh the argument knowing it. Section 1 gives the structural reason it cuts the other way: a rushed `std::execution` that ships with defects would help the author's competing proposals, so proposing the discipline that reduces those defects is against his competitive interest. The rule is general, applies to every feature area including his own, and would have constrained his own ability to seek a recorded poll on unmailed wording.
 
 ### What about the slowdown this causes?
 
@@ -305,7 +350,7 @@ Section 3 is the answer: the mailing deadline becomes the checkpoint authors opt
 
 ### What about the claim that this would have killed C++26?
 
-For each affected paper in Section 5, the rule leaves two paths: poll the last mailed revision, or defer the delta one mailing. Neither removes the feature. If a delta was important enough to justify bypassing the review chain, it was important enough to survive one mailing cycle. If it could not survive one cycle, its importance did not justify the bypass.
+For each affected paper in Section 5, the rule leaves three paths: poll the unmailed revision and record it if no one objects, poll the last mailed revision, or defer the delta one mailing. None of the three removes the feature. If a delta was important enough to justify bypassing the review chain over an objection, it was important enough to survive one mailing cycle. If it could not survive one cycle, its importance did not justify the bypass.
 
 ### What about evaluating each revision case by case?
 
@@ -313,7 +358,11 @@ A case-by-case exception reintroduces the judgment the rule removes (Section 8).
 
 ### What about using the rule to filibuster?
 
-If every design change reset the clock, an objector might force design changes at each meeting to keep a paper from ever reaching a poll. Only if the room adopts it does a change reset the clock, so a failed motion is not a filibuster. Where a feature is large enough that real design findings surface at every meeting, the group boundary in Section 9 handles it: specification groups make wording corrections that preserve the design, and anything requiring a design decision returns to an evolution group and the next mailing.
+There are two versions of the worry, and the objection right creates the second.
+
+The first: if every design change reset the clock, an objector might force design changes at each meeting to keep a paper from ever reaching a poll. Only if the room adopts it does a change reset the clock, so a failed motion is not a filibuster. Where a feature is large enough that real design findings surface at every meeting, the group boundary in Section 9 handles it: specification groups make wording corrections that preserve the design, and anything requiring a design decision returns to an evolution group and the next mailing.
+
+The second: one delegate objects at every meeting and keeps a paper's numbers out of the minutes indefinitely. Four things bound it. The objection cannot be raised against a mailed revision at all, so an author who meets the deadline is beyond its reach, and meeting the deadline is within the author's control. It blocks a tally and not the paper, since discussion, presentation, and the poll all proceed, and the recorded poll follows at the next meeting once the revision is mailed. It is checkable, so an objection against a revision that is in fact in the mailing fails on the public index rather than on the chair's judgment. And the objector is named in the minutes, so a delegate who objects to everything builds a public record of doing so. A filibuster needs obstruction to be repeatable at no cost. This one costs the author one mailing, and costs the objector a line in the record every time.
 
 ### What about national body comment resolution?
 
@@ -323,19 +372,19 @@ During the comment-resolution cycle, national bodies submit comments the committ
 
 ## 11. Proposed Amendment to SD-4
 
-The text below is offered as an amendment to SD-4<sup>[5]</sup>. It sits alongside the existing on-time-paper rule, which gates the agenda, and extends the same principle to the poll.
+The text below is offered as an amendment to SD-4<sup>[5]</sup>. It sits alongside the existing on-time-paper rule, which gates the agenda, and extends the same principle to the record.
 
-> **Mailing discipline for committee polls.** No poll may be taken on a paper unless the revision under consideration appeared in a pre-meeting mailing published before the meeting at which the poll is taken. This applies to every poll on a paper, whether the poll concerns direction, design, specification, or a request to forward, and regardless of the subgroup. Presentation and discussion of any document, including drafts and revisions not in a mailing, remain unrestricted; the constraint applies only to the taking of a poll.
+> **Mailing discipline for committee polls.** Before taking a poll on a paper, the chair determines whether the revision under consideration appeared in a pre-meeting mailing published before the meeting. If it did not, the chair asks whether any participant objects to the poll being recorded. On any objection, no tally may enter the record, and the poll is recorded only as permitted under Qualitative record below. This applies to every poll on a paper, whether the poll concerns direction, design, specification, or a request to forward, regardless of the subgroup, and equally to a poll on material for which no paper exists. Presentation and discussion of any document, including drafts and revisions not in a mailing, remain unrestricted, as does the taking of the poll itself; the constraint applies only to the recording of a tally.
 
-> **Qualitative record.** A chair may record in the minutes that a document was discussed and the direction of sentiment expressed. A qualitative record is not a poll. A poll is a counted vote, recorded with a tally.
+> **Qualitative record.** A chair may record in the minutes that a document was discussed and the direction of sentiment expressed. A qualitative record is not a poll. A poll is a counted vote, recorded with a tally. Where an objection bars a tally, the qualitative record is what the minutes contain.
 
-> **Final-meeting exception.** At the last meeting before a standard's publication deadline, polls on wording corrections that preserve the mailed design are permitted, so that defects found in specification review can be repaired without deferring a feature a full release. A wording correction preserves the mailed design when it does not add, remove, or rename any public-facing interface; does not change observable behavior or semantics; and does not narrow or eliminate options presented in the mailed revision. A poll to remove a feature from the working draft is permitted under this exception, since removal reverts the draft to a known prior state. At every earlier meeting no exception applies, because the next pre-meeting mailing is available.
+> **Final-meeting exception.** At the last meeting before a standard's publication deadline, an objection is not sustained against a poll on a wording correction that preserves the mailed design, so that defects found in specification review can be repaired without deferring a feature a full release. A wording correction preserves the mailed design when it does not add, remove, or rename any public-facing interface; does not change observable behavior or semantics; and does not narrow or eliminate options presented in the mailed revision. A poll to remove a feature from the working draft falls under this exception, since removal reverts the draft to a known prior state. At every earlier meeting no exception applies, because the next pre-meeting mailing is available.
 
-> **Group boundary.** CWG and LWG are specification groups. When specification review during a meeting determines that a design change - not a wording correction - is needed, the paper returns to EWG or LEWG. A paper that returns to an evolution group for a design change appears in the next pre-meeting mailing with a new revision number before any further poll is taken on it.
+> **Group boundary.** CWG and LWG are specification groups. When specification review during a meeting determines that a design change - not a wording correction - is needed, the paper returns to EWG or LEWG. A paper that returns to an evolution group for a design change appears in the next pre-meeting mailing with a new revision number before any recorded poll is taken on it.
 
 > **Open question.** The interaction between this rule and national body comment resolution during the CD/DIS cycle is left as an open question for committee discussion. A comment resolution can require a normative design change under an external ISO deadline. The committee is best placed to determine whether comment resolution needs a distinct exception or whether the group-boundary mechanism above provides sufficient flexibility.
 
-For a champion who brings this forward, a poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R1: no poll on a paper unless the polled revision appeared in a pre-meeting mailing, with the final-meeting exception for wording corrections and the group-boundary provision." The amendment text above is the exact wording to be adopted.
+For a champion who brings this forward, a poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R1: before polling a revision that did not appear in a pre-meeting mailing the chair asks for objections, and any objection bars a tally from the record, with the final-meeting exception for wording corrections and the group-boundary provision." The amendment text above is the exact wording to be adopted.
 
 ---
 
@@ -343,9 +392,9 @@ For a champion who brings this forward, a poll could read: "Adopt the mailing-di
 
 At two consecutive meetings the committee polled revisions its own review chain never received. At Croydon, design changes were adopted in revisions first mailed the month after the vote. At Brno, a poll authorized an ongoing review keyed to a revision that remains unpublished, while the link members were pointed to resolved to an older one. In both, the delegates who prepared from the mailing prepared against text that was not the text being decided.
 
-The rule moves the checkpoint for a poll back to the mailing, where national body preparation already happens. Its value is the incentive: when the mailed revision is the only one that can be polled, the mailing deadline becomes the moment authors work toward, and the version the review chain studies is the version the committee votes. Because early preparation becomes the rewarded strategy, the predicted result is that fewer papers wait a cycle.
+The rule moves the checkpoint for a recorded poll back to the mailing, where national body preparation already happens. Its value is the incentive: when the mailed revision is the only one whose recorded poll is certain, the mailing deadline becomes the moment authors work toward, and the version the review chain studies is the version the committee votes. Because early preparation becomes the rewarded strategy, the predicted result is that fewer papers wait a cycle.
 
-By adopting the rule the committee keeps the return on its own preparation: the hours national body experts spend on the mailing are spent on the text that will be decided, and the consensus in a poll is consensus about a document the whole review chain could see. Without it the committee keeps paying an incentive that rewards waiting and penalizes preparation, and a gap between what is published and what is decided that was present at each of the last two meetings. The instrument is the short amendment to SD-4 in Section 11: no poll on a paper unless the polled revision was in a pre-meeting mailing, with the single final-meeting exception for wording corrections. This paper asks the committee to adopt it.
+By adopting the rule the committee keeps the return on its own preparation: the hours national body experts spend on the mailing are spent on the text that will be decided, and no tally enters the record over the objection of a delegate who noticed that the review chain never saw the document. Without it the committee keeps paying an incentive that rewards waiting and penalizes preparation, and a gap between what is published and what is decided that was present at each of the last two meetings. The instrument is the short amendment to SD-4 in Section 11: the chair asks before polling an unmailed revision, and any objection keeps the numbers out of the record, with the single final-meeting exception for wording corrections. It forbids nothing and costs nothing in a room where no one minds. It asks only that a delegate who does mind be able to say so. This paper asks the committee to adopt it.
 
 ---
 
@@ -355,7 +404,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space: [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf)<sup>[1]</sup>, [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf)<sup>[2]</sup>, [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf)<sup>[3]</sup>, and [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf)<sup>[4]</sup>, a coroutine-native model for byte-oriented I/O. This paper proposes a process rule that applies to every paper in every feature area, including the author's own. His preferred asynchronous model competes with `std::execution`. Calibrate what follows accordingly.
 
-Had it been in effect, the rule would also have barred the author from seeking a poll on any last-minute normative revision to his own papers. He accepts that constraint.
+Had it been in effect, the rule would also have exposed any last-minute normative revision to the author's own papers to an objection that kept its poll out of the record. He accepts that constraint.
 
 This paper is one of a series on committee process. Companion papers on the train model, on voting dynamics, and on appointment as policy are in preparation. This one examines the mailing and the poll.
 
