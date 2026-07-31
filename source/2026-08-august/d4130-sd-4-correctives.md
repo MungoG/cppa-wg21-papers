@@ -1,7 +1,7 @@
 ---
 title: "SD-4: Five Correctives Required By ISO Directives"
 document: P4130R0
-date: 2026-07-01
+date: 2026-08-01
 intent: info
 audience: WG21
 reply-to:
@@ -10,7 +10,7 @@ reply-to:
 
 ## Abstract
 
-[SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures)<sup>[1]</sup> places appointment authority, scheduling, and consensus determination in a single chain with no fixed terms, no confirmation, and no reconciliation requirement. The ISO/IEC Directives govern to the working-group level and provide a check for each. This paper proposes five correctives, each replacing a single passage of SD-4 with text that aligns the practice with the Directives. The convenor can adopt all five immediately.
+[SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures)<sup>[1]</sup> lets the convenor appoint every subgroup chair, set the meeting schedule, and declare consensus. No chair serves a fixed term, no appointment returns to the committee for confirmation, and no chair must reconcile the objections raised against a proposal. The ISO/IEC Directives govern to the working-group level and provide a check for each. This paper proposes five correctives, each replacing a single passage of SD-4 with text that aligns the practice with the Directives. The convenor can adopt all five immediately.
 
 ---
 
@@ -28,11 +28,15 @@ The author provides information and serves at the pleasure of the committee.
 
 The author's position is that C++ should prioritize stability over feature velocity.
 
-## 2. The Structure
+## 2. One Office Appoints, Schedules, and Declares Consensus
 
-The convenor appoints every subgroup chair, and SD-4 confirms that chairs "have no fixed term."<sup>[1]</sup> Study group chairs function identically<sup>[2]</sup>. The committee's own description states that the convenor "determines consensus, chairs the WG, sets the WG meeting schedule," and "appoints Study Groups," and that the subgroups operate "with the authority of the convenor."<sup>[3]</sup> Appointment, scheduling, and consensus determination descend from a single office, and no fixed term, confirmation step, or reconciliation requirement checks any link in the chain. The Directives govern to the working-group level and are silent on WG-internal structure<sup>[4]</sup>; SD-4 fills that silence. The result is concentrated power by construction: the authority attaches to whoever holds the office, independent of how the office is used.
+One office holds three powers, and nothing checks any of them. The convenor appoints every subgroup chair, sets the meeting schedule, and declares consensus. Chairs serve no fixed term, the committee confirms no appointment, and no rule requires a chair to reconcile the objections raised against a proposal.
 
-### 2.1 The Consensus Ratchet
+SD-4 confirms that chairs "have no fixed term."<sup>[1]</sup> Study group chairs function identically<sup>[2]</sup>. The committee's own description states that the convenor "determines consensus, chairs the WG, sets the WG meeting schedule," and "appoints Study Groups," and that the subgroups operate "with the authority of the convenor."<sup>[3]</sup> The Directives govern to the working-group level and are silent on WG-internal structure<sup>[4]</sup>; SD-4 fills that silence.
+
+SD-4's text concentrates that power, whoever holds the office and however they use it. The correctives in Section 3 address the office rather than its current holder; every provision quoted here predates the current convenor.
+
+### 2.1 The Consensus Ratchet: Five Provisions Make a Declaration Nearly Irreversible
 
 Once a chair declares consensus, five provisions of SD-4 make that declaration nearly impossible to reverse:
 
@@ -42,7 +46,7 @@ Once a chair declares consensus, five provisions of SD-4 make that declaration n
 4. A competing approach that lacks a paper "does not exist and will not block progress."<sup>[1]</sup>
 5. Repeated escalation "erodes their credibility."<sup>[1]</sup>
 
-The provisions create compounding effects, each amplified by the Bandwidth Gap: the median delegate cannot absorb the volume of papers and falls back on social signals to vote. SD-4 then treats the resulting silence as agreement - Silence As Consensus. A decision reached on a bare two-to-one vote, in a room where most delegates did not read the paper, becomes a result the minority must accept, may not revisit at ballot, dare not escalate, and cannot displace with a later alternative. The ratchet turns once, and it locks.
+The provisions create compounding effects, each amplified by the Bandwidth Gap: the median delegate cannot absorb the volume of papers and falls back on social signals to vote. SD-4 then treats the resulting silence as agreement - Silence As Consensus. In a room where most delegates did not read the paper, a decision reached on a bare two-to-one vote becomes a result the minority must accept, may not revisit at ballot, dare not escalate, and cannot displace with a later alternative. The ratchet turns once, and it locks.
 
 ---
 
@@ -50,7 +54,7 @@ The provisions create compounding effects, each amplified by the Bandwidth Gap: 
 
 Each corrective below replaces a single passage of SD-4 with text drawn from the ISO/IEC Directives.
 
-### 3.1 Chair Terms
+### 3.1 SD-4 Grants Chairs Indefinite Tenure; the Directives Require Fixed Terms
 
 The Directives require fixed terms with confirmation for the offices they govern (Directive 1.12.1)<sup>[4]</sup>; SD-4 grants subgroup chairs indefinite tenure with neither.
 
@@ -62,7 +66,7 @@ The Directives require fixed terms with confirmation for the offices they govern
 
 :::
 
-### 3.2 The 2:1 Threshold
+### 3.2 The Two-to-One Rule Appears Nowhere in the Directives
 
 The Directives define consensus as the reconciliation of conflicting arguments, not a vote ratio (Directive 2.5.6)<sup>[4]</sup>. The two-to-one rule appears nowhere in the Directives.
 
@@ -74,9 +78,9 @@ The Directives define consensus as the reconciliation of conflicting arguments, 
 
 :::
 
-### 3.3 Ballot Comments
+### 3.3 The Directives Place No Content Limit on Ballot Comments
 
-The Directives place no content restriction on national body ballot comments (Directive 2.6.2) and require every comment to be addressed (Directive 2.6.5)<sup>[4]</sup>; an internal practices document cannot override either obligation.
+The Directives place no content restriction on national body ballot comments (Directive 2.6.2) and require every comment to be addressed (Directive 2.6.5)<sup>[4]</sup>; SD-4 cannot override either obligation, and no internal practices document could.
 
 :::wording
 
@@ -86,9 +90,9 @@ The Directives place no content restriction on national body ballot comments (Di
 
 :::
 
-### 3.4 The Escalation Trap
+### 3.4 SD-4 Penalizes a Right the Directives Protect
 
-The Directives direct objectors to a formal appeal process and attach no penalty to its use (Directive 2.5.6, Clause 5.1)<sup>[4]</sup>. SD-4's credibility language penalizes the exercise of a right the Directives protect.
+The Directives direct objectors to a formal appeal process and attach no penalty to its use (Directive 2.5.6, Clause 5.1)<sup>[4]</sup>. SD-4's credibility language penalizes a participant for using a right the Directives protect.
 
 :::wording
 
@@ -98,7 +102,7 @@ The Directives direct objectors to a formal appeal process and attach no penalty
 
 :::
 
-### 3.5 Silence As Consensus
+### 3.5 Silence As Consensus Treats an Absence of a View as Agreement
 
 The Directives define consensus as "seeking to take into account the views of all parties concerned" (Directive 2.5.6)<sup>[4]</sup>; silence is the absence of a view, not its expression.
 
@@ -114,7 +118,7 @@ The Directives define consensus as "seeking to take into account the views of al
 
 ## 4. Conclusion
 
-These five correctives are not exhaustive, yet each provides immediate benefit. Each replaces a single passage in a document the convenor maintains and revises between meetings. Adopting all five requires no poll, no study group, and no national body ballot.
+These five correctives do not close every gap between SD-4 and the Directives. Each one closes a gap on its own, and each cites the Directive it restores. Every one of them replaces a single passage in a document the convenor maintains and revises between meetings. Adopting all five requires no poll, no study group, and no national body ballot.
 
 ---
 
@@ -127,5 +131,3 @@ These five correctives are not exhaustive, yet each provides immediate benefit. 
 [3] [The Committee](https://isocpp.org/std/the-committee) - "The Committee."
 
 [4] [ISO/IEC Directives, Part 1, Consolidated JTC 1 Supplement](https://jtc1info.org/wp-content/uploads/2023/11/ISO-IEC-Consolidated-JTC-1-Supplement-2023.pdf) - "ISO/IEC Directives, Part 1, Consolidated JTC 1 Supplement" (ISO/IEC, 2023).
-
-[5] JTC 1 Standing Document 19 - "Meetings," Section 9 (JTC 1, 2022).
