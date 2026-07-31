@@ -1,5 +1,5 @@
 ---
-title: "SD-4: Five Correctives Required By ISO Directives"
+title: "SD-4: Five Correctives Inspired By ISO Directives"
 document: P4130R0
 date: 2026-08-01
 intent: info
