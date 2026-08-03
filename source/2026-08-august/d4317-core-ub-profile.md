@@ -2,7 +2,7 @@
 title: "A Profile for Runtime-Checkable Core-Language Undefined Behavior: std::core_ub"
 document: P4317R1
 date: 2026-08-01
-intent: propose
+intent: info
 audience: EWG, SG22
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
@@ -12,7 +12,7 @@ reply-to:
 
 The runtime-checkable cases of core-language undefined behavior can be guarded by a single standard profile, with none of the changes to the definitional machinery of the standard that a Contracts-based routing would require.
 
-The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of them can be checked at run time. This paper proposes `std::core_ub`, a profile under the framework of P3589R2 that guards those cases: when it is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior. The profile owns its guarantee, its enumeration, and its response to a violation directly, so it needs no foundational wording changes, it leaves the meaning of the `noexcept` operator untouched, and it follows every design principle in the committee's standing document SD-10. The form it standardizes - a named set of checks selected per build, terminating on a violation - is what production hardening ships across eight systems today, with measured cost as low as a third of a percent. The paper sets out four candidate responses to a violation, each drawn from a shipping deployment, and leaves the choice among them to the profile author.
+The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of them can be checked at run time. This paper explores `std::core_ub`, a profile under the framework of P3589R2 that guards those cases: when it is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior. The profile owns its guarantee, its enumeration, and its response to a violation directly, so it needs no foundational wording changes, it leaves the meaning of the `noexcept` operator untouched, and it follows every design principle in the committee's standing document SD-10. The form it standardizes - a named set of checks selected per build, terminating on a violation - is what production hardening ships across eight systems today, with measured cost as low as a third of a percent. The paper sets out four candidate responses to a violation, each drawn from a shipping deployment, and leaves the choice among them to the profile author. It is a design exploration, not a proposal for adoption, and requests no poll.
 
 ---
 
@@ -30,7 +30,7 @@ The C++ standard specifies a finite, enumerable set of core-language operations 
 
 ## 1. Introduction
 
-The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of those operations can be checked at run time. This paper proposes to guard them with a single standard profile, `std::core_ub`, under the framework of P3589R2<sup>[3]</sup>. When the profile is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior.
+The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of those operations can be checked at run time. This paper explores guarding them with a single standard profile, `std::core_ub`, under the framework of P3589R2<sup>[3]</sup>. When the profile is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior.
 
 The enumeration that makes this possible is the work of Doumler and Berne. P3100R8<sup>[1]</sup> identifies every case of explicit core-language undefined behavior, classifies each by how it can be diagnosed, and determines which cases admit a well-defined replacement. Of its cases, 77 are checkable at run time (as enumerated in P3100R8's Appendix A), and those 77 are what this profile guards. The enumeration is reproduced, with credit, in Appendix A.
 
@@ -229,7 +229,7 @@ The one deployment with a published fleet-scale cost figure is Google's. Hardeni
 
 ## 7. The Committee's Recorded Direction
 
-The polls in Section 9 ask EWG to record positions it has already taken. This section assembles the record.
+The questions in Section 9 concern positions the committee has already taken. This section assembles the record.
 
 **The standing document.** SD-10<sup>[7]</sup>, adopted by EWG in December 2024, is the design-principle standard for language evolution. Its Section 4.1 describes a safe-by-default feature with an in-source opt-out, and its Sections 4.4 and 4.5 warn against viral and heavy annotation. P2000R5<sup>[9]</sup> Section 5, the Direction Group's direction paper, states the change strategy: "We change the language and standard library by gradually building on previous work or by providing a better alternative to an existing feature."
 
@@ -239,7 +239,7 @@ The polls in Section 9 ask EWG to record positions it has already taken. This se
 
 **The deployment-experience standard, stated in the committee's own voice.** At Croydon, Gabriel Dos Reis: "We need real deployment experience, and this is not ready to forward." Timur Doumler has set the same bar for the machinery generally: "real deployment experience across different domains and companies." P3608R0<sup>[12]</sup> (Rationale), co-authored by Voutilainen, Wakely, and Dos Reis, applied it in this exact domain: "the standard library hardening is existing practice, and comes with very positive field experience reports." Clang's static analyzer carried prototype bounds checkers from 2010; one reached production quality only in 2026, after years of stabilization against false positives<sup>[27]</sup>.
 
-Taken together, the record holds three positions: SD-10 governs evolution design, deployment experience is the standard for a safety feature, and Profiles is the endorsed direction with a four-year poll trail. The profile proposed here satisfies all three. The polls in Section 9 ask EWG to say so.
+Taken together, the record holds three positions: SD-10 governs evolution design, deployment experience is the standard for a safety feature, and Profiles is the endorsed direction with a four-year poll trail. The profile described here satisfies all three. The questions in Section 9 invite the committee to weigh that.
 
 ---
 
@@ -277,23 +277,23 @@ The strongest form is that a terminating response crashes code that runs correct
 
 ---
 
-## 9. Suggested Straw Polls
+## 9. Questions for the Committee
 
-Three polls follow. Each records a position already in the committee's stated direction (Section 7), so each is straightforward to affirm, and the three read in order.
+The paper raises three questions rather than requesting any poll. Each connects to a position already in the committee's stated direction (Section 7), and the three read in order.
 
-> **Poll 1.** EWG holds that proposals for the runtime checking of core-language undefined behavior should follow the design principles in SD-10.
+> **Question 1.** Should proposals for the runtime checking of core-language undefined behavior follow the design principles in SD-10?
 
-SD-10 is EWG's own standing document, adopted December 2024, and Section 2 already provides that a proposal deviating from it should document the tradeoff rationale. Poll 1 records that the standard applies to this domain.
+SD-10 is EWG's own standing document, adopted December 2024, and Section 2 already provides that a proposal deviating from it should document the tradeoff rationale. Question 1 asks whether that standard applies to this domain.
 
-> **Poll 2.** EWG holds that proposals for the runtime checking of core-language undefined behavior should be informed by implementation and deployment experience.
+> **Question 2.** Should proposals for the runtime checking of core-language undefined behavior be informed by implementation and deployment experience?
 
-This is the standard already stated by Dos Reis, Doumler, and P3608R0, and consistent with P2000R5's change strategy and the Hagenberg mandate. Poll 2 records that the standard applies here. The named-guarantee form has the experience Table 5 records; both proposals' specifications remain unshipped.
+This is the standard already stated by Dos Reis, Doumler, and P3608R0, and consistent with P2000R5's change strategy and the Hagenberg mandate. Question 2 asks whether that standard applies here. The named-guarantee form has the experience Table 5 records; both proposals' specifications remain unshipped.
 
-> **Poll 3.** EWG supports further work on a standard profile `std::core_ub` that guards the runtime-checkable cases of core-language undefined behavior (as enumerated by P3100R8) under the P3589R2 Profiles framework.
+> **Question 3.** Is a standard profile `std::core_ub` that guards the runtime-checkable cases of core-language undefined behavior (as enumerated by P3100R8) under the P3589R2 Profiles framework worth further work?
 
-The profile follows the principles of Poll 1 (Section 5), it standardizes the form with the deployment experience of Poll 2 (Section 6), and Profiles is the direction already endorsed across thirteen polls and the Direction Group's P3970R0 (Section 7). The parenthetical credits P3100R8 in the poll's own text, because the cases it guards are the enumeration of Doumler and Berne.
+The profile follows the principles of Question 1 (Section 5), it standardizes the form with the deployment experience of Question 2 (Section 6), and Profiles is the direction already endorsed across thirteen polls and the Direction Group's P3970R0 (Section 7). The parenthetical credits P3100R8, because the cases the profile guards are the enumeration of Doumler and Berne.
 
-A delegate who affirms Poll 1 has recorded that SD-10 governs this domain; a delegate who affirms Poll 2 has recorded that deployment experience is the standard. Poll 3 asks for further work on a profile that meets both, in the direction the committee has already chosen. If the three pass, C++ gains a runtime safety profile whose specification is complete, whose form ships today, and whose enumeration the committee already possesses. Whoever designs the response and the replacement behaviors builds on this work next.
+The paper offers these questions for the committee's consideration and requests no poll on any of them. Read together, they locate the profile within the direction the committee has already chosen: a runtime safety profile whose form ships today and whose enumeration the committee already possesses. Whoever designs the response and the replacement behaviors builds on this work next.
 
 ---
 
@@ -311,7 +311,9 @@ The author provides information and serves at the pleasure of the committee.
 
 Vinnie Falco is the founder of the C++ Alliance, which funds a Clang implementation and a GCC implementation of the Profiles framework; the Clang implementation is public, with regularly released experimental builds that implement the framework attributes and an initial slice of the `std::init` profile.
 
-This paper proposes a profile specification. It does not propose wording; the guarding cases, the response to a violation, and the replacement behaviors are set out here for the profile author to develop into wording. This is a companion to P4297R0<sup>[4]</sup> and P4306R0<sup>[2]</sup> in the July 2026 mailing, and it works from the published record; where an argument is made in one of those companions, this paper cites it rather than repeating it. It uses machine-assisted drafting.
+This paper describes a profile specification. It does not propose wording; the guarding cases, the response to a violation, and the replacement behaviors are set out here for the profile author to develop into wording. This is a companion to P4297R0<sup>[4]</sup> and P4306R0<sup>[2]</sup> in the July 2026 mailing, and it works from the published record; where an argument is made in one of those companions, this paper cites it rather than repeating it. It uses machine-assisted drafting.
+
+This paper asks for nothing.
 
 ---
 
