@@ -4,7 +4,7 @@
 
 A practical guide for anyone who wants to help shape C++ but has never set foot in a committee meeting. It accumulates: each chapter stands on the ones before it, and you can stop at any chapter and still have something useful to offer. Every paper number is a live link, and every named resource points somewhere real.
 
-*Assembled 2026-06-22*
+*Assembled 2026-08-07*
 
 ## Contents
 
@@ -214,7 +214,7 @@ That's the notebook. Welcome. I'm glad you came.
 
 ## 1. The C++ Standard
 
-Start here, because everything else rests on it. This chapter is about the thing you'll help build: the C++ standard. By the end, you'll know what it is, and why it deserves your care.
+Start here, because everything else rests on this. The C++ standard is the thing you'll help build, and it deserves your care.
 
 ### 1.1 Standardization Is a Responsibility
 
@@ -240,7 +240,7 @@ To feel why the oath is this strict, look at what a single feature costs.
 
 ### 1.3 Every Feature Is Forever
 
-Here's the hard rule: the standard almost never shrinks. Features get added. They rarely get removed.
+The hard rule: the standard almost never shrinks. Features get added. They rarely get removed.
 
 C++ got a [regular-expression library](https://en.cppreference.com/w/cpp/regex) in 2011. It shipped slow, and everyone soon knew it. More than a decade later, it's still slow.
 
@@ -248,11 +248,9 @@ It can't be fixed, because a faster version would break programs already built o
 
 That's the pattern for everything you add. Proposing a feature costs you a few months. Maintaining it costs everyone else forever.
 
-So who is "everyone else"?
-
 ### 1.4 The People Who Inherit Your Work
 
-The cost lands on the people who use C++. More than sixteen million developers write it today. Whatever you standardize, they inherit.
+The cost falls on the people who use C++. More than sixteen million developers write it today. Whatever you standardize, they inherit.
 
 They didn't vote for your feature, and most will never read a proposal. They meet your work as a line in compiler release notes. By then it's permanent.
 
@@ -274,7 +272,7 @@ Keep three things apart:
 - The compilers are the programs that try to follow it.
 - The living language is what real code relies on.
 
-That text isn't one fixed thing either. It comes in a few forms, and the names are worth knowing.
+That text isn't one fixed thing either. It comes in a few forms worth knowing.
 
 ### 1.6 What "The Standard" Actually Is
 
@@ -300,7 +298,7 @@ Most of it is **normative text**, the parts that state actual rules. Mixed in ar
 
 Each part carries a **stable section label** in brackets, like [\[container.requirements\]](https://eel.is/c++draft/container.requirements). Those labels stay fixed between drafts. Section numbers shift, so point to the label, not the number.
 
-Knowing the document is one thing. Getting a feature out of it and into your hands is another.
+Knowing the document is one thing. Getting a feature into your hands is another.
 
 ### 1.8 From Standard to Compiler
 
@@ -310,13 +308,13 @@ Three teams do most of that building. They're **the three implementers**: [GCC](
 
 This makes the three implementers powerful. If all three won't build a feature, the standard can't force them. So a feature isn't real until it ships in a compiler you can download.
 
-Now you know what the standard is, and why it's heavy. A feature is forever, and sixteen million people carry it. Keep that weight in mind, and let's find your way in.
+Now you know what the standard is and why it's heavy. A feature is forever, and sixteen million people carry it. Keep that weight in mind as you find your way in.
 
 ---
 
 ## 2. Meet the Committee
 
-You can join this, and this chapter shows you how. We'll go from "who are these people?" to "here's how I walk in." The door is wider than it looks.
+You can join this. The door is wider than it looks.
 
 ### 2.1 You Don't Need Permission
 
@@ -326,17 +324,13 @@ The real barriers are smaller than the rumors. You can attend a meeting as a gue
 
 You also don't have to be a wizard. Plenty of useful work isn't writing code at all. Taking notes and reviewing other people's proposals both count.
 
-So what is this thing you're joining? Start with its full name.
-
 ### 2.2 The Nesting: ISO, JTC1, SC22, WG21
 
 The committee has a long official name, and it tells a story. It's **ISO/IEC JTC1/SC22/WG21**. Read it left to right, and it nests from the biggest body down to the smallest.
 
 [ISO](https://www.iso.org) is the International Organization for Standardization, which publishes standards for almost everything. Inside it, **JTC1** handles information technology, and **SC22** handles programming languages. **[WG21](https://isocpp.org/std/the-committee)**, Working Group 21, is the part that owns C++.
 
-Here's the surprising part. WG21 doesn't publish the standard (the official document that defines C++) by itself. It agrees on what C++ should be, and then the bodies above it run the official vote.
-
-Before we talk about joining, picture how the group actually gathers.
+The surprising part: WG21 doesn't publish the standard (the official document that defines C++) by itself. It agrees on what C++ should be, and then the bodies above it run the official vote.
 
 ### 2.3 How the Committee Meets
 
@@ -346,7 +340,7 @@ That full gathering is the **plenary**, where the whole committee makes its fina
 
 This happens at a real scale. A recent meeting drew about 200 people from 28 nations. Twenty-five of them were first-time guests, so newcomers are normal here.
 
-Those countries have a name in this system. They're called National Bodies.
+Those countries are called **National Bodies**.
 
 ### 2.4 What a National Body Is
 
@@ -372,13 +366,13 @@ You don't have to be American to join through the United States. Its National Bo
 
 If even that fee is a barrier, a free path exists. The [Boost Foundation](https://sites.google.com/boost.org/boost-foundation/c-standardization) sponsors free representative spots for C++ developers who can't afford dues. The access is the same.
 
-So pick by what you need. To start cheap and fast, come as a guest. To get a vote without a big bill, take the INCITS or Boost path.
+Pick by what you need. To start cheap and fast, come as a guest. To get a vote without a big bill, take the INCITS or Boost path.
 
 ### 2.7 Getting a Vote: The ISO Global Directory
 
 A vote at the plenary counts only when you're accredited. Accredited means your name sits in the **ISO Global Directory**, the official roster of voting experts. Your National Body puts you there.
 
-Here's a trap to avoid. People attend for years as guests and never get accredited. Then, on the one vote that matters to them, they have no vote to cast.
+A common trap: people attend for years as guests and never get accredited. Then, on the one vote that matters to them, they have no vote to cast.
 
 A vote is only one way to matter. Many roles need no vote at all.
 
@@ -408,25 +402,23 @@ The single biggest thing you can do is keep showing up. An old line says eighty 
 
 Showing up builds two things: familiarity and trust. People learn your name and your judgment over many meetings. The committee runs on relationships, and relationships need time.
 
-The reverse is true too. When a regular voice stops attending, the committee quietly loses what that person carried. Presence is power here, more than brilliance.
-
-Not every good idea starts inside a meeting, though.
+The reverse is true too. When a regular voice stops attending, the committee quietly loses what that person carried. Presence matters here more than brilliance.
 
 ### 2.11 Where Ideas Start: Conferences
 
-A lot of C++ ideas grow up at conferences first. Two matter most for newcomers. They're where you'll meet committee people in a relaxed setting.
+A lot of C++ ideas grow at conferences first. Two matter most for newcomers. They're where you'll meet committee people in a relaxed setting.
 
 [C++Now](https://cppnow.org) is the smaller one, held each spring in Aspen, Colorado. It's intense and expert-heavy, and it's where people push and refine new ideas. Many committee members go.
 
 [CppCon](https://cppcon.org) is the big one, open to everyone from beginners to experts. It's where ideas reach the wider community. Going to either is a low-pressure way to start.
 
-So the door isn't locked. You can attend for free, help without a title, and grow from there. Next, let's look at the thing all this work revolves around: the paper.
+The door isn't locked. You can attend for free, help without a title, and grow from there. Next up: the thing all this work revolves around - the paper.
 
 ---
 
 ## 3. How Papers Work
 
-All the committee's work flows through one kind of object: the paper. Learn how papers work and the rest of the machine makes sense. This chapter shows you what a paper is, how to find one, and how to read it.
+All the committee's work flows through one kind of object: the paper. Learn how papers work and the rest of the process makes sense.
 
 ### 3.1 Nothing Happens Without a Paper
 
@@ -435,8 +427,6 @@ One rule explains most of the committee. If a proposal doesn't have a **paper**,
 A paper needs three things before a room can act on it. The paper has to exist, it has to arrive on time, and someone has to be there to present it. Miss one and the room moves on.
 
 This is why hallway ideas don't decide anything. A sharp point made out loud, with no paper, rarely changes a vote. If you want to move the committee, you write it down.
-
-So what counts as a paper, and what kinds are there?
 
 ### 3.2 What a Paper Is and Its Types
 
@@ -480,7 +470,7 @@ From that first mailing, a paper begins a long climb.
 
 A paper that makes it follows a set path called **the paper lifecycle**. It starts as an idea and ends in the published standard. Most papers stop somewhere in between.
 
-Here are the steps in order:
+The steps, in order:
 
 1. You submit the paper to a mailing.
 2. A small group incubates the idea and shapes it.
@@ -499,7 +489,7 @@ The committee reviews a paper in two separate stages. **Design review** asks one
 
 These take different mindsets. Design review weighs whether C++ wants the feature at all. Wording review assumes the answer is yes and hunts for gaps in the spec text.
 
-The two happen in order, not together. First a design group approves the direction. Then a wording group takes over and writes the standard text.
+The two happen in order. First a design group approves the direction. Then a wording group takes over and writes the standard text.
 
 Not every paper proposes something new. Some just fix mistakes.
 
@@ -535,21 +525,19 @@ Two documents are worth reading before almost anything else. **[SD-4](https://is
 
 The other is **[P0939](https://wg21.link/p0939)**, the priorities paper. A small senior group called the **Direction Group** writes it to say what the committee should focus on. Reading it tells you which way the wind is blowing.
 
-Now you can find a paper, read it, and follow its climb. You don't even need to be in the room to do any of this. Next, let's take part from your desk.
+Now you can find a paper, read it, and follow its climb. Everything so far works from your desk. The next chapter is about taking part.
 
 ---
 
 ## 4. How to Participate Remotely
 
-You don't have to fly anywhere to start. Most of the committee's life happens online, between meetings. This chapter shows you how to take part from your desk, today.
+You don't have to fly anywhere to start. Most of the committee's life happens online, between meetings. All you need is a desk and a browser.
 
 ### 4.1 You Can Take Part From Your Desk
 
 Plenty of useful work happens with no plane ticket. You can read, review, scribe, and discuss from home. None of it needs a meeting badge.
 
 The lowest-effort start is reviewing a proposal. You read one that's coming up and post what you think. A free login is all it takes, and giving reviews earns you reviews of your own.
-
-Most of that online life runs through one channel above all.
 
 ### 4.2 The Reflector
 
@@ -559,8 +547,6 @@ You join the lists once you start taking part, usually after your first meeting.
 
 One rule matters from day one. Reflector posts are private, so you can't quote them in public. You can share poll numbers freely, but a person's words need that person's consent.
 
-Beyond the lists, a few websites hold everything else.
-
 ### 4.3 The Official Sites: isocpp.org, open-std.org, wg21.org
 
 Three websites cover most of what you need. **[isocpp.org](https://isocpp.org)** is the public-facing site, home to the standing documents and committee news. Start there for anything official.
@@ -569,15 +555,11 @@ Three websites cover most of what you need. **[isocpp.org](https://isocpp.org)**
 
 **[wg21.org](https://wg21.org)** is the friendly front door to the same papers. Volunteers built it to search and sort the mailing by group. The papers still live on open-std.org. This view only makes them easier to find.
 
-One more place runs the meetings themselves.
-
 ### 4.4 The Wiki
 
 The committee runs its meetings off **the wiki**. It holds the agendas, schedules, video-call links, and poll pages for each meeting. If you attend, you'll live in it that week.
 
 Two things to know. Don't edit the wiki unless someone asks you to. And you'll get access once you're a participant, not before.
-
-For faster back-and-forth, the committee uses chat.
 
 ### 4.5 Real-Time Chat: Mattermost and Discord
 
@@ -585,15 +567,11 @@ When things move fast, people use chat. **[Mattermost](https://chat.isocpp.org)*
 
 For the wider community, the [#include C++ Discord](https://www.includecpp.org) is open to anyone. It's friendly, public, and full of people who'll answer questions. It's a gentle place to learn the culture.
 
-When you have an idea worth floating, a place exists for that too.
-
 ### 4.6 Floating Ideas: std-proposals
 
-Before you write a formal proposal, float the idea first. **[std-proposals](https://lists.isocpp.org/mailman/listinfo.cgi/std-proposals)** is a public list for exactly that. You describe your idea and see what people think.
+Before you write a formal proposal, float the idea first. **[std-proposals](https://lists.isocpp.org/mailman/listinfo.cgi/std-proposals)** is a public list for early-stage ideas. You describe your idea and see what people think.
 
 This step saves you months. You learn fast whether anyone wants the idea. You also get early feedback that makes the real proposal stronger.
-
-Discussion isn't only online text. The subgroups meet live between meetings.
 
 ### 4.7 Telecons Between Meetings
 
@@ -601,13 +579,9 @@ The big meetings happen three times a year, but the work never stops. Between th
 
 You find telecons on the committee's shared calendar. The wiki lists the schedule and the links. Pick a subgroup you care about and sit in.
 
-Some decisions even happen between meetings, by online poll.
-
 ### 4.8 Voting From Afar: Electronic Polls
 
 Not every vote waits for a meeting. Some groups, the library side especially, run polls online between meetings. They use these to settle smaller questions without burning floor time.
-
-When the live meeting does happen, you can still follow along.
 
 ### 4.9 Following a Live Meeting
 
@@ -617,21 +591,19 @@ After each meeting, the results come out fast. Several delegates post public tri
 
 One catch if you're far away is time zones. A meeting on another continent can run through your night. Pick the sessions worth losing sleep over, and read the rest later.
 
-Some of the best ways to help are open to anyone with a keyboard.
-
 ### 4.10 Open-Source Help: The Beman Project and Tools
 
 You can help with code without ever attending. The **[Beman Project](https://github.com/bemanproject)** builds library proposals as open source, so people can try them for real. Contributing there is contributing to the standard's future.
 
 A few small tools make committee life easier. wg21.link resolves any paper number, and a chat bot named npaperbot looks up papers for you. You'll pick up more as you go.
 
-So distance is no excuse. You can read, review, chat, and even vote without leaving home. Next, let's map the rooms where all this work gets sorted.
+Distance is no excuse. You can read, review, chat, and even vote without leaving home.
 
 ---
 
 ## 5. How WG21 Is Structured
 
-WG21 looks like a wall of acronyms at first. EWG, LEWG, and a dozen study groups blur together. By the end of this chapter, that wall turns into a clear map.
+WG21 looks like a wall of acronyms at first. EWG, LEWG, and a dozen study groups blur together. This chapter turns that wall into a clear map.
 
 ### 5.1 One Committee, Many Rooms
 
@@ -639,7 +611,7 @@ WG21 does its work in several groups people call **the rooms**. Each room owns o
 
 That parallel timetable is the **schedule grid**. Six or seven rooms run at once, so you can't attend them all. You pick one room and follow it.
 
-The rooms split into two jobs. Some decide what to build (design), and others write the exact words (wording). We'll take them in that order.
+The rooms split into two jobs. Some decide what to build (design), and others write the exact words (wording).
 
 ### 5.2 The Evolution Rooms: EWG and LEWG
 
@@ -661,7 +633,7 @@ Each study group is a world of its own, deep in its specialty. When an idea is r
 
 ### 5.5 How a Paper Moves Between Groups
 
-A paper climbs a chain of groups. A study group shapes it, a design room approves it, a wording room finalizes it, and the plenary (the full committee) adopts it. Each handoff is a vote to send it onward.
+A paper passes through a chain of groups. A study group shapes it, a design room approves it, a wording room finalizes it, and the plenary (the full committee) adopts it. Each handoff is a vote to send it onward.
 
 Some papers touch more than one room. A feature that changes the language and the library visits both evolution rooms, sometimes together in a joint session. The groups coordinate so nothing falls through the cracks.
 
@@ -721,7 +693,7 @@ Now the acronyms have a shape: rooms that design, rooms that word, study groups 
 
 ## 6. Getting There
 
-Going to your first meeting is a leap, and this chapter is your running start. We'll cover the shape of the week, how to prepare, what it costs, and how to brace yourself. None of it is as scary as it feels from the outside.
+Going to your first meeting is a leap, and this chapter is your running start. None of it is as scary as it feels from the outside.
 
 ### 6.1 What a Meeting Week Looks Like
 
@@ -757,19 +729,19 @@ Even well-packed and well-read, your first meeting will hit hard.
 
 ### 6.5 Bracing for Your First Meeting
 
-Your first meeting will overwhelm you. Six rooms run at once, hundreds of papers float around, and everyone seems to know each other. That's normal, and it passes.
+Your first meeting will overwhelm you. Six rooms run at once, hundreds of papers are in play, and everyone seems to know each other. That's normal, and it passes.
 
-So set your goal low on purpose. Your first meeting is for watching and learning, not for big wins. Pick one room, follow it, and let the rest wash over you.
+Set your goal low on purpose. Your first meeting is for watching and learning, not for big wins. Pick one room, follow it, and let the rest wash over you.
 
-Remember you're not the odd one out. About two dozen new guests show up at every meeting, just like you. The Sunday orientation exists because everyone starts here.
+You're not the odd one out. About two dozen new guests show up at every meeting, just as you will. The Sunday orientation exists because everyone starts here.
 
-So get there, prepare for one room, and forgive yourself for missing the rest. The hard part isn't getting in the door. Next, let's learn how to act once you're in the room.
+Get there, prepare for one room, and forgive yourself for missing the rest. The hard part isn't getting in the door. Next, let's learn how to act once you're in the room.
 
 ---
 
 ## 7. In the Room
 
-The first time in the room, you'll worry about doing something wrong. Don't. This chapter gives you the unwritten rules, so you can relax and pay attention to the work.
+The first time in the room, you'll worry about doing something wrong. Don't. Once you know the unwritten rules, you can relax and pay attention to the work.
 
 ### 7.1 The Opening Plenary
 
@@ -801,7 +773,7 @@ When you want to speak, raise your hand and wait to be called. Make one point, a
 
 Two habits help everyone follow you. Say your name before you start, because the scribe and the remote attendees need it. Use the microphone, because without it the online half of the room can't hear you.
 
-What's said in the room comes with a catch: most of it stays in the room.
+What's said in the room comes with a catch.
 
 ### 7.5 Confidentiality and the Code of Conduct
 
@@ -827,7 +799,7 @@ The hallway is not break time. A lot of the real work happens there, between ses
 
 Meals work the same way. Lunch and dinner groups form on their own, so join one. Introducing yourself over a meal is normal and expected, not pushy.
 
-One more habit will set you apart, and it's a little counterintuitive.
+One more habit will set you apart.
 
 ### 7.8 Get Out of Your Lane
 
@@ -837,7 +809,7 @@ Two habits earn respect fast. Serve before you push: help onboard newcomers and 
 
 Above all, keep your wits about you. The meeting has a rhythm that can sweep you up, and belonging can quietly bend your judgment. Stay skeptical, and question the room's assumptions, including your own.
 
-Now you can walk in, find your room, speak well, and keep your head. The next mystery is how all this talk turns into decisions. Let's look at how the committee votes.
+Now you can walk in, find your room, speak well, and keep your head. The next mystery is how all this talk turns into decisions - the committee's voting process.
 
 ---
 
@@ -851,7 +823,7 @@ The committee decides by **consensus**, which isn't what most people think. It d
 
 The test is whether people can live with a decision. A few mild objections don't block it. A small group of firm, reasoned objections can.
 
-Here's the part to watch. Consensus is social pressure with a polite name. Keep your wits about you, and don't let the room's mood stand in for your own judgment.
+Consensus is social pressure with a polite name. Keep your wits about you, and don't let the room's mood stand in for your own judgment.
 
 The committee measures consensus with one simple tool: the straw poll.
 
@@ -861,13 +833,11 @@ To read the room, a subgroup takes a **straw poll**. You pick one of five positi
 
 In a subgroup, everyone present can vote, guests included. The chair (the person running the room) reads the result and decides whether it's consensus. No fixed number settles it, so the chair judges.
 
-So how does a chair turn five numbers into a yes or no?
-
 ### 8.3 Reading Poll Results
 
 A rough rule guides the call. A proposal normally advances when those in favor outnumber those against by about two to one. This is the **2:1 guideline**, and "normally" is doing a lot of work.
 
-But the count isn't everything. Because the bar is no sustained opposition, a block of strong-against votes can sink a proposal even when far more people favor it. Numbers can favor it and opposition can still kill it.
+But the count isn't everything. Because the bar is no sustained opposition, a block of strong-against votes can sink a proposal even when far more people favor it.
 
 This really happens. One proposal for C++23 drew 37 in favor and 17 against, and still failed for "sustained strong opposition." More than two to one wasn't enough.
 
@@ -897,7 +867,7 @@ A proposal passes through two different gates. **Direction approval** is early: 
 
 Here's the trap newcomers fall into. Passing either gate is not a promise to ship. A warm direction poll can sit for years with nothing delivered.
 
-So read encouragement for what it is. "We'd like to see more work" means keep going, not "this will ship." One async proposal won a yes on direction, then failed to ship the very next cycle.
+Read encouragement for what it is. "We'd like to see more work" means keep going, not "this will ship." One async proposal won a yes on direction, then failed to ship the very next cycle.
 
 Because the bar is no sustained opposition, a few people hold real power.
 
@@ -905,7 +875,7 @@ Because the bar is no sustained opposition, a few people hold real power.
 
 A small group can stop almost anything. Since consensus means no sustained opposition, a handful of firm objectors can block a proposal the majority wants. This is built into the system, not a loophole.
 
-So find the objections early. Learn who has concerns and talk to them before the poll, not after. A lone objector is weaker than one who's found an ally on the merits.
+Find the objections early. Learn who has concerns and talk to them before the poll, not after. A lone objector is weaker than one who's found an ally on the merits.
 
 If you still disagree with a result, a path exists. The **escalation path** runs from the room's chair upward, and it carries weight only with a paper, raised before the deadline. A complaint with no paper rarely moves anything.
 
@@ -939,7 +909,7 @@ Now you can read a poll, weigh consensus, and see how a feature becomes real. No
 
 ## 9. What Goes Into a Proposal
 
-You have an idea, and you think it belongs in C++. This chapter is the cold shower and the toolkit. It shows what a proposal must carry to earn the committee's time, and why the bar is so high.
+You have an idea, and you think it belongs in C++. This chapter is the cold shower and the toolkit: what a proposal must carry to earn the committee's time, and why the bar is so high.
 
 ### 9.1 What Belongs in a Paper
 
@@ -947,15 +917,11 @@ Getting a paper heard is the low bar. A paper, on time, with someone to present 
 
 A real proposal carries four arguments. It shows the problem is worth solving, lays out the design, weighs the alternatives, and proves the thing works. Miss one and a reviewer will find the hole.
 
-A strong paper rests on three habits, whatever the feature.
-
 ### 9.2 The Three Pillars
 
 Strong papers share three habits, call them the **Three Pillars**. They lead with concrete examples, argue from clear principles, and show the alternatives they weighed. A paper missing a pillar feels thin.
 
 Examples do the heavy lifting. Show real before-and-after code, not abstract claims. A reader who sees the improvement needs less convincing than one who's only told about it.
-
-But none of it matters if the reader bounces off your opening.
 
 ### 9.3 The Abstract as Elevator Pitch
 
@@ -963,23 +929,17 @@ Most readers decide from the abstract alone. So write it as an elevator pitch a 
 
 Keep it honest, though. Promise only what the paper delivers, because reviewers punish hype. A title that names the result beats a title that names the topic.
 
-Inside the paper, one tool makes your case better than any paragraph.
-
 ### 9.4 Tony Tables
 
 The committee's favorite tool is the **Tony Table**, a side-by-side of old code and new. You put the current way on the left and your way on the right. The reader sees the win without you claiming it.
 
 Make the table honest to earn trust. Include the cases where your design isn't shorter or clearer. A table that hides its weak spots gets caught and loses the room.
 
-Showing your design is half the job. The other half is showing you considered others.
-
 ### 9.5 Show the Alternatives: The Steel Man
 
 Don't dodge the alternatives. Attack your own idea first. A **Steel Man** is the strongest possible case against your proposal, stated fairly, which you then answer with evidence.
 
 Build two of them. One argues that no standard feature is needed at all, that a library would do. The other argues that a rival design is better, and then you show why yours wins.
-
-The strongest answer to every objection is the same: it already works.
 
 ### 9.6 Implementation Experience
 
@@ -989,29 +949,21 @@ The bar is real but not impossible. For a library, ship code that compiles, pass
 
 One small piece rides along with new features: the **feature-test macro**. It's a predefined name that lets code check whether a compiler has your feature yet. Including it lets people adopt the feature safely while support spreads.
 
-If the design is approved, the work shifts from ideas to exact words.
-
 ### 9.7 Writing Standard Wording
 
 Standard text isn't prose, it's closer to law. Two words carry the weight: **shall** marks a hard requirement, and **should** marks advice. Mixing them up changes what implementers must do.
 
 Point to the right place, too. Cite the stable section labels (the bracketed names from §1.7), not page or section numbers. The numbers shift between drafts. The labels don't.
 
-Beyond the spec text, the best papers teach.
-
 ### 9.8 A Short Tutorial
 
 A great proposal teaches its feature. Include a short tutorial that shows someone how to use it. If you can't explain it in a few clear lines, the design may be too complex.
-
-A paper also has to stay focused to survive.
 
 ### 9.9 Scope and Dependencies
 
 Keep each paper to one topic. If your title needs the word "and," split it in two. Big, bundled proposals stall, while small focused ones move.
 
 For a large idea, ship it in stages. Land the useful piece first, let people use it, and build the rest on top. Some features even wait on another paper to land before they can.
-
-All of this serves one hard truth about the committee.
 
 ### 9.10 The High Bar
 
@@ -1021,13 +973,13 @@ Language features are the hardest of all. A library lives on GitHub if the commi
 
 Most papers don't make it, and that's the system working. Big efforts have died over decades, from networking to several number libraries. Go into your own paper skeptical, and let only strong evidence change your mind.
 
-Now you know what a strong proposal carries: examples, alternatives, proof, and a narrow scope. Knowing what goes in is one thing. Next, let's actually build and submit the paper.
+Now you know what a strong proposal carries: examples, alternatives, proof, and a narrow scope. Next, let's actually build and submit the paper.
 
 ---
 
 ## 10. Producing and Submitting Your Paper
 
-You're ready to write the paper. This chapter is the practical how-to: the tools, the format, and the path from your editor to the committee's agenda. By the end you'll know how to ship it.
+You're ready to write the paper. Here's the practical path - tools, format, and the route from your editor to the committee's agenda.
 
 ### 10.1 Float the Idea First
 
@@ -1043,11 +995,9 @@ You don't format a paper by hand. Most authors use [mpark/wg21](https://github.c
 
 Start from the **official template**. It's posted on [isocpp.org](https://isocpp.org/std/submit-a-proposal), and the tools above ship their own versions. The template gives you the front matter and the expected sections.
 
-The rules for numbers, format, and submission live in one document.
-
 ### 10.3 The Formatting Standard: SD-7
 
-One standing document covers the mechanics: **[SD-7](https://isocpp.org/std/standing-documents/sd-7-mailing-procedures-and-how-to-write-papers)**. It tells you how to get a paper number, how to format the document, and how to submit it to a mailing. Read it once before your first paper.
+**[SD-7](https://isocpp.org/std/standing-documents/sd-7-mailing-procedures-and-how-to-write-papers)** covers the mechanics: how to get a paper number, how to format the document, and how to submit it to a mailing. Read it once before your first paper.
 
 Remember the basics from §3.3 and §3.5. Your paper gets a P-number and a revision, and it has to land before the mailing deadline. A late paper waits for the next round.
 
@@ -1055,7 +1005,7 @@ However you format it, make sure everyone can read it.
 
 ### 10.4 Make It Accessible
 
-Write the paper so anyone can read it. Use enough color contrast, a monospace font for code, and clear headings. Don't lean on color alone to make a point.
+Use enough color contrast, a monospace font for code, and clear headings. Don't lean on color alone to make a point.
 
 This isn't busywork. A clear paper reaches the busy delegate skimming on a phone between sessions. Accessibility is reach.
 
@@ -1067,7 +1017,7 @@ Let readers run your code, don't just describe it. **[Compiler Explorer](https:/
 
 Put your implementation on GitHub. A public repo lets people read the code, file issues, and try it themselves. It also tracks your revisions as the design evolves.
 
-Few papers are solo efforts, and none are one-shot.
+Few papers are solo efforts, and none survive unchanged.
 
 ### 10.6 Co-Authoring and Revision History
 
@@ -1093,17 +1043,17 @@ Getting through that first discussion feels like the finish line. It isn't.
 
 ### 10.9 The Other 80%
 
-Winning design approval (the "we want this" gate from §8.6) feels like victory. It's really the first fifth of the work. Wording review and the national ballots are the other 80%.
+Winning design approval (the "we want this" gate from §8.6) feels like victory. It's the first fifth. Wording review and the national ballots are the other 80%.
 
 After design comes the long part. A wording group polishes the exact text, then the countries vote it through the ballot stages. Plan for years, not months, and don't celebrate too early.
 
-Now you can float, write, prototype, submit, and present a paper. But writing it is only the start of the real work: getting people to say yes. Next, the long art of championing.
+Writing the paper is the start. Getting people to say yes is the real work - and that's the long art of championing, covered next.
 
 ---
 
 ## 11. Championing Your Paper
 
-A paper doesn't pass itself. Getting to yes is a long, social campaign, and this chapter is your field guide. It's the part newcomers underestimate most.
+A paper doesn't pass itself. Getting to yes is a long, social campaign, and this chapter is your field guide. Newcomers underestimate this part most.
 
 ### 11.1 Before the Room: Presocialization
 
@@ -1119,15 +1069,13 @@ Every paper needs a champion (the person who presents and pushes it, from §2.8)
 
 You can also champion someone else's paper. Carrying a good idea you didn't write builds trust and skill. It's one of the fastest ways for a newcomer to become useful.
 
-Whoever carries it, the paper faces one question first.
-
 ### 11.3 The First Gate: "Do We Want It at All?"
 
-The first discussion of your paper is the scary one. The room asks "do we want this at all?" before it touches any detail. A no here ends the journey.
+The first discussion of your paper is the scary one. The room asks "do we want this at all?" before it touches any detail. A no here kills the idea outright.
 
-So frame your idea as solving a problem the committee already cares about. Tie it to the [Direction Group](https://wg21.link/p0939) priorities from §5.9. A paper that matches the agenda gets heard. One that doesn't waits.
+Frame your opening as solving a problem the committee already cares about. Tie it to the [Direction Group](https://wg21.link/p0939) priorities from §5.9. A paper that matches the agenda gets heard. One that doesn't waits.
 
-Even a wanted paper will take fire. Here's how to handle a bad poll.
+Even a wanted paper will take fire.
 
 ### 11.4 When the Poll Goes Against You
 
@@ -1143,41 +1091,31 @@ Always carry a fallback. A **back pocket alternative** is a second design you're
 
 When the room is split, shrink the ask. The **max-min solution** is the smallest version everyone can accept. A small win that ships beats a big proposal that stalls.
 
-Negotiation works only if you read people right.
-
 ### 11.6 Disagreement vs Opposition, and When to Withdraw
 
 Learn to tell two things apart. Disagreement is a technical objection, usually with a paper behind it. Opposition is a person set against your idea, and the two need different responses.
 
 Sometimes the right move is to stop. If the room clearly doesn't want it and won't budge, withdraw the paper with grace. Pouring energy into a dead idea costs you the credibility you'll need later.
 
-How the room treats you depends on something you build slowly.
-
 ### 11.7 How Reputation Works
 
-In a room of volunteers, reputation is currency. People can't read every paper, so they weigh who wrote it. A trusted name gets the benefit of the doubt, while a new one gets extra scrutiny.
+In a room of volunteers, reputation is what gets your paper read. People can't review every proposal, so they weigh who wrote it. A trusted name gets the benefit of the doubt, while a new one gets extra scrutiny.
 
-You build it in small steps. Start with modest, useful contributions, become the reliable expert in one narrow area, and spend your credibility only on the battles that matter. Reputation compounds when you're right over time.
-
-Reputation also means the room is judging more than your paper.
+You build it in small steps. Start with modest, useful contributions, become the reliable expert in one narrow area, and use your credibility only on the battles that matter. Reputation compounds when you're right over time.
 
 ### 11.8 The Presenter Is Judged Too
 
 The committee weighs the presenter, not only the proposal. Are you reasonable, willing to concede a fair point, someone people want to work with? Those signals shape how your paper lands.
 
-So don't be the obstacle. Causing needless delay, or escalating every dispute, marks you as hard to work with. The formal objection tools exist, but reaching for them often erodes your credibility.
+Don't be the obstacle. Causing needless delay, or escalating every dispute, marks you as hard to work with. The formal objection tools exist, but reaching for them often erodes your credibility.
 
 Persistence does pay, though. **Procedural momentum** is the benefit a paper earns from many revisions and prior polls. By the fourth or fifth revision, the room tends to assume it'll pass, so steady iteration works in your favor.
-
-All of this takes longer than you think. Much longer.
 
 ### 11.9 The Long Game
 
 Set your clock to years, not months. The train runs every three years, and most features ride more than one. Patience isn't optional here. It's the job.
 
 The famous features all took ages. Coroutines, modules, and the executors work that became [std::execution](https://wg21.link/p2300) each ran many years and many revisions. Stackful coroutines have waited over a decade and still aren't in.
-
-The long timeline isn't an accident. It comes from real structural forces.
 
 ### 11.10 The Structural Headwinds
 
@@ -1187,7 +1125,7 @@ Another is the **expert bubble**. Papers are often written by experts for expert
 
 Resources tilt the field, too. Proposals with paid committee time and funded implementations move faster than volunteer efforts. It's not a conspiracy, just the weight of who can afford to show up every cycle.
 
-These forces wear people down, which leads to the last thing to protect: yourself.
+Those forces wear people down, and that brings us to the last thing worth protecting.
 
 ### 11.11 The Emotional Side
 
@@ -1219,15 +1157,11 @@ C++ keeps a hard promise: old code keeps working. This is **backward compatibili
 
 This is also why the committee won't ship two versions of the same type. A second, "safer" vector would split the language, breaking code that passes one kind where the other is expected. So one type has to serve everyone.
 
-Compatibility guards the past. Another principle guards performance.
-
 ### 12.3 The Zero-Overhead Principle
 
 C++ lives by the **zero-overhead principle**. It has two halves: you don't pay for what you don't use, and what you do use runs as fast as hand-written code. A feature that taxes people who never touch it tends to fail.
 
 This shapes every proposal. If your feature slows down code that doesn't use it, expect to defend that cost in writing. The committee protects the people who came for speed.
-
-The deepest constraint of all is invisible, and it kills more proposals than any other.
 
 ### 12.4 ABI: The Invisible Constraint
 
@@ -1237,25 +1171,23 @@ This is why some slow types never get faster. Speeding up `std::regex` or `std::
 
 The committee faced this head-on at the **Prague ABI vote** in early 2020. It chose not to break ABI across the library for C++23, while refusing to promise stability forever. In practice, that left existing binaries safe and the frozen types frozen.
 
-One last split decides where C++ can run at all.
-
 ### 12.5 Freestanding vs Hosted
 
 C++ runs in two very different worlds, and the standard names them. A **hosted** environment has an operating system and the full library behind it. A **freestanding** environment has neither, like a microcontroller, a kernel, or a bootloader.
 
 This split shapes what a library feature can assume. Something that needs files or threads won't work freestanding, where no operating system provides them. A proposal that forgets the freestanding world will hear about it from the people who live there.
 
-These constraints explain the quiet noes: an idea can be right and still impossible. Knowing them saves you from proposing the unbuildable. Next, the common mistakes that trip up newcomers, so you can step around them.
+These constraints explain the quiet noes: an idea can be right and still impossible. Knowing them saves you from proposing the unbuildable.
 
 ---
 
 ## 13. Common Mistakes
 
-You've made it far enough to be dangerous. This last chapter lists the traps that catch newcomers, each with its fix. Read it once now, and again before your first meeting.
+You've made it far enough to be dangerous. This chapter lists the traps that catch newcomers, each with its fix. Read it once now, and again before your first meeting.
 
 ### 13.1 Showing Up Without Announcing
 
-The first trap is simply appearing. Access runs through the convener, so guests give about a week's notice and members register ahead. Email the convener before you go, and catch the Sunday orientation.
+The first trap is simply appearing. The convener controls access, so guests give about a week's notice and members register ahead. Email the convener before you go, and catch the Sunday orientation.
 
 ### 13.2 Proposing Core Language Features Too Early
 
@@ -1275,7 +1207,7 @@ Pasting a reflector post or meeting note into a blog breaks the rules. Those are
 
 ### 13.6 Raising Concerns Too Late
 
-Saving your objection for the closing plenary earns it nothing. Concerns belong in the subgroup, early, where the work happens. Raise it in the room, bring a paper, and beat the deadline the evening before plenary.
+Saving your objection for the closing plenary gains nothing. Concerns belong in the subgroup, early, where the work happens. Raise it in the room, bring a paper, and beat the deadline the evening before plenary.
 
 ### 13.7 Expecting Majority Rule
 
@@ -1283,11 +1215,11 @@ Counting hands and expecting the bigger number to win is wrong here. The committ
 
 ### 13.8 Talking Too Much Too Soon
 
-Speaking constantly at your first meetings works against you. Newcomers earn trust by learning the room before filling it with their voice. Listen first, contribute something specific, and let your work speak.
+Speaking constantly at your first meetings works against you. Newcomers build trust by learning the room before filling it with their voice. Listen first, contribute something specific, and let your work speak.
 
 ### 13.9 Misreading Encouragement as Approval
 
-Hearing "come back with more" and reading it as "this will ship" sets you up to crash. An early warm poll is direction to keep going, not adoption (the encouragement-is-not-approval point from §8.6). Real approval comes later, at plenary, after wording.
+Hearing "come back with more" and reading it as "this will ship" sets you up for a fall. An early warm poll is direction to keep going, not adoption (the encouragement-is-not-approval point from §8.6). Real approval comes later, at plenary, after wording.
 
 ### 13.10 Ignoring Subgroup Direction
 
