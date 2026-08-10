@@ -1,7 +1,7 @@
 ---
 title: "Any Delegate May Object to a Poll on an Unmailed Revision"
 document: P4302R1
-date: 2026-07-19
+date: 2026-08-10
 intent: ask
 audience: WG21
 reply-to:
@@ -14,7 +14,7 @@ WG21 sometimes records polls on paper revisions that did not appear in a pre-mee
 
 ## Revision History
 
-### R1: July 2026
+### R1: August 2026
 
 - Replaced R0's flat prohibition with an objection right. An unmailed revision may receive a recorded poll when nobody objects.
 - Reorganized the rationale around the shift in consensus burden caused by adopting an unmailed design change, and added the supporting SD-4 consensus-threshold citation.
