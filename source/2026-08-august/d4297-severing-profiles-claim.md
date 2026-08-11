@@ -1,7 +1,7 @@
 ---
 title: "Severing P3100's Profiles Claim from Its Case-by-Case Review"
-document: P4297R0
-date: 2026-07-14
+document: P4297R1
+date: 2026-08-11
 intent: ask
 audience: EWG
 reply-to:
@@ -20,6 +20,10 @@ This paper reconstructs the proposal's seven-poll history and shows none adopted
 ---
 
 ## Revision History
+
+### R1: August 2026
+
+- TBD
 
 ### R0: July 2026
 

@@ -1,7 +1,7 @@
 ---
 title: "Transient Benefit, Perpetual Cost: Implicit Core-Language Assertions"
-document: P4318R0
-date: 2026-07-14
+document: P4318R1
+date: 2026-08-11
 intent: info
 audience: EWG
 reply-to:
@@ -46,6 +46,10 @@ This slice sets a decaying benefit against a perpetual cost.
 ---
 
 ## Revision History
+
+### R1: August 2026
+
+- TBD
 
 ### R0: July 2026
 

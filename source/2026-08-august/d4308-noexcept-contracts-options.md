@@ -1,7 +1,7 @@
 ---
 title: "Eight Responses to a Throwing Implicit Contract Assertion"
-document: P4308R0
-date: 2026-07-13
+document: P4308R1
+date: 2026-08-11
 intent: info
 audience: EWG
 reply-to:
@@ -18,6 +18,10 @@ C++26 Contracts let a violation handler throw, and P3100 extends that mechanism 
 ---
 
 ## Revision History
+
+### R1: August 2026
+
+- TBD
 
 ### R0: July 2026 (pre-Buzios mailing)
 

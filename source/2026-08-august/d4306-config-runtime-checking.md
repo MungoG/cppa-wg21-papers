@@ -1,7 +1,7 @@
 ---
 title: "Configuring Runtime Checking: Profiles and Implicit Contract Assertions"
-document: P4306R0
-date: 2026-07-14
+document: P4306R1
+date: 2026-08-11
 intent: info
 audience: EWG
 reply-to:
@@ -22,6 +22,10 @@ This comparison is supplied for the explicit decision its companion P4297R0 asks
 ---
 
 ## Revision History
+
+### R1: August 2026
+
+- TBD
 
 ### R0: July 2026
 
