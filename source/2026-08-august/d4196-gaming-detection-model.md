@@ -132,51 +132,54 @@ An evidence item scores C3 only when the C2 explanation is insufficient. The fol
    - *C2 baseline:* Seeks direction polls deliberately; cites favorable results to establish priority. Standard committee strategy.
    - *Falsifier:* A direction poll is converted into a permanent "mandate" that forecloses all subsequent deliberation. Omnibus polls bundle unrelated decisions to prevent granular objection.
 
-4. **Written record behavior**
+4. **Treatment of minority objections**
+   - *C2 baseline:* Addresses minority objections enough to satisfy the chair. May disagree after genuine engagement. Stops revisiting when consensus is achievable.
+   - *Falsifier:* Objections dismissed as "no new information" when the core technical concern was never directly answered in writing. The same dismissal pattern repeats across multiple meetings without the substance of the objection ever being engaged.
+
+5. **Written record behavior**
    - *C2 baseline:* Frames position favorably, cites favorable outcomes. Selective presentation is normal advocacy.
    - *Falsifier:* Specific unfavorable poll results are omitted from self-reported history while favorable results from the same period are reported. The opposition's case is never stated in its strongest form.
 
-5. **Relationship with chair**
+6. **Relationship with chair**
    - *C2 baseline:* Good working relationship with the chair. Chair's favorable treatment may reflect genuine assessment.
    - *Falsifier:* The chair co-authors the proposal under their own oversight while receiving undisclosed income from the proposal's institutional sponsor.
 
-6. **Coalition building**
+7. **Coalition building**
    - *C2 baseline:* Recruits co-authors, assembles broad support. Large co-author lists are standard.
    - *Falsifier:* Internal dissenters are excluded rather than accommodated. The coalition includes undisclosed financial relationships with oversight personnel.
 
-7. **Language about opponents**
+8. **Language about opponents**
    - *C2 baseline:* May use sharp language under pressure. Characterizes the argument, not the opponent's conduct.
    - *Falsifier:* The act of submitting an alternative is treated as illegitimate. A competing approach is equated with "halting all forward progress."
 
-8. **Reaction when pulled back**
+9. **Reaction when pulled back**
    - *C2 baseline:* Regroups, revises, returns with a plan. Persistence after rejection is normal and encouraged.
    - *Falsifier:* The unfavorable result is omitted from the paper's history section while only the favorable poll is reported. Committee requirements are overridden rather than satisfied.
 
-9. **Burden of proof management**
-   - *C2 baseline:* Cites prior decisions and asks "what's new?" Prevents infinite re-litigation.
-   - *Falsifier:* A vote tally is used to dismiss objections that post-date the vote. The four-stage linguistic transformation ("competing design" -> "alternative" -> "objection" -> "reopening settled question") is documented across multiple arcs.
+10. **Burden of proof management**
+    - *C2 baseline:* Cites prior decisions and asks "what's new?" Prevents infinite re-litigation.
+    - *Falsifier:* A vote tally is used to dismiss objections that post-date the vote. The four-stage linguistic transformation ("competing design" -> "alternative" -> "objection" -> "reopening settled question") is documented across multiple arcs.
 
-10. **Use of procedural moves**
+11. **Use of procedural moves**
     - *C2 baseline:* Uses full move set within norms. Short incubation happens under deadline pressure.
     - *Falsifier:* A majority of binding papers polled with under one week's incubation systematically, including self-authored papers. Poll wording drafted privately with leadership while objectors are excluded.
-
-11. **Transparency about design tradeoffs**
+12. **Transparency about design tradeoffs**
     - *C2 baseline:* Frames tradeoffs favorably. Being candid under cross-examination is evidence of integrity.
     - *Falsifier:* Weaknesses are conceded verbally under cross-examination but do not propagate into the written institutional record. Written artifacts omit or neutralize the verbal concession.
 
-12. **Response to "investigate the objection thoroughly"**
+13. **Response to "investigate the objection thoroughly"**
     - *C2 baseline:* Investigates when cost-benefit is favorable. May decline if the objection is non-dispositive.
     - *Falsifier:* A strong-consensus recorded committee instruction is overridden without being satisfied or formally reversed.
 
-13. **Behavior between meetings**
+14. **Behavior between meetings**
     - *C2 baseline:* Maintains relationships, coordinates with co-authors, prepares papers. Employer-funded teams are normal.
     - *Falsifier:* Undisclosed financial relationships with persons exercising oversight authority. Coordinated campaigns designed to present decisions as already made before deliberation occurs.
 
-14. **Observable cost structure**
+15. **Observable cost structure**
     - *C2 baseline:* Significant employer backing with funded engineers and coordinated papers. How major facilities get standardized.
     - *Falsifier:* Cost structure includes undisclosed financial relationships with oversight authority AND duplicate national-body votes from the same funding source. The combination compromises the system's self-correction mechanisms.
 
-15. **What happens if they win**
+16. **What happens if they win**
     - *C2 baseline:* Feature may have rough edges. Author schedules extensions for known gaps. Some dissent persists.
     - *Falsifier:* Co-author dissent, implementer "unusable" finding, major vendor non-implementation, record DIS opposition, AND post-victory acknowledgment that concerns dismissed pre-vote in fact had merit - all simultaneously.
 
@@ -209,7 +212,7 @@ This model can be applied to the documented record of any proposal's passage thr
 1. Collecting evidence items from papers, wiki minutes, reflector posts, and trip reports
 2. Scoring each item against the detection criteria table
 3. Applying the falsification conditions: an item scores C3, the unchecked institutional author, only when the C2 explanation, the senior author operating within norms, is insufficient
-4. Tallying hits per column across all 15 criteria
+4. Tallying hits per column across all 16 criteria
 5. Evaluating the combination signal: all three distinguishing markers (the author decomposing objections without architectural engagement, denying competitors procedurally, moralizing opposition) present simultaneously across multiple meetings
 
 A proposal whose record produces predominantly C2 hits - the senior author operating within norms - represents the system working as designed - institutional backing channeled through norms. A proposal whose record produces predominantly C3 hits represents the system's self-correction mechanisms failing, regardless of why they failed.
