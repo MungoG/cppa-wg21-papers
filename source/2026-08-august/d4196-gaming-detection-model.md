@@ -100,7 +100,7 @@ The following table turns the three profiles into observable behaviors. Column C
 | Written record behavior | Produces a paper; may not produce rebuttals | Produces papers and responses; creates favorable institutional memory naturally | Produces extensive artifacts for own position; never creates a faithful statement of the opposition's case |
 | Relationship with chair | Minimal; may not understand what the chair needs to declare consensus | Collaborative; provides the chair with a tractable decision | Ensures the chair's path of least resistance is always "advance" |
 | Coalition building | Absent or naive; relies on technical merit alone | Strategic; trades concessions with other repeat players | Leverages institutional backing to assemble coalitions; may trade support on unrelated proposals |
-| Language about opponents | "They raise a good point" | "We've considered that and made changes" | "They are blocking progress" / "They refuse to accept the committee's decision" - opposition is moralized |
+| Moralization of opposition | "They raise a good point" | "We've considered that and made changes" | "They are blocking progress" / "They refuse to accept the committee's decision" - opposition is moralized |
 | Reaction when pulled back | Confused; may not understand what happened procedurally | Regroups, revises, returns next meeting with a plan | Treats reversal as illegitimate; escalates procedurally; seeks to restore previous state transitions |
 | Burden of proof management | Does not think in these terms | Understands that accumulated polls shift the burden onto competitors | Deliberately engineers the four-stage linguistic transformation |
 | Use of procedural moves | Unaware of most available moves | Knows the full move set; uses it selectively and within norms | Uses procedural moves others would consider inappropriate: blocking discussion polls for rivals, controlling poll wording, exploiting scheduling |
@@ -148,7 +148,7 @@ An evidence item scores C3 only when the C2 explanation is insufficient. The fol
    - *C2 baseline:* Recruits co-authors, assembles broad support. Large co-author lists are standard.
    - *Falsifier:* Internal dissenters are excluded rather than accommodated. The coalition includes undisclosed financial relationships with oversight personnel.
 
-8. **Language about opponents**
+8. **Moralization of opposition**
    - *C2 baseline:* May use sharp language under pressure. Characterizes the argument, not the opponent's conduct.
    - *Falsifier:* The act of submitting an alternative is treated as illegitimate. A competing approach is equated with "halting all forward progress."
 
@@ -163,6 +163,7 @@ An evidence item scores C3 only when the C2 explanation is insufficient. The fol
 11. **Use of procedural moves**
     - *C2 baseline:* Uses full move set within norms. Short incubation happens under deadline pressure.
     - *Falsifier:* A majority of binding papers polled with under one week's incubation systematically, including self-authored papers. Poll wording drafted privately with leadership while objectors are excluded.
+
 12. **Transparency about design tradeoffs**
     - *C2 baseline:* Frames tradeoffs favorably. Being candid under cross-examination is evidence of integrity.
     - *Falsifier:* Weaknesses are conceded verbally under cross-examination but do not propagate into the written institutional record. Written artifacts omit or neutralize the verbal concession.
