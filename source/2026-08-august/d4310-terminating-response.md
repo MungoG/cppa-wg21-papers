@@ -15,7 +15,7 @@ reply-to:
 
 `std::core_ub` (P4317R1) guards the runtime-checkable cases of core-language undefined behaviour and, when enforced, guarantees the check runs. It leaves one question open: after a guarded violation is detected, does the program continue or terminate? This paper answers terminate. Whether contracts are the right substrate for these checks at all is argued against them in P4332R0; this paper takes a check that runs and argues only the response.
 
-The evidence is the deployment record: every hardened implementation surveyed that detects such a violation in production terminates or traps, and none defaults to continuation. Two findings confirm it - continuation runs against P3878R1, the adjacent case C++26 already decided, and it executes on the corrupted state the security literature treats as the more dangerous failure. Terminating keeps the handler invocation, so it loses no telemetry. The finding is narrow: a continuing response, if kept at all, is an explicit non-portable opt-in, and for the class that continues into a defined value such as wrapped overflow the question is left open. The `noexcept` and throwing-cost analysis lives in P4308R0. The paper makes no request.
+The evidence is the deployment record: every hardened implementation surveyed that detects such a violation in production terminates or traps, and none defaults to continuation. Two findings confirm it - continuation runs against P3878R1, the adjacent case C++26 already decided, and it executes on the corrupted state the security literature treats as the more dangerous failure. Terminating keeps the handler invocation, so it loses no telemetry. The finding is narrow: a continuing response, if kept at all, is an explicit non-portable opt-in, and for the class that continues into a defined value such as wrapped overflow the question is left open. The `noexcept` and throwing-cost analysis lives in P4308R1. The paper makes no request.
 
 ---
 
@@ -26,7 +26,7 @@ The evidence is the deployment record: every hardened implementation surveyed th
 - Rewritten as a single-claim argument: the deployment record (Table 1) plus the two load-bearing findings, with the survey detail, the terminology glossary, and the corroborating evidence deferred to the companion papers.
 - Reframed onto the `std::core_ub` profile (P4317R1): the response is argued as the profile's response to a detected core-language violation rather than as a restriction on P3100R8's implicit contract assertions.
 - Ceded the enforcement axis to P4332R0 and scoped this paper to the response axis alone.
-- Handed the `noexcept` and throwing-response mechanics to P4308R0.
+- Handed the `noexcept` and throwing-response mechanics to P4308R1.
 
 ### R0: July 2026
 
@@ -38,7 +38,7 @@ The evidence is the deployment record: every hardened implementation surveyed th
 
 P4317R1<sup>[22]</sup> proposes `std::core_ub`, a profile under the P3589R2<sup>[21]</sup> framework that guards the runtime-checkable cases of core-language undefined behaviour and, when enforced over a region, guarantees the check is performed. It leaves one question open (P4317R1 Section 2.3): after a guarded operation's precondition is detected as violated, does execution continue past the violation or does the program terminate?
 
-This paper answers it: terminate. It does not reopen the prior question - whether the C++26 Contracts machinery is the right substrate for these checks, given that a contract assertion may be compiled `ignore` and so may never run - which P4332R0<sup>[23]</sup> argues against. Taking a check guaranteed to run, as the profile's enforcement guarantees, this paper argues only the response. P3878R1<sup>[16]</sup>, adopted into C++26, already settled the same response question for standard-library hardening; P4306R0<sup>[3]</sup> and P4297R0<sup>[4]</sup> cover the configuration and ownership questions, and P4308R0<sup>[24]</sup> the `noexcept` and throwing-response space.
+This paper answers it: terminate. It does not reopen the prior question - whether the C++26 Contracts machinery is the right substrate for these checks, given that a contract assertion may be compiled `ignore` and so may never run - which P4332R0<sup>[23]</sup> argues against. Taking a check guaranteed to run, as the profile's enforcement guarantees, this paper argues only the response. P3878R1<sup>[16]</sup>, adopted into C++26, already settled the same response question for standard-library hardening; P4306R1<sup>[3]</sup> and P4297R1<sup>[4]</sup> cover the configuration and ownership questions, and P4308R1<sup>[24]</sup> the `noexcept` and throwing-response space.
 
 Two terms recur. The hook is the handler invocation: a violation handler is called and logs the violation. The continuation is what a continuing response adds on top of it: after the handler returns, execution proceeds past the violation. Every response discussed here preserves the hook; only the continuation is contested, and only for the class whose continuation is into a state the language does not define. The class that continues into a defined value (Section 4) is left open, and C++26 as ratified is untouched.
 
@@ -78,7 +78,7 @@ First, the committee has already decided the adjacent case. P3878R1<sup>[16]</su
 
 Second, continuing executes user code on a state the language does not define. The Contracts authors say as much: Doumler and Berne write in P3097R2<sup>[17]</sup> that once a program "is found to be in a possibly corrupted state, executing any user-defined code could result in a vulnerability," and keep `observe` available nonetheless - the agreement is on the danger, the divergence on the default. The security literature draws the same line for any tool: CERT ERR56-CPP<sup>[18]</sup> holds that "a violated invariant leaves the program in a state where graceful continued execution is likely to introduce security vulnerabilities." The hazard is a property of the undefined state these checks produce, not of any security purpose, so it transfers whether the tool was built for correctness or security.
 
-A continuing response also carries an exception-handling cost the reference implementers decline - they require "no exception-handling code being generated around contract predicates"<sup>[15]</sup> - and, in its throwing form, changes what the `noexcept` operator guarantees. Both are analysed in P4308R0<sup>[24]</sup>; a terminating response avoids them because nothing escapes.
+A continuing response also carries an exception-handling cost the reference implementers decline - they require "no exception-handling code being generated around contract predicates"<sup>[15]</sup> - and, in its throwing form, changes what the `noexcept` operator guarantees. Both are analysed in P4308R1<sup>[24]</sup>; a terminating response avoids them because nothing escapes.
 
 ---
 
@@ -94,7 +94,7 @@ The terminating default is not this paper's alone. Berne and Lakos recommend in 
 
 ## 5. The substrate and ownership questions are separate, and subordinate
 
-The finding is stated as the profile's response, but it is independent of two questions this paper does not take up. Whether these checks belong on the Contracts substrate at all is P4332R0<sup>[23]</sup>'s, answered against it; who configures the response, through the Contracts facility (P3400R3<sup>[20]</sup>) or the Profiles framework (P3589R2<sup>[21]</sup>), is the ownership question of P4297R0<sup>[4]</sup> and P4306R0<sup>[3]</sup>. Arguing the response on the profile P4317R1<sup>[22]</sup> specifies, where enforcement guarantees the check runs, avoids the "check that may not run" hazard entirely. And the finding holds subordinately even if, against P4332R0, the committee routes the response through the contract-violation handler: for the undefined class it should still terminate, for the reasons above, and the hook that precedes termination preserves the deployer's ability to observe the violation.
+The finding is stated as the profile's response, but it is independent of two questions this paper does not take up. Whether these checks belong on the Contracts substrate at all is P4332R0<sup>[23]</sup>'s, answered against it; who configures the response, through the Contracts facility (P3400R3<sup>[20]</sup>) or the Profiles framework (P3589R2<sup>[21]</sup>), is the ownership question of P4297R1<sup>[4]</sup> and P4306R1<sup>[3]</sup>. Arguing the response on the profile P4317R1<sup>[22]</sup> specifies, where enforcement guarantees the check runs, avoids the "check that may not run" hazard entirely. And the finding holds subordinately even if, against P4332R0, the committee routes the response through the contract-violation handler: for the undefined class it should still terminate, for the reasons above, and the hook that precedes termination preserves the deployer's ability to observe the violation.
 
 ---
 
@@ -110,7 +110,7 @@ The authors provide information and serve at the pleasure of the committee.
 
 Vinnie Falco founded the C++ Alliance, which maintains a Clang fork for Profiles work, and co-authors P4317R1<sup>[22]</sup> and P4332R0<sup>[23]</sup>, the profile and substrate findings this paper builds on; he prefers the family of responses in which no exception escapes a checked core-language operation. Ville Voutilainen co-authored the C++26 Contracts facility (P2900R14<sup>[1]</sup>) and led P3878R1<sup>[16]</sup>, the adopted decision reused here. The reader should weigh what follows accordingly.
 
-The intent is `info`: the paper argues a position and requests no poll, and it changes nothing in ratified C++26. In the August 2026 mailing it is one of a set - P4332R0<sup>[23]</sup> on the substrate, P4317R1<sup>[22]</sup> the profile, P4308R0<sup>[24]</sup> the throwing-response space, and P4306R0<sup>[3]</sup> and P4297R0<sup>[4]</sup> the configuration and ownership questions - and it cross-references those rather than repeating them. The profile's checks are not yet implemented (P4317R1 Section 8), so the paper reasons from deployed analogues. It was prepared with the assistance of generative tools; the authors are responsible for its content.
+The intent is `info`: the paper argues a position and requests no poll, and it changes nothing in ratified C++26. In the August 2026 mailing it is one of a set - P4332R0<sup>[23]</sup> on the substrate, P4317R1<sup>[22]</sup> the profile, P4308R1<sup>[24]</sup> the throwing-response space, and P4306R1<sup>[3]</sup> and P4297R1<sup>[4]</sup> the configuration and ownership questions - and it cross-references those rather than repeating them. The profile's checks are not yet implemented (P4317R1 Section 8), so the paper reasons from deployed analogues. It was prepared with the assistance of generative tools; the authors are responsible for its content.
 
 ---
 
@@ -126,9 +126,9 @@ Timur Doumler and Joshua Berne, whose enumeration and classification of core-lan
 
 [2] [P3100R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r8.pdf) - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026).
 
-[3] [P4306R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4306r0.pdf) - "Configuring Runtime Checking: Profiles and Implicit Contract Assertions" (Vinnie Falco, Ville Voutilainen, 2026).
+[3] [P4306R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4306r1.pdf) - "Configuring Runtime Checking: Profiles and Implicit Contract Assertions" (Vinnie Falco, Ville Voutilainen, 2026).
 
-[4] [P4297R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4297r0.pdf) - "Severing P3100's Profiles Claim from Its Case-by-Case Review" (Vinnie Falco, Ville Voutilainen, 2026).
+[4] [P4297R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4297r1.pdf) - "Severing P3100's Profiles Claim from Its Case-by-Case Review" (Vinnie Falco, Ville Voutilainen, 2026).
 
 [5] [libc++ Hardening Modes](https://libcxx.llvm.org/Hardening.html) - "Hardening Modes" (LLVM Project, 2025).
 
@@ -168,4 +168,4 @@ Timur Doumler and Joshua Berne, whose enumeration and classification of core-lan
 
 [23] [P4332R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4332r0.pdf) - "Contracts are inappropriate for undefined behavior checks" (John Spicer, Vinnie Falco, Jose Daniel Garcia Sanchez, Bjarne Stroustrup, Ville Voutilainen, 2026).
 
-[24] [P4308R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4308r0.pdf) - "Eight Responses to a Throwing Implicit Contract Assertion" (Vinnie Falco, Ville Voutilainen, 2026).
+[24] [P4308R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4308r1.pdf) - "Eight Responses to a Throwing Implicit Contract Assertion" (Vinnie Falco, Ville Voutilainen, 2026).
