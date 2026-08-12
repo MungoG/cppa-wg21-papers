@@ -300,14 +300,14 @@ The question is which implementation shape minimizes total cost when both consum
 | Synchronous | Zero (no suspend) | 7-step protocol sequence (Section 6) |
 | Asynchronous | Zero protocol overhead (inherent suspend only) | Inherent suspend + protocol sequence |
 | **Sender pipeline** | | |
-| Synchronous | Zero (P4126R2<sup>[10]</sup>) | Zero |
-| Asynchronous | Zero (P4126R2<sup>[10]</sup>) | Zero |
+| Synchronous | Zero ([P4126R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r2.pdf)<sup>[10]</sup>) | Zero |
+| Asynchronous | Zero ([P4126R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r2.pdf)<sup>[10]</sup>) | Zero |
 
 The awaitable path imposes no protocol overhead in any cell. For synchronous I/O, the sender column carries the seven-step protocol sequence of Section 6. For asynchronous I/O, the sender protocol adds `connect`, receiver wiring, and `variant` emplacement atop the inherent suspend. These steps are not inherent to the async operation. They are inherent to the sender protocol.
 
 For asynchronous I/O these added steps are a step count, not a separately observable runtime cost: once the operation suspends to a scheduler, the suspension dominates and the steps are not measurable above it. The case this paper isolates is synchronous completion, where no suspension absorbs them.
 
-The sender pipeline cells in the awaitable column depend on P4126R2<sup>[10]</sup> callback handles. Without callback handles, senders consuming an awaitable allocate one coroutine frame per operation. Two of the awaitable column's four zeros require P4126R2.
+The sender pipeline cells in the awaitable column depend on P4126R2<sup>[10]</sup> callback handles. Without callback handles, senders consuming an awaitable allocate one coroutine frame per operation. Two of the awaitable column's four zeros require [P4126R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r2.pdf).
 
 ## 11. Composed I/O
 
