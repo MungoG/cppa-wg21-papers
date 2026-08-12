@@ -11,6 +11,10 @@ reply-to:
 
 ## Abstract
 
+P3100R8 proposes that implicit contract assertions, configured through Contracts evaluation semantics and Labels, control runtime checking of core-language undefined behavior. The Profiles papers, P3589R2 and P3984R0, instead make a Profile the named mechanism that selects and defines such guarantees.
+
+Both mechanisms can affect the same check and, as P3100R8's own Section 7.2 states, if both are adopted, one must be specified in terms of the other. This paper calls that decision "configuration ownership."
+
 Measured against the committee's own criteria, no criterion awards ownership of runtime-checking configuration to either proposal.
 
 Two proposals answer one question - how a program configures the runtime checking of core-language undefined behavior - and, as P3100R8's own Section 7.2 states, if both are kept then one must be specified in terms of the other. This paper assembles the public record and measures both candidate owners against criteria already in the committee's record - existing practice, deployment and field experience, systematic coverage of undefined behavior, and freedom from dialects - and taken one by one those criteria settle configuration ownership for neither. The P3100 model leads on systematic coverage, the one criterion carrying a poll, but that lead does not resolve ownership, because both owners consume the enumeration identically; existing practice reads both ways and names different owners. Applied evenly, the deployment criterion does not by itself assign the base role, because both proposals pair a deployed lineage with an unshipped specification; what the record establishes is narrower - the shipping practice terminates, and P3100's added machinery of implicit assertions, Labels, and a replaceable handler has no implementation. The record also finds no deployment of the layering's single-architecture premise - one handler slot, one menu of evaluation semantics, one configuration base - together with removed or condemned precedents for its nearest standardized relatives and a first integration already departing from it.
@@ -25,7 +29,9 @@ This comparison is supplied for the explicit decision its companion P4297R1 asks
 
 ### R1: August 2026
 
-- TBD
+- Disclosure moved to the end of the paper.
+- Abstract expanded to name both proposals and define "configuration ownership" before presenting findings.
+- Editorial suggestions from Nina Ranns incorporated.
 
 ### R0: July 2026
 
