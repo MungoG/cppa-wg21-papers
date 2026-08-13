@@ -3,7 +3,7 @@ title: "A Reader's Guide to the August 2026 Mailing"
 document: D4199R0
 date: 2026-08-31
 intent: info
-audience: LEWG
+audience: WG21
 reply-to:
   - "Vinnie Falco <vinnie.falco@gmail.com>"
 ---
