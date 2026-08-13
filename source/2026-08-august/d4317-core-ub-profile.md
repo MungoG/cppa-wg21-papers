@@ -10,228 +10,166 @@ reply-to:
 
 ## Abstract
 
-The runtime-checkable cases of core-language undefined behavior can be guarded by a single standard profile, with none of the changes to the definitional machinery of the standard that a Contracts-based routing would require.
+P4297R1<sup>[1]</sup> asks EWG to sever P3100R8's architecture claim from its case-by-case wording review. This paper demonstrates the severing is feasible.
 
-The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of them can be checked at run time. This paper explores `std::core_ub`, a profile under the framework of P3589R2 that guards those cases: when it is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior. The profile owns its guarantee, its enumeration, and its response to a violation directly, so it needs no foundational wording changes, it leaves the meaning of the `noexcept` operator untouched, and it follows every design principle in the committee's standing document SD-10. The form it standardizes - a named set of checks selected per build, terminating on a violation - is what production hardening already ships, with library-precondition hardening measured at a third of a percent. The paper sets out three candidate responses to a violation, each drawn from a shipping deployment, and leaves the choice among them to the profile author. It is a design exploration, not a proposal for adoption, and requests no poll.
+The same 77 runtime-checkable cases of core-language undefined behavior, enumerated by Doumler and Berne in P3100R8<sup>[2]</sup>, carry under a single profile with zero foundational wording changes and no handler dependency. The form standardized - named checks, per-build activation, terminating response - is what production hardening ships.
 
----
+This paper is design exploration, not a proposal for adoption. It requests no poll.
 
 ## Revision History
 
 ### R1: August 2026
-
-- Added EuroLLVM 2026 evidence (Clang static analyzer bounds checking) to the implementation-status (Section 8), deployment-experience (Section 7), and enumeration (Appendix A) discussions.
-- Qualified the Section 2.1 guarantee for the cross-TU boundary; stated the 62-terminate / 15-replace split.
-- Table 5 now categorizes deployments as library-precondition or core-language subset; the 0.30% figure is qualified as library-precondition hardening throughout.
-- Replaced non-public Dos Reis quote with public paper citations (P3506R0, P3608R0).
-- Added Doumler agree-and-amplify in Section 3.2 on design-space minimality.
-- Acknowledged failed Hagenberg polls alongside the thirteen direction polls; fixed Croydon/Brno chronology.
-- Added PLDI 2025 evidence (Popescu & Lopes) bridging library-precondition and core-language bounds checking costs.
-- Qualified Section 2.7 ABI claim for instrumented cases; noted that both proposals face the same instrumentation-level ABI boundary.
+- Restructured around the methodology: how each P3100R8 line item slides into a profile by severing the implicit contract assertion.
+- Positioned as the implementation of P4297R1's severance ask.
+- Added before/after table for two cases and six EWG telecon quotes (with permission).
+- Qualified instrumented-case guarantee: both proposals face the same sanitizer limits.
+- Cited D4277R0 (late D-paper) for prototype status.
+- Cut SD-10 evaluation tables (former Section 5) and committee-direction section (former Section 7); compressed concerns from seven to three.
 
 ### R0: July 2026
-
 - Initial version.
-
----
 
 ## 1. Introduction
 
-The C++ standard specifies a finite, enumerable set of core-language operations whose misuse has undefined behavior, and most of those operations can be checked at run time. This paper explores guarding them with a single standard profile, `std::core_ub`, under the framework of P3589R2<sup>[3]</sup>. When the profile is enforced, a checkable operation whose precondition is violated ends the program rather than proceeding into undefined behavior.
+Doumler and Berne enumerate 77 runtime-checkable cases of core-language undefined behavior in P3100R8<sup>[2]</sup> (80 total, 3 not runtime-checkable).
 
-The enumeration that makes this possible is the work of Doumler and Berne. P3100R8<sup>[1]</sup> identifies every case of explicit core-language undefined behavior, classifies each by how it can be diagnosed, and determines which cases admit a well-defined replacement. Of its cases, 77 are checkable at run time (as enumerated in P3100R8's Appendix A), and those 77 are what this profile guards. The enumeration is reproduced, with credit, in Appendix A.
+P4297R1<sup>[1]</sup> identifies the bundling problem: P3100R8 pairs wording for 77 cases with an architecture claim - Profiles as a preset over Contracts machinery. This paper shows the unbundled form. The enumeration is the data. The routing is the architecture. The data is portable; P4297R1 establishes this framing.
 
-This profile takes that enumeration and specifies it as a profile rather than as an extension of the C++26 Contracts machinery. The relationship between the two approaches, and where they differ, is the subject of the companion papers P4297R1<sup>[4]</sup> and P4306R1<sup>[2]</sup>; this paper does not restate their arguments, and cites them where they apply.
+Two contributions follow: (1) a profile specification covering the 77 cases under the P3589R2<sup>[3]</sup> framework, and (2) a methodology showing how each line item slides from the Contracts routing into a profile.
 
-The paper offers four contributions:
+One assumption governs the design: a safety feature is stronger when it standardizes a form already shipping in production.
 
-1. A profile specification, `std::core_ub`, covering the 77 runtime-checkable cases of core-language undefined behavior (as enumerated by P3100R8) under the P3589R2 framework (Section 2).
-2. A demonstration that the profile provides this coverage with none of the six foundational wording changes P3100R8 requires (Section 3).
-3. A comparison of three candidate responses to a violation, each drawn from a production deployment, presented for the profile author to weigh (Section 2.3).
-4. An evaluation of the profile against the committee's adopted design principles in SD-10 (Section 5).
+Quoted with permission. Source: EWG telecon, 10 August 2026.
 
-The paper assumes one thing: that a safety feature is stronger when it standardizes a form already shipping in production than when it standardizes a form that has not shipped. Section 6 gives the deployment record.
+> "Can we please separate the part where there's the true consensus - the erroneous value - separate that from the architecture choice, so we can get some value out of our time investment." - Vinnie Falco
 
----
+The enumeration is consensus. The routing is not. If those two claims are separable, a profile can carry the consensus without inheriting the architecture dispute.
 
-## 2. Design
+> "We do make changes that make future changes effectively difficult or impossible, even though they're not officially procedurally impossible. There does have to be recognition that the choices we make now can foreclose future directions, and we have to be cautious of that." - John Spicer, EDG
 
-A profile specification should state the guarantee it offers before the list of places it touches. [P4222R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4222r2.pdf)<sup>[5]</sup> puts the principle plainly: "it is important that we specify the guarantee offered, rather than just long lists of places in the language affected." The guarantee comes first here; the enumeration that backs it is Appendix A. Section 2.1 states the guarantee and 2.2 the syntax that activates it; 2.3 and 2.4 set out what happens when a check fails and when the operation has a defined replacement instead; 2.5 to 2.7 cover the cost of the checks, composition with other profiles, and behavior at a translation-unit boundary.
+This paper is the evidence that the foreclosure is avoidable: the same 77 cases carry under a different architecture. The companion papers P4297R1<sup>[1]</sup>, P4306R1<sup>[4]</sup>, and P4310R1<sup>[5]</sup> address adjacent questions (ownership, configuration comparison, response merits). This paper cites them rather than restating.
 
-### 2.1 The guarantee
+## 2. The Guarantee
 
-When `std::core_ub` is enforced over a region of code, a violated runtime-checkable precondition among the 77 cases identified by Doumler and Berne in [P3100R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r8.pdf)<sup>[1]</sup> does not proceed into undefined behavior. Of those 77, 62 terminate the program on a violation; the other 15 receive a well-defined replacement value fixed for every conforming implementation (Section 2.4). For the 19 locally checkable cases (Appendix A.1) the guarantee holds unconditionally - a null check or a division-by-zero check needs nothing from the rest of the program. For the 58 instrumented cases (Appendix A.3) the guarantee holds within the instrumented domain; Section 2.7 states the boundary.
+When `std::core_ub` is enforced, a violated runtime-checkable precondition among the 77 cases does not proceed into undefined behavior.
 
-The guarantee is scoped to correct programs in the ordinary way. A program with no undefined behavior means what it meant without the profile; the checks pass silently and the observable behavior is unchanged. Only a program that would otherwise have executed one of the enumerated operations under a violated precondition sees any difference. This is the constraint P3589R2<sup>[3]</sup> places on every profile: a profile does not change the meaning of a well-formed program that has no undefined behavior.
+- 62 terminate on violation; 15 receive a well-defined replacement value (Section 3, Appendix A.4).
+- 19 locally checkable (Appendix A.1): the guarantee holds unconditionally.
+- 58 instrumented (Appendix A.2 and A.3): the guarantee holds within the instrumented domain.
 
-### 2.2 Activation
+No current sanitizer catches all 58 reliably; both proposals face the same instrumentation limits, and neither solves what sanitizers cannot.<sup>[6]</sup>
 
-The profile is activated through the framework syntax of [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf)<sup>[3]</sup>. A translation unit opts in with a profile attribute on its first declaration:
+A program with no undefined behavior means what it meant without the profile. P3589R2<sup>[3]</sup> requires this: a profile does not change the meaning of a well-formed program with no UB.
+
+For the 15 replacement cases (12 unconditional, 3 built-in-types-only): the profile defines the meaning directly, fixed for every conforming implementation. P3984R0<sup>[7]</sup> grants this authority. Signed overflow is wraparound, out-of-range conversion is erroneous value, and so on per Appendix A.4.
+
+## 3. Activation and Response
+
+### Activation
+
+Framework syntax activates the profile:
 
 ```cpp
 [[profiles::enforce(std::core_ub)]];
 ```
 
-The dominion of the profile runs from that attribute to the end of the translation unit. A declaration or statement may opt out with `[[profiles::suppress(std::core_ub)]]`, the framework's local escape for code that must use an unchecked construct where the programmer has established correctness by other means. No annotation appears in ordinary user code; enforcement is a build-level choice, and suppression is the rare exception.
+Dominion runs to end of the translation unit. `[[profiles::suppress(std::core_ub)]]` is the local escape. No annotation appears in ordinary user code.
 
-### 2.3 The response to a violation
+### Three response candidates
 
-The profile guards 77 cases (the runtime-checkable cases enumerated in P3100R8's Appendix A). What happens when a guard fails is a design choice with a deployed record behind it, and it is left open here. Three candidate responses follow, drawn from what production systems actually ship, for the profile author to select among. All three share one property: none continues past the violation into the state the language leaves undefined.
+All three terminate:
 
-The three candidates:
+1. **Trap.** Trap instruction. Diagnostics recovered out of process by crash reporter. Smallest codegen. Apple's `-fbounds-safety` and libc++ hardening ship this.
+2. **Diagnostic, then abort.** Print failed check plus source location, call `abort()`. libstdc++ ships this.
+3. **Non-returning handler.** Replaceable profile-specific function; may log; must not return; if it returns, the program terminates. Shape of Bloomberg's `bsls_assert`<sup>[8]</sup> where post-violation state is undefined.
 
-1. **Trap.** The violation is a trap instruction. Diagnostics are recovered out of process by a crash reporter that maps the trap address to source. This is the smallest possible codegen and the form Apple's `-fbounds-safety` and libc++ hardening ship. It generates no in-process diagnostic.
+### Interop note
 
-2. **Diagnostic, then abort.** The program prints the failed check and its source location, then calls `abort()`. libstdc++ ships this; the diagnostic is triage material, produced by the terminating response itself. It costs the code size of the diagnostic strings.
+A deployment can route through the C++26 contract-violation handler as an interop path, but this reintroduces the Contracts dependency the design avoids.
 
-3. **Non-returning handler.** A replaceable, profile-specific function receives the violation, may log or report it, and must not return; if it returns, the program terminates. This is the shape of Bloomberg's `bsls_assert` where the post-violation state is undefined: the handler is invoked, and if it returns, the program terminates. Bloomberg's log-and-continue facility, `bsls_review`, operates at the library level, where the post-violation state remains defined, and is not applied to the core-language-undefined cases this profile guards. It gives the deployment one hook for logging and telemetry, at the cost of a customization point to specify.
+### P3608R0 precedent
 
-Interoperation with the C++26 contract-violation handler is possible but is not a peer of the three. A deployment that wants a profile violation to construct a `std::contracts::contract_violation` and invoke the replaceable handler with a terminating semantic can have it, reusing a customization point already in the working draft. It is set apart from the three above because it is the only response that routes through the C++26 Contracts runtime, reintroducing the dependency the rest of this design avoids (Table 2), and because routing every checking facility through a single handler slot has no deployed precedent (see P4306R1 Section 9<sup>[2]</sup>). It is available as an interop path for a deployment already invested in that handler, not as one of the responses the profile stands on.
+P3608R0<sup>[9]</sup> (Dos Reis, Voutilainen, Wakely) proposed this shape for library hardening: "a concrete profile that switches on the standard library hardening, and makes the violations of hardened preconditions just terminate the program, without any additional flexibility for C++26," with vendors "encouraged not to close the door for other violation handling strategies... in the future." The one difference is scope: P3608R0 covers library preconditions; `std::core_ub` covers core-language cases.
 
-No response is preferred here; the three are presented for the profile author to weigh. P4308R1<sup>[21]</sup> analyzes the full response space for a throwing check on a core-language operation, and the reason a terminating response leaves the meaning of the `noexcept` operator untouched. This choice governs the 62 cases whose violation the profile answers by ending the program. The other 15 cases have a well-defined replacement (Appendix A.4): for those the profile defines the operation's meaning directly (Section 2.4), so the operation yields that defined value on every conforming implementation rather than terminating. Because that value is defined and is the same on every conforming implementation, the no-continuation-into-undefined-behavior property holds and the meaning does not vary by build.
+### Bloomberg boundary
 
-A profile of exactly this shape has been proposed before. P3608R0<sup>[12]</sup> (Dos Reis, Voutilainen, Wakely) asked C++26 to ship "a concrete profile that switches on the standard library hardening, and makes the violations of hardened preconditions just terminate the program, without any additional flexibility for C++26," with vendors "encouraged not to close the door for other violation handling strategies... in the future." That is the arrangement here: a profile that enforces checking, terminates on a violation, and defers the richer response designs. The one difference is scope. P3608R0's profile switches on standard-library hardening, while `std::core_ub` applies the same shape to the core-language cases enumerated in Appendix A. The terminating-profile shape is therefore not novel; it is the shape a framework author already proposed for the library domain.
+`bsls_review`<sup>[8]</sup> logs and continues at the library level (post-violation state defined). `bsls_assert`<sup>[8]</sup> terminates where the state is language-undefined - the class this profile guards. P4310R1<sup>[5]</sup> sets out the full case.
 
-### 2.4 Replacement behavior
+## 4. Magic Slide The Line Items Into a Profile
 
-For the 15 guarded cases with a well-defined replacement (12 unconditional, 3 for built-in types only; enumerated in Appendix A.4), the profile defines the meaning of the operation directly, and that meaning is fixed for every conforming implementation rather than left to a per-build choice between terminating and continuing. This is the authorship P3984R0<sup>[6]</sup> grants a profile: "A profile cannot change the semantics of a program beyond defining the meaning of some forms of undefined behavior." Signed overflow is defined as wraparound, a conversion out of range as an erroneous value, and so on, per Appendix A.4. Fixing the meaning is deliberate: a construct whose result depended on the build configuration would be the semantic instability P2834R1<sup>[24]</sup> warns against, so the profile defines these operations once, the same way everywhere. That set of 15 is smaller than the 17 P3100R8 reports over its full 80-case enumeration, because two of the 17 fall among the three cases excluded as not runtime-checkable: the assumptions case, whose replacement is to ignore the assumption, and the non-terminating-loop case, whose replacement is to do nothing. The remaining 15 are the guarded cases listed in Appendix A.4.
+For each of the 77 runtime-checkable cases enumerated by Doumler and Berne in P3100R8<sup>[2]</sup>, sever the implicit contract assertion and its five evaluation semantics from the checking obligation, and state the check as a profile constraint. The checking is identical; the routing is the difference.
 
-### 2.5 Checking tiers
+The enumeration, the checking strategies, and the replacement behaviors are the work of Doumler and Berne. Appendix A is their enumeration, reproduced with credit.
 
-The profile's guarantee is the full set: over a fully instrumented enforced region, none of the 77 cases has undefined behavior at run time. That guarantee is fixed and does not vary with the build. Of the 77, 19 are locally checkable and can be checked at any optimization level for negligible cost; the remaining 58 require instrumentation of the kind sanitizers provide, so the full guarantee carries the cost of that instrumentation.
+### Before/after: two cases
 
-An implementation may still ship the locally checkable subset as a cheaper build mode, the way libc++ ships `fast`, `extensive`, and `debug`. Such a mode is an adoption aid, not a weaker enforcement of the profile: a build that checks only the 19 is not `std::core_ub` partially enforced, it is a diagnostic tool below the profile, in the same sense that selecting a subset of `-fsanitize=` checks is a tool rather than a distinct guarantee. Enforcing the profile means all 77. This keeps the profile a single named guarantee that means one thing everywhere - the semantic stability P2834R1<sup>[24]</sup> requires (Section 2.4) - rather than a family whose meaning shifts with the build. It also adds no tiering machinery to the framework: the subsets are quality of implementation, not profile structure the user must assemble.
+**Case 1: Division by zero** (`{expr.mul.div.by.zero}`, [expr.mul]/4) - locally checkable
 
-### 2.6 Composition
-
-`std::core_ub` composes with the other standard profiles under P3589R2's rules; all standard profiles are compatible with each other. Its closest neighbor is the initialization profile of P4222R2<sup>[5]</sup>, which is purely compile-time and carries no run-time cost. The two divide the work cleanly: `std::init` proves initialization safety statically and rejects what it cannot prove, while `std::core_ub` catches at run time the undefined behavior that no static analysis can rule out in the general case. A program may enforce both, taking the static guarantee where it is available and the runtime guarantee everywhere else.
-
-### 2.7 Composition across translation units
-
-Enforcement is a per-region choice, so a program may enforce `std::core_ub` over some translation units and not others. The boundary between an enforced translation unit and an unenforced one is well defined, and the guarantee degrades gracefully across it.
-
-The two classes of check behave differently at the boundary. A locally checkable case (Appendix A.1) is checked at the operation itself, inside the enforced region, so it holds regardless of how any other translation unit was compiled: a null check, a division-by-zero check, or an alignment check inserted before the operation needs nothing from the rest of the program. The cases that track state across the program (the lifetime, type, and provenance cases of Appendix A.3) are as complete as the instrumentation's coverage of the objects they touch. An object that enters an enforced region from an unenforced translation unit may carry no tracking state, and the implementation then cannot diagnose a violation on it. This is the graceful degradation every sanitizer already exhibits under partial instrumentation: partial coverage yields partial diagnosis, never a false guarantee, and never a change to the meaning of the unenforced translation unit.
-
-For the locally checkable cases, an enforced and an unenforced translation unit link and run together with no ABI hazard: a null check or a division-by-zero check adds instructions but changes no type or calling convention. For the instrumented cases, the tracking metadata (shadow state, lifetime records) is an ABI-level change, and an unenforced translation unit compiled without it will not carry that metadata across the boundary. This ABI boundary is inherent to the instrumentation, not to the routing: P3100R8's implicit contract assertions for the same cases require identical metadata and face the identical boundary.
-
-The profile introduces no new language construct and changes no type - not `noexcept`, not the ABI of any non-instrumented operation (Section 3). The unenforced unit has today's behavior (Section 2.1); the enforced unit has its checks. A guarantee that had to be established program-wide before it held anywhere would be far harder to adopt; this one holds over exactly the regions that enforce it, and a deployment can widen those regions one translation unit at a time.
-
----
-
-## 3. Relationship to P3100R8
-
-This profile is built on the work of P3100R8. The enumeration of every case of explicit core-language undefined behavior, the classification of each by whether and how it can be diagnosed, and the identification of the cases that admit a well-defined replacement: that is the analysis of Doumler and Berne, and it is a contribution to every safety effort regardless of which mechanism carries it. This profile could not have been specified without it. Appendix A is their enumeration, used with gratitude and cited as theirs throughout.
-
-What this section examines is narrower than the enumeration and separate from it: the claim that the enumerated cases must be guarded through implicit contract assertions, with a profile defined as a preset over that machinery. The enumeration is the data. The routing is the architecture. The data is portable to either architecture, and this profile carries it under the other one, where the profile owns the guarantee directly and the implementation strategy (contract assertions, compiler intrinsics, sanitizer instrumentation, or anything else that catches the case) is a quality-of-implementation matter.
-
-One case shows the portability concretely. For `{expr.mul.div.by.zero}` ([expr.mul]/4), P3100R8's checking strategy is to check that the divisor is nonzero (Appendix A.1). That check is a predicate on a value, not a construct of any one framework: an implementation can carry it as an implicit contract assertion, as a compiler-inserted branch before the division, or as sanitizer instrumentation, and the predicate tested is identical in each. The enumeration names the predicate to check; the architecture names what runs it. Where P3100R8 phrases a strategy in Contracts terms - "insert `pre(false)`" into the pure-virtual stub for `{class.abstract.pure.virtual}` (Appendix A.1) - the obligation beneath the phrasing is the same neutral check, that the call does not reach the pure-virtual stub, which any architecture can insert. This is why the same enumeration serves both proposals (Section 3.3). Section 3.1 shows that none of P3100R8's six foundational clauses is needed under the profile, 3.2 compares the two approaches property by property, and 3.3 answers the charge that the profile leaves its instrumented cases underspecified.
-
-### 3.1 The six foundational clauses are not needed
-
-P3100R8's wording rests on six foundational changes to the definitional machinery of the standard, catalogued in P4297R1<sup>[4]</sup> Table 2. Each exists to create, in the Contracts space, a capability that the Profiles framework of P3589R2 already provides in the Profiles space. Under the profile, none of the six is required.
-
-**Table 1.** P3100R8's six foundational clauses and their status under the profile.
-
-| P3100R8 clause | Purpose | Under `std::core_ub` |
+| Aspect | Under P3100R8 | Under std::core_ub |
 |---|---|---|
-| [defns.undefined] | Redefine UB as an implicit contract assertion | Not needed. UB stays as-is in the standard; the profile adds rules on top of the existing language (P3589R2), so no redefinition is required. |
-| [defns.unconstrained] | New term for the residual state | Not needed. Nothing takes the existing term, so no replacement term is required. |
-| [basic.contract.general] | Split assertions into explicit and implicit | Not needed. No "implicit assertion" concept exists under the profile; a checked operation is a checked operation, and the mechanism is quality of implementation. |
-| [basic.contract.eval] | Add the assume semantic for implicit assertions | Not needed. With the profile inactive the program has today's behavior, so the problem the assume semantic exists to solve does not arise. |
-| [intro.abstract] 3+a | A guarding assertion for every UB operation | Supplied by the profile. Its enumeration (Appendix A) names the 77 guarded operations directly and `[[profiles::enforce(...)]]` attaches checking to the dominion, so no blanket core-language clause is required. |
-| [basic.contract.implicit] | Define implicit assertions normatively | Supplied by the framework. P3589R2 makes a failure to satisfy a profile constraint a diagnosable rule, so the normative weight comes from the framework, not a new core-language section. |
+| Check | Divisor is nonzero | Divisor is nonzero |
+| Mechanism | Implicit contract assertion | Profile constraint (quality of implementation) |
+| Semantics available | 5 (ignore, observe, enforce, quick-enforce, assume) | 1 (enforced: terminate or replace) |
+| Handler dependency | Contract-violation handler invoked on violation | None; profile owns the response |
+| Replacement behavior | Erroneous value (under ignore semantic) | Erroneous value (fixed for all conforming implementations) |
 
-The pattern across the table is one fact stated six times: the Profiles framework already did this work once. P3100R8 redoes it for a different substrate. A profile that reuses the framework inherits the result and adds nothing to the definitional machinery of the standard.
+**Case 2: Flow off end of function** (`{stmt.return.flow.off}`, [stmt.return]/4) - locally checkable, has replacement behavior
 
-This also answers the concern that a systematic UB framework leaves a profile with little of its own to standardize. The profile standardizes the guarantee, the enumeration of what it guards, and the response to a violation. That is a complete feature, specified here, owing no foundational wording to any other proposal.
-
-### 3.2 A property comparison
-
-The two approaches address the same 77 cases (the runtime-checkable cases enumerated in P3100R8). They differ on nearly everything else. Table 2 sets the properties side by side.
-
-**Table 2.** Property comparison for the same guarded cases. The "meanings one operation can carry" row counts the distinct meanings an implementation may assign to a single checked operation, not whether checking is enabled.
-
-| Property | `std::core_ub` | P3100R8 |
+| Aspect | Under P3100R8 | Under std::core_ub |
 |---|---|---|
-| Foundational wording changes | 0 | 6 |
-| Runtime-checkable cases covered | 77 | 77 |
-| Meaning of `noexcept(expr)` | Unchanged | Conceptual meaning changed: `true` means "cannot throw unless there is a contract violation" (P3100R8 Section 5.5) |
-| Meanings one operation can carry | 1 (within an enforced region, one meaning; outside it, unchanged) | Up to 5 (ignore, observe, enforce, quick-enforce, assume), selected implementation-defined per case |
-| Normative effect on today's implementations | Enforcement catches the case | "All existing implementations of C++ are already conforming" |
-| Dependency chain | P3589R2 (framework) | P2900R14<sup>[17]</sup> + P3400R3<sup>[18]</sup> + 6 new clauses |
-| Distinctive machinery, implementation status | Framework implemented in Clang (C++ Alliance, public); the profile's UB checks not yet implemented | Implicit contract assertions and Labels not implemented |
-| Production deployment of the form | 5 library-precondition + 3 core-language subset (Section 6) | None |
-| Response in production hardening | Trap or abort (deployed, measured) | Replaceable handler + violation object (undeployed) |
+| Check | Execution does not flow off end of value-returning function | Execution does not flow off end of value-returning function |
+| Mechanism | Implicit contract assertion | Profile constraint (quality of implementation) |
+| Semantics available | 5 (ignore, observe, enforce, quick-enforce, assume) | 1 (enforced: return erroneous value for built-in types, terminate otherwise) |
+| Handler dependency | Contract-violation handler invoked on violation | None; profile owns the response |
+| Replacement behavior | Erroneous value (under ignore semantic) | Erroneous value for built-in return types (fixed); terminate otherwise |
 
-Two entries carry the section. The zero-versus-six on foundational wording is the structural fact, and the redefinition of `noexcept` is the one that reaches ordinary code: under P3100R8's Section 5.5, `noexcept(expr)` "changes its conceptual meaning" so that `true` "now effectively means 'evaluating this expression cannot throw unless there is a contract violation'"<sup>[1]</sup>. Under the profile, with a terminating response, `noexcept` means what it has always meant, because a trap does not throw; P4308R1<sup>[21]</sup> analyzes the full space of responses to a throwing check and why the terminating ones avoid that shift. The remaining rows are documented in Section 6 (deployment) and Section 7 (the record).
+### Pattern
 
-The properties in Table 2 are not arbitrary; each traces to a principle the committee has already adopted. Table 3 identifies five evaluation axes for the domain, grounds each in a specific SD-10 or D&E principle, and records how the two approaches score.
+The check column is identical in both rows. The routing column is where they diverge. Every row in Appendix A follows the same pattern: same check, different owner.
 
-**Table 3.** Evaluation axes grounded in SD-10 and D&E principles.
+### The six foundational clauses
 
-| Evaluation axis | SD-10 / D&E principle | `std::core_ub` | P3100R8 |
-|---|---|---|---|
-| Configurability (per-case, per-category, per-deployment semantic selection) | 4.1 - Safe by default | One meaning per enforced region | VIOLATES. Five semantics; ignore is conforming even when checking is enabled. |
-| Extension surface (can the mechanism grow to cover new UB categories mechanically?) | 4.3 - What, not how | Add cases to the enumeration | VIOLATES. New categories require re-specifying mechanism (implicit assertions, Labels, five semantics), not just extending a list. |
-| Integration with explicit Contracts (do library assertions and core-UB assertions share infrastructure?) | 4.4 - Avoid viral annotation | Profile owns its infrastructure | VIOLATES. Core-UB checking depends on full Contracts dependency chain; Labels propagate as in-source per-assertion directives. |
-| Violation context (does the response carry enough information for triage?) | D&E 4.2 - Field-tested | Trap or abort (deployed at fleet scale) | VIOLATES. Violation object + replaceable handler for core-language UB has no deployment precedent. |
-| Gradual adoption without termination (can a deployment discover violations without crashing?) | 4.5 - Avoid heavy annotation | Per-TU enforcement, 15 defined replacements, `[[profiles::suppress]]` | VIOLATES. Per-operation Labels at annotation density SD-10 identifies as prohibitive. |
+Under the profile, none of the six foundational wording changes P3100R8 requires is needed (P4297R1<sup>[1]</sup> Table 2 catalogues them). UB stays as-is in the standard; the profile adds rules on top via P3589R2<sup>[3]</sup>.
 
-The last two rows of Table 2 point to a design-space question the committee has not yet weighed. Doumler, arguing against a Technical Specification route for Contracts, observed that novel language features can realistically obtain deployment experience only after IS inclusion: "the only way to get that real deployment experience across different domains and companies is to put an initial feature set into the IS and have it ship in major compiler releases"<sup>[28]</sup>. That assessment is fair for novel machinery - no vendor will ship implicit contract assertions and Labels without a standard behind them. But the profile form is not novel machinery. It is a vendor compiler patch on existing sanitizer infrastructure, and the systems in Section 6 already ship it without any IS inclusion. One design requires the committee to standardize before anyone can try it. The other carries its deployment experience to the committee. When two designs cover the same 77 cases, good engineering practice prefers the one that can be validated with the lighter mechanism.
+D4277R0<sup>[6]</sup> presents an alternative wording strategy for P3100R8 that may reduce the six-clause count; the count of six applies to P3100R8's primary wording as presented in R8.
 
-### 3.3 What the profile specifies for a guarded case
+C++26 already standardized erroneous values for scalar initialization without implicit contract assertions and without routing through any violation handler:
 
-The claim that the profile leaves each of the 58 instrumented cases underspecified is worth answering on a concrete case, because the line between what the profile fixes and what it leaves to the implementation is the same line P3100R8 draws, and the same one every sanitizer draws.
+> "The scalar initialization precedent happened without implicit contract assertions and without routing through any violation handler. So my question is: why do we have to bundle the implicit precondition, when it wasn't needed for the example you just gave?" - Vinnie Falco (EWG telecon, 10 August 2026)
 
-Take `{lifetime.outside.glvalue.access}` ([basic.life]/8), an access to a glvalue outside its object's lifetime. The profile fixes one thing normatively: over an enforced region, this access does not proceed into undefined behavior - the violation is detected and the response of Section 2.3 applies. What the profile does not fix is how the access is detected, and Appendix A.3 records the strategy without mandating it: track the lifetime and type of the storage. Whether an implementation does that with sanitizer-style shadow memory, with pointer capabilities, or with any other mechanism is quality of implementation. Take `{expr.call.different.type}` ([expr.call]/5), a call through a function pointer of the wrong type. Again the profile fixes the guarantee - the mistyped call does not proceed into undefined behavior - and leaves the mechanism, tracking the function type by address, to the implementation.
+The precedent is live. The profile extends it to the remaining cases. The before/after tables above are what the severed form looks like in practice - same check, different routing. Presented with this form in the telecon:
 
-The strategy column of Appendix A is not this profile's invention; it is the analysis of Doumler and Berne, and P3100R8 leaves the same mechanism to the implementation that this profile does. Neither proposal specifies, for `{lifetime.outside.glvalue.access}`, the representation of the lifetime metadata or the instructions that consult it, because neither can without foreclosing valid implementations. So "underspecified" cuts the same way for both, or for neither: both name the operation, both name the guarantee, both name a checking strategy, and both leave the instrumentation to the implementer. What differs is everything in Table 2 - the wording changes, the `noexcept` meaning, the number of meanings one operation can carry - not the specificity of the per-case checking obligation, which is identical between the two because it is the same enumeration.
+> "The proposal suggestion made by Vinnie looks eminently sensible to me; and, I'm saying that not as a philosopher but as someone whose daytime job is to write actual C compilers that are used to compile product that runs the planet. I would like to see evidence of that. Otherwise it is just vehement assertion with no evidence; we cannot build a standard used by engineers and scientists that way. We need evidence." - Gabriel Dos Reis (quoted with permission, EWG telecon, 10 August 2026)
 
----
+### Closing
 
-## 4. Coexistence with Legacy Assertion Facilities
+The appendix is this methodology applied to all 77 cases.
 
-The standard `assert` macro and the many project-specific assertion facilities across the C++ ecosystem already check preconditions, so a new safety mechanism has to coexist with them. [P3290R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3290r4.pdf)<sup>[19]</sup> (Berne, Doumler, Lakos) names this coexistence need well, proposing a path for the Contracts routing in which legacy macros invoke the C++26 contract-violation handler. Under the Profiles routing the profile's own response (Section 2.3) meets the same need, rather than the program-wide handler, so ownership of the response stays with the safety feature. That ownership has a concrete form: a legacy facility, including the standard `assert` macro, routes a failed check to whichever response the profile author selects. `[[profiles::suppress(std::core_ub)]]` gives a local escape to any scope that needs different handling. The profile deliberately stops short of log-and-continue past a violated precondition for the core-language-undefined class. That boundary is already drawn in deployment: Bloomberg's `bsls_review`<sup>[20]</sup> logs and continues at the library level, where the post-violation state is defined, while `bsls_assert`<sup>[20]</sup> terminates where the state is language-undefined, the class this profile guards. Termination does not cost the telemetry, because the handler still runs for logging before the program ends. The full case for that boundary is set out in the companion P4310R1<sup>[26]</sup>.
+## 5. Checking Tiers and Composition
 
----
+The full guarantee is all 77 cases. "Fully instrumented" is a target, not current capability.
 
-## 5. SD-10 Section 4.1 Describes a Safe-by-Default Feature with an In-Source Opt-Out
+ASan misses stack and global use-after-free. UBSan's vptr check misses non-polymorphic type errors. D4277R0<sup>[6]</sup> reports 38% of subcategories with no checks on either prototype compiler. P3100R8 faces identical limits.
 
-EWG adopted [SD-10](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles)<sup>[7]</sup> in December 2024 as the standing document governing language-evolution design. Its Section 3 reaffirms the key principles of Stroustrup's *The Design and Evolution of C++*<sup>[8]</sup> and its Section 4 adds more. Its Section 4.1, "Make features safe by default, with full performance and control always available via opt-out," describes a feature that is safe by default and carries an in-source opt-out for the hot path. That is the profile model: enforce by default, `[[profiles::suppress(...)]]` where the programmer takes control.
+19 locally checkable cases carry negligible cost at any optimization level. 58 instrumented cases carry sanitizer-class cost.
 
-Each cell carries its reasoning, per the even-handed-comparison standard the Direction Group states in P2000R5<sup>[9]</sup> Section 5.4: it is "not acceptable" to present "only advantages for a 'favored proposal' and only 'disadvantages' for an unfavored alternative." A reader who disputes a verdict can weigh the reasoning in the cell against the cited section.
+The cost story is not uniform across the 19 locally checkable cases. Some require a runtime check; at least one may not require a runtime mechanism at all:
 
-**Table 4a.** The approaches measured against SD-10's principles.
+> "If we forward P3100 with the implicit precondition, then future papers have to amend the existing standard wording rather than starting from a clean slate. That's a hard bar." - Vinnie Falco (EWG telecon, 10 August 2026)
 
-| Principle | `std::core_ub` | P3100R8 |
-|---|---|---|
-| [4.1](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Safe by default, opt-out for control | Yes. Enforcement makes the dominion safe by default; `[[profiles::suppress(std::core_ub)]]` is the in-source opt-out. | No. Both require enabling checking, so the distinction is what enabling buys. Once enforced, the profile's dominion has one guaranteed behavior. Under P3100R8 the evaluation semantic is implementation-defined per case even when checking is enabled (P3100R8 Section 5.2), and the ignore semantic is a conforming choice, so enabling does not by itself yield a safe result. |
-| [4.3](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Express intent: "what, not how" | Yes. `[[profiles::enforce(std::core_ub)]]` names the guarantee, not the checking method. | No. The profile attribute names the guarantee - no core-language undefined behavior over the dominion. A Label selects the evaluation semantic for an operation or a group, from the five P3100R8 provides; that selection is the checking method expressed per case, not the guarantee. |
-| [4.4](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Avoid viral annotation | Yes. One attribute at the top of the translation unit; no annotation in user code. | No. Labels are in-source, per-assertion directives. |
-| [4.5](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Avoid heavy annotation | Yes. Enforcement is a build-level choice; no annotation per line of source. | No. In-source per-operation directives are the design (P3100R8 Section 7.2). |
-| [3.3](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) No lower-level language below | Yes. A trap instruction is as low-level as the response gets. | Yes. Quick-enforce is also a trap. |
-| [3.4](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Zero-overhead | Yes. Inactive: zero cost. Active: a trap, one instruction; library-precondition hardening measured at about 0.30% in production (Section 6). | Yes for the non-throwing semantics. Quick-enforce is a trap and matches the profile's cost exactly; ignore adds nothing. The throwing handler is the exception: it requires exception-handling scaffolding around every check, so only that configuration carries overhead the profile does not. |
-| [3.5](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) Manual control | Yes. `[[profiles::suppress(std::core_ub)]]` is explicit, local, and in-source. | Yes. Labels and the assume semantic provide in-source control, at per-assertion granularity. |
+Making flow-off-end ill-formed requires no runtime check, no handler, and no profile. The compiler rejects the program. The claim that this would be expensive has not been substantiated:
 
-**Table 4b.** The approaches measured against the further D&E principles SD-10 builds on.
+> "There was a suggestion that this causes a massive performance regression. Has that been measured? I'm asking as a compiler writer who writes this sort of static analysis on a daily basis. Has that difference been measured?" - Ville Voutilainen (quoted with permission, EWG telecon, 10 August 2026), on making flow-off-end-of-function ill-formed instead of UB
 
-| Principle | `std::core_ub` | P3100R8 |
-|---|---|---|
-| Field-tested (D&E 4.2) | Yes. Standardizes the form shipping in production hardening systems (Section 6): five library-precondition, three core-language subset. | No. Its distinctive machinery has no deployment experience. |
-| Useful now (D&E 4.2) | Yes. Implementable today with existing sanitizer and hardening technology. | No. Requires P2900 plus P3400 plus six new clauses; none is implemented. |
-| A facility, not a system (D&E 4.2) | Yes. One attribute, one profile. | No. Six clauses, five semantics, Labels, a handler, and a violation object. |
-| Local inspection (D&E 4.4) | Yes. Enforced or not by the translation unit's first declaration. | No. The semantic, the handler, and the response are each implementation-defined or fixed at link time. |
-| Integrates with existing features (D&E 6.4.4) | Yes. Standard attributes under P3589R2; no new language concept. | No. Redefines "undefined behavior" and adds a novel "implicit assertion" concept. |
+An implementation may ship the locally checkable subset as a cheaper build mode (analogous to libc++ fast/extensive/debug tiers). Such a mode is an adoption aid below the profile. Enforcing the profile means all 77.
 
-This paper scores the profile yes on all twelve principles, and P3100R8 yes on three, all on its non-throwing configurations - no lower-level construct below (3.3), zero-overhead (3.4), and manual control (3.5), where its quick-enforce semantic is itself a trap - and no to the other nine. The reasons in each cell are the designs' own documented properties.
+Cross-TU: enforcement is per-region. Locally checkable cases hold regardless of how other TUs were compiled. Instrumented cases degrade gracefully under partial instrumentation - partial coverage yields partial diagnosis, never a false guarantee.
 
----
+The ABI boundary for instrumented cases (shadow state, lifetime records) is inherent to the instrumentation, not to the routing. P3100R8 faces the identical boundary.
 
 ## 6. Deployed Practice
 
-The form this profile standardizes - a named set of checks selected per build, with a terminating response - is what production hardening ships today. P4306R1<sup>[2]</sup> Section 6 assembles the full record with sources; Table 5 summarizes the deployments. Five deploy library-precondition checks; three deploy narrow core-language subsets. None deploys the complete 77-case profile. What they share is the form: named checks, per-build activation, termination on a violation.
-
-**Table 5.** Production systems using the form this profile standardizes.
+**Table 5: Deployed production hardening**
 
 | Implementation | Shipped | Category | Response | Measured cost | Scale |
 |---|---|---|---|---|---|
@@ -244,189 +182,106 @@ The form this profile standardizes - a named set of checks selected per build, w
 | Chrome CFI | production | core-language: control flow | SIGILL | not public | official builds |
 | Apple `-fbounds-safety` | production | core-language: bounds | deterministic trap | not public | millions of LoC of C |
 
-Every row terminates on a violation. None constructs a violation object, and none routes through a replaceable handler. The three core-language rows (Android, Chrome, Apple) check subsets of the 77 cases catalogued in P3100R8; the five library rows harden the standard-library preconditions built on those cases. Section 8 draws the scope boundary, including the type-and-lifetime cases not yet a production default anywhere.
+Every row terminates on a violation. None constructs a violation object. None routes through a replaceable handler.
 
-The one deployment with a published fleet-scale cost figure is Google's. Hardening libc++ across its production services was measured at an average 0.30% performance overhead, cut the baseline segfault rate by roughly 30%, and surfaced more than 1,000 bugs during rollout<sup>[22]</sup><sup>[23]</sup>. That figure measures library-precondition hardening, not the type-and-lifetime instrumentation the profile's 58 instrumented cases require; those cost more, and the profile does not claim its full guarantee for the price of the 0.30% figure. What the figure establishes is that a terminating precondition check, deployed at fleet scale, can cost a fraction of a percent. The mechanism is the profile's own: on a failed check libc++ "terminates the program with a trap instruction," which its authors identify as "precisely the quick-enforce evaluation semantic" of C++26 Contracts<sup>[22]</sup>.
+Three core-language rows (Android, Chrome, Apple) check subsets of the 77 cases.
 
-Bounds checking bridges the two categories: the same operation guards a library precondition on `std::vector::operator[]` and a core-language violation on a raw array access. Popescu and Lopes measured the end-to-end performance impact of disabling exploitation of each UB category in LLVM across 24 C/C++ programs on three CPU architectures; for the benchmarks and categories they evaluated, the gains from exploiting UB were minimal, and regressions could often be recovered through link-time optimizations or small compiler improvements<sup>[30]</sup>. This is not a measurement of the cost of inserting checks, but it establishes that the optimizer's reliance on bounds-related UB is smaller than commonly assumed.
+Google's 0.30% figure<sup>[10]</sup> measures library-precondition hardening, not core-language type-and-lifetime instrumentation. The profile does not claim its full guarantee at 0.30%.
 
----
+libc++ authors identify their trap as "precisely the quick-enforce evaluation semantic" of C++26 Contracts.<sup>[11]</sup>
 
-## 7. The Committee's Recorded Direction
+## 7. Potential Concerns
 
-The record holds three positions: SD-10 governs evolution design, deployment experience is the standard for a safety feature, and Profiles is the endorsed direction with a four-year poll trail. The questions in Section 9 concern those positions, and the evidence for each follows.
+### Concern 1: the profile has no implementation
 
-**The standing document.** SD-10<sup>[7]</sup>, adopted by EWG in December 2024, is the design-principle standard for language evolution. Its Section 4.1 describes a safe-by-default feature with an in-source opt-out, and its Sections 4.4 and 4.5 warn against viral and heavy annotation. P2000R5<sup>[9]</sup> Section 5, the Direction Group's direction paper, states the change strategy: "We change the language and standard library by gradually building on previous work or by providing a better alternative to an existing feature."
+True. `std::core_ub` is specified, not shipped.
 
-**The Direction Group.** P3970R0<sup>[10]</sup> (January 2026) designates Profiles as the primary strategy for C++29 safety. Its authors are the full Direction Group.
+The checking is deployed technology (sanitizers, the hardened libraries of Section 6). The checking instrumentation is the same work under either routing. The P3589R2<sup>[3]</sup> framework has a public Clang implementation. D4277R0<sup>[6]</sup> reports prototype checks on GCC and Clang p3850 branches (38% of subcategories uncovered). Those prototype checks are the same instrumentation either routing can use.
 
-**The poll trail.** Thirteen direction polls over four years have supported continued Profiles work, from SG23 Kona (November 2022) through the initialization profile of P4222R2<sup>[5]</sup> at SG23 Brno (June 2026); the margins ran from 20-2 to 47-2. Other material polls did not reach consensus or reached consensus against forwarding: at Hagenberg (February 2025) EWG reached consensus against forwarding P3081R2 core safety profiles for C++26 (10/10/2/25/29), and the P3589R1 framework vote did not reach consensus (18/16/4/14/20). The direction recovered on the C++29 track: SG23 Croydon (March 2026) supported the design principles of P3984R0<sup>[6]</sup> (20-2), resolved to focus on the framework for C++29 (25-0), and volunteered to EWG to drive the work (18-0). SG23 Brno (June 2026) continued with the P4222R2 initialization profile.
+### Concern 2: deployed systems check library preconditions, not core-language cases
 
-**The deployment-experience standard, stated in published papers.** P3506R0<sup>[29]</sup> (Dos Reis) concluded of C++26 Contracts: "The facility needs further work, and deployment experience." P3608R0<sup>[12]</sup> (Voutilainen, Wakely, Dos Reis) applied the same criterion to this domain: "the standard library hardening is existing practice, and comes with very positive field experience reports." Clang's static analyzer carried prototype bounds checkers from 2010; one reached production quality only in 2026, after years of stabilization against false positives<sup>[27]</sup>.
+Partly true. Apple `-fbounds-safety`, Android IntSan/BoundSan, and Chrome CFI check core-language subsets in production.
 
-The profile described here satisfies all three. The questions in Section 9 invite the committee to weigh that.
+The type-and-lifetime subset (most of the 58 instrumented cases) is not yet a shipped production default. The profile's form, response, and per-build activation are the deployed shape. The enumeration says what an implementation must eventually check.
 
----
+### Concern 3: the profile terminates, so it cannot be adopted into working legacy code
 
-## 8. Potential Concerns
+15 defined-replacement cases do not terminate (including signed overflow to wraparound). `[[profiles::suppress(std::core_ub)]]` is the in-source escape; enforcement widens one TU at a time.
 
-Each heading below states a concern in its strongest form; each answer draws only on evidence already presented.
+Bloomberg's `bsls_review`<sup>[8]</sup> logs and continues at the library level (post-violation state defined); `bsls_assert`<sup>[8]</sup> terminates where the state is language-undefined. The profile takes the same line.
 
-### The first concern: the profile has no implementation
+The non-returning handler still runs for logging before the program ends. Termination does not cost telemetry. P4310R1<sup>[5]</sup> sets out the full case.
 
-True, and stated plainly: `std::core_ub` is specified here, not shipped. Three facts bound the concern. First, the checking each guarded case requires is deployed technology today; the sanitizers and hardened libraries of Section 6 perform checks of exactly these kinds. Clang's `security.ArrayBound` checker already performs this bounds checking by symbolic execution, in the same toolchain that would implement the profile<sup>[27]</sup>. Second, the checking instrumentation is the same work under either routing: an inserted bounds check or lifetime check serves a profile and an implicit contract assertion alike, so an implementation of the checks is not duplicated effort between the two proposals. Third, the framework the profile is specified on has a public Clang implementation. Applied evenly, the concern weighs the other way: the form the profile standardizes ships across the systems of Section 6, while the routing it declines ships nowhere.
+## 8. Questions for the Committee
 
-### The second concern: the deployed systems check library preconditions, not core-language cases
-
-Partly true, and the boundary is worth drawing exactly. Not all of Section 6 is library hardening: core-language undefined behavior is checked in production today by more than the hardened libraries. Apple's `-fbounds-safety` turns out-of-bounds access into a deterministic trap across millions of lines of production C; Android's integer-overflow sanitizer (IntSan) and bounds sanitizer (BoundSan) abort on signed and unsigned overflow and on array-bounds violations across its media stack; and Chrome's control-flow integrity traps on indirect-call type errors in shipping builds (P4306R1<sup>[2]</sup> Section 6 assembles these with sources). So the arithmetic, bounds, and indirect-call subsets of the 77 ship as core-language checks, not only as library preconditions. What genuinely remains is the type-and-lifetime subset that dominates the 58 instrumented cases, which is not yet a shipped production default anywhere. The profile's response is the one every deployed hardened library gives: it standardizes the guarantee and leaves the checking mechanism to quality of implementation, in tiers (Section 2.5). The claim is not that all 77 checks ship today; it is that the profile's form, response, and per-build activation are the deployed shape, and the enumeration says exactly what an implementation must eventually check.
-
-### The third concern: the SD-10 scorecard is scored by the paper's own author
-
-It is, and so the criteria are stated with their sources so a reader can re-score. The principles in Tables 4a and 4b are SD-10 and the D&E principles it builds on, not this paper's invention, and each cell carries its reasoning against the cited section, per the even-handed standard of P2000R5<sup>[9]</sup> Section 5.4. A delegate who reads a verdict as unfair can change that one row and see whether the comparison's shape survives; the three rows P3100R8 wins are recorded in Table 4a for exactly that reason.
-
-### The fourth concern: "zero foundational wording changes" only relocates the work, it does not remove it
-
-A fair challenge, and the distinction it turns on should be made exactly. The profile does specify what it guards - the guarantee (Section 2.1) and the enumeration of guarded operations (Appendix A) - and a conforming implementation must still perform the checks. None of that is denied. But "foundational wording changes" is a claim about the definitional machinery of the standard, and that is the specific thing the profile does not touch. The six clauses in Table 1 redefine undefined behavior as an implicit contract assertion, add an assume semantic for implicit assertions, and introduce a new "implicit assertion" concept into the core language; those are changes to how the standard defines behavior. The profile introduces no new core-language concept and redefines nothing - not undefined behavior, not `noexcept`. Its specification is additive: it names a set of operations, a guarantee over them, and a response. As for the checking itself, that is quality of implementation and is the same instrumentation work under either routing (the first concern above). So the checking is not "removed" by either proposal; what the profile removes is the six definitional-machinery changes that the Contracts routing adds on top of the checks - and those are removed, not relocated.
-
-### The fifth concern: EWG already declined core-language safety profiles at Hagenberg
-
-Stated plainly, because the record is public. At Hagenberg (February 2025) EWG declined to forward the Profiles framework to CWG for C++26 (P3589R1, the prior revision of P3589R2<sup>[3]</sup>: 18/16/4/14/20, not consensus) and reached consensus against forwarding P3081R2<sup>[25]</sup> core safety profiles for C++26 (10/10/2/25/29). This paper does not read those votes as settling the question it raises, for three reasons. First, timeframe and scope: both were C++26-forwarding votes, taken at the meeting that also resolved to restrict the runtime-checking component of Profiles v1 to standard-library hardening (27/33/9/1/0); `std::core_ub` is proposed for C++29, not for that C++26 v1. Second, design: the profile specified here - a terminating response backed by the deployment record of Section 6 - is a different proposition from the 2025 P3081R2 design those votes addressed. Third, the direction recovered on the C++29 track after Hagenberg, as Section 7 records: Sofia (June 2025) liked the approach of the P3589R2 framework (16/14/11/2/0), and Croydon (March 2026) resolved to focus on the framework for C++29 (25-0) and volunteered to EWG to drive the work (18-0). The Hagenberg votes are evidence that a C++26 core-language profile did not carry then; they are not evidence against continued C++29 work of the kind the committee has since encouraged.
-
-### The sixth concern: the full 77-case guarantee costs sanitizer overhead no production default runs today
-
-Fair, and the profile's own Section 2.5 states it: of the 77 cases, 19 are locally checkable and cheap at any optimization level, while the remaining 58 require the instrumentation sanitizers provide, and no production default runs all 58. Four facts bound the concern. First, the 19 locally checkable cases are deployable now at negligible cost, and they are the tier a deployment turns on first (Section 2.5). Second, the full 77 is the guarantee's definition, not its day-one deployment: the cheaper build modes are adoption aids on the path libc++ took from `fast` to `extensive` to `debug`, and a build that runs only a cheaper mode is a diagnostic tool below the profile, not a weaker enforcement of it. Third, the instrumented cost is not a cost of the profile over its alternative, because P3100R8's enforce or quick-enforce on the same 58 cases inserts the same instrumentation; the overhead belongs to the checking, not to the routing. Fourth, a single fixed guarantee keeps the 77-case target the same everywhere, where the alternative - each vendor enforcing its own subset as the meaning of the guarantee - is the per-build semantic variation P2834R1<sup>[24]</sup> names as the hazard (Section 2.4), so defining the full set once is what prevents that variation.
-
-### The seventh concern: the profile terminates, so it cannot be adopted into working legacy code
-
-The strongest form is that a terminating response crashes code that runs correctly today, so no deployment with legacy code can adopt the profile - the position argued from Bloomberg's experience, that adding checks to working production code requires a log-and-continue response (P3290R4<sup>[19]</sup>, and the observe semantic of P2900R14<sup>[17]</sup>). Five facts bound it. First, the 15 defined-replacement cases (Appendix A.4) do not terminate: they take the profile-defined value, and they include signed overflow to wraparound, the canonical latent condition in working legacy code. Second, `[[profiles::suppress(std::core_ub)]]` is the in-source escape for a region whose correctness is established by other means, and enforcement widens one translation unit at a time (Section 2.7), so adoption is incremental rather than all-or-nothing. Third, the terminating response follows a boundary already drawn in deployment: `bsls_review`<sup>[20]</sup> logs and continues at the library level, where the post-violation state is defined, while `bsls_assert`<sup>[20]</sup> terminates where the state is language-undefined - the class this profile guards - and the profile takes the same line (Section 4). Fourth, continuation past a language-undefined state is the one response the profile declines, and the case for declining it is set out in the companion P4310R1<sup>[26]</sup>. Fifth, the handler still runs: the non-returning handler of Section 2.3 receives the violation and may log or report it before the program ends, so termination does not cost the telemetry.
-
----
-
-## 9. Questions for the Committee
-
-The paper raises three questions rather than requesting any poll. Each connects to a position already in the committee's stated direction (Section 7), and the three read in order.
+SD-10<sup>[12]</sup> (adopted December 2024) governs evolution design. P3970R0<sup>[13]</sup> (Direction Group, January 2026) designates Profiles as the primary strategy for C++29 safety. Thirteen direction polls over four years support continued Profiles work.
 
 > **Question 1.** Should proposals for the runtime checking of core-language undefined behavior follow the design principles in SD-10?
 
-SD-10 is EWG's own standing document, adopted December 2024, and its Section 2 already provides that a proposal deviating from it should document the tradeoff rationale. Question 1 asks whether that standard applies to this domain.
-
 > **Question 2.** Should proposals for the runtime checking of core-language undefined behavior be informed by implementation and deployment experience?
-
-This is the standard P3506R0<sup>[29]</sup> and P3608R0<sup>[12]</sup> set, consistent with P2000R5's change strategy and the Hagenberg resolution to restrict the runtime-checking component of Profiles v1 to standard-library hardening (Section 8). Question 2 asks whether that standard applies here. The named-guarantee form has the experience Table 5 records; both proposals' specifications remain unshipped.
 
 > **Question 3.** Is a standard profile `std::core_ub` that guards the runtime-checkable cases of core-language undefined behavior (as enumerated by P3100R8) under the P3589R2 Profiles framework worth further work?
 
-The profile follows the principles of Question 1 (Section 5), it standardizes the form with the deployment experience of Question 2 (Section 6), and Profiles is the direction already endorsed across thirteen polls and the Direction Group's P3970R0 (Section 7). The parenthetical credits P3100R8, because the cases the profile guards are the enumeration of Doumler and Berne.
+The three questions locate the profile within the direction the committee has already chosen.
 
-The paper offers these questions for the committee's consideration. Read together, they locate the profile within the direction the committee has already chosen: a runtime safety profile whose form ships today and whose enumeration the committee already possesses. Whoever designs the response and the replacement behaviors builds on this work next.
+## 9. Conclusion
 
----
+`std::core_ub` guards the 77 cases with a single profile under P3589R2<sup>[3]</sup>. Zero foundational changes; the alternative routing requires six. The profile standardizes the deployed form: named checks, per-build activation, terminating response. The profile owns its guarantee, enumeration, and response. `noexcept` is untouched.
 
-## 10. Conclusion
+P4297R1<sup>[1]</sup> asks EWG to sever the architecture from the wording. This paper shows the severed form works.
 
-`std::core_ub` guards the runtime-checkable cases of core-language undefined behavior (the 77 cases enumerated by Doumler and Berne in P3100R8) with a single profile under the P3589R2 framework. It provides that coverage with zero foundational changes to the definitional machinery of the standard, where the alternative routing requires six. It standardizes the form that production hardening already ships - a named set of checks, per-build activation, and a terminating response - across five library-hardening systems and three core-language subsets. The profile owns its guarantee, its enumeration, and its response, and it leaves the meaning of `noexcept` untouched.
+The enumeration belongs to P3100R8<sup>[2]</sup>. What remains is the response and replacement behaviors, still to be settled.
 
-The enumeration belongs to P3100R8, and this profile is built on it. What remains is a design choice on the response to a violation and the replacement behaviors, still to be settled with the committee's guidance. That work builds on this paper next.
-
----
-
-## 11. Disclosure
-
-The author provides information and serves at the pleasure of the committee.
+## 10. Disclosure
 
 Vinnie Falco is the founder of the C++ Alliance, which funds a Clang implementation and a GCC implementation of the Profiles framework; the Clang implementation is public, with regularly released experimental builds that implement the framework attributes and an initial slice of the `std::init` profile.
 
-This paper describes a profile specification. It does not propose wording; the guarding cases, the response to a violation, and the replacement behaviors are set out here for the profile author to develop into wording. This is a companion to P4297R1<sup>[4]</sup> and P4306R1<sup>[2]</sup> in the August 2026 mailing, and it works from the published record; where an argument is made in one of those companions, this paper cites it rather than repeating it. It uses machine-assisted drafting.
+This paper describes a profile specification. It does not propose wording. This is a companion to P4297R1, P4306R1, and P4310R1 in the August 2026 mailing. It works from the published record and uses machine-assisted drafting.
 
 This paper asks for nothing.
 
----
-
 ## Acknowledgments
 
-Timur Doumler and Joshua Berne performed the exhaustive enumeration and classification of core-language undefined behavior in P3100R8. Their systematic identification of the runtime-checkable cases, the checking strategies, and the replacement behaviors is the foundation this profile stands on, and Appendix A is their work.
-
-John Lakos's decades of work on Bloomberg's assertion facilities, and the evolution of `bsls_assert` and `bsls_review`, inform the violation-response options in Section 2.3.
-
-Herb Sutter's P3081R0 first applied profiles to core-language undefined behavior, and its deployment-experience framing informs Section 6.
-
-Andrzej Krzemie&#324;ski contributed to the Contracts design that P3100R8 builds on.
-
-Gabriel Dos Reis designed the Profiles framework of P3589R2 on which this profile is specified.
-
-Can &#199;a&#287;r&#305;'s careful review of R1 caught errors, sharpened the deployment-experience argument, and identified the PLDI 2025 evidence that grounds the bounds-checking bridge between library preconditions and core-language undefined behavior.
-
-This paper is indebted to Bjarne Stroustrup: his design of the Profiles concept, his D&E principles that inform the evaluation in Section 5, his P3984R0 that establishes the authority for a profile to define the meaning of some forms of undefined behavior, and his decades of advocacy for type-safe C++ created the space in which this work exists. The violation response and the replacement behaviors remain to be settled, and on those choices the author would welcome his direction and the committee's.
-
----
+- Timur Doumler and Joshua Berne: exhaustive enumeration and classification in P3100R8. Appendix A is their work.
+- John Lakos: Bloomberg assertion facilities (`bsls_assert`, `bsls_review`) inform violation-response options.
+- Gabriel Dos Reis: Profiles framework of P3589R2.
+- Can Cagri: review of R1.
+- Bjarne Stroustrup: Profiles concept, D&E principles, P3984R0.
+- John Spicer: EWG telecon contributions quoted with permission.
 
 ## References
 
-[1] [P3100R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r8.pdf) - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026).
+[1] P4297R1 - "Severing P3100's Profiles Claim from Its Case-by-Case Review" (Vinnie Falco, Ville Voutilainen, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4297r1.pdf
 
-[2] [P4306R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4306r1.pdf) - "Configuring Runtime Checking: Profiles and Implicit Contract Assertions" (Vinnie Falco, Ville Voutilainen, 2026).
+[2] P3100R8 - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r8.pdf
 
-[3] [P3589R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf) - "C++ Profiles: The Framework" (Gabriel Dos Reis, 2025).
+[3] P3589R2 - "C++ Profiles: The Framework" (Gabriel Dos Reis, 2025). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3589r2.pdf
 
-[4] [P4297R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4297r1.pdf) - "Severing P3100's Profiles Claim from Its Case-by-Case Review" (Vinnie Falco, Ville Voutilainen, 2026).
+[4] P4306R1 - "Configuring Runtime Checking: Profiles and Implicit Contract Assertions" (Vinnie Falco, Ville Voutilainen, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4306r1.pdf
 
-[5] [P4222R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4222r2.pdf) - "An initialization profile" (Bjarne Stroustrup, 2026).
+[5] P4310R1 - "Hasta la Vista, Undefined Behavior: Why std::core_ub Should Terminate by Default" (Falco, Voutilainen, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4310r1.pdf
 
-[6] [P3984R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf) - "A type-safety profile" (Bjarne Stroustrup, 2026).
+[6] D4277R0 - "Overview and Implementation Report for P3100" (Berne, 2026). https://isocpp.org/files/papers/D4277R0.pdf
 
-[7] [SD-10](https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles) - "Language Evolution (EWG) Principles" (EWG chairs, 2024-12-02).
+[7] P3984R0 - "A type-safety profile" (Bjarne Stroustrup, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3984r0.pdf
 
-[8] B. Stroustrup, *The Design and Evolution of C++* (Addison-Wesley, 1994).
+[8] bsls_assert and bsls_review component documentation (Bloomberg BDE, retrieved 2026). https://bloomberg.github.io/bde-resources/doxygen/bde_api_prod/group__bsls__assert.html and https://bloomberg.github.io/bde-resources/doxygen/bde_api_prod/group__bsls__review.html
 
-[9] [P2000R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2000r5.pdf) - "Direction for ISO C++" (Jeff Garland, Paul E. McKenney, Roger Orr, Bjarne Stroustrup, David Vandevoorde, Michael Wong, 2026).
+[9] P3608R0 - "Contracts and profiles: what can we reasonably ship in C++26" (Voutilainen, Wakely, Dos Reis, 2025). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3608r0.html
 
-[10] [P3970R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf) - "Profiles and Safety: a call to action" (David Vandevoorde, Jeff Garland, Paul E. McKenney, Roger Orr, Bjarne Stroustrup, Michael Wong, 2026).
+[10] Retrofitting spatial safety to hundreds of millions of lines of C++ (Rebert, Yasuda, Shavrick, Google Security Blog, 2024-11-15). https://security.googleblog.com/2024/11/retrofitting-spatial-safety-to-hundreds.html
 
-[11] [P2687R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2687r0.pdf) - "Design Alternatives for Type-and-Resource Safe C++" (Bjarne Stroustrup, Gabriel Dos Reis, 2022).
+[11] Practical Security in Production (Dionne, Rebert, Shavrick, Varlamov, ACM Queue Vol. 23 Iss. 5, 2025). https://queue.acm.org/detail.cfm?id=3773097
 
-[12] [P3608R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3608r0.html) - "Contracts and profiles: what can we reasonably ship in C++26" (Ville Voutilainen, Jonathan Wakely, Gabriel Dos Reis, 2025).
+[12] SD-10 - "Language Evolution (EWG) Principles" (EWG chairs, 2024-12-02). https://isocpp.org/std/standing-documents/sd-10-language-evolution-principles
 
-[13] [P2816R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2816r0.pdf) - "Safety Profiles: Type-and-resource Safe Programming in ISO Standard C++" (Bjarne Stroustrup, Gabriel Dos Reis, 2023).
-
-[14] [P3447R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3447r0.pdf) - "Profiles syntax" (Bjarne Stroustrup, 2024).
-
-[15] [P3081R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3081r0.pdf) - "Core safety profiles for C++26" (Herb Sutter, 2024).
-
-[16] [P3700R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3700r0.pdf) - "Principles for C++ safety" (Peter Bindels, 2025).
-
-[17] [P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf) - "Contracts for C++" (Joshua Berne, Timur Doumler, Andrzej Krzemie&#324;ski, 2025).
-
-[18] [P3400R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3400r3.pdf) - "Controlling Contract-Assertion Properties" (Joshua Berne, 2026).
-
-[19] [P3290R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3290r4.pdf) - "Integrating Existing Assertions with Contracts" (Joshua Berne, Timur Doumler, John Lakos, 2026).
-
-[20] [bsls_assert](https://bloomberg.github.io/bde-resources/doxygen/bde_api_prod/group__bsls__assert.html) and [bsls_review](https://bloomberg.github.io/bde-resources/doxygen/bde_api_prod/group__bsls__review.html) component documentation (Bloomberg BDE, retrieved 2026).
-
-[21] [P4308R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4308r1.pdf) - "Eight Responses to a Throwing Implicit Contract Assertion" (Vinnie Falco, Ville Voutilainen, 2026).
-
-[22] [Practical Security in Production](https://queue.acm.org/detail.cfm?id=3773097) - "Practical Security in Production: Hardening the C++ Standard Library at Massive Scale" (Louis Dionne, Alex Rebert, Max Shavrick, Konstantin Varlamov, ACM Queue Vol. 23 Iss. 5, 2025).
-
-[23] [Retrofitting spatial safety to hundreds of millions of lines of C++](https://security.googleblog.com/2024/11/retrofitting-spatial-safety-to-hundreds.html) - Google Security Blog (Alex Rebert, Kinuko Yasuda, Max Shavrick, 2024-11-15).
-
-[24] [P2834R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2834r1.pdf) - "Semantic Stability Across Contract-Checking Build Modes" (Joshua Berne, John Lakos, 2023).
-
-[25] [P3081R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3081r2.pdf) - "Core safety profiles for C++26" (Herb Sutter, 2025).
-
-[26] [P4310R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4310r1.pdf) - "Hasta la Vista, Undefined Behavior: Why std::core_ub Should Terminate by Default" (Vinnie Falco, Ville Voutilainen, 2026).
-
-[27] [Bounds Checking with the Clang Static Analyzer](https://www.youtube.com/watch?v=QisZYmCW9Rc) - "Bounds Checking with the Clang Static Analyzer: Improvements and Insights" (Don&aacute;t Nagy, 2026).
-
-[28] Timur Doumler, [isocpp-sg15](https://lists.isocpp.org/sg15/2025/10/2909.php), 2025-10-21.
-
-[29] [P3506R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3506r0.pdf) - "P2900 Is Still Not Ready for C++26" (Gabriel Dos Reis, 2025).
-
-[30] [Exploiting Undefined Behavior in C/C++ Programs for Optimization: A Study on the Performance Impact](https://doi.org/10.1145/3729260) (Lucian Popescu, Nuno P. Lopes, PLDI 2025).
-
-\newpage
+[13] P3970R0 - "Profiles and Safety: a call to action" (Vandevoorde, Garland, McKenney, Orr, Stroustrup, Wong, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf
 
 ## Appendix A: Enumeration of Guarded Operations
 
 The enumeration below is the work of Doumler and Berne, reproduced from P3100R8 Appendix A. Their exhaustive identification of every case of explicit core-language undefined behavior, the classification of each by diagnosability, the checking strategies, and the replacement behaviors are the foundation this profile stands on. The 77 runtime-checkable cases are grouped here by whether a check can be performed locally; the three cases P3100R8 identifies as not runtime-checkable are omitted.
+
+**A.1 constitutes the profile** - the 19 Enforceable Behavior cases. **A.2, A.3, and A.4 constitute the extension surface**, to be added as instrumentation matures.
 
 ### A.1 Locally checkable (19 cases)
 
@@ -466,8 +321,6 @@ Checkable locally under the stated condition; otherwise they require instrumenta
 | `{expr.dynamic.cast.pointer.lifetime}` | [expr.dynamic.cast]/7 | null pointer case | Track lifetime and type, or ctor-dtor state; null check |
 | `{expr.static.cast.downcast.wrong.derived.type}` | [expr.static.cast]/11 | null pointer case | Track lifetime and type, or ctor-dtor state; null check |
 | `{expr.unary.dereference}` | [expr.unary.op]/1 | null pointer case | Track lifetime and type, and function address; null check |
-
-The Clang static analyzer already implements this strategy, tracking pointer provenance and dynamic allocation extent by symbolic execution<sup>[27]</sup>.
 
 ### A.3 Not locally checkable (52 cases)
 
@@ -591,3 +444,5 @@ The other 62 guarded cases have no replacement: a violation ends the program. Fo
 | `{intro.execution.unsequenced.modification}` | Sequence the operations in some unspecified order |
 | `{stmt.return.flow.off}` | Return erroneous value (built-in return types only) |
 | `{stmt.return.coroutine.flow.off}` | Return erroneous value (built-in return types only) |
+
+
