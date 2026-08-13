@@ -165,6 +165,18 @@ The two approaches address the same 77 cases (the runtime-checkable cases enumer
 
 Two entries carry the section. The zero-versus-six on foundational wording is the structural fact, and the redefinition of `noexcept` is the one that reaches ordinary code: under P3100R8's Section 5.5, `noexcept(expr)` "changes its conceptual meaning" so that `true` "now effectively means 'evaluating this expression cannot throw unless there is a contract violation'"<sup>[1]</sup>. Under the profile, with a terminating response, `noexcept` means what it has always meant, because a trap does not throw; P4308R1<sup>[21]</sup> analyzes the full space of responses to a throwing check and why the terminating ones avoid that shift. The remaining rows are documented in Section 6 (deployment) and Section 7 (the record).
 
+The properties in Table 2 are not arbitrary; each traces to a principle the committee has already adopted. Table 3 identifies five evaluation axes for the domain, grounds each in a specific SD-10 or D&E principle, and records how the two approaches score.
+
+**Table 3.** Evaluation axes grounded in SD-10 and D&E principles.
+
+| Evaluation axis | SD-10 / D&E principle | `std::core_ub` | P3100R8 |
+|---|---|---|---|
+| Configurability (per-case, per-category, per-deployment semantic selection) | 4.1 - Safe by default | One meaning per enforced region | VIOLATES. Five semantics; ignore is conforming even when checking is enabled. |
+| Extension surface (can the mechanism grow to cover new UB categories mechanically?) | 4.3 - What, not how | Add cases to the enumeration | VIOLATES. New categories require re-specifying mechanism (implicit assertions, Labels, five semantics), not just extending a list. |
+| Integration with explicit Contracts (do library assertions and core-UB assertions share infrastructure?) | 4.4 - Avoid viral annotation | Profile owns its infrastructure | VIOLATES. Core-UB checking depends on full Contracts dependency chain; Labels propagate as in-source per-assertion directives. |
+| Violation context (does the response carry enough information for triage?) | D&E 4.2 - Field-tested | Trap or abort (deployed at fleet scale) | VIOLATES. Violation object + replaceable handler for core-language UB has no deployment precedent. |
+| Gradual adoption without termination (can a deployment discover violations without crashing?) | 4.5 - Avoid heavy annotation | Per-TU enforcement, 15 defined replacements, `[[profiles::suppress]]` | VIOLATES. Per-operation Labels at annotation density SD-10 identifies as prohibitive. |
+
 The last two rows of Table 2 point to a design-space question the committee has not yet weighed. Doumler, arguing against a Technical Specification route for Contracts, observed that novel language features can realistically obtain deployment experience only after IS inclusion: "the only way to get that real deployment experience across different domains and companies is to put an initial feature set into the IS and have it ship in major compiler releases"<sup>[28]</sup>. That assessment is fair for novel machinery - no vendor will ship implicit contract assertions and Labels without a standard behind them. But the profile form is not novel machinery. It is a vendor compiler patch on existing sanitizer infrastructure, and the systems in Section 6 already ship it without any IS inclusion. One design requires the committee to standardize before anyone can try it. The other carries its deployment experience to the committee. When two designs cover the same 77 cases, good engineering practice prefers the one that can be validated with the lighter mechanism.
 
 ### 3.3 What the profile specifies for a guarded case
