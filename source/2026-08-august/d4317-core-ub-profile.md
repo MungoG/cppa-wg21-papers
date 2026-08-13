@@ -26,7 +26,8 @@ The C++ standard specifies a finite, enumerable set of core-language operations 
 - Replaced non-public Dos Reis quote with public paper citations (P3506R0, P3608R0).
 - Added Doumler agree-and-amplify in Section 3.2 on design-space minimality.
 - Acknowledged failed Hagenberg polls alongside the thirteen direction polls; fixed Croydon/Brno chronology.
-- Noted INT_MIN / -1 gap in Appendix A.1 division check.
+- Added PLDI 2025 evidence (Popescu & Lopes) bridging library-precondition and core-language bounds checking costs.
+- Qualified Section 2.7 ABI claim for instrumented cases; noted that both proposals face the same instrumentation-level ABI boundary.
 
 ### R0: July 2026
 
@@ -111,7 +112,9 @@ Enforcement is a per-region choice, so a program may enforce `std::core_ub` over
 
 The two classes of check behave differently at the boundary. A locally checkable case (Appendix A.1) is checked at the operation itself, inside the enforced region, so it holds regardless of how any other translation unit was compiled: a null check, a division-by-zero check, or an alignment check inserted before the operation needs nothing from the rest of the program. The cases that track state across the program (the lifetime, type, and provenance cases of Appendix A.3) are as complete as the instrumentation's coverage of the objects they touch. An object that enters an enforced region from an unenforced translation unit may carry no tracking state, and the implementation then cannot diagnose a violation on it. This is the graceful degradation every sanitizer already exhibits under partial instrumentation: partial coverage yields partial diagnosis, never a false guarantee, and never a change to the meaning of the unenforced translation unit.
 
-That the boundary is harmless at all is a property of the profile's design. Because it introduces no new language construct and changes no type - not `noexcept`, not the ABI of any operation (Section 3) - an enforced translation unit and an unenforced one link and run together with no ODR or ABI hazard. The unenforced unit has today's behavior (Section 2.1); the enforced unit has its checks. Nothing the profile does is part of any interface, so nothing about it has to match across the boundary. A guarantee that had to be established program-wide before it held anywhere would be far harder to adopt; this one holds over exactly the regions that enforce it, and a deployment can widen those regions one translation unit at a time.
+For the locally checkable cases, an enforced and an unenforced translation unit link and run together with no ABI hazard: a null check or a division-by-zero check adds instructions but changes no type or calling convention. For the instrumented cases, the tracking metadata (shadow state, lifetime records) is an ABI-level change, and an unenforced translation unit compiled without it will not carry that metadata across the boundary. This ABI boundary is inherent to the instrumentation, not to the routing: P3100R8's implicit contract assertions for the same cases require identical metadata and face the identical boundary.
+
+The profile introduces no new language construct and changes no type - not `noexcept`, not the ABI of any non-instrumented operation (Section 3). The unenforced unit has today's behavior (Section 2.1); the enforced unit has its checks. A guarantee that had to be established program-wide before it held anywhere would be far harder to adopt; this one holds over exactly the regions that enforce it, and a deployment can widen those regions one translation unit at a time.
 
 ---
 
@@ -233,6 +236,8 @@ Every row terminates on a violation. None constructs a violation object, and non
 
 The one deployment with a published fleet-scale cost figure is Google's. Hardening libc++ across its production services was measured at an average 0.30% performance overhead, cut the baseline segfault rate by roughly 30%, and surfaced more than 1,000 bugs during rollout<sup>[22]</sup><sup>[23]</sup>. That figure measures library-precondition hardening, not the type-and-lifetime instrumentation the profile's 58 instrumented cases require; those cost more, and the profile does not claim its full guarantee for the price of the 0.30% figure. What the figure establishes is that a terminating precondition check, deployed at fleet scale, can cost a fraction of a percent. The mechanism is the profile's own: on a failed check libc++ "terminates the program with a trap instruction," which its authors identify as "precisely the quick-enforce evaluation semantic" of C++26 Contracts<sup>[22]</sup>.
 
+Bounds checking bridges the two categories: the same operation guards a library precondition on `std::vector::operator[]` and a core-language violation on a raw array access. Popescu and Lopes measured the end-to-end performance impact of disabling exploitation of each UB category in LLVM across 24 C/C++ programs on three CPU architectures; for the benchmarks and categories they evaluated, the gains from exploiting UB were minimal, and regressions could often be recovered through link-time optimizations or small compiler improvements<sup>[30]</sup>. This is not a measurement of the cost of inserting checks, but it establishes that the optimizer's reliance on bounds-related UB is smaller than commonly assumed.
+
 ---
 
 ## 7. The Committee's Recorded Direction
@@ -337,6 +342,8 @@ Andrzej Krzemie&#324;ski contributed to the Contracts design that P3100R8 builds
 
 Gabriel Dos Reis designed the Profiles framework of P3589R2 on which this profile is specified.
 
+Can &#199;a&#287;r&#305;'s careful review of R1 caught errors, sharpened the deployment-experience argument, and identified the PLDI 2025 evidence that grounds the bounds-checking bridge between library preconditions and core-language undefined behavior.
+
 This paper is indebted to Bjarne Stroustrup: his design of the Profiles concept, his D&E principles that inform the evaluation in Section 5, his P3984R0 that establishes the authority for a profile to define the meaning of some forms of undefined behavior, and his decades of advocacy for type-safe C++ created the space in which this work exists. The violation response and the replacement behaviors remain to be settled, and on those choices the author would welcome his direction and the committee's.
 
 ---
@@ -401,6 +408,8 @@ This paper is indebted to Bjarne Stroustrup: his design of the Profiles concept,
 
 [29] [P3506R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3506r0.pdf) - "P2900 Is Still Not Ready for C++26" (Gabriel Dos Reis, 2025).
 
+[30] [Exploiting Undefined Behavior in C/C++ Programs for Optimization: A Study on the Performance Impact](https://doi.org/10.1145/3729260) (Lucian Popescu, Nuno P. Lopes, PLDI 2025).
+
 \newpage
 
 ## Appendix A: Enumeration of Guarded Operations
@@ -423,7 +432,7 @@ No cross-program instrumentation is required; these are checkable at any optimiz
 | `{conv.fpint.int.not.represented}` | [conv.fpint]/2 | Check the value is valid |
 | `{expr.static.cast.enum.outside.range}` | [expr.static.cast]/9 | Check the value is valid |
 | `{expr.static.cast.fp.outside.range}` | [expr.static.cast]/10 | Check the value is valid |
-| `{expr.mul.div.by.zero}` | [expr.mul]/4 | Check the divisor is nonzero (note: the check must also guard `INT_MIN / -1`, whose positive result is not representable; this is a gap in P3100R8's stated strategy) |
+| `{expr.mul.div.by.zero}` | [expr.mul]/4 | Check the divisor is nonzero |
 | `{expr.mul.representable.type.result}` | [expr.mul]/4 | Check the value is valid |
 | `{expr.shift.neg.and.width}` | [expr.shift]/1 | Check the right operand is valid |
 | `{intro.execution.unsequenced.modification}` | [conv.rank]/10 | Check unsequenced read and write refer to the same address |
