@@ -83,9 +83,17 @@ All three terminate:
 2. **Diagnostic, then abort.** Print failed check plus source location, call `abort()`. libstdc++ ships this.
 3. **Non-returning handler.** Replaceable profile-specific function; may log; must not return; if it returns, the program terminates. Shape of Bloomberg's `bsls_assert`<sup>[8]</sup> where post-violation state is undefined.
 
+All three candidates provide the check identifier and source location to the response mechanism (crash reporter, diagnostic stream, or handler argument), giving deployment tooling enough to locate the violated constraint.
+
 ### Interop note
 
 A deployment can route through the C++26 contract-violation handler as an interop path, but this reintroduces the Contracts dependency the design avoids.
+
+### The noexcept question does not arise
+
+P4308R1<sup>[14]</sup> enumerates eight responses to a throwing implicit contract assertion - the question forced when a violation handler may throw through a core-language expression the `noexcept` operator reports as non-throwing. Under the profile, that question does not arise. All three response candidates terminate; none invokes a handler that may throw; no exception escapes a checked expression. The `noexcept` operator keeps both its value and its meaning unchanged.
+
+P4308R1's requirements (1), (2), and (3) form a trilemma: at most two of noexcept-value-kept, unwinding, and noexcept-meaning-kept hold at once. The profile sidesteps the trilemma by not unwinding. A response that never throws has no interaction with the operator to resolve.
 
 ### P3608R0 precedent
 
@@ -129,7 +137,7 @@ The check column is identical in both rows. The routing column is where they div
 
 ### The six foundational clauses
 
-Under the profile, none of the six foundational wording changes P3100R8 requires is needed (P4297R1<sup>[1]</sup> Table 2 catalogues them). UB stays as-is in the standard; the profile adds rules on top via P3589R2<sup>[3]</sup>.
+Under the profile, none of the six foundational wording changes P3100R8 requires is needed (P4297R1<sup>[1]</sup> Table 2 catalogues them). UB stays as-is in the standard; the profile adds rules on top via P3589R2<sup>[3]</sup>. The 15 replacement behaviors are profile-specific semantics under the authority P3984R0<sup>[7]</sup> grants and do not require normative changes to the referenced core-language clauses.
 
 D4277R0<sup>[6]</sup> presents an alternative wording strategy for P3100R8 that may reduce the six-clause count; the count of six applies to P3100R8's primary wording as presented in R8.
 
@@ -165,7 +173,7 @@ An implementation may ship the locally checkable subset as a cheaper build mode 
 
 Cross-TU: enforcement is per-region. Locally checkable cases hold regardless of how other TUs were compiled. Instrumented cases degrade gracefully under partial instrumentation - partial coverage yields partial diagnosis, never a false guarantee.
 
-The ABI boundary for instrumented cases (shadow state, lifetime records) is inherent to the instrumentation, not to the routing. P3100R8 faces the identical boundary.
+The ABI boundary for instrumented cases (shadow state, lifetime records) is inherent to the instrumentation, not to the routing. P3100R8 faces the identical boundary. The cross-TU instrumentation cost (shadow state, lifetime metadata, ABI surface) is inherent to the sanitizer, not to the routing; the profile imposes no cross-TU overhead beyond what P3100R8 faces for the same cases.
 
 ## 6. Deployed Practice
 
@@ -184,7 +192,7 @@ The ABI boundary for instrumented cases (shadow state, lifetime records) is inhe
 
 Every row terminates on a violation. None constructs a violation object. None routes through a replaceable handler.
 
-Three core-language rows (Android, Chrome, Apple) check subsets of the 77 cases.
+Three core-language rows (Android, Chrome, Apple) check subsets of the 77 cases. No deployed system yet checks the full 77-case scope; the profile's complete guarantee is a standardization target, not a report of current practice.
 
 Google's 0.30% figure<sup>[10]</sup> measures library-precondition hardening, not core-language type-and-lifetime instrumentation. The profile does not claim its full guarantee at 0.30%.
 
@@ -277,6 +285,8 @@ This paper asks for nothing.
 
 [13] P3970R0 - "Profiles and Safety: a call to action" (Vandevoorde, Garland, McKenney, Orr, Stroustrup, Wong, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf
 
+[14] P4308R1 - "Eight Responses to a Throwing Implicit Contract Assertion" (Vinnie Falco, Ville Voutilainen, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4308r1.pdf
+
 ## Appendix A: Enumeration of Guarded Operations
 
 The enumeration below is the work of Doumler and Berne, reproduced from P3100R8 Appendix A. Their exhaustive identification of every case of explicit core-language undefined behavior, the classification of each by diagnosability, the checking strategies, and the replacement behaviors are the foundation this profile stands on. The 77 runtime-checkable cases are grouped here by whether a check can be performed locally; the three cases P3100R8 identifies as not runtime-checkable are omitted.
@@ -303,7 +313,7 @@ No cross-program instrumentation is required; these are checkable at any optimiz
 | `{expr.mul.representable.type.result}` | [expr.mul]/4 | Check the value is valid |
 | `{expr.shift.neg.and.width}` | [expr.shift]/1 | Check the right operand is valid |
 | `{intro.execution.unsequenced.modification}` | [conv.rank]/10 | Check unsequenced read and write refer to the same address |
-| `{stmt.return.flow.off}` | [stmt.return]/4 | `contract_assert(false)` at end of function body |
+| `{stmt.return.flow.off}` | [stmt.return]/4 | `contract_assert(false)` at end of function body (if a separate proposal makes flow-off-end ill-formed, no UB remains and this case drops from the profile automatically) |
 | `{dcl.attr.noreturn.eventually.returns}` | [dcl.attr.noreturn]/2 | Insert `post(false)` |
 | `{basic.stc.alloc.dealloc.throw}` | [basic.stc.dynamic.deallocation]/4 | Assertion in a catch handler |
 | `{expr.new.non.allocating.null}` | [expr.new]/22 | Insert `post(r: r)` |
