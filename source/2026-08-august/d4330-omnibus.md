@@ -84,6 +84,7 @@ This paper resolves its open design questions by moving hazards and withheld cap
 - A dedicated second-argument message parameter is added to the assertion facilities in place of the general labels mechanism the paper itself identifies as the most extensible, so the language gains a single-purpose construct where a reusable facility would serve (Section 2.1).
 
 Taken together these decisions enlarge the language with a single-purpose construct, withhold a needed capability, and make an unchecked crash the easy default, so the contracts program leaves the language worse than it found it.
+
 ## P3100R8: Profiles left dependent on the contract-assertion substrate
 
 P3100R8 places profiles above the contract-assertion machinery as a dependent layer, so that a profile inherits its guarantee, its response to violations, and its configuration from that machinery instead of defining any of them itself.
@@ -183,6 +184,7 @@ P3850R1 recommends prioritising a group of C++29 contract-assertion extensions w
 - The roadmap mandates runtime and library infrastructure - a global handler together with machinery to define and combine label semantics - that implementations must provide, extending the facility beyond a language feature toward a runtime system (Sections 2.2 and 2.3).
 
 By moving the meaning of a contract assertion out of the code and sanctioning continued execution past a detected violation, this roadmap advances the contracts program's harm to the language.
+
 ## P4186R0: multi-year profiles plan committed on sentiment, not field evidence
 
 The Motivation section founds a multi-year plan on committee poll sentiment and on external pressure to treat the language as unsafe rather than on production deployment, field data, or user reports. The same section presents profiles as the best approach the committee knows while acknowledging there is insufficient agreed-on documentation to state what profiles can and cannot do. It records that four prior profiles papers have all failed, yet it commits SG23, EWG, and CWG time through 2029 to the mechanism (Motivation). Committing years of committee time to a mechanism the paper cannot define is how this program harms the language.
