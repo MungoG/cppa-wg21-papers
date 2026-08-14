@@ -58,7 +58,7 @@ An individual who:
 - Treats feedback as adversarial rather than informative, and
 - Directs procedural fluency toward protecting the design, not refining it
 
-The Profile 2 author lets feedback change the design, controlling how much it changes. The Profile 3 author changes the institutional environment to protect the design from feedback. This is the distinguishing characteristic: objections are decomposed into sub-issues without revisiting the premise, competitors are denied agenda time and discussion polls, repeated objections are characterized as "already addressed" even when the core concern was never answered, and persistent opposition is moralized as blocking progress. The author's conviction that the design is correct makes these moves feel legitimate, not cynical.
+The Profile 2 author lets feedback change the design, controlling how much it changes. The Profile 3 author changes the institutional environment to protect the design from feedback. This is the distinguishing characteristic, and it is observable: the C2 response to an objection is technical (the design moves), while the C3 response is political (the environment moves). Objections are decomposed into sub-issues without revisiting the premise, competitors are denied agenda time and discussion polls, repeated objections are characterized as "already addressed" even when the core concern was never answered, and persistent opposition is moralized as blocking progress. Whether these moves reflect conviction or calculation is outside the model's scope; the behavioral pattern is the same.
 
 ---
 
@@ -84,7 +84,7 @@ The following ten moves are what an unchecked institutional author does when the
 
 9. **Script the historical record.** Report favorable polls in your paper's history. Omit unfavorable ones. When objections arise, move to a poll, record the tally, and change the subject. The substance of the objection never enters the written record. Twenty years later, your 40 papers are the institutional memory. The opposition is "SA=4" in the minutes.
 
-10. **Moralize continued opposition.** Characterize opposition as blocking progress, refusing to accept the committee's decision, harming C++. Make the social cost of dissent exceed the technical cost of a bad decision. The author's sincere conviction that the design is correct makes this feel righteous, not cynical.
+10. **Moralize continued opposition.** Characterize opposition as blocking progress, refusing to accept the committee's decision, harming C++. Make the social cost of dissent exceed the technical cost of a bad decision. Whether the author acts from conviction or from institutional strategy, the observable behavior is the same: technical disagreement is reframed as a character deficiency.
 
 These ten moves are what the incentive structure produces when institutional backing exceeds what the system's safeguards can detect and correct for.
 
@@ -121,7 +121,7 @@ The distinguishing signal for C3 is the combination: the author decomposes objec
 
 An evidence item scores C3 only when the C2 explanation is insufficient. The following list defines, for each criterion, what a competent, well-funded, sincere author operating within norms would do (the C2 baseline) and what specific observation exceeds that baseline (the falsifier). If no falsifier is present, the item scores C2.
 
-**Falsification principle:** If a reasonable observer could attribute the behavior entirely to procedural competence, institutional backing, and sincere conviction - without requiring structural advantages invisible to other participants - the item scores C2. A C3 score requires behavior that a competent, well-funded, sincere author would still not do because it requires deceiving the committee, suppressing legitimate alternatives, or exploiting undisclosed conflicts.
+**Falsification principle:** The bright line between C2 and C3 is the type of response to feedback. A C2 author responds technically: the design changes. A C3 author responds politically: the institutional environment changes to protect the design. If a reasonable observer could attribute the behavior entirely to procedural competence and strategic design revision - the author adjusting the proposal to build consensus - the item scores C2. A C3 score requires behavior where the author adjusts the environment instead of the design: suppressing legitimate alternatives procedurally, engineering burden-of-proof shifts, or ensuring the chair's path of least resistance is always "advance." These are observable acts, not inferences about motivation.
 
 1. **Response to architectural objections**
    - *C2 baseline:* Responds thoroughly, may disagree after genuine analysis. Volume alone is not diagnostic.
@@ -189,15 +189,13 @@ An evidence item scores C3 only when the C2 explanation is insufficient. The fol
 
 ---
 
-## 5. The Indistinguishability Problem
+## 5. What The Model Cannot Distinguish
 
-The detection model identifies observable behaviors. It does not (and cannot) determine intent. This is the structural vulnerability it exposes, not a limitation of the model.
+The C2/C3 distinction is behavioral, and the tests are bright-line. A C2 author responds to feedback technically: the design changes. A C3 author responds politically: the institutional environment changes to protect the design from feedback. These are different observable behaviors. A C2 author, no matter how capable, well-funded, or convinced, responds by adjusting the design - that is what makes them C2. No amount of skill, resources, or conviction converts a political response into a technical one. The detection criteria in Section 3 and the falsification conditions in Section 4 operationalize this distinction across sixteen criteria.
 
-An unchecked institutional author who is also willing to cross moral boundaries (to knowingly deceive the committee, suppress alternatives they know are superior, or exploit undisclosed conflicts for personal or institutional advantage) produces behavior that is *observationally identical* to an aggressive Profile 3 author who sincerely believes their design is correct and whose institutional advantages happen to exceed what the system can check.
+What the model cannot distinguish is *motivation within C3*. A Profile 3 author who sincerely believes their design is correct and whose political behavior flows from that conviction (the true believer) produces a behavioral record identical to a Profile 3 author who uses institutional position to advance a design for reasons that are not purely technical (the institutional operator). The model does not and cannot determine which. Neither can WG21.
 
-The detection model cannot distinguish these two cases. Neither can WG21.
-
-That indistinguishability is the point. P4195R0's advocacy equilibrium requires: many motivated advocates + expert cross-examination + chair judgment to approximate the best design. Profile 3 breaks this approximation regardless of whether the actor is sincere or cynical, because:
+That limitation is irrelevant to the diagnosis. P4195R0's advocacy equilibrium requires many motivated advocates cross-examining each other under capable chair judgment to approximate the best design. C3 behavior breaks this approximation regardless of motivation, because:
 
 - Expert cross-examination is defeated when competitors are denied a hearing
 - Chair judgment is captured when advancing becomes the chair's path of least resistance
@@ -205,7 +203,7 @@ That indistinguishability is the point. P4195R0's advocacy equilibrium requires:
 
 The system's only correction mechanisms are implementer revolt (refusing to ship the feature) or a senior committee member absorbing the personal cost of sustained opposition. Both are expensive, unreliable, and activate only after the damage is done.
 
-The Code of Conduct requires an assumption of good faith, yet WG21 has no structural defense against an actor exhibiting multiple C3 behaviors simultaneously. The system assumes that institutional backing operates within the norms that C2 describes. When it does not - for whatever reason, sincere or otherwise - the system has no mechanism to detect, prevent, or correct the resulting institutional capture. The behavioral record is identical either way.
+The Code of Conduct requires an assumption of good faith, but the system has no structural defense against C3 behavior. The model diagnoses the behavior. The motivation is the author's own affair.
 
 ---
 

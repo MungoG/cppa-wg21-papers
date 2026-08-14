@@ -1,6 +1,6 @@
 ---
 title: "Do Reassertions Hold Up? Verifying P3846R1 Against Its Own Sources"
-document: D4272R0
+document: P4272R0
 date: 2026-08-14
 intent: info
 audience: EWG
@@ -53,13 +53,13 @@ The concerns below are ordered from those whose responses are contradicted by th
 
 - **Concern 12 (static analysis).** P3846R1 states that CodeQL is "already actively pursuing support for P2900 contract assertions," citing the Martin25 CppCon talk. P3893R0<sup>[3]</sup>, authored by the same CodeQL engineer who co-presented that talk, states: "the portions of this talk presented by GitHub are not an endorsement of P2900" and the prototype targets traditional assertions, not P2900 contract specifiers.
 
-- **Concern 15 (future features).** P3846R1 states that "in more than four decades of C++ evolution, no proposal for deep const has ever been brought forward." P1974R0<sup>[4]</sup> (Gao, 2020) proposes `propconst`, a language-level deep-const qualifier, and received EWG encouragement with strong consensus.
+- **Concern 15 (future features).** P3846R1 states that "in more than four decades of C++ evolution, no proposal for deep const has ever been brought forward." P1974R0<sup>[4]</sup> (Snyder, Dionne, Vandevoorde, 2020) proposes `propconst`, a language-level deep-const qualifier.
 
 - **Concern 18 (stdlib hardening).** P3846R1 states that "both the libc++ and libstdc++ implementation currently being planned" will implement hardening on top of P2900. Jonathan Wakely, the libstdc++ maintainer, co-authored P3878R0<sup>[7]</sup>, whose title is "C++26 Contracts are not a good fit for standard library hardening." P3846R1 cites RU-016 as support for keeping hardening on contracts but does not note that RU-016 was rejected (N5031<sup>[8]</sup>) or that four other NB comments argued for decoupling.
 
 ### Unverified assertion or procedural argument
 
-- **Concern 14 (missing features).** P3846R1 states that "no proposals [for the requested features] gained consensus in EWG." P3097R0<sup>[9]</sup> (virtual function contracts) gained strong EWG consensus of 33 in favor and 3 against in St. Louis and was adopted into the C++26 working draft before being removed at the next meeting in Hagenberg.
+- **Concern 14 (missing features).** P3846R1 states that "no proposals [for the requested features] gained consensus in EWG." P3097R0<sup>[9]</sup> (virtual function contracts) gained EWG consensus in St. Louis with SF 18, F 15, N 5, A 1, SA 2 and was adopted into the C++26 working draft before being removed at the next meeting in Hagenberg.
 
 - **Concern 11 (exceptions as violations).** P3846R1 states that its approach is "the only known solution" satisfying both the no-escape and recovery constituencies. P3626R0<sup>[10]</sup> proposes unconditional propagation and P3909R0<sup>[11]</sup> proposes a build-mode option, both documented alternatives. The EWG Hagenberg poll on this question was 30 for change vs. 22 against, which P3846R1 characterizes as both SG21 and EWG concluding the concern was "unsound."
 
@@ -115,19 +115,19 @@ This paper asks for nothing.
 
 [3] [P3893R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3893r0.pdf) - "The CppCon 2025 Talk on Contracts and CodeQL in Context" (Mike Fairhurst, 2025).
 
-[4] [P1974R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1974r0.pdf) - "Non-transient constexpr allocation using propconst" (Jiangang Gao, 2020).
+[4] [P1974R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1974r0.pdf) - "Non-transient constexpr allocation using propconst" (Jeff Snyder, Louis Dionne, Daveed Vandevoorde, 2020).
 
 [5] [GCC Bug 70018](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70018) - "IPA optimization across weak definitions" (reported 2016).
 
 [6] [LLVM Bug 27796](https://github.com/llvm/llvm-project/issues/27796) - User complaint regarding lost optimization from LLVM PR 26774 (2016).
 
-[7] [P3878R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3878r0.pdf) - "C++26 Contracts are not a good fit for standard library hardening" (Ville Voutilainen, Jonathan Wakely, John Spicer, 2025).
+[7] [P3878R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3878r0.pdf) - "C++26 Contracts are not a good fit for standard library hardening" (Ville Voutilainen, Jonathan Wakely, John Spicer, Stephan T. Lavavej, 2025).
 
 [8] [N5031](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5031.pdf) - NB comment disposition record (2026).
 
 [9] [P3097R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3097r0.pdf) - "Contracts for C++: Support for virtual functions" (Timur Doumler, Joshua Berne, Ga&scaron;per A&zcaron;man, 2024).
 
-[10] [P3626R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3626r0.pdf) - "Contracts: unconditional exception propagation" (2025).
+[10] [P3626R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3626r0.pdf) - "Contracts: unconditional exception propagation" (Bengt Gustafsson, 2025).
 
 [11] [P3909R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3909r0.pdf) - "Contracts should go into a White Paper - even at this late point" (Ville Voutilainen, 2025).
 
