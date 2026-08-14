@@ -25,6 +25,7 @@ This paper is design exploration, not a proposal for adoption. It requests no po
 - Qualified instrumented-case guarantee: both proposals face the same sanitizer limits.
 - Cited D4277R0 (late D-paper) for prototype status.
 - Cut SD-10 evaluation tables (former Section 5) and committee-direction section (former Section 7); compressed concerns from seven to three.
+- Added Section 5 (Prototype) with Compiler Explorer examples for 7 locally-checkable cases.
 
 ### R0: July 2026
 - Initial version.
@@ -121,6 +122,8 @@ The enumeration, the checking strategies, and the replacement behaviors are the 
 | Handler dependency | Contract-violation handler invoked on violation | None; profile owns the response |
 | Replacement behavior | Erroneous value (under ignore semantic) | Erroneous value (fixed for all conforming implementations) |
 
+The prototype (Section 5) demonstrates this case live on Compiler Explorer: https://godbolt.org/z/s5Exo86K6
+
 **Case 2: Flow off end of function** (`{stmt.return.flow.off}`, [stmt.return]/4) - locally checkable, has replacement behavior
 
 | Aspect | Under P3100R8 | Under std::core_ub |
@@ -153,7 +156,223 @@ The precedent is live. The profile extends it to the remaining cases. The before
 
 The appendix is this methodology applied to all 77 cases.
 
-## 5. Checking Tiers and Composition
+## 5. Prototype
+
+The C++ Alliance Clang fork implements `std::core_ub` enforcement for 7 cases across the locally-checkable subset.<sup>[15]</sup> The prototype is available on Compiler Explorer as "clang (std::core_ub profile - P4317)". Each example below adds one `enforce` line and demonstrates a violation that the profile catches at runtime. Comment out the `enforce` line to see what the code does today; add `-O2` for the optimized answer.
+
+Repository: https://github.com/cppalliance/clang/tree/profiles-core-ub
+
+| # | Case | Group | Link |
+|---|---|---|---|
+| 1 | `{basic.align.object.alignment}` | A.1 | https://godbolt.org/z/bMG14s5cG |
+| 2 | `{expr.unary.dereference}` | A.2 | https://godbolt.org/z/obMj3EYTb |
+| 3 | `{expr.add.out.of.bounds}` | A.2 | https://godbolt.org/z/YbxWbxMP9 |
+| 4 | `{expr.mul.div.by.zero}` | A.1 + A.4 | https://godbolt.org/z/s5Exo86K6 |
+| 5 | `{expr.mul.representable.type.result}` | A.1 + A.4 | https://godbolt.org/z/3vTjbdnxP |
+| 6 | `{expr.shift.neg.and.width}` | A.1 + A.4 | https://godbolt.org/z/1nrccTq1s |
+| 7 | `{conv.fpint.float.not.represented}` | A.1 + A.4 | https://godbolt.org/z/dbcKb6W8s |
+
+Case identifiers are from P3100R8 Appendix A. Cases marked A.4 are those where the paper specifies a defined replacement value rather than termination - the implementation traps on those anyway.
+
+### 5.1 Misaligned access
+
+`{basic.align.object.alignment}` - A.1 - https://godbolt.org/z/bMG14s5cG
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdint>
+#include <cstdio>
+
+std::uint32_t source_addr(const unsigned char *frame) {
+  return *reinterpret_cast<const std::uint32_t *>(frame + 14 + 12);
+}
+
+int main() {
+  alignas(4) unsigned char frame[64] = {};
+  frame[26] = 10; frame[29] = 1;
+  std::printf("src = %08x\n", source_addr(frame));
+}
+```
+
+- **Today:** `src = 0100000a` - correct at `-O0` and `-O2` alike
+- **Enforced:** `Program returned: 132` - *misaligned pointer access under profile 'std::core_ub'*
+
+An Ethernet header is 14 bytes, so every 32-bit IP header field lands at an odd multiple of 2. Correct on x86 for years; faults on a strict-alignment target.
+
+### 5.2 Null dereference
+
+`{expr.unary.dereference}` - A.2, null pointer case - https://godbolt.org/z/obMj3EYTb
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdio>
+
+struct Session {
+  int id;
+  int session_id() const { return this ? id : -1; }
+};
+
+Session *lookup(int) { return nullptr; }
+
+int main() {
+  Session *s = lookup(42);
+  std::printf("id = %d\n", s->session_id());
+}
+```
+
+- **Today:** `-O0` -> `id = -1` - `-O2` -> **Segmentation fault**
+- **Enforced:** `Program returned: 132` - *null pointer dereference under profile 'std::core_ub'*
+
+A null `this` cannot happen, so at `-O2` the compiler deletes the test. The failure arrives with a compiler upgrade, not a code change.
+
+### 5.3 Out-of-bounds subscript
+
+`{expr.add.out.of.bounds}` - A.2, array bound statically known - https://godbolt.org/z/YbxWbxMP9
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdio>
+#include <cstring>
+
+struct Config { char name[16]; int port; };
+
+void set_name(Config &c, const char *src) {
+  std::size_t n = std::strlen(src);
+  if (n > sizeof(c.name))
+    return;
+  for (std::size_t i = 0; i <= n; ++i)
+    c.name[i] = src[i];
+}
+
+int main() {
+  Config c{};
+  c.port = 8080;
+  set_name(c, "sixteen-char-key");
+  std::printf("name = %s, port = %d\n", c.name, c.port);
+}
+```
+
+- **Today:** `name = sixteen-char-key, port = 7936` - was 8080
+- **Enforced:** `Program returned: 132` - *array index out of bounds under profile 'std::core_ub'*
+
+The bound test is off by one and the loop copies the terminator too, so the write lands on the next member.
+
+### 5.4 Division by zero
+
+`{expr.mul.div.by.zero}` - A.1 + A.4 - https://godbolt.org/z/s5Exo86K6
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdio>
+
+long throughput(long bytes, long elapsed_seconds) {
+  return bytes / elapsed_seconds;
+}
+
+int main() {
+  std::printf("%ld bytes/sec\n", throughput(4096, 0));
+}
+```
+
+- **Today:** `-O0` -> **SIGFPE** (returned 136) - `-O2` -> `140728979890376 bytes/sec`
+- **Enforced:** `Program returned: 132` - *integer division or remainder by zero under profile 'std::core_ub'*
+- **Per A.4:** the division yields an erroneous value; the program continues
+
+P4317 Section 4's own worked case. A transfer finishing inside one clock tick measures zero elapsed seconds. At `-O2` the optimizer takes the divisor for nonzero and never issues the division at all.
+
+### 5.5 Signed overflow
+
+`{expr.mul.representable.type.result}` - A.1 + A.4 - https://godbolt.org/z/3vTjbdnxP
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdio>
+
+struct Entry { char name[16]; };
+
+int table_bytes(const unsigned char *hdr) {
+  int count = hdr[0] | (hdr[1] << 8) | (hdr[2] << 16) | (hdr[3] << 24);
+  return count * (int)sizeof(Entry);
+}
+
+int main() {
+  const unsigned char hdr[4] = {0, 0, 0, 0x10};
+  int bytes = table_bytes(hdr);
+  if (bytes > (1 << 20)) {
+    std::puts("header rejected");
+    return 1;
+  }
+  std::printf("allocating %d bytes\n", bytes);
+}
+```
+
+- **Today:** `allocating 0 bytes` - the `> 1 MB` guard passes because `0 <= 1 MB`
+- **Enforced:** `Program returned: 132` - *signed integer overflow under profile 'std::core_ub'*
+- **Per A.4:** the multiplication yields an erroneous value, which the guard still passes
+
+The shape behind a long line of CVEs. The erroneous-value replacement does not rescue this one: the overflow is upstream of the programmer's own check, so only termination stops the zero-byte allocation.
+
+### 5.6 Shift out of range
+
+`{expr.shift.neg.and.width}` - A.1 + A.4 - https://godbolt.org/z/1nrccTq1s
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdint>
+#include <cstdio>
+
+std::uint32_t extract(std::uint32_t word, unsigned pos, unsigned width) {
+  std::uint32_t mask = (1u << width) - 1;
+  return (word >> pos) & mask;
+}
+
+int main() {
+  std::printf("%08x\n", extract(0xdeadbeef, 0, 32));
+}
+```
+
+- **Today:** `-O0` -> `00000000` - `-O2` -> `67c80238`, `cd9977e8`, `97528678` - a different value on every run
+- **Enforced:** `Program returned: 132` - *shift out of bounds under profile 'std::core_ub'*
+- **Per A.4:** the shift yields an erroneous value, the same one on every conforming implementation
+
+Every width from 1 to 31 is correct; the full-width field shifts by 32.
+
+### 5.7 Float-to-integer conversion
+
+`{conv.fpint.float.not.represented}` - A.1 + A.4 - https://godbolt.org/z/dbcKb6W8s
+
+```cpp
+[[profiles::enforce(std::core_ub)]];
+
+#include <cstdio>
+
+int hit_rate(long hits, long total) {
+  double pct = 100.0 * (double)hits / (double)total;
+  return (int)pct;
+}
+
+int main() {
+  std::printf("hit rate = %d%%\n", hit_rate(0, 0));
+}
+```
+
+- **Today:** `-O0` -> `hit rate = -2147483648%` - `-O2` -> `975548632%`, different again next run
+- **Enforced:** `Program returned: 132` - *floating-point to integer conversion overflow under profile 'std::core_ub'*
+- **Per A.4:** the conversion yields an erroneous value
+
+The division by zero is fine - floating point defines it. The conversion is what is undefined, and the result arrives downstream as an ordinary-looking integer.
+
+---
+
+Outputs captured from clang 24.0.0git @ `6b9ff00`, the build behind the Compiler Explorer entry, on x86-64 Linux. Undefined values differ between runs by nature; the trap does not.
+
+## 6. Checking Tiers and Composition
 
 The full guarantee is all 77 cases. "Fully instrumented" is a target, not current capability.
 
@@ -175,7 +394,7 @@ Cross-TU: enforcement is per-region. Locally checkable cases hold regardless of 
 
 The ABI boundary for instrumented cases (shadow state, lifetime records) is inherent to the instrumentation, not to the routing. P3100R8 faces the identical boundary. The cross-TU instrumentation cost (shadow state, lifetime metadata, ABI surface) is inherent to the sanitizer, not to the routing; the profile imposes no cross-TU overhead beyond what P3100R8 faces for the same cases.
 
-## 6. Deployed Practice
+## 7. Deployed Practice
 
 **Table 5: Deployed production hardening**
 
@@ -198,13 +417,15 @@ Google's 0.30% figure<sup>[10]</sup> measures library-precondition hardening, no
 
 libc++ authors identify their trap as "precisely the quick-enforce evaluation semantic" of C++26 Contracts.<sup>[11]</sup>
 
-## 7. Potential Concerns
+Section 5 demonstrates the profile's own prototype: 7 locally-checkable cases enforced under `std::core_ub`, with live Compiler Explorer links.
 
-### Concern 1: the profile has no implementation
+## 8. Potential Concerns
 
-True. `std::core_ub` is specified, not shipped.
+### Concern 1: the profile's implementation is partial
 
-The checking is deployed technology (sanitizers, the hardened libraries of Section 6). The checking instrumentation is the same work under either routing. The P3589R2<sup>[3]</sup> framework has a public Clang implementation. D4277R0<sup>[6]</sup> reports prototype checks on GCC and Clang p3850 branches (38% of subcategories uncovered). Those prototype checks are the same instrumentation either routing can use.
+A prototype covers 7 locally-checkable cases (Section 5), available on Compiler Explorer. The full 77-case scope - including the 58 instrumented cases - remains a target, not current capability.
+
+The checking is deployed technology (sanitizers, the hardened libraries of Section 7). The checking instrumentation is the same work under either routing. The P3589R2<sup>[3]</sup> framework has a public Clang implementation; the `std::core_ub` prototype<sup>[15]</sup> builds on it. D4277R0<sup>[6]</sup> reports prototype checks on GCC and Clang p3850 branches (38% of subcategories uncovered). Those prototype checks are the same instrumentation either routing can use.
 
 ### Concern 2: deployed systems check library preconditions, not core-language cases
 
@@ -214,13 +435,13 @@ The type-and-lifetime subset (most of the 58 instrumented cases) is not yet a sh
 
 ### Concern 3: the profile terminates, so it cannot be adopted into working legacy code
 
-15 defined-replacement cases do not terminate (including signed overflow to wraparound). `[[profiles::suppress(std::core_ub)]]` is the in-source escape; enforcement widens one TU at a time.
+15 defined-replacement cases do not terminate (including signed overflow to wraparound). `[[profiles::suppress(std::core_ub)]]` is the in-source escape; `[[profiles::enforce(std::core_ub)]]` widens enforcement one TU at a time.
 
 Bloomberg's `bsls_review`<sup>[8]</sup> logs and continues at the library level (post-violation state defined); `bsls_assert`<sup>[8]</sup> terminates where the state is language-undefined. The profile takes the same line.
 
 The non-returning handler still runs for logging before the program ends. Termination does not cost telemetry. P4310R1<sup>[5]</sup> sets out the full case.
 
-## 8. Questions for the Committee
+## 9. Questions for the Committee
 
 SD-10<sup>[12]</sup> (adopted December 2024) governs evolution design. P3970R0<sup>[13]</sup> (Direction Group, January 2026) designates Profiles as the primary strategy for C++29 safety. Thirteen direction polls over four years support continued Profiles work.
 
@@ -232,7 +453,7 @@ SD-10<sup>[12]</sup> (adopted December 2024) governs evolution design. P3970R0<s
 
 The three questions locate the profile within the direction the committee has already chosen.
 
-## 9. Conclusion
+## 10. Conclusion
 
 `std::core_ub` guards the 77 cases with a single profile under P3589R2<sup>[3]</sup>. Zero foundational changes; the alternative routing requires six. The profile standardizes the deployed form: named checks, per-build activation, terminating response. The profile owns its guarantee, enumeration, and response. `noexcept` is untouched.
 
@@ -240,9 +461,9 @@ P4297R1<sup>[1]</sup> asks EWG to sever the architecture from the wording. This 
 
 The enumeration belongs to P3100R8<sup>[2]</sup>. What remains is the response and replacement behaviors, still to be settled.
 
-## 10. Disclosure
+## 11. Disclosure
 
-Vinnie Falco is the founder of the C++ Alliance, which funds a Clang implementation and a GCC implementation of the Profiles framework; the Clang implementation is public, with regularly released experimental builds that implement the framework attributes and an initial slice of the `std::init` profile.
+Vinnie Falco is the founder of the C++ Alliance, which funds a Clang implementation and a GCC implementation of the Profiles framework; the Clang implementation is public, with regularly released experimental builds that implement the framework attributes, an initial slice of the `std::init` profile, and a prototype of `std::core_ub` covering 7 locally-checkable cases (Section 5).
 
 This paper describes a profile specification. It does not propose wording. This is a companion to P4297R1, P4306R1, and P4310R1 in the August 2026 mailing. It works from the published record and uses machine-assisted drafting.
 
@@ -286,6 +507,8 @@ This paper asks for nothing.
 [13] P3970R0 - "Profiles and Safety: a call to action" (Vandevoorde, Garland, McKenney, Orr, Stroustrup, Wong, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3970r0.pdf
 
 [14] P4308R1 - "Eight Responses to a Throwing Implicit Contract Assertion" (Vinnie Falco, Ville Voutilainen, 2026). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4308r1.pdf
+
+[15] C++ Alliance Clang fork, `profiles-core-ub` branch (Krystian Stasiowski, 2026). https://github.com/cppalliance/clang/tree/profiles-core-ub
 
 ## Appendix A: Enumeration of Guarded Operations
 
