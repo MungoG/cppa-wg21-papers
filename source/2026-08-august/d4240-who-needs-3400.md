@@ -72,7 +72,7 @@ Section 6 cites GCC and Clang prototypes on Compiler Explorer behind the `-fcont
 
 ### The implementer test
 
-P3173R0<sup>[7]</sup>, a broader critique of P2900R6 covering safety, undefined behavior, and dynamic dispatch, argues among other points for "field experience" with the actual design. P3506R0<sup>[8]</sup>, which also raises concerns about UB in predicates and exception handling, argues for "deployment experience." P3878R0<sup>[9]</sup> argues that hardening must be decoupled from contracts.
+P3173R0<sup>[7]</sup>, a broader critique of P2900R6 covering safety, undefined behavior, and dynamic dispatch, argues among other points for "field experience" with the actual design. P3506R0<sup>[8]</sup>, which also raises concerns about UB in predicates and exception handling, argues for "deployment experience." P3878R0<sup>[9]</sup> argues that contract violations used for hardening must guarantee termination, not permit continuation.
 
 P3400R4 Section 6 cites prototypes funded by the paper author's employer, behind experimental flags, in forks of GCC and Clang. No shipping compiler implements P3400. No production codebase deploys it. The implementation experience is a corporate sponsor verifying its own requirements on branches it pays for.
 
