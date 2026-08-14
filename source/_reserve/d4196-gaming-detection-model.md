@@ -94,104 +94,108 @@ These ten moves are what the incentive structure produces when institutional bac
 
 The following table turns the three profiles into observable behaviors. Column C1 scores Profile 1, column C2 scores Profile 2, and column C3 scores Profile 3. For each criterion, it describes how each profile would characteristically act - providing a diagnostic checklist that can be applied to the documented record of any proposal's passage through WG21.
 
-| Detection Criterion | C1: New Author (Technical Correctness Only) | C2: Senior Author (Procedural Fluency) | C3: Unchecked Institutional Author |
-|---|---|---|---|
-| Response to architectural objections | Engages substantively; may redesign if convinced | Acknowledges objection, revises tactically to move expert from SA to WA/N | Decomposes "the architecture is wrong" into sub-issues, addresses each narrowly, never revisits the premise |
-| Competing designs | Welcomes comparison; may not know how to get a joint discussion scheduled | Distinguishes between competitors worth accommodating and those worth outlasting | Actively denies competitors agenda time, discussion polls, or framing opportunities |
-| Early direction polls | Does not seek them; may not know they exist as a strategic tool | Seeks them deliberately; understands their option value | Seeks them aggressively and uses accumulated state to block late-arriving alternatives |
-| Treatment of minority objections | Takes them seriously regardless of vote outcome | Addresses enough to satisfy the chair; stops when consensus is achievable | Characterizes repeated objections as "already answered" or "no new information" without addressing the core concern |
-| Written record behavior | Produces a paper; may not produce rebuttals | Produces papers and responses; creates favorable institutional memory naturally | Produces extensive artifacts for own position; avoids faithful restatement of the opposition's case |
-| Relationship with chair | Minimal; may not understand what the chair needs to declare consensus | Collaborative; provides the chair with a tractable decision | Ensures the chair's path of least resistance is always "advance" |
-| Coalition building | Absent or naive; relies on technical merit alone | Strategic; trades concessions with other repeat players | Leverages institutional backing to assemble coalitions; may trade support on unrelated proposals |
-| Moralization of opposition | "They raise a good point" | "We've considered that and made changes" | "They are blocking progress" / "They refuse to accept the committee's decision" - opposition is moralized |
-| Reaction when pulled back | Confused; may not understand what happened procedurally | Regroups, revises, returns next meeting with a plan | Treats reversal as illegitimate; escalates procedurally; seeks to restore previous state transitions |
-| Burden of proof management | Does not think in these terms | Understands that accumulated polls shift the burden onto competitors | Deliberately engineers or reinforces the four-stage linguistic transformation |
-| Use of procedural moves | Unaware of most available moves | Knows the full move set; uses it selectively and within norms | Exceeds norms: blocking discussion polls for rivals, controlling poll wording, exploiting scheduling |
-| Transparency about design tradeoffs | Openly discusses weaknesses | Discusses tradeoffs selectively; frames them favorably | Minimizes or conceals known weaknesses; frames any admission as already resolved |
-| Response to "investigate the objection thoroughly" | Does it, even at high personal cost | Does it if cost-benefit is favorable; skips if objection can be rendered non-dispositive more cheaply | Refuses or performs superficial investigation; the design is correct by prior conviction |
-| Behavior between meetings | Works on the paper; may not engage politically | Maintains relationships; builds support informally | Campaigns actively; may lobby chairs, NB contacts, or employers of opposing participants |
-| Observable cost structure | High cost, low fluency, low probability of success | Moderate cost, high fluency, high probability of success | Low cost (funded), high fluency (institutional backing), high probability of success, expanded move set (unchecked) |
-| What happens if they win | A technically sound feature enters the standard, possibly with rough edges | A refined feature shaped by negotiation; quality correlates with but is not identical to optimality | A feature reflecting the author's original conviction; objections managed, not resolved; correction requires implementer revolt or senior committee member intervention |
+| # | Detection Criterion | C1: New Author | C2: Senior Author | C3: Unchecked Institutional |
+|---|---|---|---|---|
+| 1 | Response to architectural objections | Engages substantively; may redesign if convinced | Names a specific technical element from the objection and engages with it | Response is political: process dismissal, assertion without evidence, or extinction framing. No technical element named or engaged |
+| 2 | Treatment of competing designs | Welcomes comparison; may not know how to get a joint discussion scheduled | Characterizes competing designs technically (mechanism named, tradeoffs compared) | Competing designs dismissed without technical characterization. Polls pass the substitution test or decide WHETHER rather than HOW |
+| 3 | Pursuit of early directional polls | Does not seek them; may not know they exist as a strategic tool | Cites poll results proportionally; characterization matches actual numbers | Poll cited to dismiss a concern that post-dates the poll, or poll result mischaracterized |
+| 4 | Treatment of minority objections | Takes them seriously regardless of vote outcome | Engages technically; response names specific elements of the objection | Engages politically: process dismissal, standing questioned, resolution through vote override without technical engagement |
+| 5 | Written record behavior | Produces a paper; may not produce rebuttals | Characterizes opposition technically; opponent's mechanism named; unfavorable results documented | Opposition characterized only in political terms or omitted entirely. Opponent's technical mechanism never stated |
+| 6 | Relationship with chair | Minimal; may not understand what the chair needs to declare consensus | Chair co-authors and gives priority; competing approaches receive hearings and fair polls | Chair co-authors AND takes discretionary actions that specifically disadvantage competing approaches |
+| 7 | Moralization of opposition | "They raise a good point" | Sharp language targeting the design or argument; harsh but argument-focused | Language delegitimizing the act of objecting. Opposition framed as process abuse, comprehension failure, social harm, or conduct violation |
+| 8 | Response to committee reversals | Confused; may not understand what happened procedurally | Design-relevant reversal acknowledged in revision history; author revises and returns | Design-relevant reversal omitted from paper history. Paper proceeds as if it didn't happen |
+| 9 | Burden of proof management | Does not think in these terms | Invites evidence; objecting is cheap; author absorbs the burden | Makes objection expensive. Requires production (paper, implementation, benchmarks). "No new information" invoked for concerns discussed but never resolved |
+| 10 | Use of procedural moves | Unaware of most available moves | Aggressive toolkit use; fast iteration, strategic timing | Pace exceeds reviewing body's stated absorption capacity. Documented complaints about inadequate review time, AND proposal proceeds despite complaints |
+| 11 | Response to committee instructions | Does it, even at high personal cost | Instruction satisfied in substance within 1-2 meeting cycles; purpose served | Instruction ignored or satisfied through reinterpretation (letter addressed, purpose not served). Proposal proceeds as if satisfied |
+| 12 | Behavior between meetings | Works on the paper; may not engage politically | Maintains relationships, coordinates with co-authors, prepares papers | Between-meeting activity produces fait-accompli presentations. Decisions presented as already made before deliberation occurs |
+| 13 | Observable cost structure | High cost, low fluency, low probability of success | Normal employer backing; company employs people, they attend under company name, listed in one NB | Cost structure exceeds normal employer backing. Complexity, layering, or opacity beyond "company sends engineers" |
+| 14 | What happens if they win | A technically sound feature enters the standard, possibly with rough edges | Pre-adoption claims based on deployment of the actual design; post-adoption, third-party implementations emerge | Pre-adoption claims based on analogous-but-different systems. Post-adoption, no third-party implementation, or advertised capabilities don't materialize |
 
-The distinguishing signal for C3 is the combination: the author decomposes objections but never answers them at the architectural level, denies competitors procedurally rather than refuting them technically, and moralizes opposition rather than engaging it. Any one of these in isolation is common. All three together, sustained across multiple meetings, is the detection signature.
+The distinguishing signal for C3 is the combination of criteria 1, 2, and 7: the author declines to engage architectural objections technically, dismisses competitors without naming their mechanisms, and moralizes opposition rather than engaging it. Any one of these in isolation is common. All three together, sustained across multiple meetings, is the detection signature.
 
 ---
 
 ## 4. Falsification Conditions
 
-An evidence item scores C3 only when the C2 explanation is insufficient. The following list defines, for each criterion, what a competent, well-funded, sincere author operating within norms would do (the C2 baseline) and what specific observation exceeds that baseline (the falsifier). If no falsifier is present, the item scores C2.
+An evidence item scores C3 only when the C2 explanation is insufficient. The following list defines, for each criterion, what normal behavior looks like (the C2 baseline), what exceeds normal (the C3 signal), and a binary test that operationalizes the distinction. If no falsifier fires, the item scores C2.
 
 **Falsification principle:** The bright line between C2 and C3 is the type of response to feedback. A C2 author responds technically: the design changes. A C3 author responds politically: the institutional environment changes to protect the design. If a reasonable observer could attribute the behavior entirely to procedural competence and strategic design revision - the author adjusting the proposal to build consensus - the item scores C2. A C3 score requires behavior where the author adjusts the environment instead of the design: suppressing legitimate alternatives procedurally, engineering burden-of-proof shifts, or ensuring the chair's path of least resistance is always "advance." These are observable acts, not inferences about motivation.
 
 1. **Response to architectural objections**
-   - *C2 baseline:* Responds thoroughly, may disagree after genuine analysis. Volume alone is not diagnostic.
-   - *Falsifier:* The study group chair states concerns were not addressed. Multiple independent seniors characterize the response as non-engagement despite its length. The pattern repeats across years without the architectural premise ever being revisited.
+   - *C2 baseline:* The response names a specific technical element from the objection and engages with it. Demonstrates understanding of the competing mechanism.
+   - *C3 signal:* The response is political. Process dismissal, assertion without evidence, or extinction framing. No technical element from the objection is named or engaged.
+   - *Test:* Does the response contain at least one specific technical element from the objection? Yes = C2. Zero = C3.
 
-2. **Competing designs**
-   - *C2 baseline:* Argues own design is superior. May seek favorable scheduling. Does not actively prevent a competing paper from receiving a discussion poll.
-   - *Falsifier:* Poll wording embeds the conclusion. Competing designs declared "closed" at subgroup level while a higher group later deadlocks on the same question. Competitors denied comparable scheduled time.
+2. **Treatment of competing designs**
+   - *C2 baseline:* Competing designs are characterized technically (mechanism named, tradeoffs compared). Polls reference architecture-specific content.
+   - *C3 signal:* Competing designs are dismissed without technical characterization. Polls pass the substitution test (could apply to any paper) or decide WHETHER rather than HOW.
+   - *Test:* Substitution test on polls (replace paper number - still makes sense = political). Does the paper name the competitor's specific mechanism? Yes = C2. No = C3.
 
-3. **Early direction polls**
-   - *C2 baseline:* Seeks direction polls deliberately; cites favorable results to establish priority. Standard committee strategy.
-   - *Falsifier:* A direction poll is converted into a permanent "mandate" that forecloses all subsequent deliberation. Omnibus polls bundle unrelated decisions to prevent granular objection.
+3. **Pursuit of early directional polls**
+   - *C2 baseline:* Poll results cited proportionally. Characterization matches actual numbers. Poll used against concerns it could have addressed.
+   - *C3 signal:* Poll cited to dismiss a concern that post-dates the poll, OR poll result mischaracterized (more consensus than numbers show, qualifiers dropped).
+   - *Test:* Two binary checks. (1) Does the dismissed concern post-date the cited poll? (2) Does the characterization match the actual poll numbers? Either failing = C3.
 
 4. **Treatment of minority objections**
-   - *C2 baseline:* Addresses minority objections enough to satisfy the chair. May disagree after genuine engagement. Stops revisiting when consensus is achievable.
-   - *Falsifier:* Objections dismissed as "no new information" when the core technical concern was never directly answered in writing. The same dismissal pattern repeats across multiple meetings without the substance of the objection ever being engaged.
+   - *C2 baseline:* Minority objections engaged technically. Response names specific elements of the objection. Evidence of back-and-forth (minutes, revisions, reflector exchanges).
+   - *C3 signal:* Minority objections engaged politically. Process dismissal, standing questioned, resolution through vote override without technical engagement.
+   - *Test:* Does the response contain technical content addressing the objection's substance? Yes = C2. Only process/political content = C3.
 
 5. **Written record behavior**
-   - *C2 baseline:* Frames position favorably, cites favorable outcomes. Selective presentation is normal advocacy.
-   - *Falsifier:* Specific unfavorable poll results are omitted from self-reported history while favorable results from the same period are reported. The opposition's case is never stated in its strongest form.
+   - *C2 baseline:* The written record characterizes opposition technically. Opponent's mechanism named. Unfavorable results documented.
+   - *C3 signal:* Opposition characterized only in political terms or omitted entirely. Opponent's technical mechanism never stated. Unfavorable results absent while favorable ones from the same period are included.
+   - *Test:* Does the paper state the opponent's technical mechanism? Does it include unfavorable results from the same period as favorable ones? Absence of either = C3.
 
 6. **Relationship with chair**
-   - *C2 baseline:* Good working relationship with the chair. Chair's favorable treatment may reflect genuine assessment.
-   - *Falsifier:* The chair co-authors the proposal under their own oversight while receiving undisclosed income from the proposal's institutional sponsor.
+   - *C2 baseline:* Chair co-authors and gives priority. Normal in WG21 study groups. Competing approaches receive hearings and fair polls.
+   - *C3 signal:* Chair co-authors AND takes discretionary actions that specifically disadvantage competing approaches.
+   - *Test:* Two conditions, both required. (1) Chair has structural relationship (co-authorship). (2) A specific discretionary action disadvantaged a competitor. Missing either = C2.
 
-7. **Coalition building**
-   - *C2 baseline:* Recruits co-authors, assembles broad support. Large co-author lists are standard.
-   - *Falsifier:* Internal dissenters are excluded rather than accommodated. The coalition includes undisclosed financial relationships with oversight personnel.
+7. **Moralization of opposition**
+   - *C2 baseline:* Sharp language targeting the design or argument. Harsh but argument-focused.
+   - *C3 signal:* Language delegitimizing the act of objecting. Framing opposition as process abuse, comprehension failure, social harm, or conduct violation.
+   - *Test:* Does the critique target the argument's substance, or the opponent's standing to object? Substance = C2. Standing = C3.
 
-8. **Moralization of opposition**
-   - *C2 baseline:* May use sharp language under pressure. Characterizes the argument, not the opponent's conduct.
-   - *Falsifier:* The act of submitting an alternative is treated as illegitimate. A competing approach is equated with "halting all forward progress."
+8. **Response to committee reversals**
+   - *C2 baseline:* Design-relevant reversal acknowledged in revision history. Author revises and returns. Escalation via SD-4 is legitimate.
+   - *C3 signal:* Design-relevant reversal omitted from paper history. Paper proceeds as if it didn't happen. Concern never addressed.
+   - *Test:* After a documented design-relevant "no" event, does the next revision acknowledge it? Yes = C2. Omitted = C3. Procedural-only setbacks (wording, timing) being omitted is normal.
 
-9. **Reaction when pulled back**
-   - *C2 baseline:* Regroups, revises, returns with a plan. Persistence after rejection is normal and encouraged.
-   - *Falsifier:* The unfavorable result is omitted from the paper's history section while only the favorable poll is reported. Committee requirements are overridden rather than satisfied.
+9. **Burden of proof management**
+   - *C2 baseline:* Author invites evidence. Objecting is cheap. Author absorbs the burden. Normal: "I'll look into it."
+   - *C3 signal:* Author makes objection expensive. Requires production (paper, implementation, benchmarks, spec changes). "No new information" invoked for concerns discussed but never resolved.
+   - *Test:* What does the author demand from the objector? Information (cheap) = C2. Production (expensive) = C3. For "no new information": can the invoker cite a written RESOLUTION (not just discussion)? Resolution exists = C2. Only discussion = C3.
 
-10. **Burden of proof management**
-    - *C2 baseline:* Cites prior decisions and asks "what's new?" Prevents infinite re-litigation.
-    - *Falsifier:* A vote tally is used to dismiss objections that post-date the vote. The four-stage linguistic transformation ("competing design" -> "alternative" -> "objection" -> "reopening settled question") is documented across multiple arcs.
+10. **Use of procedural moves**
+    - *C2 baseline:* Aggressive procedural toolkit use. Fast iteration, strategic timing. Speed alone not diagnostic.
+    - *C3 signal:* Pace exceeds reviewing body's stated absorption capacity. Documented complaints about inadequate review time, AND proposal proceeds despite complaints.
+    - *Test:* Documented complaint about pace + proceeding anyway. Both required. No complaint = C2. Complaint + slowdown = C2. Complaint + proceed = C3.
 
-11. **Use of procedural moves**
-    - *C2 baseline:* Uses full move set within norms. Short incubation happens under deadline pressure.
-    - *Falsifier:* A majority of binding papers polled with under one week's incubation systematically, including self-authored papers. Poll wording drafted privately with leadership while objectors are excluded.
+11. **Response to committee instructions**
+    - *C2 baseline:* Committee instruction satisfied in substance within 1-2 meeting cycles. Purpose served. Normal compliance near 100%.
+    - *C3 signal:* Instruction ignored or satisfied through reinterpretation (letter addressed, purpose not served). Proposal proceeds as if satisfied.
+    - *Test:* Was the instruction's PURPOSE served, or only its LETTER? Purpose served = C2. Letter only = C3. Ignored entirely = C3.
 
-12. **Transparency about design tradeoffs**
-    - *C2 baseline:* Frames tradeoffs favorably. Being candid under cross-examination is evidence of integrity.
-    - *Falsifier:* Weaknesses are conceded verbally under cross-examination but do not propagate into the written institutional record. Written artifacts omit or neutralize the verbal concession.
+12. **Behavior between meetings**
+    - *C2 baseline:* Author maintains relationships, coordinates with co-authors, prepares papers. Employer-funded teams are normal.
+    - *C3 signal:* Between-meeting activity produces fait-accompli presentations. Decisions presented as already made before deliberation occurs. Coordinated messaging across multiple participants within hours of opposition activity.
+    - *Test:* Does between-meeting activity produce outcomes presented as settled before the reviewing body deliberates? Yes = C3. Normal paper production and coordination = C2.
 
-13. **Response to "investigate the objection thoroughly"**
-    - *C2 baseline:* Investigates when cost-benefit is favorable. May decline if the objection is non-dispositive.
-    - *Falsifier:* A strong-consensus recorded committee instruction is overridden without being satisfied or formally reversed.
+13. **Observable cost structure**
+    - *C2 baseline:* Normal employer backing. Company employs people, they attend under company name, listed in one NB. Transparent.
+    - *C3 signal:* Cost structure exceeds normal employer backing. Complexity, layering, or opacity beyond "company sends engineers."
+    - *Test:* Compare documented funding structure to C2 baseline (single employer, single NB, disclosed). Anything structural that doesn't fit = C3.
 
-14. **Behavior between meetings**
-    - *C2 baseline:* Maintains relationships, coordinates with co-authors, prepares papers. Employer-funded teams are normal.
-    - *Falsifier:* Undisclosed financial relationships with persons exercising oversight authority. Coordinated campaigns designed to present decisions as already made before deliberation occurs.
-
-15. **Observable cost structure**
-    - *C2 baseline:* Significant employer backing with funded engineers and coordinated papers. How major facilities get standardized.
-    - *Falsifier:* Cost structure includes undisclosed financial relationships with oversight authority AND duplicate vote representation from the same funding source. This weakens the independence of technical review.
-
-16. **What happens if they win**
-    - *C2 baseline:* Feature may have rough edges. Author schedules extensions for known gaps. Some dissent persists.
-    - *Falsifier:* Co-author dissent, implementer "unusable" finding, major vendor non-implementation, record DIS opposition, AND post-victory acknowledgment that concerns dismissed pre-vote in fact had merit - all simultaneously.
+14. **What happens if they win**
+    - *C2 baseline:* Feature's pre-adoption claims based on deployment of the actual design. Post-adoption, third-party implementations emerge and feature works as advertised.
+    - *C3 signal:* Pre-adoption claims based on analogous-but-different systems. Post-adoption, actual design has no third-party implementation, proposer's own use case requires non-standard extensions, or advertised capabilities don't materialize.
+    - *Test:* Does the cited pre-adoption evidence implement the same architectural elements as the standardized design? Same = C2. Different = check post-adoption reality. Capabilities didn't materialize = C3.
 
 ---
 
 ## 5. What The Model Cannot Distinguish
 
-The C2/C3 distinction is behavioral, and the tests are bright-line. A C2 author responds to feedback technically: the design changes. A C3 author responds politically: the institutional environment changes to protect the design from feedback. These are different observable behaviors. A C2 author, no matter how capable, well-funded, or convinced, responds by adjusting the design - that is what makes them C2. No amount of skill, resources, or conviction converts a political response into a technical one. The detection criteria in Section 3 and the falsification conditions in Section 4 operationalize this distinction across sixteen criteria.
+The C2/C3 distinction is behavioral, and the tests are bright-line. A C2 author responds to feedback technically: the design changes. A C3 author responds politically: the institutional environment changes to protect the design from feedback. These are different observable behaviors. A C2 author, no matter how capable, well-funded, or convinced, responds by adjusting the design - that is what makes them C2. No amount of skill, resources, or conviction converts a political response into a technical one. The detection criteria in Section 3 and the falsification conditions in Section 4 operationalize this distinction across fourteen criteria.
 
 What the model cannot distinguish is *motivation within C3*. A Profile 3 author who sincerely believes their design is correct and whose political behavior flows from that conviction (the true believer) produces a behavioral record identical to a Profile 3 author who uses institutional position to advance a design for reasons that are not purely technical (the institutional operator). The model does not and cannot determine which. Neither can WG21.
 
@@ -211,11 +215,11 @@ The Code of Conduct requires an assumption of good faith, but the system has no 
 
 This model can be applied to the documented record of any proposal's passage through WG21 by:
 
-1. Collecting evidence items from papers, wiki minutes, reflector posts, and trip reports
-2. Scoring each item against the detection criteria table
-3. Applying the falsification conditions: an item scores C3 only when the C2 explanation is insufficient
-4. Tallying hits per column within each criterion
-5. Evaluating the combination signal: all three distinguishing markers (decomposing objections without architectural engagement, denying competitors procedurally, moralizing opposition) present simultaneously across multiple meetings
+1. Collecting evidence items from papers, wiki minutes, reflector posts, and trip reports. Each item receives a sequential label (G1, G2, ...) for traceability.
+2. Scoring each item against the detection criteria table using the falsification tests: an item scores C3 only when the C2 baseline explanation fails
+3. Challenging every C3 score by searching for counter-evidence that would restore the C2 baseline
+4. Tallying hits per column within each criterion and computing a global C3 percentage using unique G#s (each item counts once regardless of how many criteria tag it)
+5. Evaluating the combination signal: criteria 1 (architectural objections), 2 (competing designs), and 7 (moralization) all showing C3 simultaneously across multiple meetings
 
 ### Evidence Sources
 
@@ -230,7 +234,7 @@ Not all evidence is equal. The following table classifies source types by what t
 | NB comments filed through the formal process | Corroborating | Independent institutional objections with formal standing |
 | Implementation reports from vendors | Corroborating | Independent verification of post-adoption outcomes |
 | GitHub issue discussions (e.g. cplusplus/papers) | Corroborating | Contemporaneous records of committee-adjacent deliberation |
-| D-papers (drafts without P-numbers) | Indirect | The paper itself is not citable, but minutes recording its presentation are. The existence of large D-papers provided just before meetings is evidence for criterion 6 |
+| D-papers (drafts without P-numbers) | Indirect | The paper itself is not citable, but minutes recording its presentation are. The existence of large D-papers provided just before meetings is evidence for criterion 10 |
 | Trip reports and blog posts by participants | Supporting | Context, pattern recognition, and insight into how participants experienced the process |
 | Conference journals and talks | Supporting | Public statements by participants outside the committee record |
 | Implementation repository history | Supporting | Timeline of engineering investment and design changes |
@@ -248,11 +252,11 @@ A second analyst reading the same sources should be able to verify or dispute ea
 
 ### Threshold
 
-A finding exists when any single criterion produces more than 20% C3 hits relative to the total C2 and C3 hits collected for that criterion. This is per-criterion, not aggregate across all 16.
+A finding exists when the global C3 percentage exceeds 20% of total unique scored items across all 14 criteria. Each G# counts once in the global percentage regardless of how many criteria tag it.
 
 Findings are not equal. The strength of a finding is proportional to the extent that the behavior blocks competitors from receiving a fair hearing or shields the proposal from scrutiny. The analyst's report should make the qualitative weight self-evident from the evidence presented.
 
-The combination signal (all three distinguishing markers present simultaneously across multiple meetings) is a separate, stronger threshold indicating systematic rather than isolated C3 behavior.
+The combination signal (criteria 1, 2, and 7 all showing C3 simultaneously across multiple meetings) is a separate, stronger threshold indicating systematic rather than isolated C3 behavior.
 
 ### Scope
 
