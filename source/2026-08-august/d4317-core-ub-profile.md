@@ -12,9 +12,11 @@ reply-to:
 
 P4297R1<sup>[1]</sup> asks EWG to sever P3100R8's architecture claim from its case-by-case wording review. This paper demonstrates the severing is feasible.
 
-The same 77 runtime-checkable cases of core-language undefined behavior, enumerated by Doumler and Berne in P3100R8<sup>[2]</sup>, carry under a single profile with zero foundational wording changes and no handler dependency. The form standardized - named checks, per-build activation, terminating response - is what production hardening ships.
+The same 77 runtime-checkable cases of core-language undefined behavior, enumerated by Doumler and Berne in P3100R8<sup>[2]</sup>, are brought together under a single profile with zero foundational wording changes and no handler dependency. The form of our solution: named checks, per-build activation, terminating response, is what ships today in hardened production setups.
 
-This paper is design exploration, not a proposal for adoption. It requests no poll.
+This paper is design exploration, not a proposal for adoption.
+
+This paper asks for nothing.
 
 ## Revision History
 
@@ -28,39 +30,38 @@ This paper is design exploration, not a proposal for adoption. It requests no po
 - Added Section 5 (Prototype) with Compiler Explorer examples for 7 locally-checkable cases.
 
 ### R0: July 2026
+
 - Initial version.
 
 ## 1. Introduction
 
 Doumler and Berne enumerate 77 runtime-checkable cases of core-language undefined behavior in P3100R8<sup>[2]</sup> (80 total, 3 not runtime-checkable).
 
-P4297R1<sup>[1]</sup> identifies the bundling problem: P3100R8 pairs wording for 77 cases with an architecture claim - Profiles as a preset over Contracts machinery. This paper shows the unbundled form. The enumeration is the data. The routing is the architecture. The data is portable; P4297R1 establishes this framing.
+P4297R1<sup>[1]</sup> identifies the bundling problem with this approach: P3100R8 ties wording for 77 cases to an architecture claim: Profiles as a preset over Contracts machinery. This paper shows the unbundled form.
 
-Two contributions follow: (1) a profile specification covering the 77 cases under the P3589R2<sup>[3]</sup> framework, and (2) a methodology showing how each line item slides from the Contracts routing into a profile.
-
-One assumption governs the design: a safety feature is stronger when it standardizes a form already shipping in production.
+Our design is driven by a single principle: standardize what already ships.
 
 Quoted with permission. Source: EWG telecon, 10 August 2026.
 
 > "Can we please separate the part where there's the true consensus - the erroneous value - separate that from the architecture choice, so we can get some value out of our time investment." - Vinnie Falco
 
-The enumeration is consensus. The routing is not. If those two claims are separable, a profile can carry the consensus without inheriting the architecture dispute.
+There is consensus for the undefined behavior enumeration, and not the architecture. By separating the two, a profile inherits this consensus without the architecture that rides along with it.
 
 > "We do make changes that make future changes effectively difficult or impossible, even though they're not officially procedurally impossible. There does have to be recognition that the choices we make now can foreclose future directions, and we have to be cautious of that." - John Spicer, EDG
 
-This paper is the evidence that the foreclosure is avoidable: the same 77 cases carry under a different architecture. The companion papers P4297R1<sup>[1]</sup>, P4306R1<sup>[4]</sup>, and P4310R1<sup>[5]</sup> address adjacent questions (ownership, configuration comparison, response merits). This paper cites them rather than restating.
+Foreclosure is avoidable: the same 77 cases are equally applicable under a different architecture. The companion papers P4297R1<sup>[1]</sup>, P4306R1<sup>[4]</sup>, and P4310R1<sup>[5]</sup> address adjacent questions (ownership, configuration comparison, response merits).
 
 ## 2. The Guarantee
 
-When `std::core_ub` is enforced, a violated runtime-checkable precondition among the 77 cases does not proceed into undefined behavior.
+When `std::core_ub` is enforced, a violated runtime-checkable precondition among the 77 cases avoids undefined behavior.
 
 - 62 terminate on violation; 15 receive a well-defined replacement value (Section 3, Appendix A.4).
 - 19 locally checkable (Appendix A.1): the guarantee holds unconditionally.
 - 58 instrumented (Appendix A.2 and A.3): the guarantee holds within the instrumented domain.
 
-No current sanitizer catches all 58 reliably; both proposals face the same instrumentation limits, and neither solves what sanitizers cannot.<sup>[6]</sup>
+No current sanitizer catches all 58 reliably; this paper and P3100 face the same instrumentation limits. Sanitizers represent the detection frontier.<sup>[6]</sup>
 
-A program with no undefined behavior means what it meant without the profile. P3589R2<sup>[3]</sup> requires this: a profile does not change the meaning of a well-formed program with no UB.
+The profile is transparent to programs with no undefined behavior. P3589R2<sup>[3]</sup> requires this: a profile does not change the meaning of a well-formed program with no UB.
 
 For the 15 replacement cases (12 unconditional, 3 built-in-types-only): the profile defines the meaning directly, fixed for every conforming implementation. P3984R0<sup>[7]</sup> grants this authority. Signed overflow is wraparound, out-of-range conversion is erroneous value, and so on per Appendix A.4.
 
@@ -104,7 +105,7 @@ P3608R0<sup>[9]</sup> (Dos Reis, Voutilainen, Wakely) proposed this shape for li
 
 `bsls_review`<sup>[8]</sup> logs and continues at the library level (post-violation state defined). `bsls_assert`<sup>[8]</sup> terminates where the state is language-undefined - the class this profile guards. P4310R1<sup>[5]</sup> sets out the full case.
 
-## 4. Magic Slide The Line Items Into a Profile
+## 4. How to sever each case from the architectural addon
 
 For each of the 77 runtime-checkable cases enumerated by Doumler and Berne in P3100R8<sup>[2]</sup>, sever the implicit contract assertion and its five evaluation semantics from the checking obligation, and state the check as a profile constraint. The checking is identical; the routing is the difference.
 
@@ -466,8 +467,6 @@ The enumeration belongs to P3100R8<sup>[2]</sup>. What remains is the response a
 Vinnie Falco is the founder of the C++ Alliance, which funds a Clang implementation and a GCC implementation of the Profiles framework; the Clang implementation is public, with regularly released experimental builds that implement the framework attributes, an initial slice of the `std::init` profile, and a prototype of `std::core_ub` covering 7 locally-checkable cases (Section 5).
 
 This paper describes a profile specification. It does not propose wording. This is a companion to P4297R1, P4306R1, and P4310R1 in the August 2026 mailing. It works from the published record and uses machine-assisted drafting.
-
-This paper asks for nothing.
 
 ## Acknowledgments
 
