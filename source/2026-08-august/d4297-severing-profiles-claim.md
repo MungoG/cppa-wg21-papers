@@ -23,7 +23,11 @@ This paper reconstructs the proposal's seven-poll history and shows none adopted
 
 ### R1: August 2026
 
-- TBD
+- Updated companion paper cross-references from July mailing (R0) to August mailing (R1) throughout
+- Renamed "named-check-set" to "named-guarantee" to better describe the deployed form
+- Retitled Section 6 ("Six Objections, Answered from Evidence Already Presented") and Section 7 ("Three Polls Make the Architecture Question Explicit") for clarity
+- Fixed internal cross-reference errors in Section 6 where the polls and accumulation discussion (Section 3) was incorrectly cited as Section 4
+- Prose tightening throughout; no substantive changes to analysis or polls
 
 ### R0: July 2026
 

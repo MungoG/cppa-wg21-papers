@@ -53,7 +53,11 @@ This slice sets a decaying benefit against a perpetual cost.
 
 ### R1: August 2026
 
-- TBD
+- Updated companion paper cross-references from July mailing (R0) to August mailing (R1) throughout
+- Named libc++ and Bloomberg's BDE explicitly in abstract and conclusion where R0 said "the vendor build option"
+- Replaced "the model's threshold" with "the marginal-value test" in abstract and conclusion for terminological consistency
+- Reformatted the three cost items in the "In Plain Terms" section as a bulleted list
+- Prose tightening throughout; no substantive changes to analysis or model
 
 ### R0: July 2026
 
