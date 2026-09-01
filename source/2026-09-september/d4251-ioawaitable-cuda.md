@@ -84,7 +84,7 @@ The type-erased wrappers `any_read_stream` and `any_write_stream` wrap any `Read
 
 P2300R10<sup>[1]</sup> Section 4.15, where the awaited objects are senders, expects the same user-facing form: "we expect that coroutines and awaitables will be how a great many will choose to express their asynchronous code."
 
-One completion model spans all four transports, and the type vocabulary above expresses it. 
+One completion model spans all four transports, and the type vocabulary above expresses it.
 
 ## 4. The IoAwaitable Protocol
 

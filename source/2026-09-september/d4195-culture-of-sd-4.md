@@ -16,7 +16,7 @@ This report applies game theory to the incentive structures created by [SD-4](ht
 
 ## Revision History
 
-### R0
+### R0: September 2026
 
 - Initial version.
 

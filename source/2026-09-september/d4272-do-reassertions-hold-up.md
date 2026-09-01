@@ -16,7 +16,7 @@ Two of eighteen responses in P3846R1<sup>[1]</sup> are supported by independentl
 
 ## Revision History
 
-### R0: August 2026
+### R0: September 2026
 
 - Initial version.
 
