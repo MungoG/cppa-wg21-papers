@@ -14,6 +14,14 @@ WG21 sometimes records polls on paper revisions that did not appear in a pre-mee
 
 ## Revision History
 
+### R2: September 2026
+
+- Editorial pass for clarity and consistency throughout, including Appendix A.1's cases as subheadings.
+- Stated the paper's request in the disclosure and added the machine-assistance statement.
+- Sharpened the Brno account by naming the pre-Brno and post-Brno mailings and noting that no mailing fell between them.
+- Recast the Croydon paper count in third person and attributed it to the author's own record.
+- Corrected the suggested poll to name this revision.
+
 ### R1: August 2026
 
 - Replaced R0's flat prohibition with an objection right. An unmailed revision may receive a recorded poll when no one objects.
@@ -29,17 +37,17 @@ WG21 sometimes records polls on paper revisions that did not appear in a pre-mee
 
 ## 1. The Problem
 
-The pre-meeting mailing gives national body experts time to review the papers that WG21 will consider.<sup>[5]</sup><sup>[6]</sup> An in-meeting revision can improve a proposal by incorporating early feedback, correcting wording, or resolving a choice among alternatives. The problem arises when the committee records a poll on that new revision before absent stakeholders have seen it. Delegates who prepared from the mailing have thus examined text other than that under consideration.
+The pre-meeting mailing gives national body experts time to review the papers that WG21 will consider.<sup>[1]</sup><sup>[2]</sup> An in-meeting revision can improve a proposal by incorporating early feedback, correcting wording, or resolving a choice among alternatives. The problem arises when the committee records a poll on that new revision before absent stakeholders have seen it. Delegates who prepared from the mailing have thus examined text other than that under consideration.
 
-At the March 2026 Croydon meeting, six of the nineteen papers I had prepared <!-- lah: what exactly does prepared mean? written? read? --> in my areas changed during the week. Some changes were necessary wording corrections. Others recorded design decisions or changed public interfaces. The proposed rule does not restrict early feedback or in-meeting revision; it gives any participant a way to keep a counted result from becoming committee precedent until the paper revision has appeared in a mailing.
+Of the nineteen papers the author had studied in preparation for the March 2026 Croydon meeting, six changed during the week. The count is the author's own record rather than a figure the papers index yields. Some changes were necessary wording corrections. Others recorded design decisions or changed public interfaces. The proposed rule does not restrict early feedback or in-meeting revision; it gives any participant a way to keep a counted result from becoming committee precedent until the paper revision has appeared in a mailing.
 
 ## 2. An Unmailed Change Flips Who Carries the Burden of Consensus
 
-SD-4 states the normal threshold: "A proposal normally advances if there are more than twice as many in favor of a proposal as against."<sup>[5]</sup> That threshold makes the timing of a design change consequential.
+SD-4 states the normal threshold: "A proposal normally advances if there are more than twice as many in favor of a proposal as against."<sup>[1]</sup> That threshold makes the timing of a design change consequential.
 
 Suppose an option first appears in an in-meeting revision and the group records a poll forwarding it. A stakeholder may have reviewed the mailed paper, seen no such option, and not attended the meeting. That stakeholder must later assemble the consensus needed to remove the option, because the option has become the status quo. Had the option been required to appear in the next mailing before being polled, those seeking to add it would have carried the consensus burden. The same disagreement can therefore resolve in opposite directions depending only on whether the change entered before or after national body review.
 
-A "forward with the following changes" poll can have the same effect. If the specified changes include a design decision absent from every mailed revision, the recorded poll establishes that decision before absent stakeholders seen it. Requiring one mailed revision before a tally becomes part of the record keeps the burden of consensus on those proposing the change.
+A "forward with the following changes" poll can have the same effect. If the specified changes include a design decision absent from every mailed revision, the recorded poll establishes that decision before absent stakeholders have seen it. Requiring one mailed revision before a tally becomes part of the record keeps the burden of consensus on those proposing the change.
 
 ## 3. The Rule
 
@@ -49,7 +57,7 @@ Mailing status is easy to verify. In the ordinary case, the paper revision was m
 
 The recorded tally is the boundary because later sessions use counted results as evidence of committee support. A qualitative record can still say that the group discussed a revision and favored its direction. It cannot include SF/F/N/A/SA numbers or another counted result when a participant has objected.
 
-SD-4 permits "followup papers to an on-time paper, such as late or in-meeting rebuttal/elaboration/update papers."<sup>[5]</sup> The proposed rule leaves that permission intact. Authors may circulate, present, discuss, and revise late papers. The only new condition concerns whether a counted poll on such material enters the minutes.
+SD-4 permits "followup papers to an on-time paper, such as late or in-meeting rebuttal/elaboration/update papers."<sup>[1]</sup> The proposed rule leaves that permission intact. Authors may circulate, present, discuss, and revise late papers. The only new condition concerns whether a counted poll on such material enters the minutes.
 
 ### 3.1. Application in the Room
 
@@ -90,11 +98,11 @@ Recording the poll over an objection also has a cost. It can establish a new sta
 
 The proposed rule is intended to change author incentives before an objection occurs. A mailed revision is the only revision assured of a recorded poll, so authors who need schedule certainty have reason to make the mailing version complete. Early feedback remains valuable and can still improve the paper before or during the meeting. If that feedback produces a material design change, one participant may require the new revision to pass through the mailing before its tally becomes committee precedent.
 
-The proposed rule will not eliminate delay. It trades some visible re-review for wider notice and a consensus burden that does not turn on timing. The committee should adopt it only if that trade is worth making.
+The proposed rule will not eliminate delay. It trades some visible re-review for wider notice and a consensus burden that does not turn on timing. The trade is worth making only if the committee judges wider notice more valuable than the delay.
 
 ## 5. Prior Art
 
-WG21 has previously considered a stronger cooling period. P2138R4 proposed a "Tentatively Plenary" state between specification review and a plenary poll. LEWG supported the proposal by 19 to 12, short of consensus.<sup>[7]</sup><sup>[8]</sup> In 2026, eighteen implementers asked WG21 to slow the addition of features so implementations and implementation feedback could catch up.<sup>[9]</sup> WG14 also uses a four-week document deadline and normally schedules later papers for the subsequent meeting.<sup>[10]</sup> The proposed rule is narrower because it restricts only the recording of a tally and allows the room to proceed when no one objects.
+WG21 has previously considered a stronger cooling period. P2138R4 proposed a "Tentatively Plenary" state between specification review and a plenary poll. LEWG supported the proposal by 19 to 12, short of consensus.<sup>[3]</sup><sup>[4]</sup> In 2026, eighteen implementers asked WG21 to slow the addition of features so implementations and implementation feedback could catch up.<sup>[5]</sup> WG14 also uses a four-week document deadline and normally schedules later papers for the subsequent meeting.<sup>[6]</sup> The proposed rule is narrower because it restricts only the recording of a tally and allows the room to proceed when no one objects.
 
 ## 6. Proposed Amendment to SD-4
 
@@ -108,17 +116,23 @@ WG21 has previously considered a stronger cooling period. P2138R4 proposed a "Te
 
 > **Open question.** The interaction between this rule and national body comment resolution during the CD/DIS cycle is left as an open question for committee discussion. A comment resolution can require a normative design change under an external ISO deadline. The committee is best placed to determine whether comment resolution needs a distinct exception or whether the group-boundary mechanism above provides sufficient flexibility.
 
-A poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R1."
+A poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R2."
 
 ## 7. Disclosure
 
-The author provides information and serves at the pleasure of the committee. He is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space. They are [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf)<sup>[1]</sup>, [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf)<sup>[2]</sup>, [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf)<sup>[3]</sup>, and [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf)<sup>[4]</sup>, a coroutine-native model for byte-oriented I/O. His preferred asynchronous model competes with `std::execution`. Readers should weigh the argument with that conflict in mind.
+The author provides information and serves at the pleasure of the committee.
+
+This paper asks WG21 to amend SD-4 with the mailing-discipline rule in Section 6, and suggests a poll to that effect.
+
+The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space. They are [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf)<sup>[7]</sup>, [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf)<sup>[8]</sup>, [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf)<sup>[9]</sup>, and [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf)<sup>[10]</sup>, a coroutine-native model for byte-oriented I/O. His preferred asynchronous model competes with `std::execution`. Readers should weigh the argument with that conflict in mind.
 
 The proposed rule applies to every paper in every feature area, including the author's own. Had it been in effect, an objection could have kept a tally on an unmailed revision of any of those papers out of the record.
 
+This paper was prepared with the assistance of generative tools. The author is responsible for its content.
+
 ## Appendix A. Evidence
 
-The two cases below show two forms of the same process gap. A.1 covers the March 2026 Croydon meeting, where WG21 adopted revisions first mailed after the meeting. A.2 covers the EWG poll of 2026-06-10, which recorded a direction poll on a revision not yet distributed in a mailing.
+A.1 covers the March 2026 Croydon meeting, where WG21 adopted revisions first mailed after the meeting. A.2 covers the EWG poll of 2026-06-10, which recorded a direction poll on a revision not yet distributed in a mailing.
 
 ### A.1. Croydon
 
@@ -137,13 +151,13 @@ The revisions also depended on one another. P3927R1 rebased its wording on the i
 
 ### A.2. Brno
 
-P3100R6, "A framework for systematically addressing undefined behaviour in the C++ Standard," appeared in the May 2026 mailing.<sup>[21]</sup> On 2026-06-10, EWG recorded this poll:
+P3100R6, "A framework for systematically addressing undefined behaviour in the C++ Standard," appeared in the May 2026 pre-Brno mailing.<sup>[21]</sup> On 2026-06-10, EWG recorded this poll:
 
 > EWG Approves of the overall direction of P3100R7, agrees to attend/spend time reviewing every line item in Telecons, and re-consider this in B&uacute;zios.
 
-The tally was 16 strongly favor, 15 favor, 6 neutral, 2 against, and 0 strongly against, and the tracker records consensus.<sup>[23]</sup>
+The tally was 16 strongly favor, 15 favor, 6 neutral, 2 against, and 0 strongly against, and the tracker records consensus.<sup>[22]</sup>
 
-P3100R7 carries a document date of 2026-06-01 but was <!-- submitted and --> <!-- lah: do you *know* when it was *submitted*?  Maybe it was submitted during the meeting, so in June? --> published in the July 2026 mailing.<sup>[22]</sup> P3100R7 may, therefore, have existed as an in-meeting draft when EWG voted. The durable point is limited to the mailing record: On the date of the poll, R6 was the last revision distributed through a WG21 mailing, yet the poll named R7. The later publication of R7 does not change what the pre-meeting mailing contained.
+P3100R7 carries a document date of 2026-06-01, nine days before the poll, but it did not appear in a mailing until the July 2026 post-Brno mailing<sup>[23]</sup> - the next mailing after the one delegates prepared from, published after the meeting had ended. No mailing fell between the two. The revision therefore existed, and was dated, before EWG voted. The durable point is limited to the mailing record: On the date of the poll, R6 was the last revision distributed through a WG21 mailing, yet the poll named R7. The later publication of R7 does not change what the pre-meeting mailing contained.
 
 The Brno poll concerned direction rather than adoption into the working draft. It nevertheless recorded a committee position and committed meeting time to line-by-line review. Later sessions can build on that result. A rule limited to wording or forwarding polls would leave this case untouched, so the proposed rule applies to every recorded poll on a paper revision, whether the poll concerns direction, design, specification, or a request to forward.
 
@@ -151,25 +165,25 @@ The Croydon and Brno cases show two forms of the same process gap. Croydon adopt
 
 ## References
 
-[1] [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
+[1] [SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures) - "WG21 Practices and Procedures" (Guy Davidson, 2026).
 
-[2] [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf) - "Open Issues in std::execution::task" (Vinnie Falco, Mungo Gill, 2026).
+[2] [SD-7](https://isocpp.org/std/standing-documents/sd-7-mailing-procedures-and-how-to-write-papers) - "Mailing Procedures and How to Write Papers" (Nevin Liber, 2023).
 
-[3] [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf) - "Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026).
+[3] [P2138R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2138r4.html) - "Rules of Design<=>Specification engagement" (Ville Voutilainen, 2021).
 
-[4] [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf) - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
+[4] [P2435R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2435r0.html) - "2021 Summer Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, 2021).
 
-[5] [SD-4](https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures) - "WG21 Practices and Procedures" (Guy Davidson, 2026).
+[5] [P3962R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3962r0.pdf) - "Implementation reality of WG21 standardization" (Nina Ranns, Erich Keane, Vlad Serebrennikov, Aaron Ballman, Iain Sandoe, Jonathan Caves, Cameron DaCamara, Gabriel Dos Reis, Gonzalo Brito, Christof Meerwald, Chuanqi Xu, Shafik Yaghmour, Cody Miller, Wyatt Childers, Waffl3x (Alex), Bruno Cardoso Lopes, Hubert Tong, Louis Dionne, 2026).
 
-[6] [SD-7](https://isocpp.org/std/standing-documents/sd-7-mailing-procedures-and-how-to-write-papers) - "Mailing Procedures and How to Write Papers" (Nevin Liber, 2023).
+[6] [WG14 N1829](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1829.htm) - "WG14 and PL22.11 (C) Joint Mailing and Meeting Information (WG14 Standing Document 1)" (John Benito, 2014).
 
-[7] [P2138R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2138r4.html) - "Rules of Design<=>Specification engagement" (Ville Voutilainen, 2021).
+[7] [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf) - "A Minimal Coroutine Execution Model" (Vinnie Falco, Steve Gerbino, Mungo Gill, 2026).
 
-[8] [P2435R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2435r0.html) - "2021 Summer Library Evolution Poll Outcomes" (Bryce Adelstein Lelbach, 2021).
+[8] [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf) - "Open Issues in std::execution::task" (Vinnie Falco, Mungo Gill, 2026).
 
-[9] [P3962R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3962r0.pdf) - "Implementation reality of WG21 standardization" (Nina Ranns, Erich Keane, Vlad Serebrennikov, Aaron Ballman, Iain Sandoe, Jonathan Caves, Cameron DaCamara, Gabriel Dos Reis, Gonzalo Brito, Christof Meerwald, Chuanqi Xu, Shafik Yaghmour, Cody Miller, Wyatt Childers, Waffl3x (Alex), Bruno Cardoso Lopes, Hubert Tong, Louis Dionne, 2026).
+[9] [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf) - "Symmetric Transfer and Sender Composition" (Mungo Gill, Vinnie Falco, 2026).
 
-[10] [WG14 N1829](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1829.htm) - "WG14 and PL22.11 (C) Joint Mailing and Meeting Information (WG14 Standing Document 1)" (John Benito, 2014).
+[10] [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf) - "Coroutine-Native I/O for C++29 (The Network Endeavor)" (Vinnie Falco, Steve Gerbino, Michael Vandeberg, Mungo Gill, Mohammad Nejati, 2026).
 
 [11] [P3980R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3980r0.html) - "Task's Allocator Use" (Dietmar K&uuml;hl, 2026).
 
@@ -193,6 +207,6 @@ The Croydon and Brno cases show two forms of the same process gap. Croydon adopt
 
 [21] [P3100R6](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r6.pdf) - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026).
 
-[22] [P3100R7](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r7.pdf) - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026).
+[22] [cplusplus/papers #1901](https://github.com/cplusplus/papers/issues/1901) - WG21 public paper tracker issue for P3100, recording the Brno Evolution poll of 2026-06-10.
 
-[23] [cplusplus/papers #1901](https://github.com/cplusplus/papers/issues/1901) - WG21 public paper tracker issue for P3100, recording the Brno Evolution poll of 2026-06-10.
+[23] [P3100R7](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3100r7.pdf) - "A framework for systematically addressing undefined behaviour in the C++ Standard" (Timur Doumler, Joshua Berne, 2026).
