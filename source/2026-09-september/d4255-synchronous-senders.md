@@ -166,9 +166,9 @@ The fixture is intentionally narrow. The append occurs even when the returned op
 
 ### Completion discovered during initiation
 
-Overlapped `WSARecv` supplies a sender-native mixed-completion example. Microsoft specifies that return zero means the operation completed immediately, while `SOCKET_ERROR` with `WSA_IO_PENDING` means successful initiation followed by later completion.<sup>[18]</sup> P2300R10 contains one `recv_sender` type whose `start` handles both outcomes.<sup>[3]</sup>
+Overlapped `WSARecv` supplies a sender-native mixed-completion example. Microsoft specifies that return zero means the operation completed immediately, while `SOCKET_ERROR` with `WSA_IO_PENDING` means successful initiation followed by later completion.<sup>[18]</sup> P2300R10 contains one `recv_sender` type, and the `start` of the `recv_op` operation state that its `connect` returns handles both outcomes.<sup>[3]</sup>
 
-The sender protocol directly represents this operation. `start` calls `WSARecv`; immediate success calls `set_value`, while the operation state for a pending result persists until completion-port processing. P2300R10's immediate branch assumes `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS`, which suppresses the completion-port entry that an immediate operation would ordinarily produce.<sup>[19]</sup> The operation result does not exist before initiation, so true pre-start readiness is unavailable.
+The sender protocol directly represents this operation. The operation state's `start` calls `WSARecv`; immediate success calls `set_value`, while the operation state for a pending result persists until completion-port processing. P2300R10's immediate branch assumes `FILE_SKIP_COMPLETION_PORT_ON_SUCCESS`, which suppresses the completion-port entry that an immediate operation would ordinarily produce.<sup>[19]</sup> The operation result does not exist before initiation, so true pre-start readiness is unavailable.
 
 An awaiter handles the same distinction from `await_suspend`. It initiates `WSARecv`, stores an immediate result when return zero is observed, then returns `false` or transfers directly to the continuation. For a pending result, the coroutine remains suspended. Both implementations need stable state and a race-safe handshake when completion can occur concurrently with initiation.
 
@@ -314,11 +314,11 @@ The objections below separate sender execution from pre-start readiness, identif
 
 ### "Senders already support synchronous I/O"
 
-The working draft permits completion during `start`, `inline_scheduler` completes that way, and P2300R10's `recv_sender` handles immediate and pending `WSARecv` outcomes in one sender type.<sup>[1]</sup><sup>[3]</sup> Those mechanisms expose completion timing through a receiver. They do not give branch 7.4 a different answer to `await_ready`.
+The working draft permits completion during `start`, `inline_scheduler` completes that way, and P2300R10's `recv_sender` covers immediate and pending `WSARecv` outcomes with one sender type whose operation state resolves the difference in `start`.<sup>[1]</sup><sup>[3]</sup> Those mechanisms expose completion timing through a receiver. They do not give branch 7.4 a different answer to `await_ready`.
 
 ### "Immediate I/O completion is normally discovered only after initiation"
 
-Immediate completion of overlapped `WSARecv` becomes known only during initiation.<sup>[18]</sup> An awaiter for that operation initiates from `await_suspend`, while a sender initiates from `start`. The pre-start advantage applies to higher-level user-space buffering and cached results, not to every operation that might complete immediately.
+Immediate completion of overlapped `WSARecv` becomes known only during initiation.<sup>[18]</sup> An awaiter for that operation initiates from its own `await_suspend`, while a sender initiates from the `start` of the operation state that `connect` returns. The pre-start advantage applies to higher-level user-space buffering and cached results, not to every operation that might complete immediately.
 
 ### "The generic bridge can be repaired without changing the sender concept"
 
@@ -408,7 +408,7 @@ Eric Niebler, Lewis Baker, Kirk Shoop, and the P2300R10 authors specified the se
 
 ## References
 
-[1] [N5054](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf) - "Working Draft, Programming Languages &mdash; C++" (Thomas K&ouml;ppe, 2026).
+[1] [N5054](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf) - "Working Draft, Programming Languages - C++" (Thomas K&ouml;ppe, 2026).
 
 [2] [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html) - "Add a Coroutine Task Type" (Dietmar K&uuml;hl, Maikel Nadolski, 2025).
 
@@ -440,7 +440,7 @@ Eric Niebler, Lewis Baker, Kirk Shoop, and the P2300R10 authors specified the se
 
 [16] [P4126R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4126r1.pdf) - "A Universal Continuation Model" (Vinnie Falco, Klemens Morgenstern, 2026).
 
-[17] [P3149R11](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3149r11.html) - "`async_scope` &ndash; Creating scopes for non-sequential concurrency" (Ian Petersen, Jessica Wong, 2025).
+[17] [P3149R11](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3149r11.html) - "`async_scope` - Creating scopes for non-sequential concurrency" (Ian Petersen, Jessica Wong, 2025).
 
 [18] [WSARecv](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsarecv) - "WSARecv function (winsock2.h)" (Microsoft, 2018).
 
