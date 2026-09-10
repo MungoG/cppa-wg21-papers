@@ -38,7 +38,7 @@ The title is the finding. An ISO standard is not a requirements document for any
 
 ### 2019: Management appoints verification personnel
 
-P1487R0<sup>[3]</sup> discloses corporate management directing the standardization effort:
+P1487R0<sup>[3]</sup> discloses corporate management directing the standardization effort. The paper's internal timeline dates the first appointment to September 2017 and the second to August 2018; the paper itself is published in 2019:
 
 > "Bloomberg's senior management realizing, among other features, the importance of a proper language-based contract-checking facility in C++, made the multi-year commitment to engage the services of Dr. Andrew Sutton to create a prototype version of the GCC and clang compilers consistent with the needs of even the most demanding large-scale software development companies (e.g., Google)."<sup>[3]</sup>
 
