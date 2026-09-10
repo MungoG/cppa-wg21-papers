@@ -10,9 +10,9 @@ reply-to:
 
 ## Abstract
 
-P3400R4<sup>[1]</sup> describes its assertion-control labels as "essential to the unhindered and widespread adoption of Contracts across the many domains in which C++ is used." This paper examines the published record behind that claim. One company has stated, in its own WG21 papers, that contracts are "business-critical," that it funds the compiler prototypes P3400R4 cites as implementation experience, and that it has appointed personnel to verify that ISO proposals satisfy its published business requirements. The published record suggests that the prototypes behind P3400R4's Section 6 are not independent implementations but corporate-sponsored branches by the paper author's employer.
+P3400R4<sup>[1]</sup> describes its assertion-control labels as "essential to the unhindered and widespread adoption of Contracts across the many domains in which C++ is used." This paper examines the public record behind that claim. One company has stated, in its own WG21 papers, that contracts are "business-critical," that it funds the compiler prototypes P3400R4 cites as implementation experience, and that it has appointed personnel to verify that ISO proposals satisfy its published business requirements. The public record suggests that the prototypes behind P3400R4's Section 6 are not independent implementations but corporate-sponsored branches by the paper author's employer.
 
-This paper then generalizes from the published record and the author's observations of committee proceedings into eight falsifiable behavioral predictions. If the committee record does not match them, they are wrong.
+This paper then generalizes from the public record and the author's observations of committee proceedings into eight falsifiable behavioral predictions. If the committee record does not match them, they are wrong.
 
 ---
 
@@ -26,7 +26,7 @@ This paper then generalizes from the published record and the author's observati
 
 ## The Implementer Gate
 
-This paper offers seven items from the published record, in chronological order. Each is a verbatim quotation from a published WG21 paper or a corporate website, followed by its implication for P3400R4's readiness claims.
+This paper offers seven items from the public record, in chronological order. Each is a verbatim quotation from a public source - a published WG21 paper, a corporate website, or a public code repository - followed by its implication for P3400R4's readiness claims. Two categories of material are excluded by rule: committee minutes and reflector posts. Nothing in this paper quotes them.
 
 ### 2017: "Business Requirements"
 
@@ -89,7 +89,7 @@ Section 6 of P3400R4 cites prototypes funded by the paper author's employer, beh
 
 ## Predictions
 
-The following predictions generalize from the author's observations of committee proceedings on contracts, partially corroborated by the published record cited in the preceding section. Each identifies a behavioral pattern that the structural position of an entity requiring P3400 would produce. They are falsifiable: if the committee record does not match them, they are wrong.
+The following predictions generalize from the author's observations of committee proceedings on contracts, partially corroborated by the public record cited in the preceding section. Each identifies a behavioral pattern that the structural position of an entity requiring P3400 would produce. They are falsifiable: if the committee record does not match them, they are wrong.
 
 **Prediction 1.** An entity that needs P3400 will characterize the C++26 Contracts MVP as unusable without it, framing the extension as urgent rather than optional.
 
