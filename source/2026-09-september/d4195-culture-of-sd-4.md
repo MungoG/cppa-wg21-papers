@@ -98,7 +98,7 @@ A technically compelling position without a champion is weak. An imperfect posit
 
 The minority experiences a specific asymmetry. The majority can point to polls. The authors can point to years of work. The chair can point to consensus. The minority can only point to the reasons for their objection. If those reasons are not preserved in the institutional record, participants who hold them may conclude that the process is converting failure to persuade the room into failure of the argument itself.
 
-The minority may believe: "The technical problem is still there. Nothing about a poll made it disappear." The reactions are predictable and documented: withdrawal ("Fine. Do whatever you want."), escalation ("You still have not answered the objection."), documentation, competing papers, appeals to another subgroup or national body, and institutional suspicion. A vicious feedback loop develops: The minority feels unheard, the minority becomes more forceful, the majority perceives obstruction, the majority discounts the minority, the minority feels even less heard.
+The minority may believe, "The technical problem is still there. Nothing about a poll made it disappear." The reactions are predictable and documented: withdrawal ("Fine. Do whatever you want."), escalation ("You still have not answered the objection."), documentation, competing papers, appeals to another subgroup or national body, and institutional suspicion. A vicious feedback loop develops: The minority feels unheard, the minority becomes more forceful, the majority perceives obstruction, the majority discounts the minority, the minority feels even less heard.
 
 **The person who objects remains respected, while their objection becomes institutionally irrelevant.**
 
@@ -154,7 +154,7 @@ The P2900 contracts case from [P3573](https://www.open-std.org/jtc1/sc22/wg21/do
 
 The advancing side may come to believe the opponents are perfectionists, unwilling to compromise, protecting their own design, repeatedly reopening decisions, preventing C++ from making progress, and demanding an impossible standard of certainty. When the opponent says "The fundamental issue remains," the author hears "No amount of accommodation will ever satisfy you." Both sides may be sincere.
 
-Section 5 named the distinction that both sides learn: Being technically unconvinced is not the same as being willing to spend the social capital needed to keep opposing consensus. The social norm becomes: "We can disagree strongly, but eventually somebody has to accept that the group has moved on."
+Section 5 named the distinction that both sides learn: Being technically unconvinced is not the same as being willing to spend the social capital needed to keep opposing consensus. The social norm becomes, "We can disagree strongly, but eventually somebody has to accept that the group has moved on."
 
 **For the winning coalition, that feels like mature governance. For a technically serious minority whose objections were never reconciled, it can feel like politely administered dismissal.**
 
@@ -188,7 +188,7 @@ A Poll 4 Strongly Against comment observed that no concrete sender/receiver netw
 
 ## 11. The Asymmetry of Institutional Memory
 
-The proposal itself is typically a substantial document: the author's motivation, requirements, examples, alternatives considered, responses to feedback, and wording. The proponent leaves a durable intellectual artifact. Suppose a highly qualified opponent gives a twenty-minute oral argument explaining why the architecture is wrong. The poll reads 18/9/5/3/4 and the record of the decision says: "Consensus in favor." Twenty years later, the author's 40-page P-paper remains. The oral dissent is a tally.
+The proposal itself is typically a substantial document: the author's motivation, requirements, examples, alternatives considered, responses to feedback, and wording. The proponent leaves a durable intellectual artifact. Suppose a highly qualified opponent gives a twenty-minute oral argument explaining why the architecture is wrong. The poll reads 18/9/5/3/4 and the record of the decision says, "Consensus in favor." Twenty years later, the author's 40-page P-paper remains. The oral dissent is a tally.
 
 **Future participants encounter the historical record as though the winning side possessed an argument and the losing side possessed votes. That is epistemically very different from what actually happened.**
 
@@ -286,7 +286,7 @@ The feedback loop is a causal chain:
 \text{fluency} \rightarrow \text{chair confidence} \rightarrow \text{agenda access} \rightarrow \text{successful papers} \rightarrow \text{reputation} \rightarrow \text{greater fluency}
 \]
 
-Each successful paper earned through fluency increases fluency further. The system compounds advantage for repeat players. A newcomer with a superior design faces both a lower probability of success and a higher cost of pursuit: the inequality runs on both sides of the ledger.
+Each successful paper earned through fluency increases fluency further. The system compounds advantage for repeat players. A newcomer with a superior design faces both a lower probability of success and a higher cost of pursuit: The inequality runs on both sides of the ledger.
 
 ### What Happens in the Room
 
@@ -422,7 +422,7 @@ The author co-authored [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/pa
 
 The author does not believe Contracts in its current form is the right mechanism for run-time safety in C++, and has papers to that effect. The author also has papers covering Profiles. P2900 was chosen as a primary case because it is the most heavily documented recent controversy with public records on both sides. Sections 7 and 8 present both perspectives without adjudicating the Contracts design.
 
-Machine-assisted drafting was used in the preparation of this paper. The incentive model was elicited by asking a language model to derive the game induced by SD-4. The case histories, poll numbers, and characterizations of the record are the author's, and were checked against the cited documents.
+Machine-assisted drafting was used in the preparation of this paper. The incentive model was elicited by asking a language model to derive the game induced by SD-4. The case histories, poll numbers, and characterizations of the record are the author's and were checked against the cited documents.
 
 \newpage
 
