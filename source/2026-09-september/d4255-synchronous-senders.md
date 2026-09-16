@@ -26,7 +26,8 @@ P2300R10 defines the sender model and its generic sender-to-awaitable bridge.<su
 
 Coroutine control transfer has its own history. P0913R1 added symmetric coroutine transfer, P1056R1 applied it to lazy tasks, and P2583R4 examines its absence from intermediate sender receivers.<sup>[9]</sup><sup>[10]</sup><sup>[11]</sup> P3801R0 separately identifies recursive behavior when sender completions resume task coroutines inline.<sup>[12]</sup> P4003R3 defines the IoAwaitable protocol used here, while P4092R1, P4093R1, and P4126R1 examine both bridge directions and their continuation requirements.<sup>[13]</sup><sup>[14]</sup><sup>[15]</sup><sup>[16]</sup>
 
-<!--lah: what is this list? It appears from nowhere. It needs some kind of introduction-->
+This paper adds five things to that record:
+
 1. A vocabulary separating synchronous completion, inline completion, per-instance prestart readiness, and a coroutine fast path
 2. A side-by-side account of the language awaiter surface and the sender-to-awaitable translation surface
 3. A normative trace that includes every `as_awaitable` branch and the implementation freedom available to standard-library senders
@@ -59,7 +60,7 @@ Sender-native composition provides static work graphs, explicit completion chann
 
 ## Completion and Readiness Are Different Properties
 
-Synchronous execution is not one property. Four separate properties determine what a coroutine can avoid, and using one name for all four conflates distinct protocol properties.<!--lah: This lead-in makes me think I'm about to see a table that contains the four properties, but the table defines six things. Say somethinkg about the other terms here, not just in the caption.-->
+Synchronous execution is not one property. Four separate properties determine what a coroutine can avoid, and using one name for all four conflates distinct protocol properties. Table 1 defines those four properties and also fixes the two protocol objects the comparison relies on, the awaiter and the operation state.
 
 | Term | Meaning in This Analysis |
 | --- | --- |
@@ -67,9 +68,8 @@ Synchronous execution is not one property. Four separate properties determine wh
 | **Inline completion** | The operation completes before `start()` returns on the execution agent that called `start()`. |
 | **Per-instance prestart readiness** | This operation object already has its result before initiation, although another object of the same type may not. |
 | **Coroutine fast path** | The coroutine obtains the result without being considered suspended by `[expr.await]`. |
-| **Awaiter** | The object on which the language evaluates `await_ready`, `await_suspend`, and `await_resume`. |
-| **Operation state** | The object produced by connecting a sender and receiver and passed to `start`. |
-<!-- lah: The first four items are complete sentences, and the last two are fragments. Make them complete sentences too for consistency. -->
+| **Awaiter** | The language evaluates `await_ready`, `await_suspend`, and `await_resume` on this object. |
+| **Operation state** | Connecting a sender and receiver produces this object, which is then passed to `start`. |
 
 Table 1. The four completion properties and the two protocol objects used throughout the comparison. The definitions separate completion discovered during initiation from a result known before initiation.
 
@@ -221,7 +221,7 @@ The sender exposes both interfaces explicitly. Sender consumers use `connect` an
 
 ### Await-completion adaptation is preserved by ordinary unary composition
 
-P3570R2 identified that a raw member on a leaf is unavailable after a sender adaptor changes the expression's type.<sup>[6]</sup> The working draft's response is `get_await_completion_adaptor`, a forwarding attribute query applied after domain transformation.<sup>[1]</sup> Standard unary parent senders forward forwarding attributes <!-- lah: "forward forwarding" is likely correct, but it seems odd. Can you replace forward with a different word, or does it need to stay as is? --> by default, so an await-completion adaptor can receive the transformed pipeline rather than only the original leaf.
+P3570R2 identified that a raw member on a leaf is unavailable after a sender adaptor changes the expression's type.<sup>[6]</sup> The working draft's response is `get_await_completion_adaptor`, a forwarding attribute query applied after domain transformation.<sup>[1]</sup> Standard unary parent senders propagate forwarding attributes by default, so an await-completion adaptor can receive the transformed pipeline rather than only the original leaf.
 
 A claim that every `then` necessarily discards await customization is no longer correct. Multichild parents have empty attributes by default, behavior-changing adaptors may need a different policy, and user-defined wrappers preserve forwarding attributes only when their `get_env` participates in the convention.
 
@@ -290,7 +290,7 @@ At NVIDIA/stdexec commit `2c56ffe7`, both the generic and statically inline send
 
 Table 3. The source-level differences between stdexec's generic and statically inline sender awaiters at commit `2c56ffe7`. The table describes code structure rather than optimizer output or latency.
 
-The specialized path relies on completion behavior that establishes that the local operation state cannot outlive `await_suspend`. It then connects, starts, and returns the continuation. This removes the generic handshake without making readiness true, skipping the operation state, or bypassing receiver completion.<!-- lah: It's hard to follow how the last clause fits into the sentence. Is it "This removes the generic handshake without making readiness true (skipping the operation state) or without bypassing receiver completion." or is it "This removes the generic handshake without making readiness true (skipping the operation state or bypassing receiver completion)." or maybe "This removes the generic handshake without making readiness true, without skipping the operation state, and without bypassing receiver completion." Ping me when you're working on this one, and I'll help rewrite depending on what you meant. -->
+The specialized path relies on completion behavior that establishes that the local operation state cannot outlive `await_suspend`. It then connects, starts, and returns the continuation. This removes the generic handshake without making readiness true, without skipping the operation state, and without bypassing receiver completion.
 
 stdexec's deployed completion behavior is compile-time and per completion channel.<sup>[21]</sup> A missing query produces `unknown`; `just`, `just_error`, and `just_stopped` publish inline behavior. This implementation is narrower than P3206R0's dynamic `split` result.<sup>[5]</sup>
 
@@ -310,9 +310,7 @@ stdexec demonstrates a lower-state path for statically inline completion without
 
 ## Objections Define the Scope
 
-The objections below separate sender execution from prestart readiness, identify repairs the finding permits, and exclude consumers that never enter the coroutine bridge.
-
-<!-- lah: We now start an area where we have a lot of quotes as section heads but no citation or indication of where those quotes come from. -->
+The objections below separate sender execution from prestart readiness, identify repairs the finding permits, and exclude consumers that never enter the coroutine bridge. Each heading states an objection in the form it is commonly raised; the quotation marks mark the objection rather than a source, and where an objection is attributable to a paper the heading cites it.
 ### "Senders already support synchronous I/O"
 
 The working draft permits completion during `start`, `inline_scheduler` completes that way, and P2300R10's `recv_sender` covers immediate and pending `WSARecv` outcomes with one sender type whose operation state resolves the difference in `start`.<sup>[1]</sup><sup>[3]</sup> Those mechanisms expose completion timing through a receiver. They do not give branch 7.4 a different answer to `await_ready`.
@@ -339,8 +337,7 @@ The await-completion adaptor query forwards through ordinary unary standard adap
 
 Behavior-changing adaptors still need semantics for the transformed expression, multichild parents need a combination policy, and closed erasure needs an interface entry. Centralizing the policy in a domain reduces duplication while retaining the translation boundary.
 
-<!-- lah: co_await has ticks later in the paper but not here, but perhaps it didn't in whatever is being quoted. -->
-### "Every co_await operand becomes an awaiter"
+### "Every `co_await` operand becomes an awaiter"
 
 Producing an awaiter is the required translation target, so the presence of an awaiter does not establish which native protocol an I/O API ought to expose. The relevant difference is whether the leaf already implements the language-facing readiness and extraction operations or reaches them after sender transformation, adaptation, connection, and receiver completion.
 
