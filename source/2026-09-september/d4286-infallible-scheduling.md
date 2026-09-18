@@ -73,7 +73,7 @@ The sender/receiver model reached the same wall from the other side.
 
 [P2300R10](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html)<sup>[11]</sup> shipped in C++26 as `std::execution`. [P3552R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3552r3.html)<sup>[12]</sup> added `task`, a coroutine type with one defining guarantee: scheduler affinity. After a `co_await`, a task resumes on the same scheduler on which it suspended. `task` implements the guarantee by wrapping every awaited expression in `affine_on` (since renamed `affine`), a sender adaptor that schedules the continuation back onto the task's scheduler.
 
-That scheduling operation must not fail. [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[13]</sup> establishes the requirement:
+That scheduling operation must not fail. [P3941R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3941r0.html)<sup>[18]</sup> establishes the requirement on 2025-12-14, in section 3.2 "Infallible Schedulers", and the passage is carried unchanged through [P3941R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3941r4.html)<sup>[13]</sup>. The concept is named earlier still: [P3796R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r0.html)<sup>[19]</sup>, dated 2025-07-15, defines a wrapper called `infallible_scheduler` and gives the same rationale.
 
 > "If this scheduling operation fails, i.e., it completes with `set_error(e)`, or if it gets cancelled, i.e., it completes with `set_stopped()`, the execution agent on which the scheduling operation resumes is unclear and `affine_on` cannot guarantee its promise. Thus, it seems reasonable to require that a scheduler used with `affine_on` is infallible."
 
@@ -138,7 +138,7 @@ This paper was prepared with the assistance of generative tools. The author is r
 
 ## Acknowledgments
 
-The author thanks Dietmar K&uuml;hl for P3941R4, which specifies the infallibility requirement and states its rationale precisely; Christopher Kohlhoff for the continuation framing in P0113R0 and for the Networking TS; Ville Voutilainen for P2464R0; Eric Niebler, Kirk Shoop, Lewis Baker, and Lee Howes for P1525R0 and the sender/receiver model that resolved the deficiencies they identified; and Steve Gerbino and Mungo Gill for co-developing the coroutine executor in P4003R3.
+The author thanks Dietmar K&uuml;hl for P3796R0 and P3941R0, which name the infallibility requirement and state its rationale precisely, and for carrying that text unchanged through P3941R4; Christopher Kohlhoff for the continuation framing in P0113R0 and for the Networking TS; Ville Voutilainen for P2464R0; Eric Niebler, Kirk Shoop, Lewis Baker, and Lee Howes for P1525R0 and the sender/receiver model that resolved the deficiencies they identified; and Steve Gerbino and Mungo Gill for co-developing the coroutine executor in P4003R3.
 
 ## References
 
@@ -175,3 +175,7 @@ The author thanks Dietmar K&uuml;hl for P3941R4, which specifies the infallibili
 [16] [N5054](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf) - "Working Draft, Programming Languages - C++" (Thomas K&ouml;ppe, 2026).
 
 [17] [N4771](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4771.pdf) - "Working Draft, C++ Extensions for Networking" (Jonathan Wakely, 2018).
+
+[18] [P3941R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3941r0.html) - "Scheduler Affinity" (Dietmar K&uuml;hl, 2025).
+
+[19] [P3796R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3796r0.html) - "Coroutine Task Issues" (Dietmar K&uuml;hl, 2025).
