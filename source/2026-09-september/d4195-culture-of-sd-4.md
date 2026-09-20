@@ -70,6 +70,8 @@ Each part is a property of the record rather than of anyone's state of mind, so 
 
 **A rebuttal paper is not reconciliation.**
 
+A companion paper in this mailing, [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf)<sup>[58]</sup>, applies this test to one rebuttal paper, P3846R1, concern by concern, and finds that the record contains replies for eighteen objections and reconciliation for two.
+
 ## 2. The Ideal Author
 
 A proposal enters the system when someone states an idea precisely enough for others to criticize. The author publishes a numbered paper, secures agenda time, remains present through repeated reviews, revises enough to remove organized sustained opposition, and survives successive scrutiny. On the surface, this is a system designed to refine technical ideas through deliberation.
@@ -148,7 +150,7 @@ The opposing side may come to believe the advancing coalition is invested in its
 
 The objector has invested analysis and reputation in the competing position. Each accommodation that does not address the architectural concern looks like procedural evasion. The burden of proof has shifted: The objector must now demonstrate the forwarded proposal should be withdrawn. Coalition dynamics favor the advancing group, which has more invested participants. The structural conditions for this perception come from SD-4's forwarding mechanism, its lack of mandatory written responses to dissent, and the accumulated state of favorable polls.
 
-The P2900 contracts case from [P3573](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3573r0.pdf)<sup>[36]</sup>'s perspective illustrates the gap. P3573R0, "Contract concerns" (January 2025), authored by Hava, Garcia Sanchez, Regev, Dos Reis, Spicer, Stroustrup, van Winkel, Vandevoorde, and Voutilainen, stated "grave concerns about the current design (P2900, the so called MVP == Minimal Viable Product) and its direction." [P3506R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3506r0.pdf)<sup>[37]</sup> (Dos Reis), "P2900 Is Still Not Ready for C++26," is dated 2024-11-19, the same day as the EWG forward. P3573R0 was filed after EWG had already forwarded to wording groups. The objectors had to demonstrate that the already-forwarded proposal should be withdrawn, not that it was unready. NB comments followed: ES-050, US 26-051, US 25-052, FR-004-053. From the objectors' perspective: years of closed-loop SG21 development, late objections called "already addressed," and the burden shifted to challengers. SG21, which had developed the MVP, polled TS versus IS and recorded consensus against.
+The P2900 contracts case from [P3573](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3573r0.pdf)<sup>[36]</sup>'s perspective illustrates the gap. P3573R0, "Contract concerns" (January 2025), authored by Hava, Garcia Sanchez, Regev, Dos Reis, Spicer, Stroustrup, van Winkel, Vandevoorde, and Voutilainen, stated "grave concerns about the current design (P2900, the so called MVP == Minimal Viable Product) and its direction." [P3506R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3506r0.pdf)<sup>[37]</sup> (Dos Reis), "P2900 Is Still Not Ready for C++26," is dated 2024-11-19, the same day as the EWG forward. P3573R0 was filed after EWG had already forwarded to wording groups. The objectors had to demonstrate that the already-forwarded proposal should be withdrawn, not that it was unready. NB comments followed: ES-050, US 26-051, US 25-052, FR-004-053. From the objectors' perspective: years of closed-loop SG21 development, late objections called "already addressed," and the burden shifted to challengers. SG21, which had developed the MVP, polled TS versus IS and recorded consensus against. The subgroup's chair has since published his own account of that period: participants "complained throughout the SG21 work that the pace was too fast," he "heard those complaints" and "did not change course," and he kept his technical objections to private conversations with the authors until the paper had left SG21, a choice he now calls "a failure of chairing" ([P4381R0](https://isocpp.org/files/papers/P4381R0.html)<sup>[59]</sup>). That account is the chair's, so it is evidence of how the process felt from the office that ran it, not only from the objectors' seats.
 
 ## 8. How the Authors Perceive the Objectors
 
@@ -520,11 +522,11 @@ Machine-assisted drafting was used in the preparation of this paper. The incenti
 
 [46] [P3499R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3499r1.pdf) - "Exploring strict contract predicates" (Timur Doumler, Lisa Lippincott, Joshua Berne, 2025).
 
-[47] [P3829R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3829r0.pdf) - "Contracts do not belong in the language" (David Chisnall, Michael Spicer, Gabriel Dos Reis, et al., 2025).
+[47] [P3829R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3829r0.pdf) - "Contracts do not belong in the language" (David Chisnall, John Spicer, Ville Voutilainen, Gabriel Dos Reis, J. Daniel Garcia Sanchez, 2025).
 
-[48] [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html) - "Contracts make C++ less safe" (Michael Spicer, Ville Voutilainen, J. Daniel Garcia, 2025).
+[48] [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html) - "Contracts make C++ less safe - full stop" (John Spicer, Ville Voutilainen, J. Daniel Garcia Sanchez, 2025).
 
-[49] [P3849R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3849r0.pdf) - "SIS/TK611 considerations on Contract Assertions" (Felix Achitz, 2025).
+[49] [P3849R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3849r0.pdf) - "SIS/TK611 considerations on Contract Assertions" (Harald Achitz, 2025).
 
 [50] [P3851R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3851r0.pdf) - "Position on contracts assertion for C++26" (J. Daniel Garcia, et al., 2025).
 
@@ -542,6 +544,10 @@ Machine-assisted drafting was used in the preparation of this paper. The incenti
 
 [57] [cplusplus/papers issue 2645](https://github.com/cplusplus/papers/issues/2645#issuecomment-4018919102) - EWG telecon poll record for D4009R1, posted by the EWG vice-chair, 2026-03-08.
 
+[58] [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf) - "Addressed but Unresolved: P3846R1's Eighteen Responses on C++26 Contract Assertions" (Vinnie Falco, 2026). Companion paper in the same mailing.
+
+[59] [P4381R0](https://isocpp.org/files/papers/P4381R0.html) - "Chairing SG21 and then objecting to Contracts" (John Spicer, 2026). The SG21 chair's account of the pace of the C++26 Contracts work and of his own chairing.
+
 \newpage
 
 ## Appendix A. P2900 Rebuttal Paper Timeline
@@ -551,10 +557,10 @@ Machine-assisted drafting was used in the preparation of this paper. The incenti
 | 2024-11-19 | EWG forwards P2900R11 to CWG/LEWG for C++26 (SF:25, F:17, N:0, A:3, SA:12) | POLL |
 | 2024-11-19 | [P3506R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3506r0.pdf)<sup>[37]</sup> "P2900 Is Still Not Ready for C++26" (Dos Reis) | OPPOSITION |
 | 2025-01-12 | [P3573R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3573r0.pdf)<sup>[36]</sup> "Contracts concerns" (Stroustrup, Dos Reis, Voutilainen, et al.) | OPPOSITION |
-| 2025-01-13 | [P2899R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r0.pdf)<sup>[16]</sup> "Contracts for C++ - Rationale" (Berne, Doumler, Khlebnikov, Krzemie&nacute;ski) | REBUTTAL |
+| 2025-01-13 | [P2899R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r0.pdf)<sup>[16]</sup> "Contracts for C++ - Rationale" (Berne, Doumler, Khlebnikov, Krzemie&nacute;ski) | RATIONALE (the record reads it as a rebuttal; see below) |
 | 2025-02-03 | [P3591R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3591r0.pdf)<sup>[10]</sup> "Contextualizing Contracts Concerns" (Berne, Doumler) | REBUTTAL |
 | 2025-02-09 | [P3500R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3500r1.pdf)<sup>[15]</sup> "Are Contracts 'safe'?" (Doumler, Azman, Berne, McDougall) | REBUTTAL |
-| 2025-02-11 | EWG Hagenberg: "Remove P2900 from C++26" (SF:9, F:8, N:3, A:19, SA:41) - consensus against | POLL |
+| 2025-02-11 | EWG Hagenberg: "Remove P2900 from CWG's consideration for C++26, find a different ship vehicle" (SF:9, F:8, N:3, A:19, SA:41) - consensus against | POLL |
 | 2025-02-15 | Plenary adopts P2900R14 into C++26 Working Draft (100 in favor, 14 opposed, 12 abstain) | POLL |
 | 2025-09-02 | [P3829R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3829r0.pdf)<sup>[47]</sup> "Contracts do not belong in the language" (Chisnall, Spicer, Dos Reis, et al.) | OPPOSITION |
 | 2025-09-03 | [P3835R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3835r0.html)<sup>[48]</sup> "Contracts make C++ less safe" (Spicer, Voutilainen, Garcia) | OPPOSITION |

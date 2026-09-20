@@ -151,7 +151,7 @@ The author provides information and serves at the pleasure of the committee.
 
 The author is president of the C++ Alliance and maintains coroutine-native I/O libraries under it.
 
-The C++ Alliance has published a position, in [P4238R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4238r0.pdf)<sup>[15]</sup>, that the National Bodies vote No on the C++26 DIS ballot and return the draft over Contracts. The author is a co-author of P4238R0, and this paper's findings support that position. That co-authorship is a material stake in the question under assessment.
+The C++ Alliance has published a position, in [P4238R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4238r1.pdf)<sup>[15]</sup>, that the National Bodies vote No on the C++26 DIS ballot and return the draft over Contracts. The author is a co-author of P4238R1, and this paper's findings support that position. That co-authorship is a material stake in the question under assessment.
 
 Two limitations bound the method. Sponsorship is established from the public record - the employer's own published statements that it funds a GCC and Clang implementation, its claim of that implementation experience as a corporate contribution, and the address its employee commits from - and not from any accounting document, which no party outside the company can see. The predictions in the preceding section generalize partly from the author's own observations of committee proceedings, which is evidence no reader can independently check.
 
@@ -189,7 +189,7 @@ This paper asks for nothing.
 
 [14] [P3878R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3878r0.html) - "C++26 Contracts are not a good fit for standard library hardening" (Ville Voutilainen, Jonathan Wakely, John Spicer, Stephan T. Lavavej, 2025).
 
-[15] [P4238R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4238r0.pdf) - "Returning C++26 for the Evaluation It Skipped" (Vinnie Falco, Ville Voutilainen, Jos&eacute; Daniel Garc&iacute;a S&aacute;nchez, John Spicer, 2026).
+[15] [P4238R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4238r1.pdf) - "Returning C++26 for the Evaluation It Skipped" (Vinnie Falco, Ville Voutilainen, Jos&eacute; Daniel Garc&iacute;a S&aacute;nchez, John Spicer, 2026).
 
 [16] [P2899R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2899r1.pdf) - "Contracts for C++ - Rationale" (Joshua Berne, Timur Doumler, Rostislav Khlebnikov, Andrzej Krzemie&nacute;ski, 2025).
 
