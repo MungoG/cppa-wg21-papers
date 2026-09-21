@@ -1,4 +1,4 @@
-﻿---
+---
 title: "Addressed but Unresolved: P3846R1's Eighteen Responses on C++26 Contract Assertions"
 document: P4272R0
 date: 2026-09-03
