@@ -278,7 +278,7 @@ Each successful paper earned through fluency increases fluency further. The syst
 
 ### What happens in the room
 
-Individual optimization produces collective dynamics. Three matrices capture the strategic interactions that shape outcomes.
+Individual optimization produces collective dynamics. Three matrices capture the strategic interactions that shape outcomes. In each cell the first number is the payoff to the participant on the left, the second to the participant across the top. Higher is better, and the values rank outcomes against each other rather than measure them.
 
 **Matrix A: Author versus Reviewer.** The author chooses Revise or Push unchanged. The reviewer chooses Scrutinize or Abstain. Let \( c \) = cost of serious review.
 
