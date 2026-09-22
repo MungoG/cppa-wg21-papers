@@ -40,7 +40,7 @@ WG21 sometimes records polls on paper revisions that did not appear in a pre-mee
 
 The pre-meeting mailing gives national body experts time to review the papers that WG21 will consider.<sup>[1]</sup><sup>[2]</sup> An in-meeting revision can improve a proposal by incorporating early feedback, correcting wording, or resolving a choice among alternatives. The problem arises when the committee records a poll on that new revision before absent stakeholders have seen it. Delegates who prepared from the mailing have thus examined text other than that under consideration.
 
-Of the nineteen papers the author had studied in preparation for the March 2026 Croydon meeting, six changed during the week. The count is the author's own record rather than a figure the papers index yields. Some changes were necessary wording corrections. Others recorded design decisions or changed public interfaces. The proposed rule does not restrict early feedback or in-meeting revision; it gives any participant a way to keep a counted result from becoming committee precedent until the paper revision has appeared in a mailing.
+Of the nineteen papers Vinnie Falco had studied in preparation for the March 2026 Croydon meeting, six changed during the week. The count is his own record rather than a figure the papers index yields. Some changes were necessary wording corrections. Others recorded design decisions or changed public interfaces. The proposed rule does not restrict early feedback or in-meeting revision; it gives any participant a way to keep a counted result from becoming committee precedent until the paper revision has appeared in a mailing.
 
 ## 2. An Unmailed Change Flips Who Has the Burden of Consensus
 
@@ -121,15 +121,15 @@ A poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R2."
 
 ## Disclosure
 
-The author provides information and serves at the pleasure of the committee.
+The authors provide information and serve at the pleasure of the committee.
 
 This paper asks WG21 to amend SD-4 with the mailing-discipline rule in Section 6, and suggests a poll to that effect.
 
-The author is the founder of the C++ Alliance and maintains competing proposals in the `std::execution` space. They are [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf),<sup>[7]</sup> [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf),<sup>[8]</sup> [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf),<sup>[9]</sup> and [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf),<sup>[10]</sup> a coroutine-native model for byte-oriented I/O. His preferred asynchronous model competes with `std::execution`. Readers should weigh the argument with that conflict in mind.
+Vinnie Falco is the founder of the C++ Alliance. The authors maintain competing proposals in the `std::execution` space. They are [P4003R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4003r3.pdf),<sup>[7]</sup> [P4007R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4007r3.pdf),<sup>[8]</sup> [P2583R4](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2583r4.pdf),<sup>[9]</sup> and [P4100R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4100r1.pdf),<sup>[10]</sup> a coroutine-native model for byte-oriented I/O. Their preferred asynchronous model competes with `std::execution`. Readers should weigh the argument with that conflict in mind.
 
-The proposed rule applies to every paper in every feature area, including the author's own. Had it been in effect, an objection could have kept a tally on an unmailed revision of any of those papers out of the record.
+The proposed rule applies to every paper in every feature area, including the authors' own. Had it been in effect, an objection could have kept a tally on an unmailed revision of any of those papers out of the record.
 
-This paper was prepared with the assistance of generative tools. The author is responsible for its content.
+This paper was prepared with the assistance of generative tools. The authors are responsible for its content.
 
 ## Appendix A. Evidence
 

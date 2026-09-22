@@ -405,13 +405,13 @@ This paper asks for nothing.
 
 ## Disclosure
 
-The author provides information and serves at the pleasure of the committee.
+The authors provide information and serve at the pleasure of the committee.
 
-The author co-authored [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[41]</sup> and participated in the discussions it addresses. That paper is cited in section 10, and the networking case is also one of the two cases behind key judgment 5. In 2021 that paper's position was right; it is no longer a design recommendation. Both treatments are process cases, not a brief for any async model.
+Vinnie Falco co-authored [P2469R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2469r0.pdf)<sup>[41]</sup> and participated in the discussions it addresses. That paper is cited in section 10, and the networking case is also one of the two cases behind key judgment 5. In 2021 that paper's position was right; it is no longer a design recommendation. Both treatments are process cases, not a brief for any async model.
 
 The author does not believe Contracts in its current form is the right mechanism for run-time safety in C++, and has papers to that effect. The author also has papers covering Profiles. P2900 was chosen as a primary case because it is the most heavily documented recent controversy with public records on both sides. Sections 7 and 8 present both perspectives without adjudicating the Contracts design.
 
-Machine-assisted drafting was used in the preparation of this paper. The incentive model was elicited by asking a language model to derive the game induced by SD-4. The case histories, poll numbers, and characterizations of the record are the author's and were checked against the cited documents.
+Machine-assisted drafting was used in the preparation of this paper. The incentive model was elicited by asking a language model to derive the game induced by SD-4. The case histories, poll numbers, and characterizations of the record are the authors' and were checked against the cited documents.
 
 \newpage
 
