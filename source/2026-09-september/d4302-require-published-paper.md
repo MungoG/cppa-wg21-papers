@@ -118,7 +118,7 @@ WG21 has previously considered a stronger cooling period. P2138R4 proposed a "Te
 
 A poll could read: "Adopt the mailing-discipline amendment to SD-4 in P4302R2."
 
-## 7. Disclosure
+## Disclosure
 
 The author provides information and serves at the pleasure of the committee.
 

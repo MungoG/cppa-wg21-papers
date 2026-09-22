@@ -402,7 +402,7 @@ A different design would produce a different culture. This one produces what rat
 
 This paper asks for nothing.
 
-## 15. Disclosure
+## Disclosure
 
 The author provides information and serves at the pleasure of the committee.
 
