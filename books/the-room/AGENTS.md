@@ -1,0 +1,49 @@
+# Agent instructions: The Room
+
+This file is the source of truth for voice, mechanics, and structure. Each act's voice card, passage map, and quote ledger live in `planning/voices/`. Where a voice file disagrees with this file, this file wins.
+
+- **What the book is.** A stylized abstraction of how WG21 chooses designs, told through six historical voices, for WG21 delegates and the C++ public. It is a lens, not evidence. It need not match every procedural detail, but it must not get procedure or history wrong.
+- **Thesis.** The committee asks whether a design is correct, whether the room wants it, who won the poll, and whether to forward the paper. Nobody asks whether the users need it, or whether it needs to be standardized at all. Every act turns on that unasked question, each in its own author's idiom.
+- **What the book criticizes.** How the evolution groups (LEWG, EWG, and the study groups that feed them) choose designs and papers, and how the C++ public is left out. The wording groups are not the target. National body reviewers who read the wording are a positive force.
+- **Roles.**
+  - The cast are roles: composites, never single individuals.
+  - Each act is a different meeting. The roles recur but the people filling them change, so the Patron may be a woman in one act and a man in another.
+  - A part continues another part's meeting only when it says so, and then the facts agree.
+  - The Architect includes the founder whose creation outgrew him.
+- **Voices.**
+  - Act One is Machiavelli, Two is Nietzsche, Three is Kafka, Four is Canetti, Five is Jung, and Six is Talleyrand.
+  - Jung is the unnamed sixth voice. The contents page shows "?", and the act names him only in its attribution line.
+  - Each act is narrated by its author from the first line to the last. He never names himself in the third person; the italic attribution line and epigraph citations are exempt. He refers to the others by epithet, such as the Florentine, the philosopher, the clerk, the naturalist, and the analyst.
+  - Narrative mode follows the voice card. For example, Kafka tells the Author's story in close third person, as he told K.'s, without commentary.
+  - The Preface, Epilogue, and back cover are the book's author speaking plainly.
+- **Transformation.** Every section transforms an identified passage from its author's own work, recorded in the passage map. The section keeps the passage's intent and maps its scenario onto the committee in a way that supports the thesis. A beat that repeats another act's beat is retold through this author's own scenario: never cut, and never retold the same way.
+- **Quotations.**
+  - Machiavelli, Nietzsche, Kafka, and Talleyrand are quoted in the book's own translations from the public-domain originals, checked against a public-domain English translation. A narrator's quotations of himself share his voice.
+  - Canetti and Jung are quoted briefly from their published English translations, verified, and trimmed to the sentence that does the work.
+  - An epigraph quotes only the author it names.
+  - No full or substantial copy of an in-copyright work is stored anywhere.
+- **Motifs.**
+  - Acts One to Five each end with the author's line "I died in YEAR, yet the ... persists." Act Six ends instead on "He begins to build."
+  - Each act has its own word for the users, matching the contents page in `bookmaker.py`: the uncounted, the unnamed, the unseen, the unasked, the undiscovered, the unheard.
+  - The moon is what the committee cannot schedule or poll.
+  - Each act ends with the Author back at his laptop, told differently each time. The payoff is "He begins to build."
+  - "Build" means a better process, other rooms, and publishing a library so adoption decides whether it belongs in the standard.
+- **Boundaries.**
+  - Diagnose the institution, never an individual's psyche.
+  - Suggest the Architect's undisclosed tradeoff through the evidence trail. Never assert what he knew.
+  - No sexual-coercion analogies.
+  - No mockery of host cities, conference attendees, implementers, or the C++ public.
+- **Mechanics.**
+  - No em dashes, no en dashes used as dashes, and no double dashes in prose. Use a single spaced hyphen.
+  - The one exception is the epigraph attribution line, which begins `> -- ` because `bookmaker.py` parses it.
+  - American spelling.
+  - Keep these rare: "precision" and "precise"; "devastating"; "It is not X. It is Y."; "not because X but because Y"; and any paragraph that explains a metaphor after the scene has shown it.
+  - "Door" is reserved for the doorkeeper motif and Act One's contrast between a fortress and a door.
+- **Markup contract.** Keep every marker `bookmaker.py` parses:
+  - `# Act ...` headings;
+  - each act's subtitle (`## ...`) and its italic attribution line;
+  - numbered section headings (`## <Roman numeral>. Title`) and Act Two's `### N.` subsections;
+  - epigraph blockquotes;
+  - the comments `<!-- break -->`, `<!-- recto -->`, `<!-- table -->`, `<!-- body -->`, `<!-- back-cover -->`, `<!-- back-quote -->`, and `<!-- back-author -->`;
+  - the metadata comments in `parts/00-front.md`.
+- **Structure.** `parts/00-front.md` through `parts/09-back-cover.md` hold the book in order: front matter, Preface, six acts, Epilogue, back cover. `bookmaker.py` assembles them into `the-room.md`, which is generated and must never be edited by hand, then builds `the-room.pdf`, which is gitignored. Run `uv run --no-project --with reportlab --with pyphen python bookmaker.py` from this folder. Edit the parts, then rebuild.
