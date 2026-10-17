@@ -2,7 +2,7 @@
 
 ## Back Cover
 
-How does a committee, built on good faith and published rules, always elevate process over people?
+How does a committee, built on good faith and published rules,<br/>come to elevate process over people?<br/>Some 16 million people use C++. A few hundred decide for the rest.
 
 <!-- back-quote -->
 

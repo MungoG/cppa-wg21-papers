@@ -6,13 +6,15 @@ Voice card, passage map, quote ledger, and sources for Act Four of *The Room*. W
 
 ## Voice card
 
+AGENTS.md now overrides the global decisions G3, G6, G7, G10, and G11 wherever they differ: a sharp line beats a style rule, budgets are per part, pace rules apply, and narrators may say what a composite role sees, feels, or fails to notice.
+
 ### Narrative stance
 
 - Person: first person singular, from the first line to the last. His "I" is the naturalist's: it names a phenomenon ("I designate as eruption..."), vouches for a source ("known to me"), or fixes a method ("Before I try to undertake a classification of crowds..."). It never confesses and never performs modesty.
 - Frame: he writes in Hampstead in 1960, the year *Masse und Macht* appeared, and is shown a committee. The last line speaks from after his death in 1994. He may know whatever the committee shows him, but he cites nothing published after 1994.
 - Tense: present for laws and for the committee scenes, which he watches as they happen; past for his own life and his book ("I wrote", "I called it"). Flash-forwards ("They will not speak again after this week") are the naturalist's knowledge of how the specimen ends. Use them sparingly.
-- Addressee: no one by name. As in the book, he uses "we" for men in general and "one" for the general case. He avoids the generic "you".
-- Mode: he tells the Author's, the Newcomer's, and the Delegate's stories from outside, the way he retold the accounts of the Warramunga and the Bushmen: what bodies do, what the crowd feels, where the hands rise. He reports a person's mind only as that person's body or words show it. Commentary follows the scene as a short law, never as an explanation of the image just shown.
+- Addressee: no one by name. As in the book, he uses "we" for men in general and "one" for the general case. He avoids the generic "you", with one named exception (see Exceptions).
+- Mode: he tells the Author's, the Newcomer's, and the Delegate's stories from outside, the way he retold the accounts of the Warramunga and the Bushmen: what bodies do, what the crowd feels, where the hands rise. He may say what a composite role sees, feels, does not know, or did not see when it sharpens a scene; he never says what the Architect knew (see Exceptions). Commentary follows the scene as a short law, never as an explanation of the image just shown.
 - His works: *Crowds and Power* in italics, or "my book". He quotes the Carol Stewart translation as his own words, since he worked on it with her for a year. He never writes "Canetti writes", "Canetti calls", or "Canetti's crowd". The italic attribution line and the epigraph citations stay as they are.
 - The other five: the Florentine (Machiavelli), the philosopher (Nietzsche), and the clerk (Kafka). "The man in Prague" may appear once as a descriptor beside "the clerk", never in place of it. He speaks of the clerk with respect, having called him the greatest expert on power. The analyst (Jung) and the voice of Act Six come after him, so Act Four does not mention them. If the analyst is ever needed, he stays unnamed.
 - His own epithet: the others call him the naturalist. He never uses it of himself in the third person.
@@ -20,13 +22,13 @@ Voice card, passage map, quote ledger, and sources for Act Four of *The Room*. W
 ### Sentence architecture
 
 - Axiom first. A section or paragraph opens on a flat universal law in the present tense, without hedging.
-- Short declaratives in series, each adding one property. A semicolon joins a claim to its restatement or consequence: "Its state has something passive in it; it waits."
+- Short declaratives in series, each adding one property. A semicolon joins a claim to its restatement or consequence: "Its state has something passive in it; it waits." Under the book's merge rule, such a join between two short clauses is a merge, and the part keeps only two (see Pace decisions).
 - Counted traits. Properties are listed one by one, often numbered, each in its own short sentence.
 - Exemplum, then law. A scene from a named people, a chronicle, or an eyewitness account is told concretely, and one sentence draws the general law. In Act Four the committee scenes are the exempla.
 - A paragraph's last sentence names the phenomenon (the discharge, the sting, the double crowd) rather than explaining it.
 - Questions are rare and are answered at once by observation, never left rhetorical.
 - Abstract nouns behave like natural kinds, with definite articles: the crowd, the pack, the sting, the survivor, the heap.
-- Little subordination, no irony, no jokes, no exclamations. The register is grave and even.
+- Little subordination. Dry irony is allowed; no jokes at anyone's expense, and no exclamations. The register is grave and even.
 
 ### Signature moves
 
@@ -63,16 +65,23 @@ Each exemplar is a verified short quotation from the Stewart translation, with i
 - Use counts of bodies, hands, and papers, never percentages.
 - Avoid management and social-science vocabulary: cascade, signal, framing, incentive gradient, attention economy, social proof, social capital, bandwidth, dynamics, optimal, rational ignorance, self-replicating, structural inevitability, default state. The protected line "the median voter is the sovereign, and the sovereign does not read" is the one exception.
 - Avoid psychoanalytic vocabulary: the unconscious, repression, projection, complex, shadow. It belongs to the analyst of Act Five, and Canetti rejected the psychoanalytic account of crowds.
-- Avoid "precise" and "precision" (the part has seven; the target is one), "It is not X. It is Y." beyond two, and "build" outside its motif sense, so that Act Six keeps "He begins to build." Keep the word reserved for the doorkeeper motif out of the opening unless it plainly belongs to the clerk.
+- "Precise" appears once in the part, in the Patron's steak line ("a lifetime being precise"); no other "precise", "precisely", or "precision", in narration or in quotation. The book rules cap "It is not X. It is Y." at five per part, counting the strict form (a denial followed by its correction, including "are not X. They are Y.") and leaving out protected lines and quotations. The part spends four: XXV's "This is not weather. It is politics.", XXVI's Room B line ("are not dense enough to stagnate ... They are six individuals"), XXVIII's "It is no longer the challenger's complaint. It is the independent confirmation of what the reviewer found.", and XXXI's "The threat is not the feature. The threat is the gathering evidence that what works will come from somewhere else." Looser variants with other verbs stay rare: the protected Delegate line in XXIX ("does not carry his judgment. It carries the room's mood"), the Patron's "Not trust that ... Trust that ..." in XXVII, and XXXII's "I did not propose a solution. I proposed attention." are the ones in the part. Avoid "build" outside its motif sense, so that Act Six keeps "He begins to build." Keep the word reserved for the doorkeeper motif out of the opening unless it plainly belongs to the clerk.
 - Never use a third-person self-reference such as "Canetti writes", "Canetti calls", or "Canetti's crowd". The part has forty.
 
 ### What he never does
 
 - He never argues from a statistic, a survey, or a modern theorist. The text of his book names neither Le Bon nor Freud; its authorities are myths, chronicles, ethnographies, and his own witness. Downs, Michels, Pournelle, Lorenz, and the FDA figures are foreign to him, and the 2006 restatement and the 2011 study postdate his death.
-- He never diagnoses an individual's mind. He shows what crowds do and what bodies do, which is also the book's boundary.
+- He never says what the Architect knew, and never gives any role or real person a clinical or diagnostic label. He may say what a composite role sees, feels, does not know, or did not see when it sharpens a scene, as when the Author does not know about the hotel bar.
 - He never mocks a crowd. The faithful, the fleeing, and the baited receive the same gravity.
 - He never prescribes procedure. His remedies are moral and bodily (face the command, draw out the sting), not repairs to a scheduling queue.
 - He never names himself in the third person, and never names the Florentine, the philosopher, or the clerk.
+
+### The act's question
+
+- The users are not in the room when the decisions are made. The book states that thesis plainly only in the Preface, the Epilogue, and the back-cover blurb; this act shows it in its own word for the users, the unasked.
+- Act Four's question: are the existing solutions good enough? In his idiom it is the question of what the unasked already hold. It is set up in XXIII, passed over at the plenary motion in XXIX, and anchored in XXXI at the Blogger's library, which kept changing to meet her until the standard froze one version of it. At most three explicit statements.
+- He never poses another act's question: how many will benefit, whether it is worth the cost, whether it solves a problem users actually have, whether it needs to be in the standard at all, or how anyone knows they want it.
+- The Architect's tradeoff is described only by its effect, in one wording: the design "loses performance in the very use case it was built to serve." No technical term that identifies a real proposal.
 
 ### Drift tests
 
@@ -80,16 +89,36 @@ Answer each yes or no. Any yes is drift.
 
 1. Does the paragraph name the narrator in the third person ("Canetti writes", "Canetti's crowd") outside the attribution line or an epigraph citation?
 2. Does the paragraph rest on a statistic, a study, a modern theorist, or anything published after 1994, rather than on an observed crowd, a myth, a chronicle, or an ethnography?
-3. Does the paragraph tell what a person secretly thought, feared, or knew, rather than what bodies and crowds did?
+3. Does the paragraph say what the Architect knew, or give any role a clinical or diagnostic label? (Saying what a composite role sees, feels, does not know, or did not see is allowed.)
 4. Does the paragraph use management or social-science vocabulary (cascade, signal, framing, incentive, bandwidth, social proof, dynamics) outside a protected line?
 5. Does a quotation from *Crowds and Power* run past the one sentence that does the work, or differ from its replacement text in the quote ledger?
 
+### Exceptions and pace decisions
+
+Lines restored in the October 2026 edit that a stricter reading of this card would cut. Keep them as written.
+
+- What a composite does not know: XXIV, "He does not know who will read it. He does not know that most will not."; XXVI, "She did not know which study group to talk to. She did not know that talking to a study group was something she was supposed to do before arriving." (OLD wording, restored in round three in place of the reported speech an earlier card rule forced); XXXII, "He does not know about the hotel bar, the overheard laughter, the early flight."
+- What a composite feels or sees: XXV, "The Author feels the reflector's questions as a tapping in his flesh."; XXIX, "He is harder. He is more strategic."; XXX, "His job, as he sees it, is done." (how the Architect sees his job, never what he knew about the tradeoff); XXXII, "The first time he felt gratitude. The second time he felt the sting."
+- Dry irony: XXVI, "Elbows negotiate armrests." and "which draws a murmur of appreciation that functions as applause"; XXVI, the schedule "set by people who had more important things to think about"; XXVII, the Patron's jacket, "slightly too formal for the venue and slightly too informal for a man of his reputation"; XXVII, "competent, and institutionally compatible". "Institutionally compatible" stays despite the ban on management vocabulary, because the bureaucratic phrase is the irony.
+- The one "precise": XXVII, "He cuts his steak with the careful movements of a man who has spent a lifetime being precise."
+- The generic "you": the Empty Seat's last sentence in XXVII ("a process that does not see you, that was not designed to see you, that will go on producing standards whether you are in the room or not").
+- The "and ... and" chain: the act has four. XXVIII's consensus chain ("and opposition requires knowledge, and knowledge requires disclosure, and disclosure is voluntary") and the protected median-voter line in XXXII were the first two. The 2026-10-17 rewrite of the ending added XXIX's momentum line ("The Author's objection is correct, and it is spoken once, and a single voice spoken once is a stone in a river") and XXX's closure line ("says now that it is correct, and the Chair agrees, courteously, and then says"), both kept under the author's rule to raise a budget rather than split a line. Four is the general limit in AGENTS.md. Add no fifth.
+- The fragment run: XXV, "Not opposition. Not skepticism. Nothing." OLD's three fragments, restored in round three, so the Newcomer's empty thread ends on "Nothing."
+- The attention line: XXXII, "I did not propose a solution. I proposed attention." OLD's two-beat turn, restored in round three just before the closing sentence of *Crowds and Power*. It is a looser variant of "It is not X. It is Y." with its own verb, so it does not count against that cap.
+
+Pace decisions:
+
+- One quotation per paragraph. The part no longer quotes Q19 ("The denser it is, the more people it attracts."), Q20 (the conductor's "no more obvious expression of power"), Q39 ("The first thing to be noticed about it is that it has a boundary."), Q47 ("The more fiercely people press together"), or Q48 ("Wherever men have grown accustomed", whose "precisely" would break the budget). The quote ledger below still records them.
+- XXIX keeps one pointer to the unasked question, the sentence before the Author's objection: "Anyone could stand now and ask whether the users' existing tools are good enough." Do not add the other two back. (2026-10-17: the corner-case question is gone. The Author stands "instead" and speaks to correctness, so the users' question still goes unasked.)
+- The Architect's early choices stay shown through the trail ("No revision names it"), not through a chain about why they were never revisited, which would read as his motive.
+- Merges. The book rules allow three in this part (raised from two on 2026-10-17). The part keeps XXX's "The entrances are few: one must know that the committee exists and ask to be admitted.", XXXI's "She names the limitation: the facility loses performance in the very use case it was built to serve.", and XXIX's "The chair of the wording group answers that the wording does what the design says; the design is not his to answer for." The third is kept by the author's decision under the raised budget. Its first clause may run too long to count, but the raise keeps any later pass from splitting it, and it is also an exception to the sharp-standalone-half test. Two joins in the 2026-10-17 text are not merges, and neither is to be split: XXIX's momentum colon ("a stone in a river: the water parts around it and closes again") ends a long periodic sentence, and the semicolons in XXX's closure ("the facility is in the published standard; the committee does not break what it has published; ...") are a list inside reported speech. Round three split every other short semicolon or colon join into separate sentences. Semicolons inside *Crowds and Power* quotations are quotations, not merges.
+
 ### Narrative facts that bear on voice
 
-- The crowd he joined: on 15 July 1927 he was swept along with the crowd that burned the Palace of Justice in Vienna, and he credited that day with his lifelong study of crowds. Source: *The Torch in My Ear* (*Die Fackel im Ohr*, 1980; tr. Joachim Neugroschel, 1982), as summarized by Wikipedia, "July Revolt of 1927", and by *The New Criterion*, "Becoming Elias Canetti". Use: the opening's "streets of Vienna before the Anschluss" can be that day, told as his own memory.
+- The crowd he joined: on 15 July 1927 he was swept along with the crowd that burned the Palace of Justice in Vienna. His first conscious experience of a crowd came earlier, at the Frankfurt workers' demonstration of 27 June 1922 after Rathenau's murder, which he called in 1959 "der eigentliche Keim", the true seed, of the book. Sources: *The Torch in My Ear* (*Die Fackel im Ohr*, 1980; tr. Joachim Neugroschel, 1982), as summarized by Wikipedia, "July Revolt of 1927"; *The New Criterion*, "Becoming Elias Canetti"; the Metzler handbook entry "Masse und Macht". Use: the opening's "streets of Vienna before the Anschluss" can be the 1927 day, told as his own memory, but not as the first place he learned crowds.
 - His quarrel with Freud: he recoiled "from the very first word" of Freud's *Group Psychology and the Analysis of the Ego*, writing that "What I missed most in Freud's discussion was recognition of the phenomenon." Source: *The Torch in My Ear*, as quoted in *Oxford Literary Review* (2015). Use: he explains crowds as crowds, never through one man's psyche.
 - His view of the clerk: "Of all writers, Kafka is the greatest expert on power." Source: *Kafka's Other Trial* (*Der andere Prozess*, 1969; tr. Christopher Middleton, 1974), as quoted by Robert Cooper, "Canetti's Sting", *Ephemera* (1990). Use: the opening may contrast their methods, but it must not diminish the clerk.
-- How long the book took: he made his first outline for a book on crowds in 1925 and worked on it for about thirty-five years. *Masse und Macht* appeared in Hamburg in 1960, and Carol Stewart's translation in 1962. Sources: NobelPrize.org biographical chronology; MHRA News (2026). Use: the opening's "forty years" overstates; thirty-five is documented.
+- How long the book took: he made his first outline for a book on crowds in 1925 and worked on it for about thirty-five years. *Masse und Macht* appeared in Hamburg in 1960, and Carol Stewart's translation in 1962. Sources: NobelPrize.org biographical chronology; MHRA News (2026). Use: the opening's "forty years" rounds up the documented thirty-five, which the historical license in the book rules allows; Act Six matches it.
 - The translation is partly his: he spent a year working on the English translation with Carol Stewart. Source: MHRA News (2026). Use: he may quote the Stewart text as his own words.
 - How long the book is: the first English editions (Gollancz and Viking, 1962) run to 495 pages, bibliography included. Sources: Open British National Bibliography; *American Political Science Review* review header (1963). Use: settles decision A4-13 at "five hundred pages"; "four hundred" is wrong.
 - Where the survivor sits: "The Survivor" is the sixth of the book's eleven parts. The book closes with "Rulers and Paranoiacs" and an Epilogue titled "The End of the Survivor". Source: the book's part order. Use: "my final chapters" on the survivor is wrong; "the book's last word" is right.
@@ -112,9 +141,9 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Attributes of the Crowd
 - Book text: "A crowd exists so long as it has an unattained goal."
 - Intent: Before classifying crowds, he fixes the four traits every crowd shares, and the last says a crowd lives only while its goal lies ahead and will take any goal to stay alive.
-- Scenario: The opening's catalogue of crowds rests on these traits: the mailing grows, the poll equalizes, the room is dense, and the next standard gives direction. The three-year cadence guarantees the committee an unattained goal forever, and a crowd that will accept any goal never asks whether this one is needed. The thesis is on the first page.
+- Scenario: The opening's catalogue of crowds rests on these traits: the mailing grows, the poll equalizes, the room is dense, and the next standard gives direction. The three-year cadence guarantees the committee an unattained goal forever, and a crowd that will accept any goal never asks whether what the users already hold is good enough. The users are outside the room from the first page.
 - Decisions: A4-1; G5 (the clerk's epithet); A4-4 and G9 (the opening's "three hundred papers per cycle" and "twenty-three study groups"); G8.
-- Drift risk: Condescending to the clerk ("He did not step back to see the crowd"), whom he called the greatest expert on power; keep the contrast one of method. Also correct "forty years" to the documented thirty-five.
+- Drift risk: Condescending to the clerk ("He did not step back to see the crowd"), whom he called the greatest expert on power; keep the contrast one of method. The opening's "forty years" stands.
 
 </anchor>
 
@@ -126,8 +155,8 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Fear of Being Touched
 - Book text: "There is nothing that man fears more than the touch of the unknown."
 - Intent: The book's first law: the fear of an unknown touch dictates every distance men keep, and only in the crowd does it turn into its opposite.
-- Scenario: Two strangers in a taxi keep their distances: employer, title, country. At registration the badge and the crowded corridor dissolve them, and at the straw poll a first-time author and a platform architect weigh the same for an instant. Then each returns to his house. The equality is physical and brief, and it never reaches the users outside the room.
-- Decisions: A4-1; G5 (four self-references); A4-5 (renowned cities, rooms no one remembers); G4 ("He believes it is correct, and it is" shifts toward needed and proven); G6; G7 ("the precision of a naturalist"); G8. Protected: "Above the rooftops, the moon. The committee cannot schedule it."
+- Scenario: Two strangers in a taxi keep their distances: employer, title, country. At registration the badge and the crowded corridor dissolve them, and at the straw poll a first-time author and a platform architect weigh the same for an instant. Then each returns to his house. The equality is physical and brief, and it never reaches the users outside the room. (2026-10-17: "They will spend six days" became "They have come to spend six days", because the Newcomer leaves on Wednesday.)
+- Decisions: A4-1; G5 (four self-references); A4-5 (renowned cities, rooms no one remembers); G4 (the act's question is set up here); G6; G7 ("the precision of a naturalist"); G8. Protected: "Above the rooftops, the moon. The committee cannot schedule it."
 - Drift risk: Converting "something Canetti describes with the precision of a naturalist" into first-person self-praise. Also, "the fundamental condition of human life" claims more than the book does.
 
 </anchor>
@@ -154,7 +183,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > Wind
 - Book text: "Apart from its voice, the most striking thing about wind is its direction."
 - Intent: Wind is the crowd symbol that is invisible yet felt, has a voice of many registers, and above all has a direction.
-- Scenario: The reflector is felt before the meeting as wind. The Author's thread tests whether he is a recognized source, the Architect's blows steadily behind his paper, and the Newcomer's is dead air. The first insiders to reply set the direction, and no voice in any thread asks whether users want the feature.
+- Scenario: The reflector is felt before the meeting as wind. The Author's thread tests whether he is a recognized source, the Architect's blows steadily behind his paper, and the Newcomer's is dead air. The first insiders to reply set the direction, and no voice in any thread is a user's.
 - Decisions: A4-1; G5; G4 ("The design is not being evaluated; the designer is"); G6; G7 ("These are not technical questions. They are credentialing questions."; "This is not weather. It is politics."); G8. Protected: the reflector as wind.
 - Drift risk: Lifting "passed on from one dancer to another" out of the dance and setting it in the wind passage. A narrator misplacing his own sentence is worse than a commentator doing it.
 
@@ -168,7 +197,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > Stagnation
 - Book text: "It waits for a head to be shown it, or for words, or it watches a fight."
 - Intent: The stagnating crowd is packed tight and passive; it waits for a head, a word, or a fight, and its density is what holds it together.
-- Scenario: Room A fills because two competing papers are scheduled back to back, and the room has come to watch a fight. The Chair stands alone at the front like a conductor, holding the order, the clock, and the poll. Room B, with six people, never becomes a crowd at all. The room asks which presenter belongs and which proposal it wants; the users sit in neither room.
+- Scenario: Room A fills because two competing papers are scheduled back to back, and the room has come to watch a fight. Fifty sit in it when the poll is taken: 28 for the Architect, 18 for the Author, 4 not voting. The Chair stands alone at the front like a conductor, holding the order, the clock, and the poll. Room B, with six people, never becomes a crowd at all. The room asks which presenter belongs and which proposal it wants; the users sit in neither room.
 - Decisions: A4-1; G5; A4-2 (the counts must match the winner); G4 ("the room does not evaluate designs. It evaluates presenters."); G6; G7 ("uncanny precision"; "careful and precise"); G8. Protected: the Room A and Room B cross-cut; the conductor.
 - Drift risk: "certain of its discharge" is not in the book; use the verified replacement from the quote ledger.
 
@@ -182,7 +211,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > Crowd Crystals
 - Book text: "Their unity is more important than their size."
 - Intent: Crowd crystals are small, fixed, familiar groups whose cohesion, not their number, lets them set a larger crowd in motion.
-- Scenario: The peerage of perhaps twenty (chairs, former chairs, keynote names) is the crystal around which a room's support precipitates. The Patron is a crystal in retirement, the Architect is never seen alone, and the Author stands alone. At the bar the Newcomer overhears "another paper from nobody", books the flight home for the next evening, and becomes the Empty Seat. The vote measures the crystal behind a paper, and the crystal knows its own members, not the users.
+- Scenario: The peerage of perhaps twenty (chairs, former chairs, keynote names) is the crystal around which a room's support precipitates. The Patron is a crystal in retirement, the Architect is never seen alone, and the Author stands alone. At the bar the Newcomer overhears "another paper from nobody" and the two delegates' laughter, books the flight home for the next evening, and becomes the Empty Seat. The vote measures the crystal behind a paper, and the crystal knows its own members, not the users. (2026-10-17: the two delegates are ones "she recognizes from Room A, where she sat through Tuesday's session", since on Monday she was in Room B.) (2026-10-17, later pass: the Patron's line is now "A correct paper gets a hearing. It does not raise a single hand." It replaces "Correctness gets you into the room. It does not get you through the room.", a plainer copy of Act One's "Correctness is the entry fee, not the prize", under the shared-lines rule, and it speaks in the act's own image of hands. It sets up the closure in XXX, where the room calls the paper correct and no hand is raised for it, and the email in XXXII. The Patron is kept as a crystal habituated to the institution's measure: what he counts as success is a hearing.)
 - Decisions: A4-1; G5; A4-9 (Michels and Pournelle); A4-13 ("five hundred pages"); A4-15 (keep "There is one tomorrow evening. She books it."; she flies home Wednesday evening); G2; G4 (the Patron's "Correctness is the entry fee"); G6; G7 ("a lifetime being precise"); G8. Protected: crowd crystals; the Empty Seat.
 - Drift risk: Arguing from Michels (1911) and a 2006 restatement that a narrator who died in 1994 cannot have read. Land the point through the crystal, or attribute it correctly per G9: the paraphrase is Pournelle's Iron Law of Bureaucracy, not Michels's Iron Law of Oligarchy.
 
@@ -196,8 +225,8 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Double Crowd: War
 - Book text: "War has to do with killing. The enemy ranks are 'thinned.'"
 - Intent: In war two crowds face each other, and each wants the other's number to fall until its own is the larger heap of the living.
-- Scenario: Two papers compete for one design space. The camps share rooms and restaurants, but at the poll each wants the other's hands to fall. The lamenting pack around the Author's defeat becomes a war pack when R3 names the Architect's limitation in writing, and the national body reviewers who read the wording turn the war into a contest of substance. The war asks which paper wins; neither camp asks whether either belongs in the standard.
-- Decisions: A4-1; G5; A4-3 ("The standard has room for one approach, not two", though both features ship); A4-11 (the section's closing line moves to A4-20); G4; G6; G7 ("It is no longer the challenger's complaint. It is the independent confirmation"); G9 ("consensus means 'absence of sustained opposition'"); G11; G8.
+- Scenario: Two papers compete for one design space. The camps share rooms and restaurants, but at the poll each wants the other's hands to fall. The lamenting pack around the Author's defeat becomes a war pack when R3 names the Architect's limitation in writing, and the national body reviewers who read the wording turn the war into a contest of substance. The war asks which paper wins; neither camp asks whether what the users already have is good enough. (Round three, 2026-10-16: the sentence "The national body reviewers have turned it into a contest of substance." is cut; the paragraph now ends "The war between the two papers moves onto the page, into the public record, where a tradeoff named in writing stays named.") (2026-10-17, the author's decision: the Architect's paper no longer enters the working draft in XXVIII. "It has won two polls, and it goes to the wording group", national body reviewers read it "as it nears the working draft", and the sharp line "The Architect's paper is the law." moves to XXIX. The narrator's "The turn will take another meeting, another revision, another poll." became the camp's expectation, "The Author's camp expects the turn to take another meeting, another revision, another poll.", because no third poll comes. "But the direction has changed. The wind has shifted." stays: the room's judgment turns, too late, at the closure in XXX.)
+- Decisions: A4-1; G5; A4-3 ("The standard has room for one approach, not two"; since 2026-10-17 only the Architect's feature ships, and XXX ends "It had."); A4-11 (the section's closing line moves to A4-20); G4; G6; G7 ("It is no longer the challenger's complaint. It is the independent confirmation"); G9 (the trimmed definition: since round three the part quotes only the definition's opening fragment, "the absence of sustained opposition", as what consensus "is marked by" under the committee's rule; "marked by" follows the definition's own "characterized by", so the fragment is not passed off as the whole rule, and the paragraph never treats silence as consent); G11; G8.
 - Drift risk: "The tradeoffs were known to him, or should have been known" asserts what the Architect knew (G11). Show only the trail: the phrase absent across his revisions, a comment saying it "was not evaluated", a fix that arrives quickly. Also, "the oldest transformation in human social life" is not in the book.
 
 </anchor>
@@ -210,7 +239,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Crowd as a Ring
 - Book text: "The spectators turn their backs to the city."
 - Intent: The arena's crowd is closed twice, to the city behind its wall and within its own unbroken ring, and its discharge must happen inside.
-- Scenario: Plenary is the ring: two hundred delegates facing the convener and one another, with their backs to the users. Late in a long afternoon of motions comes the motion to apply the Author's reviewed wording to the working draft. The Delegate votes on thirty motions after reading the papers behind three. Everything the arena decides, it decides facing inward; the city, where the unasked live, is behind the wall.
+- Scenario: Plenary is the ring: two hundred delegates facing the convener and one another, with their backs to the users. Late in the Saturday-morning session comes the motion to apply the Architect's reviewed wording to the working draft. This plenary is at a meeting a year after the taxi; it is not the plenary of the Newcomer's week, which Act Five shows. The Author stands and says what his R3 says, plainly and correctly, and the wording group's chair answers that the design is not his to answer for. Then the momentum: "A crowd near its goal does not like to be held." The goal is the meeting's last motion, which sends the draft out for ballot, and a single objection spoken once is "a stone in a river." The count is forty-seven to three to twelve, the Author's hand among the three and his co-author's among the twelve, so no recognized name objects and the room never stiffens. "The Architect's paper is the law." stands as its own paragraph before the growth paragraph, and the plenary is the Author's third defeat. The Delegate votes on thirty motions after reading the papers behind three. Everything the arena decides, it decides facing inward; the city, where the unasked live, is behind the wall. (2026-10-17, the author's decision: the motion was the Author's, and it passed. It is now the Architect's, carried by the crowd's momentum over the Author's correct objection.)
 - Decisions: A4-1; G5; A4-7 (a motion to apply reviewed wording, at a later meeting than R3; "Their silence is a yes vote."); A4-9 (the FDA figures); A4-14 (the Newcomer's empty chair); G2; G4; G6; G7 ("This is not negligence."; "is not a metaphor. It is"; "is not a statistical tendency. It is"); G9; G8.
 - Drift risk: The plenary's apparatus of studies (the FDA percentages, Lorenz 2011) and the invented "freeze response" put a social scientist's voice in his mouth; the ring and the count of hands make the point without them. The empty chair must also agree with the facts: she presented in Room B, and she stopped coming after one more meeting.
 
@@ -224,7 +253,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Open and Closed Crowd
 - Book text: "The closed crowd renounces growth and puts the stress on permanence."
 - Intent: The closed crowd accepts a boundary and gives up growth, and in exchange gains permanence and staying power.
-- Scenario: The national bodies are closed crowds behind national boundaries: specialists who read the wording and file comments on every defect. Their reading reaches what the open crowd of plenary ratified without examination, and a dozen comments land on the Architect's feature. The heap of the dead (contracts, concepts, networking) shows what the open crowd never weighed. The closed crowd that reads is the institution's corrective, and its reviewers are a positive force.
+- Scenario: The national bodies are closed crowds behind national boundaries: specialists who read the wording and file comments on every defect. Their reading reaches what the arena of plenary ratified without examination, and a dozen comments land on the Architect's feature. The heap of the dead (contracts, concepts, networking) shows what the arena never weighed. The closed crowd that reads is the institution's corrective, and its reviewers are a positive force. (2026-10-17: XXX now ends on the closure. The final ballot comes back approved, and the first paragraph closes on a law: "While the standard was a draft, it had to grow. Published, it is a closed crowd. It renounces growth where it has already grown." At the next meeting the Author's R4 is heard in the group where it began. The first questioner now says it is correct, and the Chair's reasons (the facility is published, the committee does not break what it has published, and two facilities for one job would be poor engineering) are the closed crowd's renunciation spoken aloud. "There is no poll" deliberately rhymes with the Newcomer's Room B in XXVI. The paper is closed with a line in the minutes that says it was correct, and the section ends: "The war was fought as if the standard had room for one approach. It had." The closed crowd frames the closure so that it does not retell Act Three's ending, where a paper heard after the rival shipped wins an approval that no longer matters.)
 - Decisions: A4-1; G5; A4-8 (contracts, concepts, and networking, per G9); A4-12 (the evidence trail); G6; G7 ("small, precise"); G9; G11; G12; G8.
 - Drift risk: "He knows the limitation. He has always known it." enters the Architect's mind; replace it with the evidence trail (G11). Also verify the ballot stage: the large round of national body comments usually comes at the CD ballot, before the DIS.
 
@@ -238,7 +267,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > The Eruption
 - Book text: "I designate as eruption the sudden transition from a closed into an open crowd."
 - Intent: The eruption is the moment a closed crowd overflows its guarded space and wants to reach everyone.
-- Scenario: The standard ships and overflows the committee's guarded rooms into compilers, talks, blogs, and forums. The crowd that receives it, the people who write the language every day, is larger and more honest than the crowd that made it: the Blogger's post, the flight crowd in the comments, the congregation that keeps coming back, the Newcomer reading at her desk. The users meet the standard only after it ships; they were never asked.
+- Scenario: The standard ships and overflows the committee's guarded rooms into compilers, talks, blogs, and forums. The crowd that receives it, the people who write the language every day, is larger and more honest than the crowd that made it: the Blogger's post, the flight crowd in the comments, the congregation that keeps coming back, the Newcomer reading at her desk. The users meet the standard only after it ships; they were never asked. (2026-10-17: the Newcomer's paragraph no longer says "but the committee values the kind that unifies a theory or completes an algebraic structure." The clause was asserted, with no scene behind it, and "completes an algebraic structure" risked identifying one real proposal, against the book's Disguise rule. The paragraph now ends "It had the plain elegance of a tool. Nobody read it.")
 - Decisions: A4-1; G5; A4-3 (the comment "Shame it did not make it into this cycle"); A4-6 (the condescension toward the faithful); A4-10; G6; G7 ("technically precise"); G10; G8.
 - Drift risk: Sneering at the C++ public and at conference attendees ("The faithful attend, are mildly moved"). He describes religious crowds gravely, never with contempt (G10). Also, "the crowd that has domesticated itself" inverts the book, in which the religions domesticate their crowds.
 
@@ -252,8 +281,8 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Survivor > The Survivor
 - Book text: "The moment of survival is the moment of power."
 - Intent: Power begins in the moment one man stands while another lies dead, and the survivor's satisfaction is in being the one left standing.
-- Scenario: Two years on, the Author's feature is in the working draft for the next standard (one way to settle decision A4-3). Correction papers gather against the Architect's feature, the Patron retires ("The system works, eventually"), the Delegate still does not read, and the archive of unread papers lies around the Author like a field of the fallen. The process selects for survivors, and a survivor's triumph is measured against dead papers, not against what users need.
-- Decisions: A4-1; G5; A4-3 ("His feature is in the standard"); A4-9 (the adoption percentages; soften "dead standards walking"); A4-13 ("four hundred pages"); G2; G4; G7; G9; G13; G8. Protected: "The system works, eventually. It just costs more than it should."; "He does not know her name anymore."; "the median voter is the sovereign, and the sovereign does not read"; "I died in 1994, yet the crowd I fed persists."
+- Scenario: Three years after the taxi, the Author's paper is in the archive, closed, with a line in the minutes that says it was correct. Correction papers gather against the Architect's feature, the Patron retires ("You were right, and they said so. The system works, eventually."), the Delegate still does not read, and the archive of unread papers lies around the Author like a field of the fallen. His own paper "lies among the dead", his library still runs at his company, and elsewhere "the unasked work around the limitation his paper named and the standard kept." He knows only that the Newcomer "was not in the room when he stood to object." The process selects for survivors, and since 2026-10-17 XXXII separates two kinds. The Architect has victory and survival in one: "The Architect has his triumph, and the Author's paper is one of the dead it counts." The Author has survival without victory, the capacity, or compulsion, to fight again: "The Author survived without one. Like any outvoted man, he anticipates 'future battles, and many of them; in none of them will he be killed.'" That quotation closes the beat XXVI paraphrased ("since this battle killed no one, he expects others"). A survivor's triumph is still measured against dead papers, not against what the users already had. He survived the loss, and he "means to win the next one." The Patron is kept as the crystal habituated to the institution's measure: his email treats a line in the minutes as proof that the system works, which his dinner line in XXVII ("A correct paper gets a hearing.") set up. The Epilogue's "You were right. The record proves it." now answers him, the minutes against the users' correction papers, and the contrast is deliberate. (Decision A4-3 reversed, 2026-10-17, by the author's decision: the old ending, in which both features shipped and XXX ended "It ships with both.", made the fight worthless. The Author's paper is now eliminated. The Architect's paper enters the working draft at the plenary a year after the taxi, over the Author's objection, and after publication the design group calls the Author's R4 correct and closes it. Round three, 2026-10-16, had already set XXXII at three years: "It has been three years since the taxi from the airport.")
+- Decisions: A4-1; G5; A4-3 (reversed 2026-10-17; XXXII now says "His paper is in the archive, closed."); A4-9 (the adoption percentages; soften "dead standards walking"); A4-13 ("four hundred pages"); G2; G4; G7; G9; G13; G8. Protected: "The system works, eventually. It just costs more than it should."; "He does not know her name anymore."; "the median voter is the sovereign, and the sovereign does not read"; "I died in 1994, yet the crowd I fed persists."
 - Drift risk: The section says "Canetti" and "I" within a few paragraphs, then ends on a reform program in management words ("the scheduling queue", "the bandwidth gap"). He gives the survivor the book's last word and asks only that the sting be faced. Also, "his final chapters" is wrong: the survivor has the sixth part and the Epilogue.
 
 </anchor>
@@ -261,12 +290,12 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 <anchor>
 
 - ID: A4-12
-- Heading: Repeated beat, the 22 to 34 poll (in "## XXVI. The Room: The Stagnating Crowd"; also in Act One)
+- Heading: Repeated beat, the 18 to 28 poll (in "## XXVI. The Room: The Stagnating Crowd"; also in Act One)
 - Passage: "Now no one has ever really believed that the majority decision is necessarily the wiser one because it has received the greater number of votes. It is will against will as in war."
 - Locus: The Crowd in History > The Nature of the Parliamentary System
 - Book text: "No one has ever really believed that the majority decision is necessarily the wiser one because it has received the greater number of votes."
 - Intent: A vote replaces killing with counting; the count shows which side is stronger, and no one takes it as proof of which side is wiser.
-- Scenario: In Room A the incumbent wins by twelve. The count is a battle without corpses: the raised hands stand in for the dead, and the margin is the heap. The Author accepts it as a defeat, not as an argument, and begins to plan the next battle, because no one was killed and there will be others. Here the beat lands on the poll as a count of wills rather than of wisdom, and nobody counts the users.
+- Scenario: In Room A the incumbent wins by ten, 28 to 18, with 4 not voting. The count is a battle without corpses: the raised hands stand in for the dead, and the margin is the heap. The Author accepts it as a defeat, not as an argument, and begins to plan the next battle, because no one was killed and there will be others. Here the beat lands on the poll as a count of wills rather than of wisdom, and no user's hand is in it. (2026-10-17: the beat returns in XXXII, where Canetti's own sentence about the outvoted member, "future battles, and many of them; in none of them will he be killed.", closes what XXVI paraphrased as "since this battle killed no one, he expects others." His paper is now dead, and he still anticipates battles.)
 - Decisions: A4-2 (the incumbent's count must be the larger); G4; G8.
 - Drift risk: Retelling the poll as tactics (who allied with whom, who spoke first) slides into the Florentine's idiom. Here the poll is a battle that kills no one, and the count is all it measures.
 
@@ -289,12 +318,12 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 <anchor>
 
 - ID: A4-14
-- Heading: Repeated beat, the 18 to 22 poll (in "## XXVIII. The Double Crowd: War Between Papers")
+- Heading: Repeated beat, the 22 to 25 poll (in "## XXVIII. The Double Crowd: War Between Papers")
 - Passage: "The surest, and often the only, way by which a crowd can preserve itself lies in the existence of a second crowd to which it is related. ... the sight, or simply the powerful image of the second crowd, prevents the disintegration of the first."
 - Locus: The Crowd > The Double Crowd: Men and Women. The Living and the Dead
 - Book text: "The surest, and often the only, way by which a crowd can preserve itself lies in the existence of a second crowd to which it is related."
 - Intent: A crowd survives best by facing a rival crowd, because the sight of the other keeps it from falling apart.
-- Scenario: Six months later the margin narrows from twelve to four. Each camp now exists because of the other: the co-author in the front row, the Architect's allies, the two delegates who answered the Author's emails. The narrowing count keeps both crowds alive for another meeting. Here the beat lands on rivalry as what sustains both camps, and a question about users would dissolve them both.
+- Scenario: Six months later the margin narrows from ten to three, 25 to 22 with 3 not voting. Each camp now exists because of the other: the co-author in the front row, the Architect's allies, the two delegates who answered the Author's emails. The narrowing count keeps both crowds alive for another meeting. Here the beat lands on rivalry as what sustains both camps; the act's question, whether what the users already have is good enough, would dissolve them both.
 - Decisions: A4-3; G8; G13.
 - Drift risk: Telling the second poll as a comeback with momentum ("The trend is visible. The room can feel it."). The point is that the margin keeps both crowds alive, not that one of them is winning.
 
@@ -322,7 +351,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: Transformation > Prohibitions on Transformation
 - Book text: "The non-transformer has been set on a pedestal at a fixed height in a fixed and permanent place."
 - Intent: Power fixes its holder in one unchangeable form at a fixed height, forbidden the transformations he imposes on others.
-- Scenario: The Blogger used a library that worked and kept changing, release after release. The standardized version is the non-transformer: fixed in place, unable to come half way to meet her use case, and bound to its structural limitation for good. Her post, "Nobody Asked For This", says so without rancor. Here the beat lands on standardization as a prohibition on transformation, a cost nobody weighed because nobody asked whether the feature needed to be standardized at all.
+- Scenario: The Blogger used a library that worked and kept changing, release after release. The standardized version is the non-transformer: fixed in place, unable to come half way to meet her use case, and bound to its structural limitation for good. Her post, "Nobody Asked For This", says so without rancor. Here the beat lands on standardization as a prohibition on transformation, and on the act's question: the library she had was good enough and getting better, and no one in the room asked whether it was.
 - Decisions: A4-10; A4-3; G8; G10.
 - Drift risk: Letting the post attack the committee or implementers (G10), or dropping the structural limitation that decision A4-10 keeps.
 
@@ -336,7 +365,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Crowd > Stone Heaps
 - Book text: "In their oldest form each separate stone stands for the man who has contributed it to the heap."
 - Intent: Unlike a heap of harvest, a heap of stones is raised to last and never shrink, and each stone stands for the man who brought it.
-- Scenario: The Architect's feature is in the standard and hard to take apart, so the correction papers cannot remove it; they can only add to the heap beside it, each stone left by one user or implementer who met the limitation. Three so far. Here the beat lands on the standard as a monument that grows only by additions, which is why the unasked question belongs before the vote.
+- Scenario: The Architect's feature is in the standard and hard to take apart, so the correction papers cannot remove it; they can only add to the heap beside it, each stone left by one user or implementer who met the limitation. Two so far; the third arrives later in XXXII. Here the beat lands on the standard as a monument that grows only by additions, which is why the act's question belongs before the vote.
 - Decisions: A4-12; G8; G11.
 - Drift risk: Gloating over the Architect's damaged work, which turns a structural point into a verdict on a man (G11). The symbol is not procedure: features can be deprecated and removed, slowly, so do not claim the standard never removes anything. "The correction papers he predicted" also needs a prediction by the Author on the page.
 
@@ -350,8 +379,8 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Command > Commands Addressed to More than One Individual
 - Book text: "A command to a crowd leaves no sting behind."
 - Intent: A command received inside a crowd is shared out at once and leaves no sting; stings form in those who are commanded alone.
-- Scenario: The Delegate's hand rises after the front rows and the first speakers, the thirtieth, because the room's hands rose. It costs him nothing and leaves nothing in him, which is why he can give thirty in an afternoon. The stings gather instead in the Author, commanded alone through three revisions. Here the beat lands on the thirtieth hand as the hand without a sting.
-- Decisions: A4-7 (keep a one-after-another cascade only if current polling practice supports it); G6; G8; G9.
+- Scenario: The Delegate's hand rises after the front rows and the first speakers, the thirtieth, because the room's hands rose. It costs him nothing and leaves nothing in him, which is why he can give thirty in a morning. The stings gather instead in the Author, commanded alone through three revisions. Here the beat lands on the thirtieth hand as the hand without a sting.
+- Decisions: A4-7 (keep a one-after-another cascade only if current polling practice supports it; XXIX shows the front rows rising first and the hands behind them following, and XXXII recalls the Delegate as "The Delegate who raised his hand because the hands before his had risen.", which keeps OLD's "because" and drops OLD's "twenty-nine", since no cascade of hands is counted); G6; G8; G9.
 - Drift risk: XXIX and XXXII give the Delegate "the accumulated stings of a thousand polls", which contradicts this passage; reconcile them, or the narrator contradicts his own book. In the room, hands for each option go up together rather than one after another; verify current practice per decision A4-7, and if that holds, tell the thirtieth hand as one that follows the front rows and the first speakers.
 
 </anchor>
@@ -364,21 +393,21 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 - Locus: The Survivor > Survival as a Passion
 - Book text: "The satisfaction in survival, which is a kind of pleasure, can become a dangerous and insatiable passion."
 - Intent: Surviving once makes a man want to survive again, and the satisfaction grows with each new occasion.
-- Scenario: The Author opens his laptop as a survivor and starts his next paper, because the next mailing is another occasion to outlast others. He still wants his design to win (G13), and nobody, the Author included, asks whether the next paper is needed. Here the laptop is the survivor's appetite for another occasion.
+- Scenario: The Author opens his laptop as a survivor and starts his next paper, because the next mailing is another occasion to outlast others. He still wants his design to win (G13), and nobody, the Author included, asks whether what the users already have is good enough. Here the laptop is the survivor's appetite for another occasion.
 - Decisions: G13; G8; A4-4 (the closing "Three hundred papers will arrive", per G9).
-- Drift risk: The current close ("He writes the first sentence. ... He writes it anyway.") leans toward the book's payoff. Act Four must not use "build" or anticipate "He begins to build." Frame the appetite as what the process rewards, not as a flaw in the man.
+- Drift risk: Act Four must not use "build" or anticipate "He begins to build." The restored close ("He writes the first sentence. He does not know if it will survive. He writes it anyway.") is allowed only because it stays about survival inside the crowd. Frame the appetite as what the process rewards, not as a flaw in the man.
 
 </anchor>
 
 <anchor>
 
 - ID: A4-20
-- Heading: The unasked-question moment (place it in "## XXIX. Plenary: The Arena", at the motion to apply the Author's wording; its line now closes XXVIII)
+- Heading: The act's question at the motion (in "## XXIX. Plenary: The Arena", at the motion to apply the Architect's wording)
 - Passage: "the urge to grow is the first and supreme attribute of the crowd. It wants to seize everyone within reach; anything shaped like a human being can join it. ... The open crowd exists so long as it grows; it disintegrates as soon as it stops growing."
 - Locus: The Crowd > The Open and Closed Crowd
 - Book text: "The urge to grow is the first and supreme attribute of the crowd."
 - Intent: The open crowd lives only while it grows and falls apart once it stops, so growth is its first need.
-- Scenario: The standard itself is the crowd that must grow every meeting. Each plenary adds motions to the working draft, and a meeting that added nothing would feel like a crowd beginning to disperse. When the convener reads the motion to apply the Author's wording and asks for discussion, the one question that would halt the growth, whether this needs to be in the standard at all, is not put, by the room or by the Author, who wants to win. The motion passes. The users are the unasked because the question is never put to them. The form belongs to this act alone: the question cannot be asked, because asking it would stop the crowd from growing.
+- Scenario: The standard itself is the crowd that must grow every meeting. Each plenary adds motions to the working draft, and a meeting that added nothing would feel like a crowd beginning to disperse. When the convener reads the motion to apply the Architect's wording and asks for discussion, the one question that would halt the growth, whether what the users already have is good enough, is not put. The Author stands "instead" and speaks to correctness, not to the users' question, so it goes unasked by the room and by him. The motion passes. The form belongs to this act alone: the question cannot be asked, because asking it would stop the crowd from growing.
 - Decisions: G1; A4-11; A4-7; G4; G13.
 - Drift risk: Leaving the line pointed at the Author's growing support, as it is now, instead of at the standard; or letting anyone ask the question, or the narrator lecture on it. The moment passes unasked and shows itself only in the motion passing.
 
@@ -392,7 +421,7 @@ Anchors A4-1 to A4-11 follow the part's headings, A4-12 to A4-19 cover the repea
 
 Every quotation and epigraph in the part file, in order. Results are exact, wording differs, not found, or misattributed. Exact allows house-style differences only: dropped italics, the style of quotation marks, punctuation at the edge, and a capital on a quotation that starts mid-sentence. Replacements follow the book's rule for Canetti: his published English translation, verified, and trimmed to the sentence that does the work. Spellings in replacements are the translation's own. A current text longer than about twenty-five words is given by its opening and closing words; the part file holds the full wording.
 
-- Total: 55 quotations. Exact 45, wording differs 8, not found 2, misattributed 0.
+- Total: 55 quotations. Exact 45, wording differs 8, not found 2, misattributed 0. Q54a, added 2026-10-17, is not in these counts.
 - From *Crowds and Power*: 52. Exact 43, wording differs 8, not found 1.
 - From other sources: 3. Exact 2, not found 1.
 - Unquoted claims about the book that need fixing are listed after Q55.
@@ -600,6 +629,7 @@ Every quotation and epigraph in the part file, in order. Results are exact, word
   - Attributed: the consensus rule (the ISO definition, which SD-4 reprints)
   - Result: exact as a fragment, but the cut changes the rule
   - Replacement: "the absence of sustained opposition to substantial issues by any important part of the concerned interests"
+  - Decision (G9, round three): the part now quotes the opening fragment, "the absence of sustained opposition", introduced as what consensus "is marked by" under the committee's rule, so the consensus chain runs fast. The verb follows the definition's "characterized by" and does not present the fragment as the whole rule.
   - Locus: ISO/IEC Guide 2:2004, definition 1.7 (also ISO/IEC Directives, Part 1)
 - Q32
   - Current: "The urge to grow is the first and supreme attribute of the crowd."
@@ -751,6 +781,12 @@ Every quotation and epigraph in the part file, in order. Results are exact, word
   - Result: wording differs (the first two sentences are reversed, and the third is joined from later in the paragraph without an ellipsis)
   - Replacement: "Today either everyone will survive or no-one."
   - Locus: Epilogue > The End of the Survivor
+- Q54a (added 2026-10-17)
+  - Current: "future battles, and many of them; in none of them will he be killed."
+  - Attributed: Canetti, of the member of an outvoted party
+  - Result: exact (starts mid-sentence; the source sentence begins "What he anticipates, however, is"; verified against the reference copy of the Stewart translation)
+  - Replacement: unchanged
+  - Locus: The Crowd in History > The Nature of the Parliamentary System
 - Q55
   - Current: "If we would master power we must face command openly and boldly, and search for means to deprive it of its sting."
   - Attributed: Canetti

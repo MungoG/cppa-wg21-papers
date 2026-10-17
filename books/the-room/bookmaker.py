@@ -251,9 +251,12 @@ SHY = '\u00AD'
 def _soft_hyphenate(text):
     def _hyph_word(word):
         trail = ''
-        while word and word[-1] in '.,;:!?\u201d\u2019)]\u2014':
+        while word and word[-1] in '.,;:!?\'\u201d\u2019)]\u2014':
             trail = word[-1] + trail
             word = word[:-1]
+        m = re.match(r"^(.+?)(['\u2019][A-Za-z]{1,2})$", word)
+        if m:
+            word, trail = m.group(1), m.group(2) + trail
         if len(word) < 6 or '<' in word or '&' in word:
             return word + trail
         hyphenated = _hyphenator.inserted(word, SHY)
@@ -264,6 +267,9 @@ def _soft_hyphenate(text):
                 filtered[-1] += p
             else:
                 filtered.append(p)
+        if m and len(filtered) > 1 and len(filtered[-1]) < 3:
+            last = filtered.pop()
+            filtered[-1] += last
         return SHY.join(filtered) + trail
     return ' '.join(_hyph_word(w) for w in text.split(' '))
 
@@ -276,6 +282,23 @@ def md_inline(text):
     text = text.replace(" - ", "&nbsp;&ndash; ")
     text = _soft_hyphenate(text)
     return text
+
+
+def take_paragraph(lines, i):
+    """Return (next index, inline text) for the body paragraph at or after
+    lines[i], or (index, None) if the next block is not a body paragraph."""
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    if i >= len(lines):
+        return i, None
+    first = lines[i].strip()
+    if first.startswith(('#', '>', '<!--')) or first == '---':
+        return i, None
+    para_lines = []
+    while i < len(lines) and lines[i].strip():
+        para_lines.append(lines[i].rstrip())
+        i += 1
+    return i, md_inline(' '.join(para_lines))
 
 
 def parse_blockquote(lines):
@@ -407,14 +430,17 @@ def build_act(source_path, act_heading, next_heading):
             i += 1
             continue
 
-        # ### subheading (Act Two has numbered subsections)
+        # ### subheading (Act Two has numbered subsections) - keep with
+        # its first paragraph so the number is never stranded
         if line.startswith('### '):
             in_act_header = False
             title = md_inline(line[4:].strip())
-            body_flowables.append(
-                Paragraph(title, styles["subsection_head"]))
-            after_heading = True
-            i += 1
+            group = [Paragraph(title, styles["subsection_head"])]
+            i, text = take_paragraph(lines, i + 1)
+            if text:
+                group.append(Paragraph(text, styles["body_first"]))
+            body_flowables.append(KeepTogether(group))
+            after_heading = text is None
             continue
 
         # ## Section heading - keep with blockquote + first paragraph
@@ -451,7 +477,18 @@ def build_act(source_path, act_heading, next_heading):
             while i < len(lines) and not lines[i].strip():
                 i += 1
 
-            if i < len(lines) and lines[i].strip() \
+            ends_on_heading = False
+            if i < len(lines) and lines[i].startswith('### '):
+                section_group.append(Paragraph(
+                    md_inline(lines[i][4:].strip()),
+                    styles["subsection_head"]))
+                i, text = take_paragraph(lines, i + 1)
+                if text:
+                    section_group.append(
+                        Paragraph(text, styles["body_first"]))
+                else:
+                    ends_on_heading = True
+            elif i < len(lines) and lines[i].strip() \
                     and not lines[i].startswith('#'):
                 para_lines = []
                 while i < len(lines) and lines[i].strip():
@@ -463,7 +500,7 @@ def build_act(source_path, act_heading, next_heading):
                         Paragraph(text, styles["body_first"]))
 
             body_flowables.append(KeepTogether(section_group))
-            after_heading = False
+            after_heading = ends_on_heading
             continue
 
         # Standalone blockquote
