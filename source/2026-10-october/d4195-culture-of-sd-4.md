@@ -21,6 +21,7 @@ This paper models WG21's consensus process as a game built on stated assumptions
 
 - Added an Assumptions section in response to criticism of R0. Key Judgments cite the assumptions they rest on.
 - Explained the likelihood and confidence labels on the Key Judgments.
+- Key Judgments 2 and 8 lowered to medium confidence; 3, 4, 6, and 8 restated more narrowly.
 - Abstract restated to claim only what the assumptions support. Repeated passages cut.
 
 ### R0: September 2026
@@ -29,11 +30,11 @@ This paper models WG21's consensus process as a game built on stated assumptions
 
 ## Executive Summary
 
-The three dynamics identified in the abstract (procedural fluency, path dependence, and asymmetric institutional memory) produce a specific cultural pattern. The committee develops a collegial surface over an adversarial undercurrent. Participants remain personally cordial while conducting long intellectual conflicts because open confrontation is expensive in a body where you will encounter the same people for decades. When persuasion settles a dispute, it ends there. When it does not, the dispute ends when the minority's willingness to spend social capital is exhausted. The gap between "consensus was achieved" and "we lost the poll" becomes a standing source of institutional tension.
+The three dynamics identified in the abstract (procedural fluency, path dependence, and asymmetric institutional memory) produce a specific cultural pattern. The committee develops a collegial surface over an adversarial undercurrent. Participants remain personally cordial while conducting long intellectual conflicts because open confrontation is expensive among people who will work together for decades. When persuasion settles a dispute, it ends there. When it does not, the dispute ends when the minority's willingness to spend social capital is exhausted. The gap between "consensus was achieved" and "we lost the poll" becomes a standing source of institutional tension.
 
-Each participant's behavior is rational given the incentive structure. Authors optimize for adoption. Reviewers specialize in domains they care about and abstain elsewhere, because review is a public good nobody wants to provide privately. Chairs optimize for closure, because the role demands converting conflict into decisions. In a contested poll, both sides are convinced they are right, and which side was right may not be known for years (assumption 8). What the minority is actually asked is how strongly it is willing to resist. This question turns a technical judgment into a social one.
+Each participant's behavior is rational given the incentive structure. Authors optimize for adoption. Reviewers specialize in domains they care about and abstain elsewhere, because review is a public good nobody wants to provide privately. Chairs optimize for closure, because the role demands converting conflict into decisions. In a contested poll, both sides are convinced they are right, and which side was right may not be known for years (assumption 8, below). What the minority is actually asked is how strongly it is willing to resist. This question turns a technical judgment into a social one.
 
-The case histories illustrate these dynamics. Contracts ([P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>) illustrates the ideal-author playbook executed through plenary adoption. Coroutines illustrates a minority partially vindicated after the fact: C++20 shipped only language-support primitives, with no high-level coroutine types. The std::execution vote ([N4985](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/n4985.pdf)<sup>[2]</sup>: 57-20-27, "numerically this is a weak consensus, but it is a consensus") illustrates chair judgment at the boundary. Networking illustrates a direction poll setting the conceptual framework about fifteen months before the chosen path had a concrete proposal. Default comparisons illustrate plenary catching a design flaw that subgroup consensus missed.
+The case histories illustrate these dynamics. Contracts ([P2900R14](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf)<sup>[1]</sup>) illustrates the ideal-author playbook executed through plenary adoption. Coroutines illustrates a minority partially vindicated after the fact: C++20 shipped only language-support primitives, with no high-level coroutine types. The `std::execution` vote ([N4985](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/n4985.pdf)<sup>[2]</sup>: 57-20-27, "numerically this is a weak consensus, but it is a consensus") illustrates chair judgment at the boundary. Networking illustrates a direction poll setting the conceptual framework about fifteen months before the chosen path had a concrete proposal. Default comparisons illustrate plenary catching a design flaw that subgroup consensus missed.
 
 For the C++ community, the practical consequence is that features entering the standard reflect the priorities of funded, persistent, procedurally fluent authors. That group overlaps with but is not identical to the group best positioned to judge what C++ users need.
 
@@ -68,7 +69,7 @@ Each judgment carries two labels adapted from Intelligence Community Directive 2
 
 3. SD-4 does not require the minutes register in ISO/IEC Directives clause 2.5.6.<sup>[5]</sup> Papers on both sides preserve arguments; only a recorded finding shows that an objection was reconciled. A later reader can see from the tally that the objectors were outvoted but cannot see whether their objections were answered first, and the gap compounds as people who were in the room leave. Likelihood: almost certain. Confidence: high (assumption 14).
 
-4. SD-4 leaves the judgment of consensus to the chair and requires no finding that the remaining objection was answered. The chair is incentivized to produce a decision, so once an objection survives discussion, the live question becomes how strongly the minority will resist; whether a defect remains is not recorded. Because consensus does not require persuasion, "consensus was achieved" and "we lost the poll" can both be true of the same poll, and that stays as institutional tension. Likelihood: very likely. Confidence: medium (assumptions 4, 5, 12, 13; sentiment is not measured).
+4. SD-4 leaves the judgment of consensus to the chair and requires no finding that the remaining objection was answered. The chair is incentivized to produce a decision, so once an objection survives discussion, the live question becomes how strongly the minority will resist; whether a defect remains is not recorded. Because consensus does not require persuasion, "consensus was achieved" and "we lost the poll" can both be true of the same poll, and the gap remains a standing source of institutional tension. Likelihood: very likely. Confidence: medium (assumptions 4, 5, 12, 13; sentiment is not measured).
 
 5. Path dependence governs the framing a challenger is heard in. Once a proposal accumulates favorable direction polls, a competitor is evaluated as an amendment or an objection to it and must show that its advantage exceeds the cost of reversal (section 12). Merit still decides outcomes, but accumulated state decides the terms on which merit is presented. Likelihood: likely. Confidence: high (assumptions 9, 10; document titles and poll text in the contracts and networking cases).
 
@@ -98,7 +99,7 @@ ISO uses the verb, not the noun. This paper uses "reconciliation" for the record
 
 Each part is a property of the record rather than of anyone's state of mind, so a later reader can check all three without having been in the room. Persuasion is not among them. Clause 2.5.6, quoted above, is explicit that the obligation to address a sustained opposition does not imply an obligation to resolve it successfully. An objection registered, answered, and then overruled in a recorded finding is reconciled. An objection outvoted in silence is not. The three parts are, item for item, the three things the SD-4 sentence above declines to require, and a poll tally supplies none of them. By the same test, a rebuttal paper is not reconciliation.
 
-A companion paper in this mailing, [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf)<sup>[7]</sup>, applies this test to one rebuttal paper, P3846R1, concern by concern, and finds that the record contains replies for eighteen objections and reconciliation for two.
+A companion paper, [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf)<sup>[7]</sup>, applies this test to one rebuttal paper, P3846R1, concern by concern, and finds that the record contains replies for eighteen objections and reconciliation for two.
 
 ## 2. The Ideal Author
 
@@ -146,7 +147,7 @@ The P2300 `std::execution` story from the author's seat illustrates the frustrat
 
 The chair normally does not want to determine "one participant is technically correct and another is technically wrong." That would require the chair to become the supreme technical authority. The chair is incentivized to determine, "Is there enough agreement for the committee to proceed?" At the time of a poll, the room cannot fully judge which side's technical claim is correct (assumption 8), so the chair's practical objective is to lower the temperature and convert conflict into a decision.
 
-Because both sides think they are right and the room cannot settle which is, the question that reaches the minority is "How strongly are you willing to resist?" That question turns a technical judgment into a social one. A person who continues voting Strongly Against must repeatedly assert, "Yes, I believe my judgment is important enough to impede everyone else's work." That is psychologically expensive, especially in a community of colleagues.
+Because both sides think they are right and the room cannot settle which is right, the question that reaches the minority is "How strongly are you willing to resist?" That question turns a technical judgment into a social one. A person who continues voting Strongly Against must repeatedly assert, "Yes, I believe my judgment is important enough to impede everyone else's work." That is psychologically expensive, especially in a community of colleagues.
 
 "We have given this concern extensive consideration" can be true even when "We have conclusively answered this concern" is false. That distinction is central.
 
@@ -376,7 +377,7 @@ Every strategy above maximizes \( \Pr(\text{consensus}) \) (assumptions 3 and 12
 
 SD-4 is a design. Like all rulesets, it creates incentives. The culture described above is what rational actors produce under this one. This paper has identified three mechanisms: procedural fluency gating access, path dependence resisting correction, and asymmetric institutional memory preventing the record from distinguishing answered objections from outvoted ones. They reinforce one another.
 
-The stakes of that optimization vary with size. A small paper creates small incentives. A large, employer-funded, multi-year feature creates incentives proportional to the investment. A competent institutional operator will seek to control scheduling, chair confidence, direction polls, and the study group's committed time before the investment is made. This is the expected behavior of rational actors facing the reversal-cost inequality.
+The stakes of that optimization vary with size. A small paper creates small incentives. A large, employer-funded, multi-year feature creates incentives that grow with what has been built upon it. A competent institutional operator will seek to control scheduling, chair confidence, direction polls, and the study group's committed time before the investment is made. This is the expected behavior of rational actors facing the reversal-cost inequality.
 
 Direction polls happen when designs are least mature. The author's rational strategy is to accumulate favorable state transitions as early as possible, because reversal cost grows monotonically from each transition. But early is when the design is least tested, least reviewed, and most likely to contain the architectural mistakes whose correction will later be prohibitively expensive. The system creates maximum lock-in at minimum information. In a large feature, an early mistake costs users the most, and the early lock-in that authors seek for designs they believe are right also protects any such mistake, at the worst possible time.
 
@@ -402,7 +403,7 @@ The distinction is testable. If the system selects for quality, large contested 
 
 The metric: For each large feature adopted since C++11, count the defect reports, correction papers, post-adoption revisions, and removals, normalized by feature scope. Compare contested features against uncontested features of similar size and novelty. That measurement is future work. The data exists.
 
-A different design would produce a different culture. This one produces what rational actors optimizing under these rules would produce. When funded advocates cross-examine each other and a capable chair reads the room, the system delivers. Its failure mode is that large proposals, proposals with concentrated sponsors and diffuse costs, face structural incentives to make their own reversal impossible, and the system provides no mechanism proportional to the stakes for ensuring that early lock-in reflects early correctness.
+A different design would produce a different culture. This one produces what rational actors optimizing under these rules would produce. When funded advocates cross-examine each other and a capable chair reads the room, the system delivers. Its failure mode is that large proposals, proposals with concentrated sponsors and diffuse costs, face structural incentives to make their own reversal prohibitively expensive, and the system provides no mechanism proportional to the stakes for ensuring that early lock-in reflects early correctness.
 
 \newpage
 
@@ -423,7 +424,7 @@ A different design would produce a different culture. This one produces what rat
 | 2025-09-29 | [P3851R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3851r0.pdf)<sup>[51]</sup> "Position on contracts assertion for C++26" (Garcia et al.) | OPPOSITION |
 | 2025-10-06 | [P3846R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3846r0.pdf)<sup>[34]</sup> "C++26 Contract Assertions, Reasserted" (Doumler, Berne, et al.). Same mailing as P3849R0 and P3851R0 | REBUTTAL |
 | 2025-11-04 | EWG Kona: seven NB removal comments all fail (~9 SF vs ~40 SA each); P3846R0 listed as the response material after the Netherlands comment and left unpresented<sup>[52]</sup>; [N5031](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5031.pdf)<sup>[53]</sup> records "Rejected all but 2 requests" | POLL |
-| 2025-11-04 | [D3911R0](https://isocpp.org/files/papers/D3911R0.html)<sup>[54]</sup> "Make Contracts Reliably Non-Ignorable" (Nea&#539;u, Alexandrescu, Teodorescu, Nichita). Presented at Kona as a draft; tracker issue created by the EWG chair the same day | OPPOSITION |
+| 2025-11-04 | [D3911R0](https://web.archive.org/web/20251111001207/https://isocpp.org/files/papers/D3911R0.html)<sup>[54]</sup> "Make Contracts Reliably Non-Ignorable" (Nea&#539;u, Alexandrescu, Teodorescu, Nichita). Presented at Kona as a draft; tracker issue created by the EWG chair the same day | OPPOSITION |
 | 2025-11-04 | EWG Kona: D3911R0 non-ignorable pre! (SF:18, F:25, N:22, A:7, SA:0), consensus for change<sup>[54]</sup> | POLL |
 | 2025-12-14 | [P3946R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3946r0.html)<sup>[55]</sup> "Designing enforced assertions" (Krzemie&nacute;ski) | REBUTTAL |
 | 2025-12-15 | [P3912R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3912r0.pdf)<sup>[56]</sup> "Design considerations for always-enforced contract assertions" (Doumler, Berne, et al.) | REBUTTAL |
@@ -472,11 +473,11 @@ This paper asks for nothing.
 
 [4] [ICD 203](https://www.dni.gov/files/documents/ICD/ICD-203.pdf) - "Analytic Standards" (Office of the Director of National Intelligence, 2015). Intelligence Community Directive 203, signed 2015-01-02, as amended; section D.6.e(2) sets the likelihood terms and keeps confidence and likelihood in separate sentences.
 
-[5] [ISO/IEC Directives, Part 1](https://www.iso.org/sites/directives/current/consolidated/index.html) - Consolidated ISO Supplement (2024), clauses 0.7 b) and 2.5.6.
+[5] [ISO/IEC Directives, Part 1](https://web.archive.org/web/20250626064256/https://www.iso.org/sites/directives/current/consolidated/index.html) - Consolidated ISO Supplement (2024), clauses 0.7 b) and 2.5.6. Archived copy of the text quoted in section 1; the 21st edition, which replaced it, rewords two of the passages quoted from clause 2.5.6.
 
 [6] [SD-4](https://web.archive.org/web/20260125120311/https://isocpp.org/std/standing-documents/sd-4-wg21-practices-and-procedures) - "WG21 Practices and Procedures" (Herb Sutter, 2024). Revision of 2024-12-30, the text in force throughout the period this paper analyzes; the current revision is dated 2026-05-11 and names Guy Davidson as reply-to.
 
-[7] [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf) - "Addressed but Unresolved: P3846R1's Eighteen Responses on C++26 Contract Assertions" (Vinnie Falco, 2026). Companion paper in the same mailing.
+[7] [P4272R0](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4272r0.pdf) - "Addressed but Unresolved: P3846R1's Eighteen Responses on C++26 Contract Assertions" (Vinnie Falco, 2026). Companion paper, published with P4195R0 in the 2026-09 mailing.
 
 [8] [P0542R5](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0542r5.html) - "Support for contract based programming in C++" (G. Dos Reis, J. Daniel Garcia, J. Lakos, A. Meredith, N. Myers, B. Stroustrup, 2018).
 
