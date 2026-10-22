@@ -1,7 +1,7 @@
 ---
 title: "Any Delegate May Object to a Poll on an Unmailed Revision"
 document: P4302R3
-date: 2026-10-03
+date: 2026-10-21
 intent: ask
 audience: WG21
 reply-to:
