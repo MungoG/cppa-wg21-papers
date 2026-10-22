@@ -1,7 +1,7 @@
 ---
 title: "WG21 Game Theory: The Culture That Emerges From SD-4"
 document: P4195R1
-date: 2026-10-03
+date: 2026-10-21
 intent: info
 audience: WG21
 reply-to:
